@@ -1,4 +1,4 @@
-pub mod utils;
 mod errors;
+pub mod utils;
 
-pub use errors::{Result, Error};
+pub use errors::{Error, Result};

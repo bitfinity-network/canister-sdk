@@ -1,7 +1,8 @@
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
+
+use ic_agent::agent::http_transport::ReqwestHttpReplicaV2Transport;
 use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
-use ic_agent::agent::http_transport::ReqwestHttpReplicaV2Transport;
 
 use crate::Result;
 
