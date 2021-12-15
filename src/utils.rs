@@ -1,42 +1,35 @@
-use std::env;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
 use ic_agent::agent::http_transport::ReqwestHttpReplicaV2Transport;
 
-fn get_identity_path(account_name: &str) -> PathBuf {
-    let home_folder = env::var("HOME").unwrap();
-    let mut path = PathBuf::new();
-    path.push(home_folder);
-    path.push(".config/dfx/identity");
+use crate::Result;
+
+fn get_identity_path(account_name: impl AsRef<Path>) -> Result<PathBuf> {
+    let mut path = dirs::config_dir().ok_or(crate::Error::MissingConfig)?;
+    path.push("dfx/identity");
     path.push(account_name);
     path.push("identity.pem");
-
-    path
+    Ok(path)
 }
 
-pub fn get_identity(account_name: &str) -> BasicIdentity {
-    let identity = BasicIdentity::from_pem_file(get_identity_path(account_name)).unwrap();
-    identity
+pub fn get_identity(account_name: impl AsRef<str>) -> Result<BasicIdentity> {
+    let ident_path = get_identity_path(account_name.as_ref())?;
+    let identity = BasicIdentity::from_pem_file(ident_path)?;
+    Ok(identity)
 }
 
-pub async fn get_agent(name: &str, url: &str) -> Agent {
-    let identity = get_identity(name);
+pub async fn get_agent(name: impl AsRef<str>, url: impl Into<String>) -> Result<Agent> {
+    let identity = get_identity(name)?;
 
-    let t: ReqwestHttpReplicaV2Transport =
-        ReqwestHttpReplicaV2Transport::create(url).unwrap();
+    let transport = ReqwestHttpReplicaV2Transport::create(url)?;
+
     let agent = Agent::builder()
-        .with_transport(t)
+        .with_transport(transport)
         .with_identity(identity)
-        .build()
-        .expect("should work");
+        .build()?;
 
-    match agent.fetch_root_key().await {
-        Ok(_) => {}
-        Err(e) => {
-            println!("[get_agent] Error: {:?}", e)
-        }
-    }
+    agent.fetch_root_key().await?;
 
-    agent
+    Ok(agent)
 }
