@@ -1,8 +1,8 @@
-use ic_agent::agent::http_transport::ReqwestHttpReplicaV2Transport;
-use ic_agent::identity::BasicIdentity;
-use ic_agent::Agent;
 use std::env;
 use std::path::PathBuf;
+use ic_agent::identity::BasicIdentity;
+use ic_agent::Agent;
+use ic_agent::agent::http_transport::ReqwestHttpReplicaV2Transport;
 
 fn get_identity_path(account_name: &str) -> PathBuf {
     let home_folder = env::var("HOME").unwrap();
@@ -16,13 +16,15 @@ fn get_identity_path(account_name: &str) -> PathBuf {
 }
 
 pub fn get_identity(account_name: &str) -> BasicIdentity {
-    BasicIdentity::from_pem_file(get_identity_path(account_name)).unwrap()
+    let identity = BasicIdentity::from_pem_file(get_identity_path(account_name)).unwrap();
+    identity
 }
 
 pub async fn get_agent(name: &str, url: &str) -> Agent {
     let identity = get_identity(name);
 
-    let t: ReqwestHttpReplicaV2Transport = ReqwestHttpReplicaV2Transport::create(url).unwrap();
+    let t: ReqwestHttpReplicaV2Transport =
+        ReqwestHttpReplicaV2Transport::create(url).unwrap();
     let agent = Agent::builder()
         .with_transport(t)
         .with_identity(identity)
