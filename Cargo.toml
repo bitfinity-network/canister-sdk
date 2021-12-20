@@ -1,9 +1,4 @@
 [package]
+edition = "2021"
 name = "ic-helpers"
 version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-dirs = "4.0.0"
-ic-agent = "0.10.0"
-thiserror = "1.0.30"
