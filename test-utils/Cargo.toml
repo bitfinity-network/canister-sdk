@@ -1,0 +1,10 @@
+[package]
+edition = "2021"
+name = "test-utils"
+version = "0.1.0"
+
+[dependencies]
+dirs = "4.0"
+ic-agent = "0.10"
+ic-utils = "0.10"
+thiserror = "1.0"
