@@ -2,3 +2,21 @@
 edition = "2021"
 name = "ic-helpers"
 version = "0.1.0"
+<<<<<<< HEAD
+=======
+
+[dependencies]
+async-trait = "0.1"
+num-traits = "0.2"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+ic-agent = "0.10"
+ic-utils = "0.10"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+candid = "0.7"
+hex = "0.4"
+ic-cdk = "0.3"
+serde = "1.0"
+sha2 = "0.10"
+>>>>>>> 41c43a7 (changes)
