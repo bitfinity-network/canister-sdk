@@ -9,7 +9,8 @@ pub mod utils;
 
 #[cfg(target_arch = "wasm32")]
 pub mod factory {
-    mod canisters_factory;
+    mod core;
+    mod api;
 
     pub mod types {
         mod canister;
@@ -19,7 +20,8 @@ pub mod factory {
         pub use self::checksum::*;
     }
 
-    pub use self::canisters_factory::*;
+    pub use self::core::*;
+    pub use self::api::*;
 }
 <<<<<<< HEAD
 >>>>>>> 23876d9 (CPROD-300 add canister factory)
