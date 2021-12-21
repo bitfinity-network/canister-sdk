@@ -124,7 +124,7 @@ impl<T> CandidType for PhantomDataExt<T> {
 
 #[macro_export]
 macro_rules! init_state {
-    ( $name:ident, $key:ident, $settings:ident ) => {
+    ( $name:ident, $key:ident, $settings:ident, $wasm:expr ) => {
         pub type $name = ic_helpers::factory::State<$key, $settings, Data>;
         static mut STATE: Option<$name> = None;
 
@@ -145,7 +145,7 @@ macro_rules! init_state {
 
         impl ic_helpers::factory::DataProvider for Data {
             fn wasm_module() -> &'static [u8] {
-                include_bytes!("pair.wasm")
+                include_bytes!($wasm)
             }
 
             fn state() -> &'static mut dyn std::any::Any {
