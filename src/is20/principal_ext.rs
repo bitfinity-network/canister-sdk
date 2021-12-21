@@ -17,7 +17,7 @@ impl From<Amount> for u128 {
 }
 
 #[async_trait]
-pub trait IS20PrincipalExt{
+pub trait IS20PrincipalExt {
     fn this() -> Self;
     fn check_access(target: Self);
     fn cycles() -> Nat;

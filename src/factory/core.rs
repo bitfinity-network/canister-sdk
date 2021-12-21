@@ -61,12 +61,7 @@ impl<K: Hash + Eq> Factory<K> {
             return Ok(canister.identity());
         }
 
-        let canister = Canister::create(
-            self.checksum.version,
-            wasm_module.into(),
-            candid::encode_args(arg).unwrap_or_default(),
-        )
-        .await?;
+        let canister = Canister::create(self.checksum.version, wasm_module.into(), arg).await?;
 
         let principal = canister.identity();
         self.canisters.insert(key, canister);
