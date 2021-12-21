@@ -5,6 +5,7 @@ macro_rules! init_api {
 
         /// Returns the checksum of a wasm module in hex representation.
         #[query(name = "get_checksum")]
+        #[candid::candid_method(query, rename = "get_checksum")]
         async fn get_checksum() -> String {
             $state::get().factory.checksum.to_string()
         }
@@ -14,6 +15,7 @@ macro_rules! init_api {
         /// otherwise, cycles balances of `principal` is returned.
         /// If `principal` does not exists, `None` is returned.
         #[update(name = "get_cycles")]
+        #[candid::candid_method(update, rename = "get_cycles")]
         async fn get_cycles(principal: Option<candid::Principal>) -> Option<candid::Nat> {
             Some(if let Some(principal) = principal {
                 ic_helpers::management::Canister::from(principal)
@@ -30,12 +32,14 @@ macro_rules! init_api {
         /// Other canisters can send cycles using `api::call::call_with_payment` method.
         /// Returns the actual amount of accepted cycles.
         #[update(name = "top_up")]
+        #[candid::candid_method(update, rename = "top_up")]
         async fn top_up() -> u64 {
             ic_helpers::management::Canister::accept_cycles()
         }
 
         /// Upgrades canisters and returns a list of outdated canisters.
         #[update(name = "upgrade")]
+        #[candid::candid_method(update, rename = "upgrade")]
         async fn upgrade() -> Vec<candid::Principal> {
             candid::Principal::check_access($state::get().admin);
             $state::get().factory.upgrade($state::wasm()).await
@@ -43,6 +47,7 @@ macro_rules! init_api {
 
         /// Sets the admin principal.
         #[update(name = "set_admin")]
+        #[candid::candid_method(update, rename = "set_admin")]
         async fn set_admin(admin: candid::Principal) {
             candid::Principal::check_access($state::get().admin);
             $state::get().admin = admin;
@@ -50,18 +55,21 @@ macro_rules! init_api {
 
         /// Returns the current version of canister.
         #[query(name = "version")]
+        #[candid::candid_method(query, rename = "version")]
         async fn version() -> String {
             env!("CARGO_PKG_VERSION").to_string()
         }
 
         /// Returns the length of canisters created by the factory.
         #[query(name = "length")]
+        #[candid::candid_method(query, rename = "length")]
         async fn length() -> usize {
             $state::get().factory.len()
         }
 
         /// Returns a vector of all canisters cretaed by the factory.
         #[query(name = "get_all")]
+        #[candid::candid_method(query, rename = "get_all")]
         async fn get_all() -> Vec<candid::Principal> {
             $state::get().factory.all()
         }
