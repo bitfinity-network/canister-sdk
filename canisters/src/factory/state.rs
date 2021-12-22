@@ -1,32 +1,27 @@
 use crate::factory::Factory;
-use candid::types::internal::Type;
-use candid::types::Serializer;
-use candid::{CandidType, Principal};
+use candid::Principal;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::error::Error;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-#[derive(CandidType, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(
     bound = "K: Serialize, for<'a> K: Deserialize<'a>, S: Serialize, for<'a> S: Deserialize<'a>"
 )]
-pub struct State<
-    K: 'static + Hash + Eq,
-    S: 'static + Default,
-    W: 'static + DataProvider + CandidType,
-> where
+pub struct State<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider>
+where
     K: Serialize + for<'a> Deserialize<'a>,
     S: Serialize + for<'a> Deserialize<'a>,
 {
     pub admin: Principal,
     pub settings: S,
     pub factory: Factory<K>,
-    phantom: PhantomDataExt<W>,
+    phantom: PhantomData<W>,
 }
 
-impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider + CandidType> Default
+impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider> Default
     for State<K, S, W>
 where
     K: Serialize + for<'a> Deserialize<'a>,
@@ -37,13 +32,12 @@ where
             admin: Principal::anonymous(),
             settings: S::default(),
             factory: Factory::new(W::wasm_module()),
-            phantom: PhantomDataExt(PhantomData),
+            phantom: PhantomData,
         }
     }
 }
 
-impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider + CandidType>
-    State<K, S, W>
+impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider> State<K, S, W>
 where
     K: Serialize + for<'a> Deserialize<'a>,
     S: Serialize + for<'a> Deserialize<'a>,
@@ -75,8 +69,8 @@ where
     }
 }
 
-impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider + CandidType>
-    TryFrom<Vec<u8>> for State<K, S, W>
+impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider> TryFrom<Vec<u8>>
+    for State<K, S, W>
 where
     K: Serialize + for<'a> Deserialize<'a>,
     S: Serialize + for<'a> Deserialize<'a>,
@@ -88,7 +82,7 @@ where
     }
 }
 
-impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider + CandidType>
+impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider>
     TryFrom<&mut State<K, S, W>> for Vec<u8>
 where
     K: Serialize + for<'a> Deserialize<'a>,
@@ -104,22 +98,6 @@ where
 pub trait DataProvider {
     fn wasm_module() -> &'static [u8];
     fn state() -> &'static mut dyn Any;
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-struct PhantomDataExt<T>(PhantomData<T>);
-
-impl<T> CandidType for PhantomDataExt<T> {
-    fn _ty() -> Type {
-        Type::Null
-    }
-
-    fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_null(())
-    }
 }
 
 #[macro_export]
@@ -140,7 +118,7 @@ macro_rules! init_state {
             $name::restore().unwrap();
         }
 
-        #[derive(candid::CandidType, Clone, serde::Serialize, serde::Deserialize)]
+        #[derive(Clone, serde::Serialize, serde::Deserialize)]
         pub struct Data;
 
         impl ic_helpers::factory::DataProvider for Data {
