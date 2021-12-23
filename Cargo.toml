@@ -2,5 +2,7 @@
 members = [
   "test-utils",
   "canisters",
+  "ic-storage",
+  "ic-storage/ic-storage-derive",
 ]
 
