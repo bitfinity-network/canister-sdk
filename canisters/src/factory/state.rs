@@ -78,7 +78,7 @@ where
     type Error = Box<dyn Error>;
 
     fn try_from(buf: Vec<u8>) -> Result<Self, Self::Error> {
-        Ok(serde_json::from_slice(buf.as_slice())?)
+        Ok(bincode::deserialize(buf.as_slice())?)
     }
 }
 
@@ -91,7 +91,7 @@ where
     type Error = Box<dyn Error>;
 
     fn try_from(state: &mut State<K, S, W>) -> Result<Self, Self::Error> {
-        Ok(serde_json::to_vec(state)?)
+        Ok(bincode::serialize(state)?)
     }
 }
 
