@@ -91,8 +91,14 @@ impl IS20PrincipalExt for Principal {
     ) -> Result<u128, String> {
         #[derive(CandidType, Debug, Eq, PartialEq, Deserialize)]
         enum TxError {
-            InsufficientAllowance,
             InsufficientBalance,
+            InsufficientAllowance,
+            Unauthorized,
+            AmountTooSmall,
+            FeeExceededLimit,
+            NotificationFailed,
+            AlreadyNotified,
+            TransactionDoesNotExist,
         }
 
         api::call::call::<_, (Result<Nat, TxError>,)>(*self, "transferFrom", (from, to, amount))
