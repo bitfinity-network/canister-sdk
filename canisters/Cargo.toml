@@ -4,11 +4,15 @@ name = "canisters"
 version = "0.1.0"
 
 [dependencies]
+dfn_core = {git = "https://github.com/flyq/ic"}
+dfn_protobuf = {git = "https://github.com/flyq/ic"}
+ledger-canister = {git = "https://github.com/flyq/ic"}
 async-trait = "0.1"
-candid = "0.7"
 hex = "0.4"
+candid = "0.7"
 ic-cdk = "0.3"
 num-traits = "0.2"
 serde = "1.0"
 serde_json = "1.0"
 sha2 = "0.10"
+ic-types = {git = "https://github.com/flyq/ic"}
