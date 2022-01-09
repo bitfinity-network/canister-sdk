@@ -36,7 +36,7 @@ pub struct Block{
 #[async_trait]
 pub trait LedgerPrincipalExt {
     async fn fetch_block(&self, block_height: u64) -> Result<Block, String>;
-    async fn verify_block(&self, caller: Principal, block: &Block, threshold: u64) -> Result<(), TxError>;
+    async fn verify_block(&self, caller: Principal, block: &Block, threshold: u64, sub_account: Option<Subaccount>) -> Result<(), TxError>;
     async fn ledger_transfer(&self, to: Principal,  amount: u64, fee: u64) -> Result<u64, String>;
 }
 
@@ -84,9 +84,10 @@ async fn fetch_block(&self, block_height: u64) -> Result<Block, String>{
 async fn verify_block(&self, 
     caller: Principal, 
     block: &Block, 
-    threshold: u64) -> Result<(), TxError> {
+    threshold: u64, 
+    sub_account: Option<Subaccount>) -> Result<(), TxError> {
 
-        if AccountIdentifier::from_principal(caller, None) != block.from {
+        if AccountIdentifier::from_principal(caller, sub_account) != block.from {
             return Err(TxError::Unauthorized);
         }
 
