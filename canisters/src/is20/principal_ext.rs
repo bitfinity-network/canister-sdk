@@ -16,13 +16,26 @@ impl From<Amount> for u128 {
     }
 }
 
+#[derive(CandidType, Debug, Eq, PartialEq, Deserialize)]
+enum TxError {
+    InsufficientBalance,
+    InsufficientAllowance,
+    Unauthorized,
+    AmountTooSmall,
+    FeeExceededLimit,
+    NotificationFailed,
+    AlreadyNotified,
+    TransactionDoesNotExist,
+}
+
 #[async_trait]
 pub trait IS20PrincipalExt {
     fn this() -> Self;
     fn check_access(target: Self);
     fn cycles() -> Nat;
     async fn balance_of(&self, address: Self) -> u128;
-    async fn transfer(&self, to: Self, amount: u128) -> Result<(), String>;
+    async fn transfer(&self, to: Self, amount: u128) -> Result<u128, String>;
+    async fn transfer_include_fee(&self, to: Self, amount: u128) -> Result<u128, String>;
     async fn transfer_from(
         &self,
         from: Principal,
@@ -59,28 +72,22 @@ impl IS20PrincipalExt for Principal {
             .unwrap_or_default()
     }
 
-    async fn transfer(&self, to: Self, amount: u128) -> Result<(), String> {
-        #[derive(Deserialize, CandidType, Clone)]
-        struct TransferArguments {
-            pub to: Principal,
-            pub amount: u128,
-        }
-
-        #[derive(CandidType, Debug, Deserialize)]
-        enum TransferError {
-            InsufficientBalance,
-            AmountTooLarge,
-            CallFailed,
-            Unknown,
-        }
-
-        let args =
-            encode_args((TransferArguments { to, amount },)).map_err(|e| format!("{:?}", e))?;
-        let result = api::call::call_raw(*self, "transfer", args, 0)
+    async fn transfer(&self, to: Self, amount: u128) -> Result<u128, String> {
+        api::call::call::<_, (Result<Nat, TxError>,)>(*self, "transfer", (to, amount))
             .await
-            .map_err(|e| format!("{:?}", e))?;
+            .map_err(|e| format!("{:?}", e))?
+            .0
+            .map(|v| v.0.to_u128().unwrap())
+            .map_err(|e| format!("{:?}", e))
+    }
 
-        decode_args(&result).map_err(|e| format!("{}", e))
+    async fn transfer_include_fee(&self, to: Self, amount: u128) -> Result<u128, String> {
+        api::call::call::<_, (Result<Nat, TxError>,)>(*self, "transferIncludeFee", (to, amount))
+            .await
+            .map_err(|e| format!("{:?}", e))?
+            .0
+            .map(|v| v.0.to_u128().unwrap())
+            .map_err(|e| format!("{:?}", e))
     }
 
     async fn transfer_from(
@@ -89,18 +96,6 @@ impl IS20PrincipalExt for Principal {
         to: Principal,
         amount: u128,
     ) -> Result<u128, String> {
-        #[derive(CandidType, Debug, Eq, PartialEq, Deserialize)]
-        enum TxError {
-            InsufficientBalance,
-            InsufficientAllowance,
-            Unauthorized,
-            AmountTooSmall,
-            FeeExceededLimit,
-            NotificationFailed,
-            AlreadyNotified,
-            TransactionDoesNotExist,
-        }
-
         api::call::call::<_, (Result<Nat, TxError>,)>(*self, "transferFrom", (from, to, amount))
             .await
             .map_err(|e| format!("{:?}", e))?
