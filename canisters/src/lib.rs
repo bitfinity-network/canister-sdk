@@ -33,3 +33,7 @@ pub mod ledger {
     pub use self::principal_ext::*;
 }
 
+pub mod pair {
+    mod principal_ext;
+    pub use self::principal_ext::*;
+}
