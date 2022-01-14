@@ -10,8 +10,10 @@ pub fn derive_ic_storage(input: TokenStream) -> TokenStream {
         impl ::ic_storage::IcStorage for #ident {
             fn get() -> ::std::rc::Rc<::std::cell::RefCell<Self>> {
                 use ::std::rc::Rc;
+                use ::std::cell::RefCell;
+
                 thread_local! {
-                    static store: ::std::rc::Rc<::std::cell::RefCell<#ident>> = ::std::rc::Rc::new(::std::cell::RefCell::new(#ident::default()));
+                    static store: Rc<RefCell<#ident>> = Rc::new(RefCell::new(#ident::default()));
                 }
 
                 store.with(|v| v.clone())
