@@ -1,139 +1,42 @@
-use crate::factory::Factory;
-use candid::Principal;
-use serde::{Deserialize, Serialize};
-use std::any::Any;
-use std::error::Error;
-use std::hash::Hash;
-use std::marker::PhantomData;
-
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(
-    bound = "K: Serialize, for<'a> K: Deserialize<'a>, S: Serialize, for<'a> S: Deserialize<'a>"
-)]
-pub struct State<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider>
-where
-    K: Serialize + for<'a> Deserialize<'a>,
-    S: Serialize + for<'a> Deserialize<'a>,
-{
-    pub admin: Principal,
-    pub settings: S,
-    pub factory: Factory<K>,
-    phantom: PhantomData<W>,
-}
-
-impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider> Default
-    for State<K, S, W>
-where
-    K: Serialize + for<'a> Deserialize<'a>,
-    S: Serialize + for<'a> Deserialize<'a>,
-{
-    fn default() -> Self {
-        Self {
-            admin: Principal::anonymous(),
-            settings: S::default(),
-            factory: Factory::new(W::wasm_module()),
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider> State<K, S, W>
-where
-    K: Serialize + for<'a> Deserialize<'a>,
-    S: Serialize + for<'a> Deserialize<'a>,
-{
-    /// Returns a reference to current state.
-    /// If state does not exists, a new instance of its default is created.
-    pub fn get() -> &'static mut Self {
-        W::state().downcast_mut::<Self>().unwrap()
-    }
-
-    /// Returns bytecode of wasm module.
-    pub fn wasm() -> &'static [u8] {
-        W::wasm_module()
-    }
-
-    /// Stores current state to stable memory.
-    pub fn save() -> Result<(), Box<dyn Error>> {
-        let buf: Vec<u8> = Self::get().try_into()?;
-        Ok(ic_cdk::storage::stable_save((buf,))?)
-    }
-
-    /// Restores a state from stable memory and updates wasm module checksums if needed.
-    pub fn restore() -> Result<(), Box<dyn Error>> {
-        let (buf,) = ic_cdk::storage::stable_restore::<(Vec<u8>,)>()?;
-        let mut state: Self = buf.try_into()?;
-        state.factory.restore(Self::wasm());
-        *Self::get() = state;
-        Ok(())
-    }
-}
-
-impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider> TryFrom<Vec<u8>>
-    for State<K, S, W>
-where
-    K: Serialize + for<'a> Deserialize<'a>,
-    S: Serialize + for<'a> Deserialize<'a>,
-{
-    type Error = Box<dyn Error>;
-
-    fn try_from(buf: Vec<u8>) -> Result<Self, Self::Error> {
-        Ok(serde_json::from_slice(buf.as_slice())?)
-    }
-}
-
-impl<K: 'static + Hash + Eq, S: 'static + Default, W: 'static + DataProvider>
-    TryFrom<&mut State<K, S, W>> for Vec<u8>
-where
-    K: Serialize + for<'a> Deserialize<'a>,
-    S: Serialize + for<'a> Deserialize<'a>,
-{
-    type Error = Box<dyn Error>;
-
-    fn try_from(state: &mut State<K, S, W>) -> Result<Self, Self::Error> {
-        Ok(serde_json::to_vec(state)?)
-    }
-}
-
-pub trait DataProvider {
-    fn wasm_module() -> &'static [u8];
-    fn state() -> &'static mut dyn Any;
-}
-
+/// This macro adds the following methods to the `$state` struct:
+/// * `stable_save` - used to save the state to the stable storage
+/// * `stable_restore` - used to load the state from the stable storage
+/// * `reset` - used to replace the state in in-memory storage with the current one. This method
+///   can be used in `init` method to set up the state.
+///
+/// It also provides `pre_upgrade` and `post_upgrade` functions.
+///
+/// IMPORTANT: This macro assumes that ths `$state` object is the only state used in the canister.
+/// If this is not true, than this implementation cannot be used for state stable storage.
 #[macro_export]
-macro_rules! init_state {
-    ( $name:ident, $key:ident, $settings:ident, $wasm:expr ) => {
-        pub type $name = ic_helpers::factory::State<$key, $settings, Data>;
-        static mut STATE: Option<$name> = None;
-
-        #[export_name = "canister_pre_upgrade"]
-        pub fn pre_upgrade() {
-            ic_cdk::print("saving state to stable memory");
-            $name::save().unwrap();
-        }
-
-        #[export_name = "canister_post_upgrade"]
-        pub fn post_upgrade() {
-            ic_cdk::print("restoring state from stable memory");
-            $name::restore().unwrap();
-        }
-
-        #[derive(Clone, serde::Serialize, serde::Deserialize)]
-        pub struct Data;
-
-        impl ic_helpers::factory::DataProvider for Data {
-            fn wasm_module() -> &'static [u8] {
-                include_bytes!($wasm)
+macro_rules! impl_factory_state_management {
+    ( $state:ident, $bytecode:expr ) => {
+        impl $state {
+            pub fn stable_save(&self) {
+                ::ic_cdk::storage::stable_save((self,)).unwrap();
             }
 
-            fn state() -> &'static mut dyn std::any::Any {
-                unsafe {
-                    if STATE.is_none() {
-                        STATE = Some($name::default());
-                    }
-                    STATE.as_mut().unwrap()
-                }
+            pub fn stable_restore() {
+                let (mut loaded,): (Self,) = ::ic_cdk::storage::stable_restore().unwrap();
+                loaded.factory.restore($bytecode);
+                loaded.reset();
             }
+
+            pub fn reset(self) {
+                let state = State::get();
+                let mut state = state.borrow_mut();
+                *state = self;
+            }
+        }
+
+        #[::ic_cdk_macros::pre_upgrade]
+        fn pre_upgrade() {
+            $state::get().borrow().stable_save();
+        }
+
+        #[::ic_cdk_macros::post_upgrade]
+        fn post_upgrade() {
+            $state::stable_restore();
         }
     };
 }
