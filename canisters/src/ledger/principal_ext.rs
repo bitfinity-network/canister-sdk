@@ -103,12 +103,14 @@ async fn verify_block(&self,
     Ok(())
 }
 
-
 async fn ledger_transfer(&self, to: Principal,  amount: u64, fee: u64) -> Result<u64, String> {
+    if amount < fee {
+        return Err(format!("Cannot transfer tokens. Amount `{}` is smaller then the fee `{}`.", amount, fee));
+    }
     
     let args = SendArgs {
         memo: Memo(0x57444857),
-        amount: (Tokens::from_e8s(amount) - Tokens::from_e8s(fee)).unwrap(),
+        amount: (Tokens::from_e8s(amount) - Tokens::from_e8s(fee))?,
         fee: Tokens::from_e8s(fee),
         from_subaccount: None,
         to: AccountIdentifier::from_principal(to, None),
