@@ -1,6 +1,6 @@
 use crate::management::{Canister, InstallCodeMode};
 use async_trait::async_trait;
-use candid::{decode_args, encode_args, CandidType, Nat, Principal};
+use candid::{encode_args, CandidType, Nat, Principal};
 use ic_cdk::api;
 use ic_cdk::api::call::CallResult;
 use num_traits::cast::ToPrimitive;

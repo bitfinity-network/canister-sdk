@@ -1,9 +1,10 @@
-use crate::factory::types::{Canister, Checksum};
+use crate::factory::types::{Canister, Checksum, Version};
 use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Principal};
 use ic_cdk::api::call::CallResult;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::future::Future;
 use std::hash::Hash;
 
 /// Represents a state that manages canisters.
@@ -50,43 +51,54 @@ impl<K: Hash + Eq> Factory<K> {
             .collect()
     }
 
-    /// Creates a new canister if it has not already created, and installs wasm_module on it.
-    pub async fn create<A: ArgumentEncoder>(
-        &mut self,
-        key: K,
+    /// Returns a future that creates a new canister with the given bytecode. After the future is
+    /// done executing, `register` method shall be called to add the resulting canister to the
+    /// registry.
+    ///
+    /// Please, note that the state should not be borrowed when this future is awaited on, to prevent
+    /// memory access conflict in case of concurrent requests.
+    pub fn create<A: ArgumentEncoder>(
+        &self,
         wasm_module: &[u8],
         arg: A,
-    ) -> CallResult<Principal> {
-        if let Some(canister) = self.canisters.get(&key) {
-            return Ok(canister.identity());
-        }
+    ) -> impl Future<Output = CallResult<Canister>> {
+        Canister::create(self.checksum.version, wasm_module.into(), arg)
+    }
 
-        let canister = Canister::create(self.checksum.version, wasm_module.into(), arg).await?;
-
-        let principal = canister.identity();
+    /// Adds a new canister to the canister registry. If a canister with the given key is already
+    /// registered, it will be replaced with the new one.
+    pub fn register(&mut self, key: K, canister: Canister) {
         self.canisters.insert(key, canister);
-        Ok(principal)
     }
 
-    /// Upgrades all canisters and returns a vector of outdated canisters.
-    pub async fn upgrade(&mut self, wasm_module: &[u8]) -> Vec<Principal> {
-        let mut outdated_canisters = Vec::new();
+    /// Returns a future that upgrades a canister to the given bytecode. After the future is
+    /// done executing, `register_upgraded` method shall be called to add the resulting canister to the
+    /// registry.
+    ///
+    /// Please, note that the state should not be borrowed when this future is awaited on, to prevent
+    /// memory access conflict in case of concurrent requests.
+    pub fn upgrade(
+        &self,
+        canister: &Canister,
+        wasm_module: &'static [u8],
+    ) -> impl Future<Output = CallResult<Canister>> {
+        upgrade_canister(self.checksum.version, canister.clone(), wasm_module)
+    }
 
-        for canister in self.canisters.values_mut() {
-            if canister.version() == self.checksum.version {
-                continue;
-            }
-
-            if canister
-                .upgrade(self.checksum.version, wasm_module.into())
-                .await
-                .is_err()
-            {
-                outdated_canisters.push(canister.identity());
-                continue;
-            }
+    /// Updates the canister to the newer version. If no canister with the given key is registered,
+    /// nothing is done.
+    pub fn register_upgraded(&mut self, key: &K, canister: Canister) {
+        if let Some(val) = self.canisters.get_mut(key) {
+            *val = canister;
         }
-
-        outdated_canisters
     }
+}
+
+async fn upgrade_canister(
+    version: Version,
+    mut canister: Canister,
+    wasm_module: &[u8],
+) -> CallResult<Canister> {
+    canister.upgrade(version, wasm_module.into()).await?;
+    Ok(canister)
 }

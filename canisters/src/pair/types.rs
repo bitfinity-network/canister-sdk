@@ -37,3 +37,9 @@ impl TokenInfo {
         }
     }
 }
+
+impl Default for TokenInfo {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
