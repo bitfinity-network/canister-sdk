@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "canisters",
+  "ic-helpers",
   "ic-storage",
   "ic-storage/ic-storage-derive",
 ]
