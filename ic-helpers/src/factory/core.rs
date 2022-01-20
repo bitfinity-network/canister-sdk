@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::hash::Hash;
 
-/// Represents a state that manages canisters.
+/// Represents a state that manages ic-helpers.
 #[derive(CandidType, Clone, Serialize, Deserialize, Default)]
 pub struct Factory<K: Hash + Eq> {
     pub canisters: HashMap<K, Canister>,
@@ -33,7 +33,7 @@ impl<K: Hash + Eq> Factory<K> {
         self.canisters.get(key).map(|canister| canister.identity())
     }
 
-    /// Returns the number of canisters cretaed by the factory.
+    /// Returns the number of ic-helpers cretaed by the factory.
     pub fn len(&self) -> usize {
         self.canisters.len()
     }
@@ -43,7 +43,7 @@ impl<K: Hash + Eq> Factory<K> {
         self.canisters.is_empty()
     }
 
-    /// Returns a vector of all canisters created by the factory.
+    /// Returns a vector of all ic-helpers created by the factory.
     pub fn all(&self) -> Vec<Principal> {
         self.canisters
             .values()
