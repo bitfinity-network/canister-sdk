@@ -1,7 +1,7 @@
 //! This crate provides a safe way to use canister state, as well as versioned storage. At the moment, ic_cdk storage has an
 //! implementation bug, that make memory corruption possible <https://github.com/dfinity/cdk-rs/issues/73>.
 //!
-//! * For in memory storage use [`IcStorage`]. 
+//! * For in memory storage use [`IcStorage`].
 //!   Structs that derive [`IcStorage`] must also implement `std::fmt::Default`.
 //! * For versioned storage see [`crate::stable`].
 //!
@@ -40,14 +40,14 @@
 //! ```
 //!
 //! *IMPORTANT*: `IcStorage` only provides local canister state storage. It DOES NOT in any way
-//! related to the stable storage. See [`crate::stable`] for stable storage. 
+//! related to the stable storage. See [`crate::stable`] for stable storage.
 //!
-//! In order to preserve the canister data between canister upgrades you should 
-//! use either `ic_cdk::storage::stable_save()` and `ic_cdk::storage::stable_restore()`, 
+//! In order to preserve the canister data between canister upgrades you should
+//! use either `ic_cdk::storage::stable_save()` and `ic_cdk::storage::stable_restore()`,
 //! or [`crate::stable::read`] / [`crate::stable::write`].
 //!
 //! Any state that is not saved or restored using these methods will be lost if the canister
-//! is upgraded. 
+//! is upgraded.
 //!
 //! # Ways to use `IcStorage`
 //!
@@ -75,8 +75,8 @@ use std::rc::Rc;
 
 pub use ic_storage_derive::IcStorage;
 
-pub mod stable;
 pub mod errors;
+pub mod stable;
 pub use errors::{Error, Result};
 
 /// Type that is stored in local canister state.
