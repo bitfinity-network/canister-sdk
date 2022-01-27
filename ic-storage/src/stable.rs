@@ -8,7 +8,7 @@
 //! will overwrite whatever data was stored there from before.
 //!
 //! To be able to read and write a struct from stable storage
-//! using these functions, the struct needs to implement the [`Versioned`] trait 
+//! using these functions, the struct needs to implement the [`Versioned`] trait
 //! (which in turn requires [`Deserialize`] and [`CandidType`])
 //!
 //! How is the data stored in stable storage?
@@ -64,7 +64,7 @@
 //! }
 //! ```
 //!
-//! The old version still has to exist, this can be managed by numbering modules, 
+//! The old version still has to exist, this can be managed by numbering modules,
 //! e.g `crate::v1::MyData`, `crate::v2::MyData`.
 //!
 //! Upgrades can span multiple versions, making it possible to upgrade from v1 to v3 in one go.
@@ -142,7 +142,7 @@
 //! ```
 //!
 //! ## Writing
-//! 
+//!
 //! Write the current version to stable storage.
 //!
 //! ```
@@ -336,5 +336,4 @@ mod test {
         let Version3(a, b, c) = v3;
         assert_eq!((a, b, c), (1, 5, 900));
     }
-
 }
