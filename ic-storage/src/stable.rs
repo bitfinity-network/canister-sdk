@@ -168,7 +168,10 @@
 //! ```
 use std::mem::size_of;
 
-use ic_cdk::api::stable::{stable_bytes, stable_read, stable_size, StableWriter};
+#[cfg(test)] use crate::testing::{stable_bytes, stable_read, stable_size, StableWriter};
+
+#[cfg(not(test))] use ic_cdk::api::stable::{stable_bytes, stable_read, stable_size, StableWriter};
+
 use ic_cdk::export::candid::de::IDLDeserialize;
 use ic_cdk::export::candid::ser::IDLBuilder;
 use ic_cdk::export::candid::types::CandidType;
@@ -198,7 +201,11 @@ pub trait Versioned: for<'de> Deserialize<'de> + CandidType {
 
 // -----------------------------------------------------------------------------
 //     - Versioned implementation for a unit -
-//     This is useful
+//     This is useful for the first version of a struct, 
+//     as we can set the `Previous` version of that implementation to a unit,
+//     since a unit can never have a version lower than zero.
+//
+//     Trying to upgrade TO a unit (rather than FROM a unit) will panic!
 // -----------------------------------------------------------------------------
 impl Versioned for () {
     type Previous = ();
@@ -207,7 +214,9 @@ impl Versioned for () {
         0
     }
 
-    fn upgrade((): ()) -> Self {}
+    fn upgrade((): ()) -> Self {
+        panic!("It's not possible to upgrade to a unit, only from");
+    }
 }
 
 /// Load a [`Versioned`] from stable storage.
@@ -335,5 +344,47 @@ mod test {
         let v3 = super::recursive_upgrade::<Version3>(1, &v1_bytes).unwrap();
         let Version3(a, b, c) = v3;
         assert_eq!((a, b, c), (1, 5, 900));
+    }
+
+    #[test]
+    fn write_and_upgrade() {
+        let first = Version1(42);
+        write(&first).unwrap();
+
+        let Version2(a, b) = read::<Version2>().unwrap();
+        assert_eq!((a, b), (42, 5));
+    }
+
+    #[test]
+    #[should_panic]
+    fn try_read_unwritten() {
+        // Try to read when no version has ever been written
+        read::<Version1>().unwrap();
+    }
+
+    #[test]
+    fn try_to_downgrade() {
+        // Downgrading is not currently supported
+        let second = Version2(1, 2);
+        write(&second).unwrap();
+
+        let err = read::<Version1>().unwrap_err();
+        assert!(
+            matches!(err, Error::AttemptedDowngrade)
+        )
+    }
+
+    #[test]
+    fn overwrite_current_version_with_current_version() {
+        let v1 = Version1(1);
+        write(&v1).unwrap();
+        let v1 = Version1(2);
+        write(&v1).unwrap();
+
+        let v1 = read::<Version1>().unwrap();
+
+        let actual = v1.0;
+        let expected = 2;
+        assert_eq!(expected, actual);
     }
 }

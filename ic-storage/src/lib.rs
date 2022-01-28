@@ -78,6 +78,8 @@ pub use ic_storage_derive::IcStorage;
 pub mod errors;
 pub mod stable;
 pub use errors::{Error, Result};
+// #[cfg(test)]
+pub mod testing;
 
 /// Type that is stored in local canister state.
 pub trait IcStorage {
