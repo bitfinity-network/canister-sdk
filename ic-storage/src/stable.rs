@@ -168,9 +168,11 @@
 //! ```
 use std::mem::size_of;
 
-#[cfg(test)] use crate::testing::{stable_bytes, stable_read, stable_size, StableWriter};
+#[cfg(test)]
+use crate::testing::{stable_bytes, stable_read, stable_size, StableWriter};
 
-#[cfg(not(test))] use ic_cdk::api::stable::{stable_bytes, stable_read, stable_size, StableWriter};
+#[cfg(not(test))]
+use ic_cdk::api::stable::{stable_bytes, stable_read, stable_size, StableWriter};
 
 use ic_cdk::export::candid::de::IDLDeserialize;
 use ic_cdk::export::candid::ser::IDLBuilder;
@@ -201,7 +203,7 @@ pub trait Versioned: for<'de> Deserialize<'de> + CandidType {
 
 // -----------------------------------------------------------------------------
 //     - Versioned implementation for a unit -
-//     This is useful for the first version of a struct, 
+//     This is useful for the first version of a struct,
 //     as we can set the `Previous` version of that implementation to a unit,
 //     since a unit can never have a version lower than zero.
 //
@@ -369,9 +371,7 @@ mod test {
         write(&second).unwrap();
 
         let err = read::<Version1>().unwrap_err();
-        assert!(
-            matches!(err, Error::AttemptedDowngrade)
-        )
+        assert!(matches!(err, Error::AttemptedDowngrade))
     }
 
     #[test]
