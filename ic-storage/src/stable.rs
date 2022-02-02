@@ -363,7 +363,7 @@ mod test {
     #[test]
     #[should_panic]
     fn write_an_older_version() {
-        // Write a version that is older than the one that 
+        // Write a version that is older than the one that
         // currently exists in storage.
         write(&Version2(0, 0)).unwrap();
         write(&Version1(1)).unwrap();
