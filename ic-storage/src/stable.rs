@@ -195,7 +195,9 @@ pub trait Versioned: for<'de> Deserialize<'de> + CandidType {
     type Previous: Versioned;
 
     /// The version of the data
-    fn version() -> u32;
+    fn version() -> u32 {
+        Self::Previous::version() + 1
+    }
 
     /// Upgrade to this version from the previous version.
     fn upgrade(previous: Self::Previous) -> Self;

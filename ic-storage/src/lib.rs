@@ -75,9 +75,9 @@ use std::rc::Rc;
 
 pub use ic_storage_derive::IcStorage;
 
-pub mod errors;
+pub mod error;
 pub mod stable;
-pub use errors::{Error, Result};
+pub use error::{Error, Result};
 // #[cfg(test)]
 pub mod testing;
 
