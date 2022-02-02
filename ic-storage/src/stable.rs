@@ -1,7 +1,10 @@
 #![deny(missing_docs)]
 //! This module provides versioned data for stable storage.
 //!
-//! This makes it possible to change the type that is serialized and written to stable storage.
+//! **IMPORTANT**: do note that it's not possible to store more than one type (and one instance of that type)
+//! in stable storage. Any subsequent writes will overwrite what is currently stored.
+//!
+//! This library makes it possible to change the type that is serialized and written to stable storage.
 //!
 //! Versioning happens between types, not data.
 //! This means that any data written to stable storage through the `write` function
@@ -11,8 +14,6 @@
 //! using these functions, the struct needs to implement the [`Versioned`] trait
 //! (which in turn requires [`Deserialize`] and [`CandidType`])
 //!
-//! How is the data stored in stable storage?
-//!
 //! The first four bytes written is the version number as a [`u32`],
 //! the remaining bytes represent the struct.
 //! ```text
@@ -21,55 +22,6 @@
 //! |V|E|R|S|  Struct |
 //! +-+-+-+-+-+-+-+-+-+
 //! ```
-//!
-//! ## How to use this
-//!
-//! Write the first version to stable storage using `write`
-//! on the `#[init]` method of the canister.
-//!
-//! ```ignore
-//! #[init]
-//! fn init() {
-//!     let first_version = get_first_version();
-//!     if let Err(e) = write(&first_version) {
-//!         ic_cdk::eprintln!("Failed to write to stable storage: {}", e);
-//!     }
-//! }
-//!
-//! ```
-//!
-//! Once a new version of the struct has been created set the `Previous` associated type
-//! to the previous version of the struct.
-//!
-//! ```ignore
-//! impl Versioned for NewVersion {
-//!     type Previous = OldVersion;
-//!     ...
-//! }
-//! ```
-//!
-//! Make sure the previous version is written to stable storage before the upgrade.
-//! On `post_upgrade` the new version can be populated from the previous version.
-//!
-//! ```ignore
-//! #[pre_upgrade]
-//! fn pre_upgrade() {
-//!     let first_version: FirstVersion = get_first_version();
-//!     write(first_version).unwrap();
-//! }
-//!
-//! #[post_upgrade]
-//! fn post_upgrade() {
-//!     let second_version = read::<SecondVersion>().unwrap();
-//! }
-//! ```
-//!
-//! The old version still has to exist, this can be managed by numbering modules,
-//! e.g `crate::v1::MyData`, `crate::v2::MyData`.
-//!
-//! Upgrades can span multiple versions, making it possible to upgrade from v1 to v3 in one go.
-//!
-//! **Note**: trying to load a version older than what is currently stored will result in an `AttemptedDowngrade` error.
 //!
 //! ## Examples
 //!
@@ -223,15 +175,19 @@ impl Versioned for () {
     }
 }
 
-/// Load a [`Versioned`] from stable storage.
-pub fn read<T: Versioned>() -> Result<T> {
+fn read_version() -> Result<u32> {
     let mut version = [0u8; VERSION_SIZE];
     if ((stable_size() << 16) as usize) < version.len() {
         return Err(Error::InsufficientSpace);
     }
 
     stable_read(0, &mut version);
-    let version = u32::from_ne_bytes(version);
+    Ok(u32::from_ne_bytes(version))
+}
+
+/// Load a [`Versioned`] from stable storage.
+pub fn read<T: Versioned>() -> Result<T> {
+    let version = read_version()?;
     if T::version() < version {
         return Err(Error::AttemptedDowngrade);
     }
@@ -242,9 +198,23 @@ pub fn read<T: Versioned>() -> Result<T> {
 }
 
 /// Write a [`Versioned`] to stable storage.
-/// This will overwrite anything that was previously stored.
+/// This will overwrite anything that was previously stored, however
+/// it is not allowed to write an older version than what is currently stored.
 pub fn write<T: Versioned>(payload: &T) -> Result<()> {
-    let version = T::version().to_ne_bytes();
+    let current_version = match read_version() {
+        Ok(v) => Some(v),
+        Err(Error::InsufficientSpace) => None,
+        Err(e) => return Err(e),
+    };
+
+    let version = T::version();
+
+    if let Some(current_version) = current_version {
+        if current_version > version {
+            return Err(Error::ExistingVersionIsNewer);
+        }
+    }
+
     let mut writer = StableWriter::default();
 
     // Write the version number to the first four bytes.
@@ -253,7 +223,7 @@ pub fn write<T: Versioned>(payload: &T) -> Result<()> {
     // as the failure point lies in growing the stable storage,
     // and the usize returned from the `write` call isn't actually the number
     // of bytes written, but rather the size of the slice that was passed in.
-    writer.write(&version)?;
+    writer.write(&version.to_ne_bytes())?;
 
     // Serialize and write the `Versioned`
     let mut serializer = IDLBuilder::new();
@@ -388,5 +358,14 @@ mod test {
         let actual = v1.0;
         let expected = 2;
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    #[should_panic]
+    fn write_an_older_version() {
+        // Write a version that is older than the one that 
+        // currently exists in storage.
+        write(&Version2(0, 0)).unwrap();
+        write(&Version1(1)).unwrap();
     }
 }

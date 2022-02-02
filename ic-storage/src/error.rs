@@ -17,6 +17,9 @@ pub enum Error {
 
     #[error("Candid error: {0}")]
     Candid(#[from] ic_cdk::export::candid::Error),
+
+    #[error("Existing version is newer")]
+    ExistingVersionIsNewer
 }
 
 // Required because `StableMemoryError` doesn't implement Debug
