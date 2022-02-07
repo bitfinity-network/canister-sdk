@@ -83,13 +83,9 @@ impl<K: Hash + Eq> Factory<K> {
         arg: A,
         cycles: u64,
     ) -> impl Future<Output = CallResult<Canister>> {
-        if cycles <= CYCLES_FEE {
-            // This should never happen if the `crate::factory::FactoryState::get_provided_cycles`
-            // methods is used to check for the cycles amount.
-            panic!(
-                "The provided amount of cycles is {cycles} but must be greater than {CYCLES_FEE}."
-            )
-        }
+        // This should never happen if the `crate::factory::FactoryState::get_provided_cycles`
+        // methods is used to check for the cycles amount.
+        debug_assert!(cycles <= CYCLES_FEE, "The provided amount of cycles is {cycles} but must be greater than {CYCLES_FEE}.");
 
         Canister::create_with_cycles(
             self.checksum.version,
