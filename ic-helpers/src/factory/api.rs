@@ -30,7 +30,7 @@ macro_rules! init_factory_api {
         /// Returns the checksum of a wasm module in hex representation.
         #[query(name = "get_checksum")]
         #[candid_method(query, rename = "get_checksum")]
-        async fn get_checksum() -> String {
+        pub fn get_checksum() -> String {
             $state::get().borrow().factory().checksum.to_string()
         }
 
@@ -40,7 +40,7 @@ macro_rules! init_factory_api {
         /// If `principal` does not exists, `None` is returned.
         #[update(name = "get_cycles")]
         #[candid_method(update, rename = "get_cycles")]
-        async fn get_cycles(principal: Option<Principal>) -> Option<Nat> {
+        pub async fn get_cycles(principal: Option<Principal>) -> Option<Nat> {
             Some(if let Some(principal) = principal {
                 ::ic_helpers::management::Canister::from(principal)
                     .status()
@@ -57,7 +57,7 @@ macro_rules! init_factory_api {
         /// Returns the actual amount of accepted cycles.
         #[update(name = "top_up")]
         #[candid_method(update, rename = "top_up")]
-        async fn top_up() -> u64 {
+        pub fn top_up() -> u64 {
             ::ic_helpers::management::Canister::accept_cycles()
         }
 
@@ -65,7 +65,7 @@ macro_rules! init_factory_api {
         /// (in case an upgrade error occurs).
         #[update(name = "upgrade")]
         #[candid_method(update, rename = "upgrade")]
-        async fn upgrade() -> Vec<Principal> {
+        pub async fn upgrade() -> Vec<Principal> {
             // TODO: At the moment we do not do any security checks for this method, for even if there's
             // nothing to upgrade, it will just check all ic-helpers and do nothing else.
             // Later, we should add here (and in create_canister methods) a cycle check,
@@ -96,21 +96,21 @@ macro_rules! init_factory_api {
         /// Returns the current version of canister.
         #[query(name = "version")]
         #[candid_method(query, rename = "version")]
-        fn version() -> &'static str {
+        pub fn version() -> &'static str {
             env!("CARGO_PKG_VERSION")
         }
 
         /// Returns the number of canisters created by the factory.
         #[query(name = "length")]
         #[candid_method(query, rename = "length")]
-        fn length() -> usize {
+        pub fn length() -> usize {
             $state::get().borrow().factory().len()
         }
 
         /// Returns a vector of all canisters created by the factory.
         #[query(name = "get_all")]
         #[candid_method(query, rename = "get_all")]
-        fn get_all() -> Vec<Principal> {
+        pub fn get_all() -> Vec<Principal> {
             $state::get().borrow().factory().all()
         }
 
