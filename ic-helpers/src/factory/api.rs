@@ -52,7 +52,7 @@ macro_rules! init_factory_api {
             })
         }
 
-        /// Accepts cycles from other ic-helpers (the caller).
+        /// Accepts cycles from other canister.
         /// Other ic-helpers can send cycles using `api::call::call_with_payment` method.
         /// Returns the actual amount of accepted cycles.
         #[update(name = "top_up")]
@@ -61,7 +61,8 @@ macro_rules! init_factory_api {
             ::ic_helpers::management::Canister::accept_cycles()
         }
 
-        /// Upgrades ic-helpers and returns a list of outdated ic-helpers.
+        /// Upgrades canisters controller by the factory and returns a list of outdated canisters
+        /// (in case an upgrade error occurs).
         #[update(name = "upgrade")]
         #[candid_method(update, rename = "upgrade")]
         async fn upgrade() -> Vec<Principal> {
@@ -75,16 +76,16 @@ macro_rules! init_factory_api {
             let curr_version = state.borrow().factory().checksum.version;
             let mut outdated_canisters = vec![];
 
-            for (key, canister) in canisters {
-                if canister.version() == curr_version {
-                    continue;
-                }
-
+            for (key, canister) in canisters
+                .into_iter()
+                .filter(|(_, c)| c.version() == curr_version)
+            {
                 let upgrader = state.borrow().factory().upgrade(&canister, $bytecode);
                 match upgrader.await {
-                    Ok(upgraded) => {
-                        state.borrow_mut().factory_mut().register_upgraded(&key, upgraded)
-                    }
+                    Ok(upgraded) => state
+                        .borrow_mut()
+                        .factory_mut()
+                        .register_upgraded(&key, upgraded),
                     Err(_) => outdated_canisters.push(canister.identity()),
                 }
             }
@@ -95,21 +96,21 @@ macro_rules! init_factory_api {
         /// Returns the current version of canister.
         #[query(name = "version")]
         #[candid_method(query, rename = "version")]
-        async fn version() -> String {
-            env!("CARGO_PKG_VERSION").to_string()
+        fn version() -> &'static str {
+            env!("CARGO_PKG_VERSION")
         }
 
-        /// Returns the length of ic-helpers created by the factory.
+        /// Returns the number of canisters created by the factory.
         #[query(name = "length")]
         #[candid_method(query, rename = "length")]
-        async fn length() -> usize {
+        fn length() -> usize {
             $state::get().borrow().factory().len()
         }
 
-        /// Returns a vector of all ic-helpers created by the factory.
+        /// Returns a vector of all canisters created by the factory.
         #[query(name = "get_all")]
         #[candid_method(query, rename = "get_all")]
-        async fn get_all() -> Vec<Principal> {
+        fn get_all() -> Vec<Principal> {
             $state::get().borrow().factory().all()
         }
 
@@ -124,8 +125,8 @@ macro_rules! init_factory_api {
         /// by the factory controller.
         #[update]
         #[candid_method(update)]
-        pub fn set_icp_fee(e8s: u64) {
-            State::get().borrow_mut().set_icp_fee(e8s);
+        pub fn set_icp_fee(e8s: u64) -> ::std::result::Result<(), FactoryError> {
+            State::get().borrow_mut().set_icp_fee(e8s)
         }
 
         /// Returns the principal that will receive the ICP fees.
@@ -139,18 +140,18 @@ macro_rules! init_factory_api {
         /// by the factory controller.
         #[update]
         #[candid_method(update)]
-        pub fn set_icp_to(to: Principal) {
-            State::get().borrow_mut().set_icp_to(to);
+        pub fn set_icp_to(to: Principal) -> ::std::result::Result<(), FactoryError> {
+            State::get().borrow_mut().set_icp_to(to)
         }
 
         /// Returns the ICPs transferred to the factory by the caller. This method returns all
         /// not used ICP minus transaction fee.
         #[update]
         #[candid_method(update)]
-        pub async fn refund_icp() -> std::result::Result<u64, FactoryError> {
+        pub async fn refund_icp() -> ::std::result::Result<u64, FactoryError> {
             use ::ic_helpers::ledger::LedgerPrincipalExt;
-            use ::ledger_canister::{Subaccount, TRANSACTION_FEE};
             use ::ic_types::PrincipalId;
+            use ::ledger_canister::{Subaccount, TRANSACTION_FEE};
 
             let caller = ::ic_cdk::caller();
             let ledger = State::get().borrow().ledger_principal();
@@ -178,14 +179,14 @@ macro_rules! init_factory_api {
             .map_err(|e| FactoryError::LedgerError(e))
         }
 
-        /// Sets the principal that can set `fee_to` principal and configure liquidity caps.
+        /// Sets the factory controller principal.
         #[update(name = "set_controller")]
         #[candid_method(update, rename = "set_controller")]
-        fn set_controller(controller: Principal) {
-            State::get().borrow_mut().set_controller(controller);
+        fn set_controller(controller: Principal) -> ::std::result::Result<(), FactoryError> {
+            State::get().borrow_mut().set_controller(controller)
         }
 
-        /// Returns the principal that can set `fee_to` principal and configure liquidity caps.
+        /// Returns the factory controller principal.
         #[query(name = "get_controller")]
         #[candid_method(query, rename = "get_controller")]
         fn get_controller() -> Principal {

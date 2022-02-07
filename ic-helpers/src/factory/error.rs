@@ -11,4 +11,7 @@ pub enum FactoryError {
 
     #[error("not enough ICP provided to create a canister. Provided: {0}. Required: {1}")]
     NotEnoughIcp(u64, u64),
+
+    #[error("only the factory controller is allowed to call this method")]
+    AccessDenied,
 }

@@ -1,5 +1,5 @@
-use ic_cdk::export::candid::Principal;
 use async_trait::async_trait;
+use ic_cdk::export::candid::Principal;
 
 #[async_trait]
 pub trait PairPrincipalExt {
@@ -10,7 +10,7 @@ pub trait PairPrincipalExt {
 
 #[async_trait]
 impl PairPrincipalExt for Principal {
-    async fn set_cap(&self, amount: Option<u128>) -> Result<(), String>{
+    async fn set_cap(&self, amount: Option<u128>) -> Result<(), String> {
         ic_cdk::api::call::call::<_, ()>(*self, "set_cap", (amount,))
             .await
             .map_err(|e| format!("{:?}", e))

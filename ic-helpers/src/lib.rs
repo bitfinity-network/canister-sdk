@@ -11,8 +11,8 @@ pub mod is20 {
 }
 
 pub mod ledger {
-    mod principal_ext;
     mod account_id;
+    mod principal_ext;
     pub use self::account_id::*;
     pub use self::principal_ext::*;
 }

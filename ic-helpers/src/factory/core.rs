@@ -86,10 +86,17 @@ impl<K: Hash + Eq> Factory<K> {
         if cycles <= CYCLES_FEE {
             // This should never happen if the `crate::factory::FactoryState::get_provided_cycles`
             // methods is used to check for the cycles amount.
-            panic!("The provided amount of cycles is {cycles} but must be greater than {CYCLES_FEE}.")
+            panic!(
+                "The provided amount of cycles is {cycles} but must be greater than {CYCLES_FEE}."
+            )
         }
 
-        Canister::create_with_cycles(self.checksum.version, wasm_module.into(), arg, cycles - CYCLES_FEE)
+        Canister::create_with_cycles(
+            self.checksum.version,
+            wasm_module.into(),
+            arg,
+            cycles - CYCLES_FEE,
+        )
     }
 
     /// Adds a new canister to the canister registry. If a canister with the given key is already

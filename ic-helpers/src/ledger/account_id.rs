@@ -1,5 +1,3 @@
-
-
 use candid::Principal;
 use sha2::{Digest, Sha224};
 
@@ -9,10 +7,8 @@ use ledger_canister::{
     Memo, SendArgs,
 };
 
-
 pub static SUB_ACCOUNT_ZERO: Subaccount = Subaccount([0; 32]);
 static ACCOUNT_DOMAIN_SEPERATOR: &[u8] = b"\x0Aaccount-id";
-
 
 pub trait FromPrincipal {
     fn from_principal(account: Principal, sub_account: Option<Subaccount>) -> AccountIdentifier;
@@ -31,7 +27,6 @@ impl FromPrincipal for AccountIdentifier {
             hash: hash.finalize().into(),
         }
     }
-
 }
 
 pub trait New {
