@@ -1,6 +1,7 @@
 /// This macro adds some common API method for a factory canister. For it to work properly:
 /// * $state type must implement `ic_helpers::factory::FactoryState` and `ic_storage::IcStorage`
 ///   traits, and this traits must be in the scope of the macro invocation
+/// * the calling create must have `ic_cdk` create in the dependencies
 /// * the calling crate must have `ic_types` and `ledger_canister` crates in the dependencies. This
 ///   crates are found in the `dfinity/ic` repo.
 /// * these types must be in scope of the macro invocation: `candid::{Nat, Principal, candid_type}`,
@@ -151,11 +152,11 @@ macro_rules! init_factory_api {
             use ::ledger_canister::{Subaccount, TRANSACTION_FEE};
             use ::ic_types::PrincipalId;
 
-            let caller = ic_cdk::caller();
+            let caller = ::ic_cdk::caller();
             let ledger = State::get().borrow().ledger_principal();
             let balance = ledger
                 .get_balance(
-                    ic_kit::ic::id(),
+                    ::ic_cdk::api::id(),
                     Some(Subaccount::from(&PrincipalId::from(caller))),
                 )
                 .await
