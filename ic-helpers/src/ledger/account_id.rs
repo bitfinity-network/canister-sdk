@@ -1,12 +1,12 @@
 
 
-use candid::{CandidType, Principal, Nat};
+use candid::Principal;
 use sha2::{Digest, Sha224};
 
 use ledger_canister::{
     account_identifier::{AccountIdentifier, Subaccount},
     tokens::Tokens,
-    BlockHeight, BlockRes, Memo, Operation as Operate, SendArgs,
+    Memo, SendArgs,
 };
 
 
@@ -40,8 +40,6 @@ pub trait New {
 
 impl New for SendArgs {
     fn new(to: Principal, amount: u64, fee: u64) -> Self {
-        let account_str = AccountIdentifier::from_principal(to, None).to_hex();
-
         Self {
             memo: Memo(0x57444857),
             amount: (Tokens::from_e8s(amount) - Tokens::from_e8s(fee)).unwrap(),

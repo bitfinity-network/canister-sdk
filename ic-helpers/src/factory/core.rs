@@ -7,6 +7,13 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::hash::Hash;
 
+/// Amount of cycles that will be left in the factory canister when creating a new pair. This fee is
+/// used to cover the factory cycle expenses for creating a new canister.
+///
+/// 10^11 cycles is the IC fee for deploying a new canister.
+/// 10^6 covers other inter-canister calls and inner logic execution.
+const CYCLES_FEE: u64 = 10u64.pow(11) + 10u64.pow(6);
+
 /// Represents a state that manages ic-helpers.
 #[derive(CandidType, Clone, Serialize, Deserialize, Default)]
 pub struct Factory<K: Hash + Eq> {
@@ -63,6 +70,26 @@ impl<K: Hash + Eq> Factory<K> {
         arg: A,
     ) -> impl Future<Output = CallResult<Canister>> {
         Canister::create(self.checksum.version, wasm_module.into(), arg)
+    }
+
+    /// Creates a pair with cycles in it to make it workable.
+    ///
+    /// The amount of cycles that will be available in the created canister is `cycles - FEE`, where
+    /// `FEE` is a constant value needed to cover the factory expenses. Current implementation has
+    /// `FEE == 10^11 + 10^6`.
+    pub fn create_with_cycles<A: ArgumentEncoder>(
+        &self,
+        wasm_module: &[u8],
+        arg: A,
+        cycles: u64,
+    ) -> impl Future<Output = CallResult<Canister>> {
+        if cycles <= CYCLES_FEE {
+            // This should never happen if the `crate::factory::FactoryState::get_provided_cycles`
+            // methods is used to check for the cycles amount.
+            panic!("The provided amount of cycles is {cycles} but must be greater than {CYCLES_FEE}.")
+        }
+
+        Canister::create_with_cycles(self.checksum.version, wasm_module.into(), arg, cycles - CYCLES_FEE)
     }
 
     /// Adds a new canister to the canister registry. If a canister with the given key is already
