@@ -192,5 +192,21 @@ macro_rules! init_factory_api {
         fn get_controller() -> Principal {
             State::get().borrow().controller()
         }
+
+        /// Returns the AccountIdentifier for the caller subaccount in the factory account.
+        #[query]
+        #[candid_method(query)]
+        fn get_ledger_account_id() -> [u8; 32] {
+            use ::ic_types::PrincipalId;
+            use ::ledger_canister::{Subaccount, account_identifier::AccountIdentifier};
+            use ::ic_helpers::ledger::FromPrincipal;
+
+            let factory_id = ::ic_cdk::api::id();
+            let caller = ::ic_cdk::api::caller();
+            let subaccount = Subaccount::from(&PrincipalId::from(caller));
+            let account = AccountIdentifier::from_principal(factory_id, Some(subaccount));
+
+            account.to_address()
+        }
     };
 }
