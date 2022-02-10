@@ -57,7 +57,7 @@ impl Default for WeightsConfig {
         Self {
             weight0: 0.5,
             weight1: 0.5,
-            change_allowed: false
+            change_allowed: false,
         }
     }
 }
