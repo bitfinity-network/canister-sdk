@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 ic-storage-derive = {path = "ic-storage-derive"}
+thiserror = "1.0"
+ic-cdk = "0.3"
+serde = { version = "1.0", features = ["derive"] }

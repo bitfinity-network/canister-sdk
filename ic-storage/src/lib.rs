@@ -1,8 +1,9 @@
-//! This crate provides a safe way to use canister state. At the moment, ic_cdk storage has an
-//! implementation bug, that make memory corruption possible (https://github.com/dfinity/cdk-rs/issues/73).
+//! This crate provides a safe way to use canister state, as well as versioned storage. At the moment, ic_cdk storage has an
+//! implementation bug, that make memory corruption possible <https://github.com/dfinity/cdk-rs/issues/73>.
 //!
-//! To use storage with this crate, use [IcStorage] derive macro. Structs, that use it must also
-//! implement `Default` trait.
+//! * For in memory storage use [`IcStorage`].
+//!   Structs that derive [`IcStorage`] must also implement `std::fmt::Default`.
+//! * For versioned storage see [`crate::stable`].
 //!
 //! ```
 //! use ic_storage::IcStorage;
@@ -39,20 +40,23 @@
 //! ```
 //!
 //! *IMPORTANT*: `IcStorage` only provides local canister state storage. It DOES NOT in any way
-//! related to the stable storage. In order to preserve the canister data between canister
-//! upgrades you must use `ic_cdk::storage::stable_save()` and `ic_cdk::storage::stable_restore()`.
-//! Any state that is not saved and restored with these methods will be lost when the canister
-//! is upgraded. On the details how to do it, check out the Rust coding conventions page in
-//! confluence.
+//! related to the stable storage. See [`crate::stable`] for stable storage.
+//!
+//! In order to preserve the canister data between canister upgrades you should
+//! use either `ic_cdk::storage::stable_save()` and `ic_cdk::storage::stable_restore()`,
+//! or [`crate::stable::read`] / [`crate::stable::write`].
+//!
+//! Any state that is not saved or restored using these methods will be lost if the canister
+//! is upgraded.
 //!
 //! # Ways to use `IcStorage`
 //!
 //! There are two approaches for managing canister state:
 //!
 //! 1. You can have one big structure that contains all the state. In this case only this structure
-//!    must implement `IcStorage`. This approach makes it easier to take care for storing the state
-//!    in the stable storage on upgrade, and just in general it's easier to manage the state when
-//!    it's all in one place. On the other hand, it means that you can have only one mutable
+//!    must implement `IcStorage`. This approach makes it easier to take care of storing the state
+//!    in the stable storage on upgrade, and it's easier to manage the state when
+//!    it's all in one place. On the other hand, it means that you can only have one mutable
 //!    reference to this state during entire call, so you'll have to retrieve the state at the
 //!    call entry point, and then call all inner functions with the state reference as argument.
 //!    When there are many different parts of the state and they are not tightly connected to
@@ -60,12 +64,22 @@
 //!
 //! 2. You can have different types implementing `IcStorage`, thus making them completely independent.
 //!    This approach is more flexible, especially for larger states, but special care must be taken
-//!    not to forget any part of the state in the upgrade methods.
+//!    not to forget any part of the state in the upgrade methods. Reading and writing to and from
+//!    stable storage would require that everything that should be saved is passed as a single data
+//!    type (e.g a tuple or a custom struct), as writing to stable storage overwrites what is
+//!    currently there (meaning if we write one struct and then another, the second would overwrite
+//!    the first).
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub use ic_storage_derive::IcStorage;
+
+pub mod error;
+pub mod stable;
+pub use error::{Error, Result};
+// #[cfg(test)]
+pub mod testing;
 
 /// Type that is stored in local canister state.
 pub trait IcStorage {
