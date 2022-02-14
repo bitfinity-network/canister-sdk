@@ -1,3 +1,4 @@
+use crate::factory::error::FactoryError;
 use crate::factory::types::{Canister, Checksum, Version};
 use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Principal};
@@ -85,7 +86,10 @@ impl<K: Hash + Eq> Factory<K> {
     ) -> impl Future<Output = CallResult<Canister>> {
         // This should never happen if the `crate::factory::FactoryState::get_provided_cycles`
         // methods is used to check for the cycles amount.
-        debug_assert!(cycles <= CYCLES_FEE, "The provided amount of cycles is {cycles} but must be greater than {CYCLES_FEE}.");
+        debug_assert!(
+            cycles <= CYCLES_FEE,
+            "The provided amount of cycles is {cycles} but must be greater than {CYCLES_FEE}."
+        );
 
         Canister::create_with_cycles(
             self.checksum.version,
@@ -95,10 +99,25 @@ impl<K: Hash + Eq> Factory<K> {
         )
     }
 
+    /// Stops and deletes the canister. After this actor is awaited on, [forget] method must be used
+    /// to remove the canister from the list of created canisters.
+    pub fn drop(&self, canister: Principal) -> impl Future<Output = Result<(), FactoryError>> {
+        drop_canister(canister)
+    }
+
     /// Adds a new canister to the canister registry. If a canister with the given key is already
     /// registered, it will be replaced with the new one.
     pub fn register(&mut self, key: K, canister: Canister) {
         self.canisters.insert(key, canister);
+    }
+
+    /// Removes the canister from the registry. Return error if the canister with the given key is
+    /// not registered.
+    pub fn forget(&mut self, key: &K) -> Result<(), FactoryError> {
+        self.canisters
+            .remove(key)
+            .ok_or(FactoryError::NotFound)
+            .map(|_| ())
     }
 
     /// Returns a future that upgrades a canister to the given bytecode. After the future is
@@ -131,4 +150,18 @@ async fn upgrade_canister(
 ) -> CallResult<Canister> {
     canister.upgrade(version, wasm_module.into()).await?;
     Ok(canister)
+}
+
+async fn drop_canister(canister: Principal) -> Result<(), FactoryError> {
+    let canister = crate::management::Canister::from(canister);
+    canister
+        .stop()
+        .await
+        .map_err(|(_, e)| FactoryError::ManagementError(e))?;
+    canister
+        .delete()
+        .await
+        .map_err(|(_, e)| FactoryError::ManagementError(e))?;
+
+    Ok(())
 }

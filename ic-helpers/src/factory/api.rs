@@ -118,7 +118,7 @@ macro_rules! init_factory_api {
         #[query]
         #[candid_method(query)]
         pub fn get_icp_fee() -> u64 {
-            State::get().borrow().icp_fee()
+            $state::get().borrow().icp_fee()
         }
 
         /// Sets the ICP fee amount for canister creation. This method can only be called
@@ -126,14 +126,14 @@ macro_rules! init_factory_api {
         #[update]
         #[candid_method(update)]
         pub fn set_icp_fee(e8s: u64) -> ::std::result::Result<(), FactoryError> {
-            State::get().borrow_mut().set_icp_fee(e8s)
+            $state::get().borrow_mut().set_icp_fee(e8s)
         }
 
         /// Returns the principal that will receive the ICP fees.
         #[query]
         #[candid_method(query)]
         pub fn get_icp_to() -> Principal {
-            State::get().borrow().icp_to()
+            $state::get().borrow().icp_to()
         }
 
         /// Sets the principal that will receive the ICP fees. This method can only be called
@@ -141,7 +141,7 @@ macro_rules! init_factory_api {
         #[update]
         #[candid_method(update)]
         pub fn set_icp_to(to: Principal) -> ::std::result::Result<(), FactoryError> {
-            State::get().borrow_mut().set_icp_to(to)
+            $state::get().borrow_mut().set_icp_to(to)
         }
 
         /// Returns the ICPs transferred to the factory by the caller. This method returns all
@@ -154,7 +154,7 @@ macro_rules! init_factory_api {
             use ::ledger_canister::{Subaccount, TRANSACTION_FEE};
 
             let caller = ::ic_cdk::caller();
-            let ledger = State::get().borrow().ledger_principal();
+            let ledger = $state::get().borrow().ledger_principal();
             let balance = ledger
                 .get_balance(
                     ::ic_cdk::api::id(),
@@ -183,23 +183,23 @@ macro_rules! init_factory_api {
         #[update(name = "set_controller")]
         #[candid_method(update, rename = "set_controller")]
         fn set_controller(controller: Principal) -> ::std::result::Result<(), FactoryError> {
-            State::get().borrow_mut().set_controller(controller)
+            $state::get().borrow_mut().set_controller(controller)
         }
 
         /// Returns the factory controller principal.
         #[query(name = "get_controller")]
         #[candid_method(query, rename = "get_controller")]
         fn get_controller() -> Principal {
-            State::get().borrow().controller()
+            $state::get().borrow().controller()
         }
 
         /// Returns the AccountIdentifier for the caller subaccount in the factory account.
         #[query]
         #[candid_method(query)]
         fn get_ledger_account_id() -> [u8; 32] {
-            use ::ic_types::PrincipalId;
-            use ::ledger_canister::{Subaccount, account_identifier::AccountIdentifier};
             use ::ic_helpers::ledger::FromPrincipal;
+            use ::ic_types::PrincipalId;
+            use ::ledger_canister::{account_identifier::AccountIdentifier, Subaccount};
 
             let factory_id = ::ic_cdk::api::id();
             let caller = ::ic_cdk::api::caller();

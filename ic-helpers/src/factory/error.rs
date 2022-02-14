@@ -14,4 +14,10 @@ pub enum FactoryError {
 
     #[error("only the factory controller is allowed to call this method")]
     AccessDenied,
+
+    #[error("canister is not in factory registry")]
+    NotFound,
+
+    #[error("canister management operation failed: {0}")]
+    ManagementError(String),
 }

@@ -141,6 +141,11 @@ pub trait FactoryState<K: Hash + Eq> {
             Err(FactoryError::AccessDenied)
         }
     }
+
+    fn forget_canister(&mut self, canister: &K) -> Result<(), FactoryError> {
+        self.check_controller_access()?;
+        self.factory_mut().forget(canister)
+    }
 }
 
 // The canister creation fee is 10^11 cycles, so we require the provided amount to be a little larger.
