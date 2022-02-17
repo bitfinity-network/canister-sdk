@@ -3,7 +3,8 @@ on:
   push:
     branches:
       - main
-
+    paths-ignore:
+      - README.md
 
 name: Clippy, fmt and tests with coverage
 
