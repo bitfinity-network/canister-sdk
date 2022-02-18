@@ -130,6 +130,7 @@ pub trait FactoryState<K: Hash + Eq> {
             self.ledger_principal(),
             self.icp_to(),
             self.icp_fee(),
+            self.controller(),
         ))
     }
 
@@ -157,11 +158,15 @@ async fn consume_provided_cycles_or_icp(
     ledger: Principal,
     icp_to: Principal,
     icp_fee: u64,
+    controller: Principal,
 ) -> Result<u64, FactoryError> {
     if ic_cdk::api::call::msg_cycles_available() > 0 {
         consume_message_cycles()
     } else {
-        consume_provided_icp(caller, ledger, icp_to, icp_fee).await?;
+        if caller != controller {
+            consume_provided_icp(caller, ledger, icp_to, icp_fee).await?;
+        }
+
         Ok(MIN_CANISTER_CYCLES)
     }
 }
