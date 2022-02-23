@@ -196,7 +196,7 @@ macro_rules! init_factory_api {
         /// Returns the AccountIdentifier for the caller subaccount in the factory account.
         #[query]
         #[candid_method(query)]
-        fn get_ledger_account_id() -> [u8; 32] {
+        fn get_ledger_account_id() -> String {
             use ::ic_helpers::ledger::FromPrincipal;
             use ::ic_types::PrincipalId;
             use ::ledger_canister::{account_identifier::AccountIdentifier, Subaccount};
@@ -206,7 +206,7 @@ macro_rules! init_factory_api {
             let subaccount = Subaccount::from(&PrincipalId::from(caller));
             let account = AccountIdentifier::from_principal(factory_id, Some(subaccount));
 
-            account.to_address()
+            account.to_hex()
         }
     };
 }
