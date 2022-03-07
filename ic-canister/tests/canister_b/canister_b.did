@@ -1,0 +1,3 @@
+service : (principal) -> {
+    call_increment : (nat32) -> (nat32);
+}

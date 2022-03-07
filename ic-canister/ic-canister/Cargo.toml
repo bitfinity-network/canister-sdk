@@ -1,0 +1,8 @@
+[package]
+name = "ic-canister"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ic-cdk = "0.3"
+ic-canister-macros = {path = "../ic-canister-macros"}
