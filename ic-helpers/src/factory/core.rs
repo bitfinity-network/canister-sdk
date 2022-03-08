@@ -8,13 +8,6 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::hash::Hash;
 
-/// Amount of cycles that will be left in the factory canister when creating a new pair. This fee is
-/// used to cover the factory cycle expenses for creating a new canister.
-///
-/// 10^11 cycles is the IC fee for deploying a new canister.
-/// 10^6 covers other inter-canister calls and inner logic execution.
-const CYCLES_FEE: u64 = 10u64.pow(11) + 10u64.pow(6);
-
 /// Represents a state that manages ic-helpers.
 #[derive(CandidType, Clone, Serialize, Deserialize, Default)]
 pub struct Factory<K: Hash + Eq> {
@@ -59,18 +52,14 @@ impl<K: Hash + Eq> Factory<K> {
             .collect()
     }
 
-    /// Returns a future that creates a new canister with the given bytecode. After the future is
-    /// done executing, `register` method shall be called to add the resulting canister to the
-    /// registry.
-    ///
-    /// Please, note that the state should not be borrowed when this future is awaited on, to prevent
-    /// memory access conflict in case of concurrent requests.
+    // This method does ont work in IC main net because of how the cycles are consumed.
+    #[deprecated(since = "0.2.0", note = "use create_with_cycles instead")]
     pub fn create<A: ArgumentEncoder>(
         &self,
         wasm_module: &[u8],
         arg: A,
     ) -> impl Future<Output = CallResult<Canister>> {
-        Canister::create(self.checksum.version, wasm_module.into(), arg)
+        Canister::create(self.checksum.version, wasm_module.into(), arg, 0)
     }
 
     /// Creates a pair with cycles in it to make it workable.
@@ -84,18 +73,11 @@ impl<K: Hash + Eq> Factory<K> {
         arg: A,
         cycles: u64,
     ) -> impl Future<Output = CallResult<Canister>> {
-        // This should never happen if the `crate::factory::FactoryState::get_provided_cycles`
-        // methods is used to check for the cycles amount.
-        debug_assert!(
-            cycles <= CYCLES_FEE,
-            "The provided amount of cycles is {cycles} but must be greater than {CYCLES_FEE}."
-        );
-
-        Canister::create_with_cycles(
+        Canister::create(
             self.checksum.version,
             wasm_module.into(),
             arg,
-            cycles - CYCLES_FEE,
+            cycles,
         )
     }
 
