@@ -102,11 +102,13 @@ struct ProvisionalTopUpCanisterInput {
 impl Canister {
     pub async fn create(
         settings: Option<CanisterSettings>,
+        cycles: u64,
     ) -> Result<Self, (RejectionCode, String)> {
-        api::call::call(
+        api::call::call_with_payment(
             Principal::management_canister(),
             "create_canister",
             (CreateCanisterInput { settings },),
+            cycles,
         )
         .await
         .map(|r: (CanisterIDArg,)| Self(r.0.canister_id))
