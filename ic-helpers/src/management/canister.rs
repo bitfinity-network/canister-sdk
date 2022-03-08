@@ -122,13 +122,14 @@ impl Canister {
     }
 
     pub async fn provisional_create_with_cycles(
-        amount: Option<Nat>,
+        amount: u64,
         settings: Option<CanisterSettings>,
     ) -> Result<Self, (RejectionCode, String)> {
-        api::call::call(
+        api::call::call_with_payment(
             Principal::management_canister(),
             "provisional_create_canister_with_cycles",
-            (ProvisionalCreateCanisterWithCyclesInput { amount, settings },),
+            (ProvisionalCreateCanisterWithCyclesInput { amount: Some(Nat::from(amount)), settings },),
+            amount,
         )
         .await
         .map(|r: (CanisterIDArg,)| Self(r.0.canister_id))

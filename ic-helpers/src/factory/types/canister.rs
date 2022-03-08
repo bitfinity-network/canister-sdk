@@ -2,7 +2,7 @@ use super::checksum::Version;
 use crate::management::Canister as ManagementCanister;
 use crate::management::InstallCodeMode;
 use candid::utils::ArgumentEncoder;
-use candid::{CandidType, Nat, Principal};
+use candid::{CandidType, Principal};
 use ic_cdk::api::call::CallResult;
 use serde::{Deserialize, Serialize};
 
@@ -47,7 +47,7 @@ impl Canister {
         cycles: u64,
     ) -> CallResult<Self> {
         let canister =
-            ManagementCanister::provisional_create_with_cycles(Some(Nat::from(cycles)), None)
+            ManagementCanister::provisional_create_with_cycles(cycles, None)
                 .await?;
         canister
             .install_code(InstallCodeMode::Install, wasm_module, arg)
