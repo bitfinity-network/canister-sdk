@@ -34,7 +34,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         panic!("Canister struct must contains exactly one `id` field.");
     }
 
-    let principal_field = principal_fields[0].ident.clone().unwrap();
+    let principal_field = principal_fields[0].ident.clone().expect("At structure declaration there can be no field with name.");
 
     let state_fields = state_fields.iter().map(|x| {
         let field_name = x.ident.clone().unwrap();
@@ -82,7 +82,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
         #[cfg(not(target_arch = "wasm32"))]
         fn __next_id() -> [u8; 8] {
-            __NEXT_ID.with(|v| v.fetch_add(1, ::std::sync::atomic::Ordering::SeqCst).to_le_bytes())
+            __NEXT_ID.with(|v| v.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed).to_le_bytes())
         }
 
         impl ::ic_canister::Canister for #name {
@@ -140,7 +140,7 @@ fn extract_generic<'a>(type_name: &str, generic_base: &'a Type, input_type: &'a 
                 state_type_error(input_type);
             }
 
-            let last_segment = v.path.segments.iter().last().unwrap();
+            let last_segment = v.path.segments.iter().last().expect("We checked there are items just few lines above");
             if last_segment.ident != type_name {
                 state_type_error(input_type);
             }

@@ -7,9 +7,9 @@ mod derive;
 /// Makes an inter-canister call. This macro takes two inputs: the canister method invocation,
 /// and the expected return type.
 ///
-/// ```
-/// let result: ic_cdk::api::call::CallResult<ResultType> = canister_call!(canister_instance.method_name(arg1, arg2), ReturnType).await;
 /// ```ignore
+/// let result: ic_cdk::api::call::CallResult<ResultType> = canister_call!(canister_instance.method_name(arg1, arg2), ReturnType).await;
+/// ```
 #[proc_macro]
 pub fn canister_call(input: TokenStream) -> TokenStream {
     canister_call::canister_call(input)
