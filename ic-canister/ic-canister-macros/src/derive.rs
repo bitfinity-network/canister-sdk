@@ -20,13 +20,13 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
     let mut principal_fields = vec![];
     let mut state_fields = vec![];
     let mut default_fields = vec![];
-    for field in &fields {
+    for field in fields {
         if field.attrs.iter().any(is_principal_attr) {
-            principal_fields.push(field.clone());
+            principal_fields.push(field);
         } else if field.attrs.iter().any(is_state_attr) {
-            state_fields.push(field.clone());
+            state_fields.push(field);
         } else {
-            default_fields.push(field.clone());
+            default_fields.push(field);
         }
     }
 
@@ -136,12 +136,12 @@ fn get_state_type(input_type: &Type) -> &Type {
 fn extract_generic<'a>(type_name: &str, generic_base: &'a Type, input_type: &'a Type) -> &'a Type {
     match generic_base {
         Type::Path(v) => {
-            if v.path.segments.len() == 0 {
+            if v.path.segments.is_empty() {
                 state_type_error(input_type);
             }
 
             let last_segment = v.path.segments.iter().last().unwrap();
-            if &last_segment.ident.to_string() != type_name {
+            if last_segment.ident != type_name {
                 state_type_error(input_type);
             }
 
@@ -152,7 +152,7 @@ fn extract_generic<'a>(type_name: &str, generic_base: &'a Type, input_type: &'a 
                         state_type_error(input_type);
                     }
 
-                    match args.first().unwrap() {
+                    match &args[0] {
                         GenericArgument::Type(t) => t,
                         _ => state_type_error(input_type),
                     }

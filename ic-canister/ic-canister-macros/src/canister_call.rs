@@ -30,7 +30,7 @@ pub fn canister_call(input: TokenStream) -> TokenStream {
     let inner_method = Ident::new(&format!("__{method}"), method.span());
     let mut args = input.method_call.args;
     if !args.empty_or_trailing() {
-        args.push_punct(std::default::Default::default());
+        args.push_punct(Default::default());
     }
 
     let response_type = input.response_type;
@@ -43,9 +43,9 @@ pub fn canister_call(input: TokenStream) -> TokenStream {
     } else {
         let mut elems = Punctuated::new();
         elems.push_value(response_type);
-        elems.push_punct(std::default::Default::default());
+        elems.push_punct(Default::default());
         let tuple_response_type = Type::Tuple(TypeTuple {
-            paren_token: std::default::Default::default(),
+            paren_token: Default::default(),
             elems,
         });
 

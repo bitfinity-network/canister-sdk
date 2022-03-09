@@ -9,7 +9,7 @@ mod derive;
 ///
 /// ```
 /// let result: ic_cdk::api::call::CallResult<ResultType> = canister_call!(canister_instance.method_name(arg1, arg2), ReturnType).await;
-/// ```
+/// ```ignore
 #[proc_macro]
 pub fn canister_call(input: TokenStream) -> TokenStream {
     canister_call::canister_call(input)

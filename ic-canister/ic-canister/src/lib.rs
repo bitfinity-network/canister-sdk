@@ -30,7 +30,7 @@
 //!
 //! * All the other fields (not marked with `#[id]` and `#[state]` must implement the `Default` trait.
 //!
-//! ```
+//! ```ignore
 //! use ic_cdk::export::Principal;
 //! use ic_canister::Canister;
 //! use ic_storage::IcStorage;
@@ -58,7 +58,7 @@
 //! incorrect invocation of API methods, the macros do not allow the API methods to be public. All
 //! the arguments and output types must implement `CandidType` trait.
 //!
-//! ```
+//! ```ignore
 //! impl MyCanister {
 //!     #[query]
 //!     fn get_counter(&self) -> u64 {
@@ -74,8 +74,8 @@
 //!
 //! When another canister needs to call these API methods, the `canister_call!()` macro can be used.
 //!
-//! ```
-//! use ic_cdK::api::call::CallResult;
+//! ```ignore
+//! use ic_cdk::api::call::CallResult;
 //!
 //! let my_canister = MyCanister::from_principal(canister_principal);
 //! canister_call(my_canister.add(10), ()).await.unwrap();
@@ -84,7 +84,7 @@
 //!
 //! # Testing canisters
 //!
-//! ```
+//! ```ignore
 //! let my_canister = MyCanister::init_instance();
 //! my_canister.add(1);
 //! assert_eq!(my_canister.get_counter(), 1);
