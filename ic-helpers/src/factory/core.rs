@@ -73,12 +73,7 @@ impl<K: Hash + Eq> Factory<K> {
         arg: A,
         cycles: u64,
     ) -> impl Future<Output = CallResult<Canister>> {
-        Canister::create(
-            self.checksum.version,
-            wasm_module.into(),
-            arg,
-            cycles,
-        )
+        Canister::create(self.checksum.version, wasm_module.into(), arg, cycles)
     }
 
     /// Stops and deletes the canister. After this actor is awaited on, [forget] method must be used
@@ -111,7 +106,7 @@ impl<K: Hash + Eq> Factory<K> {
     pub fn upgrade(
         &self,
         canister: &Canister,
-        wasm_module: &'static [u8],
+        wasm_module: Vec<u8>,
     ) -> impl Future<Output = CallResult<Canister>> {
         upgrade_canister(self.checksum.version, canister.clone(), wasm_module)
     }
@@ -128,9 +123,9 @@ impl<K: Hash + Eq> Factory<K> {
 async fn upgrade_canister(
     version: Version,
     mut canister: Canister,
-    wasm_module: &[u8],
+    wasm_module: Vec<u8>,
 ) -> CallResult<Canister> {
-    canister.upgrade(version, wasm_module.into()).await?;
+    canister.upgrade(version, wasm_module).await?;
     Ok(canister)
 }
 
