@@ -3,5 +3,9 @@ members = [
   "ic-helpers",
   "ic-storage",
   "ic-storage/ic-storage-derive",
+  "ic-canister/ic-canister",
+  "ic-canister/ic-canister-macros",
+  "ic-canister/tests/canister_a",
+  "ic-canister/tests/canister_b",
 ]
 
