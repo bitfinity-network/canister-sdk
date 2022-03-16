@@ -10,9 +10,10 @@ crate-type = ["lib", "cdylib"]
 
 [dependencies]
 ic-cdk = "0.3"
-canister_a = {path = "../canister_a", features = ["child_canister"]}
+canister_a = {path = "../canister_a"}
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
+serde = "1.0"
 
 [dev-dependencies]
 tokio = {version = "1", features = ["rt", "macros"]}

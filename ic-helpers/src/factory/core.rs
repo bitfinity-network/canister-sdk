@@ -76,7 +76,7 @@ impl<K: Hash + Eq> Factory<K> {
         Canister::create(self.checksum.version, wasm_module.into(), arg, cycles)
     }
 
-    /// Stops and deletes the canister. After this actor is awaited on, [forget] method must be used
+    /// Stops and deletes the canister. After this actor is awaited on, [Factory::forget] method must be used
     /// to remove the canister from the list of created canisters.
     pub fn drop(&self, canister: Principal) -> impl Future<Output = Result<(), FactoryError>> {
         drop_canister(canister)

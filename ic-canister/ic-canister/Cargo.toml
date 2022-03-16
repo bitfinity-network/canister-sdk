@@ -5,4 +5,9 @@ edition = "2021"
 
 [dependencies]
 ic-cdk = "0.3"
-ic-canister-macros = {path = "../ic-canister-macros"}
+ic-canister-macros = { path = "../ic-canister-macros" }
+ic-storage = { path = "../../ic-storage" }
+
+[dev-dependencies]
+serde = "1.0"
+tokio-test = "0.4"

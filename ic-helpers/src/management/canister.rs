@@ -130,7 +130,10 @@ impl Canister {
         api::call::call_with_payment(
             Principal::management_canister(),
             "provisional_create_canister_with_cycles",
-            (ProvisionalCreateCanisterWithCyclesInput { amount: Some(Nat::from(amount)), settings },),
+            (ProvisionalCreateCanisterWithCyclesInput {
+                amount: Some(Nat::from(amount)),
+                settings,
+            },),
             amount,
         )
         .await

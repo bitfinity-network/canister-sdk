@@ -1,13 +1,14 @@
 use canister_a::CanisterA;
 use ic_canister::canister_call;
+use ic_cdk::export::candid::{CandidType, Deserialize};
 use ic_cdk::export::Principal;
 use ic_storage::IcStorage;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use ic_canister::{update, Canister};
+use ic_canister::{init, update, Canister};
 
-#[derive(IcStorage)]
+#[derive(IcStorage, CandidType, Deserialize)]
 struct State {
     canister_a: Principal,
 }
@@ -18,15 +19,6 @@ impl Default for State {
             canister_a: Principal::anonymous(),
         }
     }
-}
-
-#[export_name = "canister_init"]
-fn init() {
-    ::ic_cdk::setup();
-    ::ic_cdk::block_on(async {
-        let (canister_a,): (Principal,) = ic_cdk::api::call::arg_data();
-        State::get().replace(State { canister_a });
-    });
 }
 
 #[derive(Clone, Canister)]
@@ -40,6 +32,11 @@ pub struct CanisterB {
 }
 
 impl CanisterB {
+    #[init]
+    fn init(&self, canister_a: Principal) {
+        self.state.replace(State { canister_a });
+    }
+
     #[update]
     async fn call_increment(&self, value: u32) -> u32 {
         let mut canister_a = CanisterA::from_principal(self.state.borrow().canister_a);
