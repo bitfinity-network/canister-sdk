@@ -63,6 +63,7 @@ pub(crate) fn api_method(
     let mut arg_types = Punctuated::new();
     let mut args_destr = Punctuated::new();
     let mut has_self = false;
+
     for arg in args {
         let (arg_type, arg_pat) = match arg {
             FnArg::Receiver(_) => {
@@ -153,9 +154,8 @@ struct Method {
 // See https://github.com/rust-lang/rust/issues/44034
 // Hopefully, we can have an attribute on impl, then we don't need global state.
 lazy_static! {
-    static ref METHODS: Mutex<Option<BTreeMap<String, Method>>> =
-        Mutex::new(Some(Default::default()));
-    static ref INIT: Mutex<Option<Option<Vec<String>>>> = Mutex::new(Some(Default::default()));
+    static ref METHODS: Mutex<BTreeMap<String, Method>> = Mutex::new(Default::default());
+    static ref INIT: Mutex<Option<Vec<String>>> = Mutex::new(None);
 }
 
 fn store_candid_definitions(modes: &str, sig: &Signature) -> Result<(), syn::Error> {
@@ -165,143 +165,148 @@ fn store_candid_definitions(modes: &str, sig: &Signature) -> Result<(), syn::Err
             "candid_method doesn't support generic parameters",
         ));
     }
-    let ident = sig.ident.to_string();
-    let name = &ident;
+    let name = sig.ident.to_string();
+
     let (args, rets) = get_args(sig)?;
+
     let args: Vec<String> = args
         .iter()
         .map(|t| format!("{}", t.to_token_stream()))
         .collect();
+
     let rets: Vec<String> = rets
         .iter()
         .map(|t| format!("{}", t.to_token_stream()))
         .collect();
+
     if modes == "oneway" && !rets.is_empty() {
         return Err(Error::new_spanned(
             &sig.output,
             "oneway function should have no return value",
         ));
     }
-    if modes == "init" {
-        match (rets.len(), rets.get(0).map(|x| x.as_str())) {
-            (0, None) | (1, Some("Self")) => {
-                if let Some(init) = INIT.lock().unwrap().as_mut() {
-                    if init.is_some() {
-                        return Err(Error::new_spanned(&sig.ident, "duplicate init method"));
-                    };
-                    *init = Some(args);
-                }
-            }
-            _ => {
-                return Err(Error::new_spanned(
-                    &sig.output,
-                    "init method should have no return value or return Self",
-                ))
-            }
-        }
-    } else if let Some(map) = METHODS.lock().unwrap().as_mut() {
-        if map
-            .insert(
-                name.clone(),
-                Method {
-                    args,
-                    rets,
-                    modes: modes.to_string(),
-                },
-            )
-            .is_some()
-        {
-            return Err(Error::new_spanned(
-                &sig.ident,
-                format!("duplicate method name {}", name),
-            ));
-        }
+
+    // Insert init
+    if modes == "init" && !rets.is_empty() {
+        return Err(Error::new_spanned(
+            &sig.output,
+            "init method should have no return value or return Self",
+        ));
     }
+
+    if modes == "init" {
+        match &mut *INIT.lock().unwrap() {
+            Some(_) => return Err(Error::new_spanned(&sig.ident, "duplicate init method")),
+            ret @ None => *ret = Some(args),
+        }
+        return Ok(());
+    }
+
+    // Insert method
+    let mut map = METHODS.lock().unwrap();
+
+    if map.contains_key(&name) {
+        return Err(Error::new_spanned(
+            &name,
+            format!("duplicate method name {name}"),
+        ));
+    }
+
+    let method = Method {
+        args,
+        rets,
+        modes: modes.to_string(),
+    };
+
+    map.insert(name, method);
 
     Ok(())
 }
 
 pub(crate) fn generate_idl() -> TokenStream {
-    let result = if let Some(meths) = METHODS.lock().unwrap().as_mut() {
-        let candid = quote! {::ic_cdk::export::candid};
-        let init = if let Some(opt_args) = INIT.lock().unwrap().as_mut() {
-            let res = opt_args.as_ref().map(|args| {
-                let args = args
-                    .iter()
-                    .map(|t| generate_arg(quote! { init_args }, t))
-                    .collect::<Vec<_>>();
-                quote! {
-                    let mut init_args = Vec::new();
-                    #(#args)*
-                }
-            });
-            *opt_args = None;
-            res
-        } else {
-            unreachable!();
-        };
-        let gen_tys = meths.iter().map(|(name, Method { args, rets, modes })| {
-            let args = args
-                .iter()
-                .map(|t| generate_arg(quote! { args }, t))
-                .collect::<Vec<_>>();
-            let rets = rets
-                .iter()
-                .map(|t| generate_arg(quote! { rets }, t))
-                .collect::<Vec<_>>();
-            let modes = match modes.as_ref() {
-                "query" => quote! { vec![#candid::parser::types::FuncMode::Query] },
-                "oneway" => quote! { vec![#candid::parser::types::FuncMode::Oneway] },
-                "update" => quote! { vec![] },
-                _ => unreachable!(),
-            };
-            quote! {
-                {
-                    let mut args = Vec::new();
-                    #(#args)*
-                    let mut rets = Vec::new();
-                    #(#rets)*
-                    let func = Function { args, rets, modes: #modes };
-                    service.push((#name.to_string(), Type::Func(func)));
-                }
-            }
-        });
-        let service = quote! {
-            use #candid::types::{CandidType, Function, Type};
-            let mut service = Vec::<(String, Type)>::new();
-            let mut env = #candid::types::internal::TypeContainer::new();
-            #(#gen_tys)*
-            service.sort_unstable_by_key(|(name, _)| name.clone());
-            let ty = Type::Service(service);
-        };
-        let actor = if let Some(init) = init {
-            quote! {
-                #init
-                let actor = Some(Type::Class(init_args, Box::new(ty)));
-            }
-        } else {
-            quote! { let actor = Some(ty); }
-        };
-        let res = quote! {
-            {
-                fn __export_service() -> String {
-                    #service
-                    #actor
-                    let result = #candid::bindings::candid::compile(&env.env, &actor);
-                    format!("{}", result)
-                }
+    let candid = quote! { ::ic_cdk::export::candid };
 
-                __export_service()
-            }
+    // Init
+    let init = INIT.lock().unwrap().as_mut().map(|args| {
+        let args = args
+            .drain(..)
+            .map(|t| generate_arg(quote! { init_args }, &t))
+            .collect::<Vec<_>>();
+
+        let res = quote! {
+            let mut init_args = Vec::new();
+            #(#args)*
         };
-        meths.clear();
-        //panic!(res.to_string());
+
         res
-    } else {
-        unreachable!()
+    });
+
+    // Methods
+    let mut meths = METHODS.lock().unwrap();
+
+    let gen_tys = meths.iter().map(|(name, Method { args, rets, modes })| {
+        let args = args
+            .iter()
+            .map(|t| generate_arg(quote! { args }, t))
+            .collect::<Vec<_>>();
+
+        let rets = rets
+            .iter()
+            .map(|t| generate_arg(quote! { rets }, t))
+            .collect::<Vec<_>>();
+        
+        let modes = match modes.as_ref() {
+            "query" => quote! { vec![#candid::parser::types::FuncMode::Query] },
+            "oneway" => quote! { vec![#candid::parser::types::FuncMode::Oneway] },
+            "update" => quote! { vec![] },
+            _ => unreachable!(),
+        };
+
+        quote! {
+            {
+                let mut args = Vec::new();
+                #(#args)*
+                let mut rets = Vec::new();
+                #(#rets)*
+                let func = Function { args, rets, modes: #modes };
+                service.push((#name.to_string(), Type::Func(func)));
+            }
+        }
+    });
+
+    let service = quote! {
+        use #candid::types::{CandidType, Function, Type};
+        let mut service = Vec::<(String, Type)>::new();
+        let mut env = #candid::types::internal::TypeContainer::new();
+        #(#gen_tys)*
+        service.sort_unstable_by_key(|(name, _)| name.clone());
+        let ty = Type::Service(service);
     };
 
-    TokenStream::from(result)
+    meths.clear();
+
+    let actor = match init {
+        Some(init) => quote! {
+            #init
+            let actor = Some(Type::Class(init_args, Box::new(ty)));
+        },
+        None => quote! { let actor = Some(ty); },
+    };
+
+    let res = quote! {
+        {
+            fn __export_service() -> String {
+                #service
+                #actor
+                let result = #candid::bindings::candid::compile(&env.env, &actor);
+                format!("{}", result)
+            }
+
+            __export_service()
+        }
+    };
+
+    TokenStream::from(res)
 }
 
 fn generate_arg(name: proc_macro2::TokenStream, ty: &str) -> proc_macro2::TokenStream {
