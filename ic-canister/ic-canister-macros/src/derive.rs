@@ -1,5 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
+use std::collections::HashSet;
 use syn::parse::{Parse, ParseStream};
 use syn::{
     parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Path,
@@ -31,11 +32,11 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
     let trait_name_attr = input.attrs.iter().find(|x| {
-        if let Some(segment) = x.path.segments.last() {
-            segment.ident == "trait_name"
-        } else {
-            false
-        }
+        x.path
+            .segments
+            .last()
+            .map(|last| last.ident == "trait_name")
+            .unwrap_or(false)
     });
 
     let trait_attr = match trait_name_attr {
@@ -76,14 +77,20 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         panic!("Canister struct must contains exactly one `id` field.");
     }
 
-    let principal_field = principal_fields[0]
+    let principal_field = principal_fields
+        .remove(0)
         .ident
-        .clone()
         .expect("At structure declaration there can be no field with name.");
 
+    let mut used_types = HashSet::new();
     let state_fields = state_fields.iter().map(|x| {
-        let field_name = x.ident.clone().unwrap();
+        let field_name = x.ident.clone().expect("Fields always have name.");
         let field_type = get_state_type(&x.ty);
+
+        if !used_types.insert(field_type) {
+            panic!("Canister cannot have two fields with the type {field_type:?}",);
+        }
+
         let is_stable = is_state_field_stable(x);
         (field_name, field_type, is_stable)
     });
@@ -247,37 +254,33 @@ fn get_state_type(input_type: &Type) -> &Type {
 }
 
 fn extract_generic<'a>(type_name: &str, generic_base: &'a Type, input_type: &'a Type) -> &'a Type {
-    match generic_base {
-        Type::Path(v) => {
-            if v.path.segments.is_empty() {
-                state_type_error(input_type);
-            }
+    let v = match generic_base {
+        Type::Path(v) => v,
+        _ => state_type_error(input_type),
+    };
 
-            let last_segment = v
-                .path
-                .segments
-                .iter()
-                .last()
-                .expect("We checked there are items just few lines above");
-            if last_segment.ident != type_name {
-                state_type_error(input_type);
-            }
+    let last = v.path.segments.iter().last();
 
-            match &last_segment.arguments {
-                PathArguments::AngleBracketed(arg) => {
-                    let args = &arg.args;
-                    if args.len() != 1 {
-                        state_type_error(input_type);
-                    }
+    let last_segment = match last {
+        Some(segment) => segment,
+        None => state_type_error(input_type),
+    };
 
-                    match &args[0] {
-                        GenericArgument::Type(t) => t,
-                        _ => state_type_error(input_type),
-                    }
-                }
-                _ => state_type_error(input_type),
-            }
-        }
+    if last_segment.ident != type_name {
+        state_type_error(input_type);
+    }
+
+    let arg = match &last_segment.arguments {
+        PathArguments::AngleBracketed(arg) => arg,
+        _ => state_type_error(input_type),
+    };
+
+    if arg.args.len() != 1 {
+        state_type_error(input_type);
+    }
+
+    match &arg.args[0] {
+        GenericArgument::Type(t) => t,
         _ => state_type_error(input_type),
     }
 }

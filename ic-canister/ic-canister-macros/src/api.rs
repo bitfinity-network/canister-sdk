@@ -97,7 +97,6 @@ pub(crate) fn api_method(
             syn::Error::new(input.span(), "API method must have a `&self` argument")
                 .to_compile_error(),
         );
-        // panic!("API method must have a `&self` argument");
     }
 
     let arg_type = TypeTuple {
@@ -254,7 +253,7 @@ pub(crate) fn generate_idl() -> TokenStream {
             .iter()
             .map(|t| generate_arg(quote! { rets }, t))
             .collect::<Vec<_>>();
-        
+
         let modes = match modes.as_ref() {
             "query" => quote! { vec![#candid::parser::types::FuncMode::Query] },
             "oneway" => quote! { vec![#candid::parser::types::FuncMode::Oneway] },

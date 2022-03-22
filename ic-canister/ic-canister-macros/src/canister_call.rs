@@ -114,10 +114,7 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
                 Err(e) => return Err((::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
             };
 
-            let result = match ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args) {
-                Ok(v) => v,
-                Err(e) => return Err(e),
-            };
+            let result = ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args)?;
 
             let result = match #decode {
                 Ok(v) => v #tuple_index,

@@ -409,6 +409,7 @@ fn _register_virtual_responder(
 }
 
 /// Invokes a virtual canister method. This function is supposed to be called through [virtual_canister_call] macro.
+#[doc(hidden)]
 pub fn call_virtual_responder(
     principal: Principal,
     method_name: &str,
