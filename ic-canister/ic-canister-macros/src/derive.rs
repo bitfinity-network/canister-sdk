@@ -46,7 +46,6 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         None => TraitNameAttr::default(),
     };
 
-    // let trait_attr: TraitNameAttr = trait_name_attr.parse_args().expect("Invalid trait_name attribute syntax. It should be `#[trait_name(path::to::Canister)]`");
     let trait_name = trait_attr.path;
 
     let data = match input.data {
@@ -83,15 +82,15 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         .expect("At structure declaration there can be no field with name.");
 
     let mut used_types = HashSet::new();
-    let state_fields = state_fields.iter().map(|x| {
-        let field_name = x.ident.clone().expect("Fields always have name.");
-        let field_type = get_state_type(&x.ty);
+    let state_fields = state_fields.iter().map(|field| {
+        let field_name = field.ident.clone().expect("Fields always have name.");
+        let field_type = get_state_type(&field.ty);
 
         if !used_types.insert(field_type) {
             panic!("Canister cannot have two fields with the type {field_type:?}",);
         }
 
-        let is_stable = is_state_field_stable(x);
+        let is_stable = is_state_field_stable(field);
         (field_name, field_type, is_stable)
     });
 
