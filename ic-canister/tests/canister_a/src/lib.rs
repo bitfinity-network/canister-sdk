@@ -1,10 +1,10 @@
-use ic_cdk::export::Principal;
+use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_storage::IcStorage;
 use std::cell::RefCell;
 
 use ic_canister::{query, update, Canister};
 
-#[derive(Default, IcStorage)]
+#[derive(Default, CandidType, Deserialize, IcStorage)]
 struct State {
     counter: u32,
 }

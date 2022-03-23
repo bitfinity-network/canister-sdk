@@ -7,8 +7,7 @@ edition = "2021"
 crate-type = ["lib", "cdylib"]
 
 [features]
-default = []
-child_canister = []
+export_api = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -17,3 +16,4 @@ ic-cdk = "0.3"
 ic-cdk-macros = "0.3"
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
+serde = "1.0"
