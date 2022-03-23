@@ -434,6 +434,10 @@ pub fn call_virtual_responder(
 
 /// Saves a function that will be called when testing inter-canister calls, invoked with
 /// [virtual_canister_call] macro.
+///
+/// One function can be registered for every principal-method pair. If a `virtual_canister_call` is
+/// called in testing environment without a registered responder, an error will be returned. This can
+/// be used to test for not existing canisters.
 pub fn register_virtual_responder<F, T, U>(principal: Principal, method: &str, closure: F)
 where
     F: Fn(T) -> U + 'static,
