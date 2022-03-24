@@ -203,10 +203,7 @@ fn expand_upgrade_methods(
 
                 #state_get
 
-                ::ic_cdk::storage::stable_save((
-                    #state_borrow
-                ))
-                .unwrap();
+                ::ic_storage::stable::write(#state_borrow).unwrap();
             }
 
             #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
@@ -214,7 +211,7 @@ fn expand_upgrade_methods(
             fn __post_upgrade() {
                 use ::ic_storage::IcStorage;
 
-                let #name = ::ic_cdk::storage::stable_restore().unwrap();
+                let #name = ::ic_storage::stable::read::<#field_type>().unwrap();
 
                 #field_assignment
             }
