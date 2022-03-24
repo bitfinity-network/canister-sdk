@@ -211,7 +211,10 @@ fn expand_upgrade_methods(
             fn __post_upgrade() {
                 use ::ic_storage::IcStorage;
 
-                let #name = ::ic_storage::stable::read::<#field_type>().unwrap();
+                let #name = match ::ic_storage::stable::read::<#field_type::Versioned>() {
+                    Ok(val) => val,
+                    Err(e) => panic!("failed to upgrade: {}", e),
+                };
 
                 #field_assignment
             }
@@ -220,6 +223,16 @@ fn expand_upgrade_methods(
 }
 
 fn is_state_field_stable(_field: &Field) -> bool {
+    // path = stable_store
+    // tokens = true
+    // -------------------
+    // field.attrs
+    //     .iter()
+    //     .filter(|a| a.path.get_ident() == Some(Ident::new("stable_store")))
+    //     .map(|a| a.tokens
+    //     .next()
+    //     .unwrap_or(false)
+            
     // todo
     true
 }
