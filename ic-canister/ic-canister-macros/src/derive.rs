@@ -94,7 +94,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         (field_name, field_type, is_stable)
     });
 
-    let mut stable_fields = vec![];
+    let mut stable_field = None;
     let (state_fields_wasm, state_fields_test) = if state_fields.len() > 0 {
         let mut state_fields_wasm = vec![];
         let mut state_fields_test = vec![];
@@ -103,8 +103,8 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
                 .push(quote! {#field_name : <#field_type as ::ic_storage::IcStorage>::get()});
             state_fields_test.push(quote! {#field_name : ::std::rc::Rc::new(::std::cell::RefCell::new(<#field_type as ::std::default::Default>::default()))});
 
-            if is_stable {
-                stable_fields.push((field_name, field_type));
+            if is_stable && stable_field.is_none() {
+                stable_field = Some((field_name, field_type));
             }
         }
         (
@@ -126,7 +126,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         quote! {}
     };
 
-    let upgrade_methods = expand_upgrade_methods(&name, &stable_fields);
+    let upgrade_methods = expand_upgrade_methods(&name, stable_field);
 
     let expanded = quote! {
         #[cfg(not(target_arch = "wasm32"))]
@@ -180,31 +180,19 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
 fn expand_upgrade_methods(
     struct_name: &proc_macro2::Ident,
-    stable_fields: &[(proc_macro2::Ident, &Type)],
+    stable_field: Option<(proc_macro2::Ident, &Type)>,
 ) -> proc_macro2::TokenStream {
-    if stable_fields.is_empty() {
-        return quote! {};
-    }
+    let (name, field_type) = match stable_field {
+        None => return quote!(),
+        Some((name, field_type)) => (name, field_type),
+    };
 
-    let state_gets = stable_fields.iter().map(|(name, field_type)| {
-        quote! {
-            let #name = #field_type::get();
-        }
-    });
+    let (state_get, state_borrow) = (
+        quote! { let #name = #field_type::get(); },
+        quote! { &* #name.borrow(), },
+    );
 
-    let state_borrows = stable_fields.iter().map(|(name, _)| {
-        quote! {
-            &* #name.borrow(),
-        }
-    });
-
-    let field_names = stable_fields.iter().map(|(name, _)| name.clone());
-
-    let fields_assignment = stable_fields.iter().map(|(name, field_type)| {
-        quote! {
-            #field_type::get().replace(#name);
-        }
-    });
+    let field_assignment = quote! { #field_type::get().replace(#name); };
 
     quote! {
         impl #struct_name {
@@ -213,10 +201,10 @@ fn expand_upgrade_methods(
             fn __pre_upgrade() {
                 use ::ic_storage::IcStorage;
 
-                #(#state_gets)*
+                #state_get
 
                 ::ic_cdk::storage::stable_save((
-                    #( #state_borrows)*
+                    #state_borrow
                 ))
                 .unwrap();
             }
@@ -226,9 +214,9 @@ fn expand_upgrade_methods(
             fn __post_upgrade() {
                 use ::ic_storage::IcStorage;
 
-                let (#( #field_names,)*) = ::ic_cdk::storage::stable_restore().unwrap();
+                let #name = ::ic_cdk::storage::stable_restore().unwrap();
 
-                #( #fields_assignment )*
+                #field_assignment
             }
         }
     }
