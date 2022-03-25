@@ -211,7 +211,7 @@ fn expand_upgrade_methods(
             fn __post_upgrade() {
                 use ::ic_storage::IcStorage;
 
-                let #name = match ::ic_storage::stable::read::<#field_type::Versioned>() {
+                let #name = match ::ic_storage::stable::read::<#field_type::Previous>() {
                     Ok(val) => val,
                     Err(e) => panic!("failed to upgrade: {}", e),
                 };

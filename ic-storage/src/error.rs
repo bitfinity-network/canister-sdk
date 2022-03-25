@@ -4,21 +4,21 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Insufficient space available")]
+    #[error("insufficient space available")]
     InsufficientSpace,
 
-    #[error("Stable memory error")]
+    #[error("stable memory error")]
     StableMemory,
 
     #[error(
-        "Attempted downgrade, or trying to load a version older than what is currently stored"
+        "attempted downgrade, or trying to load a version older than what is currently stored"
     )]
     AttemptedDowngrade,
 
-    #[error("Candid error: {0}")]
+    #[error("candid error: {0}")]
     Candid(#[from] ic_cdk::export::candid::Error),
 
-    #[error("Existing version is newer")]
+    #[error("existing version is newer")]
     ExistingVersionIsNewer,
 }
 
