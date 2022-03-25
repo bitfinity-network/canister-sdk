@@ -22,7 +22,7 @@ impl Versioned for State {
 pub struct CanisterA {
     #[id]
     principal: Principal,
-    #[state]
+    #[state(stable_store = true)]
     state: std::rc::Rc<RefCell<State>>,
 }
 

@@ -3,8 +3,8 @@ use quote::quote;
 use std::collections::HashSet;
 use syn::parse::{Parse, ParseStream};
 use syn::{
-    parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Path,
-    PathArguments, Type,
+    parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit, LitBool,
+    Meta, NestedMeta, Path, PathArguments, Type,
 };
 
 #[derive(Debug)]
@@ -22,8 +22,8 @@ impl Parse for TraitNameAttr {
 impl Default for TraitNameAttr {
     fn default() -> Self {
         let tokens = TokenStream::from(quote! {::ic_canister::Canister});
-        let path = parse_macro_input::parse::<Path>(tokens)
-            .expect("static value parsing always succeeds");
+        let path =
+            parse_macro_input::parse::<Path>(tokens).expect("static value parsing always succeeds");
         Self { path }
     }
 }
@@ -83,7 +83,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
     let mut used_types = HashSet::new();
     let state_fields = state_fields.iter().map(|field| {
-        let field_name = field.ident.clone().expect("Fields always have name.");
+        let field_name = field.ident.clone().expect("Fields always have name");
         let field_type = get_state_type(&field.ty);
 
         if !used_types.insert(field_type) {
@@ -227,19 +227,36 @@ fn expand_upgrade_methods(
     }
 }
 
-fn is_state_field_stable(_field: &Field) -> bool {
-    // path = stable_store
-    // tokens = true
-    // -------------------
-    // field.attrs
-    //     .iter()
-    //     .filter(|a| a.path.get_ident() == Some(Ident::new("stable_store")))
-    //     .map(|a| a.tokens
-    //     .next()
-    //     .unwrap_or(false)
+fn is_state_field_stable(field: &Field) -> bool {
+    // Find the "state" field
+    let meta = field
+        .attrs
+        .iter()
+        .filter_map(|a| match a.path.get_ident() {
+            Some(ident) if ident == "state" => a.parse_meta().ok(),
+            _ => None,
+        })
+        .next();
 
-    // todo
-    true
+    let meta_list = match meta {
+        Some(Meta::List(list)) => list,
+        _ => return false,
+    };
+
+    // Since there is only going to be one named value in the args
+    // it makes sense to look at the next value as the only value:
+    let next_named_val = match meta_list.nested.into_iter().next() {
+        Some(NestedMeta::Meta(Meta::NameValue(meta))) => meta,
+        Some(_) | None => return false,
+    };
+
+    // Ensure that the path is "stable_store"
+    match next_named_val.path.get_ident() {
+        Some(ident) if ident == "stable_store"  => {},
+        Some(_) | None => return false,
+    }
+
+    return matches!(next_named_val.lit, Lit::Bool(LitBool { value: true, .. }));
 }
 
 fn is_principal_attr(attribute: &Attribute) -> bool {
