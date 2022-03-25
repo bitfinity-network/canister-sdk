@@ -23,7 +23,7 @@ impl Default for TraitNameAttr {
     fn default() -> Self {
         let tokens = TokenStream::from(quote! {::ic_canister::Canister});
         let path = parse_macro_input::parse::<Path>(tokens)
-            .expect("Static value parsing. Always succeeds.");
+            .expect("static value parsing always succeeds");
         Self { path }
     }
 }
@@ -41,7 +41,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
     let trait_attr = match trait_name_attr {
         Some(v) => v.parse_args().expect(
-            "Invalid trait_name attribute syntax. It should be `#[trait_name(path::to::Canister)]`",
+            "invalid trait_name attribute syntax, expected format: `#[trait_name(path::to::Canister)]`",
         ),
         None => TraitNameAttr::default(),
     };
@@ -50,12 +50,12 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
     let data = match input.data {
         Data::Struct(v) => v,
-        _ => panic!("Canister trait can only be derived for a structure."),
+        _ => panic!("canister trait can only be derived for a structure"),
     };
 
     let fields = match data.fields {
         Fields::Named(v) => v,
-        _ => panic!("Canister derive is not supported for tuple-like structs."),
+        _ => panic!("canister derive is not supported for tuple-like structs"),
     }
     .named;
 
@@ -73,13 +73,13 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
     }
 
     if principal_fields.len() != 1 {
-        panic!("Canister struct must contains exactly one `id` field.");
+        panic!("canister struct must contains exactly one `id` field");
     }
 
     let principal_field = principal_fields
         .remove(0)
         .ident
-        .expect("At structure declaration there can be no field with name.");
+        .expect("at structure declaration there can be no field with name");
 
     let mut used_types = HashSet::new();
     let state_fields = state_fields.iter().map(|field| {
@@ -87,7 +87,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         let field_type = get_state_type(&field.ty);
 
         if !used_types.insert(field_type) {
-            panic!("Canister cannot have two fields with the type {field_type:?}",);
+            panic!("canister cannot have two fields with the type {field_type:?}",);
         }
 
         let is_stable = is_state_field_stable(field);
@@ -98,13 +98,17 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
     let (state_fields_wasm, state_fields_test) = if state_fields.len() > 0 {
         let mut state_fields_wasm = vec![];
         let mut state_fields_test = vec![];
+
         for (field_name, field_type, is_stable) in state_fields {
             state_fields_wasm
                 .push(quote! {#field_name : <#field_type as ::ic_storage::IcStorage>::get()});
             state_fields_test.push(quote! {#field_name : ::std::rc::Rc::new(::std::cell::RefCell::new(<#field_type as ::std::default::Default>::default()))});
 
-            if is_stable && stable_field.is_none() {
-                stable_field = Some((field_name, field_type));
+            if is_stable {
+                match stable_field {
+                    None => stable_field = Some((field_name, field_type)),
+                    Some(_) => panic!("only one state field can have the `stable_storage` flag"),
+                }
             }
         }
         (
@@ -120,6 +124,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         let field_type = &x.ty;
         quote! {#field_name : <#field_type as ::std::default::Default>::default()}
     });
+
     let default_fields = if default_fields.len() > 0 {
         quote! {, #(#default_fields),* }
     } else {
@@ -163,7 +168,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
             fn from_principal(principal: ::ic_cdk::export::Principal) -> Self {
                 let registry: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<::ic_cdk::export::Principal, #name>>>  = CANISTERS.with(|v| v.clone());
                 let mut registry = ::std::cell::RefCell::borrow_mut(&registry);
-                registry.get(&principal).expect(&format!("Canister of type {} with principal {} is not registered.", ::std::any::type_name::<Self>(), principal)).clone()
+                registry.get(&principal).expect(&format!("canister of type {} with principal {} is not registered", ::std::any::type_name::<Self>(), principal)).clone()
             }
 
             fn principal(&self) -> Principal {
@@ -213,7 +218,7 @@ fn expand_upgrade_methods(
 
                 let #name = match ::ic_storage::stable::read::<#field_type::Previous>() {
                     Ok(val) => val,
-                    Err(e) => panic!("failed to upgrade: {}", e),
+                    Err(e) => ::ic_cdk::trap("failed to upgrade: {}", e),
                 };
 
                 #field_assignment
@@ -232,7 +237,7 @@ fn is_state_field_stable(_field: &Field) -> bool {
     //     .map(|a| a.tokens
     //     .next()
     //     .unwrap_or(false)
-            
+
     // todo
     true
 }
@@ -283,5 +288,5 @@ fn extract_generic<'a>(type_name: &str, generic_base: &'a Type, input_type: &'a 
 }
 
 fn state_type_error(input_type: &Type) -> ! {
-    panic!("State field type must be Rc<RefCell<T>> where T: IcStorage, but the actual type is {input_type:?}")
+    panic!("state field type must be Rc<RefCell<T>> where T: IcStorage, but the actual type is {input_type:?}")
 }
