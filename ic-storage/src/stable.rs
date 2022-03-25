@@ -330,10 +330,11 @@ mod test {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "insufficient space available")]
     fn try_read_unwritten() {
         // Try to read when no version has ever been written
-        read::<Version1>().unwrap();
+        let err = read::<Version1>().unwrap_err();
+        panic!("{err}");
     }
 
     #[test]
@@ -361,11 +362,12 @@ mod test {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "existing version is newer")]
     fn write_an_older_version() {
         // Write a version that is older than the one that
         // currently exists in storage.
         write(&Version2(0, 0)).unwrap();
-        write(&Version1(1)).unwrap();
+        let err = write(&Version1(1)).unwrap_err();
+        panic!("{err}");
     }
 }

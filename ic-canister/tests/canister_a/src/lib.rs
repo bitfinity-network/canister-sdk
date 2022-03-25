@@ -1,4 +1,5 @@
 use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::cell::RefCell;
 
@@ -9,11 +10,19 @@ struct State {
     counter: u32,
 }
 
+impl Versioned for State {
+    type Previous = ();
+
+    fn upgrade((): ()) -> Self {
+        Self::default()
+    }
+}
+
 #[derive(Clone, Canister)]
 pub struct CanisterA {
     #[id]
     principal: Principal,
-    #[state]
+    #[state(stable_store = true)]
     state: std::rc::Rc<RefCell<State>>,
 }
 

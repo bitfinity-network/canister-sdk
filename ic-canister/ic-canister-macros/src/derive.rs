@@ -3,8 +3,8 @@ use quote::quote;
 use std::collections::HashSet;
 use syn::parse::{Parse, ParseStream};
 use syn::{
-    parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Path,
-    PathArguments, Type,
+    parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit, LitBool,
+    Meta, NestedMeta, Path, PathArguments, Type,
 };
 
 #[derive(Debug)]
@@ -22,8 +22,8 @@ impl Parse for TraitNameAttr {
 impl Default for TraitNameAttr {
     fn default() -> Self {
         let tokens = TokenStream::from(quote! {::ic_canister::Canister});
-        let path = parse_macro_input::parse::<Path>(tokens)
-            .expect("Static value parsing. Always succeeds.");
+        let path =
+            parse_macro_input::parse::<Path>(tokens).expect("static value parsing always succeeds");
         Self { path }
     }
 }
@@ -41,7 +41,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
     let trait_attr = match trait_name_attr {
         Some(v) => v.parse_args().expect(
-            "Invalid trait_name attribute syntax. It should be `#[trait_name(path::to::Canister)]`",
+            "invalid trait_name attribute syntax, expected format: `#[trait_name(path::to::Canister)]`",
         ),
         None => TraitNameAttr::default(),
     };
@@ -50,12 +50,12 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
     let data = match input.data {
         Data::Struct(v) => v,
-        _ => panic!("Canister trait can only be derived for a structure."),
+        _ => panic!("canister trait can only be derived for a structure"),
     };
 
     let fields = match data.fields {
         Fields::Named(v) => v,
-        _ => panic!("Canister derive is not supported for tuple-like structs."),
+        _ => panic!("canister derive is not supported for tuple-like structs"),
     }
     .named;
 
@@ -73,38 +73,42 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
     }
 
     if principal_fields.len() != 1 {
-        panic!("Canister struct must contains exactly one `id` field.");
+        panic!("canister struct must contains exactly one `id` field");
     }
 
     let principal_field = principal_fields
         .remove(0)
         .ident
-        .expect("At structure declaration there can be no field with name.");
+        .expect("at structure declaration there can be no field with name");
 
     let mut used_types = HashSet::new();
     let state_fields = state_fields.iter().map(|field| {
-        let field_name = field.ident.clone().expect("Fields always have name.");
+        let field_name = field.ident.clone().expect("Fields always have name");
         let field_type = get_state_type(&field.ty);
 
         if !used_types.insert(field_type) {
-            panic!("Canister cannot have two fields with the type {field_type:?}",);
+            panic!("canister cannot have two fields with the type {field_type:?}",);
         }
 
         let is_stable = is_state_field_stable(field);
         (field_name, field_type, is_stable)
     });
 
-    let mut stable_fields = vec![];
+    let mut stable_field = None;
     let (state_fields_wasm, state_fields_test) = if state_fields.len() > 0 {
         let mut state_fields_wasm = vec![];
         let mut state_fields_test = vec![];
+
         for (field_name, field_type, is_stable) in state_fields {
             state_fields_wasm
                 .push(quote! {#field_name : <#field_type as ::ic_storage::IcStorage>::get()});
             state_fields_test.push(quote! {#field_name : ::std::rc::Rc::new(::std::cell::RefCell::new(<#field_type as ::std::default::Default>::default()))});
 
             if is_stable {
-                stable_fields.push((field_name, field_type));
+                match stable_field {
+                    None => stable_field = Some((field_name, field_type)),
+                    Some(_) => panic!("only one state field can have the `stable_storage` flag"),
+                }
             }
         }
         (
@@ -120,13 +124,14 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         let field_type = &x.ty;
         quote! {#field_name : <#field_type as ::std::default::Default>::default()}
     });
+
     let default_fields = if default_fields.len() > 0 {
         quote! {, #(#default_fields),* }
     } else {
         quote! {}
     };
 
-    let upgrade_methods = expand_upgrade_methods(&name, &stable_fields);
+    let upgrade_methods = expand_upgrade_methods(&name, stable_field);
 
     let expanded = quote! {
         #[cfg(not(target_arch = "wasm32"))]
@@ -163,7 +168,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
             fn from_principal(principal: ::ic_cdk::export::Principal) -> Self {
                 let registry: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<::ic_cdk::export::Principal, #name>>>  = CANISTERS.with(|v| v.clone());
                 let mut registry = ::std::cell::RefCell::borrow_mut(&registry);
-                registry.get(&principal).expect(&format!("Canister of type {} with principal {} is not registered.", ::std::any::type_name::<Self>(), principal)).clone()
+                registry.get(&principal).expect(&format!("canister of type {} with principal {} is not registered", ::std::any::type_name::<Self>(), principal)).clone()
             }
 
             fn principal(&self) -> Principal {
@@ -180,31 +185,19 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
 fn expand_upgrade_methods(
     struct_name: &proc_macro2::Ident,
-    stable_fields: &[(proc_macro2::Ident, &Type)],
+    stable_field: Option<(proc_macro2::Ident, &Type)>,
 ) -> proc_macro2::TokenStream {
-    if stable_fields.is_empty() {
-        return quote! {};
-    }
+    let (name, field_type) = match stable_field {
+        None => return quote!(),
+        Some((name, field_type)) => (name, field_type),
+    };
 
-    let state_gets = stable_fields.iter().map(|(name, field_type)| {
-        quote! {
-            let #name = #field_type::get();
-        }
-    });
+    let (state_get, state_borrow) = (
+        quote! { let #name = #field_type::get(); },
+        quote! { &* #name.borrow(), },
+    );
 
-    let state_borrows = stable_fields.iter().map(|(name, _)| {
-        quote! {
-            &* #name.borrow(),
-        }
-    });
-
-    let field_names = stable_fields.iter().map(|(name, _)| name.clone());
-
-    let fields_assignment = stable_fields.iter().map(|(name, field_type)| {
-        quote! {
-            #field_type::get().replace(#name);
-        }
-    });
+    let field_assignment = quote! { #field_type::get().replace(#name); };
 
     quote! {
         impl #struct_name {
@@ -213,12 +206,9 @@ fn expand_upgrade_methods(
             fn __pre_upgrade() {
                 use ::ic_storage::IcStorage;
 
-                #(#state_gets)*
+                #state_get
 
-                ::ic_cdk::storage::stable_save((
-                    #( #state_borrows)*
-                ))
-                .unwrap();
+                ::ic_storage::stable::write(#state_borrow).unwrap();
             }
 
             #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
@@ -226,17 +216,47 @@ fn expand_upgrade_methods(
             fn __post_upgrade() {
                 use ::ic_storage::IcStorage;
 
-                let (#( #field_names,)*) = ::ic_cdk::storage::stable_restore().unwrap();
+                let #name = match ::ic_storage::stable::read::<#field_type::Previous>() {
+                    Ok(val) => val,
+                    Err(e) => ::ic_cdk::trap("failed to upgrade: {}", e),
+                };
 
-                #( #fields_assignment )*
+                #field_assignment
             }
         }
     }
 }
 
-fn is_state_field_stable(_field: &Field) -> bool {
-    // todo
-    true
+fn is_state_field_stable(field: &Field) -> bool {
+    // Find the "state" field
+    let meta = field
+        .attrs
+        .iter()
+        .filter_map(|a| match a.path.get_ident() {
+            Some(ident) if ident == "state" => a.parse_meta().ok(),
+            _ => None,
+        })
+        .next();
+
+    let meta_list = match meta {
+        Some(Meta::List(list)) => list,
+        _ => return false,
+    };
+
+    // Since there is only going to be one named value in the args
+    // it makes sense to look at the next value as the only value:
+    let next_named_val = match meta_list.nested.into_iter().next() {
+        Some(NestedMeta::Meta(Meta::NameValue(meta))) => meta,
+        Some(_) | None => return false,
+    };
+
+    // Ensure that the path is "stable_store"
+    match next_named_val.path.get_ident() {
+        Some(ident) if ident == "stable_store"  => {},
+        Some(_) | None => return false,
+    }
+
+    return matches!(next_named_val.lit, Lit::Bool(LitBool { value: true, .. }));
 }
 
 fn is_principal_attr(attribute: &Attribute) -> bool {
@@ -285,5 +305,5 @@ fn extract_generic<'a>(type_name: &str, generic_base: &'a Type, input_type: &'a 
 }
 
 fn state_type_error(input_type: &Type) -> ! {
-    panic!("State field type must be Rc<RefCell<T>> where T: IcStorage, but the actual type is {input_type:?}")
+    panic!("state field type must be Rc<RefCell<T>> where T: IcStorage, but the actual type is {input_type:?}")
 }
