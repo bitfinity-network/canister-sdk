@@ -193,7 +193,7 @@ fn expand_upgrade_methods(
     };
 
     let (state_get, state_borrow) = (
-        quote! { let #name = #field_type::get(); },
+        quote! { let #name = ::std::rc::Rc::clone(&self. #name); },
         quote! { &* #name.borrow(), },
     );
 
@@ -201,9 +201,14 @@ fn expand_upgrade_methods(
 
     quote! {
         impl #struct_name {
-            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
+            #[cfg(feature = "export_api")]
             #[export_name = "canister_pre_upgrade"]
             fn __pre_upgrade() {
+                let instance = Self::init_instance();
+                instance.__pre_upgrade_inst();
+            }
+
+            fn __pre_upgrade_inst(&self) {
                 use ::ic_storage::IcStorage;
 
                 #state_get
@@ -211,18 +216,25 @@ fn expand_upgrade_methods(
                 ::ic_storage::stable::write(#state_borrow).unwrap();
             }
 
-            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
+            #[cfg(feature = "export_api")]
             #[export_name = "canister_post_upgrade"]
             fn __post_upgrade() {
-                use ::ic_storage::IcStorage;
+                let instance = Self::init_instance();
+                instance.__post_upgrade_inst();
+            }
 
-                let #name = match ::ic_storage::stable::read::<#field_type::Previous>() {
+            fn __post_upgrade_inst(&self) {
+                use ::ic_storage::IcStorage;
+                use ::ic_storage::stable::Versioned;
+
+                let #name = match ::ic_storage::stable::read::<#field_type>() {
                     Ok(val) => val,
-                    Err(e) => ::ic_cdk::trap("failed to upgrade: {}", e),
+                    Err(e) => ::ic_cdk::trap(&format!("failed to upgrade: {}", e)),
                 };
 
                 #field_assignment
             }
+
         }
     }
 }
@@ -252,7 +264,7 @@ fn is_state_field_stable(field: &Field) -> bool {
 
     // Ensure that the path is "stable_store"
     match next_named_val.path.get_ident() {
-        Some(ident) if ident == "stable_store"  => {},
+        Some(ident) if ident == "stable_store" => {}
         Some(_) | None => return false,
     }
 
