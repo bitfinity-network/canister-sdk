@@ -252,23 +252,23 @@ fn is_state_field_stable(field: &Field) -> bool {
 
     let meta_list = match meta {
         Some(Meta::List(list)) => list,
-        _ => return false,
+        _ => return true,
     };
 
     // Since there is only going to be one named value in the args
     // it makes sense to look at the next value as the only value:
     let next_named_val = match meta_list.nested.into_iter().next() {
         Some(NestedMeta::Meta(Meta::NameValue(meta))) => meta,
-        Some(_) | None => return false,
+        Some(_) | None => return true,
     };
 
     // Ensure that the path is "stable_store"
     match next_named_val.path.get_ident() {
         Some(ident) if ident == "stable_store" => {}
-        Some(_) | None => return false,
+        Some(_) | None => return true,
     }
 
-    return matches!(next_named_val.lit, Lit::Bool(LitBool { value: true, .. }));
+    return !matches!(next_named_val.lit, Lit::Bool(LitBool { value: false, .. }));
 }
 
 fn is_principal_attr(attribute: &Attribute) -> bool {

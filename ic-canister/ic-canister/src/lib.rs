@@ -33,15 +33,23 @@
 //!   that all non-state fields will have default values at the beginning of each call.
 //!
 //! ```
+//! use std::cell::RefCell;
+//! use std::rc::Rc;
 //! use ic_cdk::export::candid::{Principal, CandidType, Deserialize};
 //! use ic_canister::Canister;
 //! use ic_canister::storage::IcStorage;
-//! use std::cell::RefCell;
-//! use std::rc::Rc;
 //!
 //! #[derive(Default, IcStorage, CandidType, Deserialize)]
 //! struct MyCanisterState {
 //!     counter: u64,
+//! }
+//!
+//! impl ic_storage::stable::Versioned for MyCanisterState {
+//!     type Previous = ();
+//!
+//!     fn upgrade(():()) -> Self {
+//!         Self { counter: 0 }
+//!     }
 //! }
 //!
 //! #[derive(Clone, Canister)]
@@ -115,6 +123,12 @@
 //! struct MyCanisterState {
 //!     counter: u64,
 //! }
+//! # impl ic_storage::stable::Versioned for MyCanisterState {
+//! #     type Previous = ();
+//! #     fn upgrade(():()) -> Self {
+//! #         Self { counter: 0 }
+//! #     }
+//! # }
 //!
 //! #[derive(Clone, Canister)]
 //! struct MyCanister {
@@ -187,6 +201,13 @@
 //! #     counter: u64,
 //! # }
 //! #
+//! # impl ic_storage::stable::Versioned for MyCanisterState {
+//! #     type Previous = ();
+//! #     fn upgrade(():()) -> Self {
+//! #         Self { counter: 0 }
+//! #     }
+//! # }
+//! #
 //! # #[derive(Clone, Canister)]
 //! # struct MyCanister {
 //! #     #[id]
@@ -234,6 +255,13 @@
 //! # #[derive(Default, IcStorage, CandidType, Deserialize)]
 //! # struct MyCanisterState {
 //! #     counter: u64,
+//! # }
+//! #
+//! # impl ic_storage::stable::Versioned for MyCanisterState {
+//! #     type Previous = ();
+//! #     fn upgrade(():()) -> Self {
+//! #         Self { counter: 0 }
+//! #     }
 //! # }
 //! #
 //! # #[derive(Clone, Canister)]
