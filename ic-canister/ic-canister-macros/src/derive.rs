@@ -197,7 +197,7 @@ fn expand_upgrade_methods(
         quote! { &* #name.borrow(), },
     );
 
-    let field_assignment = quote! { #field_type::get().replace(#name); };
+    let field_assignment = quote! { self. #name.replace(#name); };
 
     quote! {
         impl #struct_name {
