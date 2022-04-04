@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "ic-helpers"
-version = "0.2.0"
+version = "0.2.1"
 
 [dependencies]
 dfn_core = {git = "https://github.com/flyq/ic"}
