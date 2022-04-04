@@ -137,7 +137,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         #[cfg(not(target_arch = "wasm32"))]
         thread_local! {
             static CANISTERS: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<Principal, #name>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::HashMap::new()));
-            static __NEXT_ID: ::std::sync::atomic::AtomicU64 = 5.into();
+            static __NEXT_ID: ::std::sync::atomic::AtomicU64 = rand::random::<u64>().into();
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -166,7 +166,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             fn from_principal(principal: ::ic_cdk::export::Principal) -> Self {
-                let registry: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<::ic_cdk::export::Principal, #name>>>  = CANISTERS.with(|v| v.clone());
+                let registry: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<::ic_cdk::export::Principal, #name>>> = CANISTERS.with(|v| v.clone());
                 let mut registry = ::std::cell::RefCell::borrow_mut(&registry);
                 registry.get(&principal).expect(&format!("canister of type {} with principal {} is not registered", ::std::any::type_name::<Self>(), principal)).clone()
             }

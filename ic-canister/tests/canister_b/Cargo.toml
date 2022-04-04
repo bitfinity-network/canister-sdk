@@ -10,6 +10,7 @@ crate-type = ["lib", "cdylib"]
 
 [dependencies]
 ic-cdk = "0.3"
+rand = "0.8.5"
 canister_a = {path = "../canister_a"}
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
