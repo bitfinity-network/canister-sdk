@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 ic-cdk = "0.3"
+rand = "0.8.5"
+getrandom = { version = "0.2", features = ["js"] }
 ic-canister-macros = { path = "../ic-canister-macros" }
 ic-storage = { path = "../../ic-storage" }
 

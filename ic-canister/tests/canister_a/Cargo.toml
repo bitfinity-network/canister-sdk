@@ -16,5 +16,4 @@ ic-cdk = "0.3"
 ic-cdk-macros = "0.3"
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
-rand = "0.8.5"
 serde = "1.0"

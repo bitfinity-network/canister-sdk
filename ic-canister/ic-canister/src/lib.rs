@@ -385,6 +385,8 @@ use ic_cdk::api::call::{CallResult, RejectionCode};
 use ic_cdk::export::candid::utils::ArgumentDecoder;
 use ic_cdk::export::candid::{CandidType, Deserialize};
 use ic_cdk::export::Principal;
+use rand::distributions::Standard;
+use rand::prelude::Distribution;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -419,6 +421,14 @@ pub trait Canister {
 
 type ResponderFn = dyn Fn(Vec<u8>) -> CallResult<Vec<u8>>;
 type ResponderHashMap = HashMap<(Principal, String), Box<ResponderFn>>;
+
+/// A re-export of [`rand::random`] used in deriving macros.
+pub fn random<T>() -> T
+where
+    Standard: Distribution<T>,
+{
+    rand::random::<T>()
+}
 
 thread_local! {
     static __RESPONDERS: Rc<RefCell<ResponderHashMap>> = Rc::new(RefCell::new(HashMap::new()));

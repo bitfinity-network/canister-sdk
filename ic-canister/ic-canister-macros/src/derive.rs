@@ -137,7 +137,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         #[cfg(not(target_arch = "wasm32"))]
         thread_local! {
             static CANISTERS: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<Principal, #name>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::HashMap::new()));
-            static __NEXT_ID: ::std::sync::atomic::AtomicU64 = rand::random::<u64>().into();
+            static __NEXT_ID: ::std::sync::atomic::AtomicU64 = ic_canister::random::<u64>().into();
         }
 
         #[cfg(not(target_arch = "wasm32"))]
