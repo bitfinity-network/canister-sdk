@@ -193,17 +193,22 @@ fn expand_upgrade_methods(
     };
 
     let (state_get, state_borrow) = (
-        quote! { let #name = #field_type::get(); },
+        quote! { let #name = ::std::rc::Rc::clone(&self. #name); },
         quote! { &* #name.borrow(), },
     );
 
-    let field_assignment = quote! { #field_type::get().replace(#name); };
+    let field_assignment = quote! { self. #name.replace(#name); };
 
     quote! {
         impl #struct_name {
-            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
+            #[cfg(feature = "export_api")]
             #[export_name = "canister_pre_upgrade"]
             fn __pre_upgrade() {
+                let instance = Self::init_instance();
+                instance.__pre_upgrade_inst();
+            }
+
+            fn __pre_upgrade_inst(&self) {
                 use ::ic_storage::IcStorage;
 
                 #state_get
@@ -211,18 +216,25 @@ fn expand_upgrade_methods(
                 ::ic_storage::stable::write(#state_borrow).unwrap();
             }
 
-            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
+            #[cfg(feature = "export_api")]
             #[export_name = "canister_post_upgrade"]
             fn __post_upgrade() {
-                use ::ic_storage::IcStorage;
+                let instance = Self::init_instance();
+                instance.__post_upgrade_inst();
+            }
 
-                let #name = match ::ic_storage::stable::read::<#field_type::Previous>() {
+            fn __post_upgrade_inst(&self) {
+                use ::ic_storage::IcStorage;
+                use ::ic_storage::stable::Versioned;
+
+                let #name = match ::ic_storage::stable::read::<#field_type>() {
                     Ok(val) => val,
-                    Err(e) => ::ic_cdk::trap("failed to upgrade: {}", e),
+                    Err(e) => ::ic_cdk::trap(&format!("failed to upgrade: {}", e)),
                 };
 
                 #field_assignment
             }
+
         }
     }
 }
@@ -240,23 +252,23 @@ fn is_state_field_stable(field: &Field) -> bool {
 
     let meta_list = match meta {
         Some(Meta::List(list)) => list,
-        _ => return false,
+        _ => return true,
     };
 
     // Since there is only going to be one named value in the args
     // it makes sense to look at the next value as the only value:
     let next_named_val = match meta_list.nested.into_iter().next() {
         Some(NestedMeta::Meta(Meta::NameValue(meta))) => meta,
-        Some(_) | None => return false,
+        Some(_) | None => return true,
     };
 
     // Ensure that the path is "stable_store"
     match next_named_val.path.get_ident() {
-        Some(ident) if ident == "stable_store"  => {},
-        Some(_) | None => return false,
+        Some(ident) if ident == "stable_store" => {}
+        Some(_) | None => return true,
     }
 
-    return matches!(next_named_val.lit, Lit::Bool(LitBool { value: true, .. }));
+    return !matches!(next_named_val.lit, Lit::Bool(LitBool { value: false, .. }));
 }
 
 fn is_principal_attr(attribute: &Attribute) -> bool {
