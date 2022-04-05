@@ -17,3 +17,4 @@ serde_json = "1.0"
 sha2 = "0.10"
 ic-types = {git = "https://github.com/flyq/ic"}
 thiserror = "1.0"
+ic-canister = { path = "../ic-canister/ic-canister", package = "ic-canister" }
