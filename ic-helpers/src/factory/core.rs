@@ -9,7 +9,7 @@ use std::future::Future;
 use std::hash::Hash;
 
 /// Represents a state that manages ic-helpers.
-#[derive(CandidType, Clone, Serialize, Deserialize, Default)]
+#[derive(CandidType, Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Factory<K: Hash + Eq> {
     pub canisters: HashMap<K, Canister>,
     pub checksum: Checksum,
