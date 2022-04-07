@@ -7,7 +7,6 @@
 use candid::utils::ArgumentEncoder;
 use candid::{encode_args, CandidType, Nat, Principal};
 use ic_canister::virtual_canister_call;
-use ic_cdk::api;
 use ic_cdk::api::call::RejectionCode;
 use serde::{Deserialize, Serialize};
 use std::convert::{AsRef, From};
@@ -101,9 +100,10 @@ struct ProvisionalTopUpCanisterInput {
 }
 
 impl Canister {
+    #[allow(unused_variables)]
     pub async fn create(
         settings: Option<CanisterSettings>,
-        cycles: u64, // TODO: strange, my analyzer says that this is not used :thinking:
+        cycles: u64,
     ) -> Result<Self, (RejectionCode, String)> {
         virtual_canister_call!(
             Principal::management_canister(),
@@ -118,11 +118,11 @@ impl Canister {
 
     /// A helper method to accept cycles from caller.
     pub fn accept_cycles() -> u64 {
-        let amount = api::call::msg_cycles_available();
+        let amount = ic_kit::ic::msg_cycles_available();
         if amount == 0 {
             return 0;
         }
-        api::call::msg_cycles_accept(amount) // TODO: mock?
+        ic_kit::ic::msg_cycles_accept(amount)
     }
 
     pub async fn provisional_create_with_cycles(
