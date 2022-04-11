@@ -9,6 +9,7 @@ use syn::{
 struct CanisterCall {
     method_call: ExprMethodCall,
     response_type: Type,
+    cycles: Option<Expr>,
 }
 
 impl Parse for CanisterCall {
@@ -16,9 +17,17 @@ impl Parse for CanisterCall {
         let method_call = input.parse()?;
         input.parse::<Token![,]>()?;
         let response_type = input.parse()?;
+        let cycles = if input.peek(Token![,]) {
+            input.parse::<Token![,]>()?;
+            let cycles = input.parse()?;
+            Some(cycles)
+        } else {
+            None
+        };
         Ok(Self {
             method_call,
             response_type,
+            cycles,
         })
     }
 }
@@ -31,11 +40,13 @@ pub(crate) fn canister_call(input: TokenStream) -> TokenStream {
     let method_name = method.to_string();
     let inner_method = Ident::new(&format!("__{method}"), method.span());
     let args = normalize_args(&input.method_call.args);
+    let cycles = input.cycles;
     let cdk_call = get_cdk_call(
         quote! {#canister.principal()},
         &method_name,
         &args,
         &input.response_type,
+        cycles,
     );
 
     let expanded = quote! {
@@ -60,6 +71,7 @@ struct VirtualCanisterCall {
     method_name: LitStr,
     args: ExprTuple,
     response_type: Type,
+    cycles: Option<Expr>,
 }
 
 impl Parse for VirtualCanisterCall {
@@ -75,11 +87,20 @@ impl Parse for VirtualCanisterCall {
         input.parse::<Token![,]>()?;
         let response_type = input.parse()?;
 
+        let cycles = if input.peek(Token![,]) {
+            input.parse::<Token![,]>()?;
+            let cycles = input.parse()?;
+            Some(cycles)
+        } else {
+            None
+        };
+
         Ok(Self {
             principal,
             method_name,
             args,
             response_type,
+            cycles,
         })
     }
 }
@@ -90,8 +111,15 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
     let args = normalize_args(&input.args.elems);
     let method_name = input.method_name.value();
     let response_type = &input.response_type;
+    let cycles = input.cycles;
 
-    let cdk_call = get_cdk_call(quote! {#principal}, &method_name, &args, response_type);
+    let cdk_call = get_cdk_call(
+        quote! {#principal},
+        &method_name,
+        &args,
+        response_type,
+        cycles,
+    );
 
     let is_tuple = matches!(response_type, Type::Tuple(_));
 
@@ -147,12 +175,19 @@ fn get_cdk_call(
     method_name: &str,
     args: &Punctuated<Expr, Token![,]>,
     response_type: &Type,
+    cycles: Option<Expr>,
 ) -> proc_macro2::TokenStream {
     let is_tuple = matches!(response_type, Type::Tuple(_));
 
     if is_tuple {
-        quote! {
-            ::ic_cdk::api::call::call::<_, #response_type>(#principal, #method_name, (#args))
+        if let Some(cycles) = cycles {
+            quote! {
+                ::ic_cdk::api::call::call_with_payment::<_, #response_type>(#principal, #method_name, (#args), #cycles)
+            }
+        } else {
+            quote! {
+                ::ic_cdk::api::call::call::<_, #response_type>(#principal, #method_name, (#args))
+            }
         }
     } else {
         let mut elems = Punctuated::new();
@@ -163,8 +198,18 @@ fn get_cdk_call(
             elems,
         });
 
-        quote! {
-            async {::ic_cdk::api::call::call::<_, #tuple_response_type>(#principal, #method_name, (#args)).await.map(|x| x.0)}
+        if let Some(cycles) = cycles {
+            quote! {
+                async {
+                    ::ic_cdk::api::call::call_with_payment::<_, #tuple_response_type>(#principal, #method_name, (#args), #cycles).await.map(|x| x.0)
+                }
+            }
+        } else {
+            quote! {
+                async {
+                    ::ic_cdk::api::call::call::<_, #tuple_response_type>(#principal, #method_name, (#args)).await.map(|x| x.0)
+                }
+            }
         }
     }
 }

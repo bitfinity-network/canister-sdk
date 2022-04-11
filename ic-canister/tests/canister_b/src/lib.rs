@@ -47,6 +47,7 @@ impl CanisterB {
     }
 
     #[update]
+    #[allow(unused_mut)]
     async fn call_increment(&self, value: u32) -> u32 {
         let mut canister_a = CanisterA::from_principal(self.state.borrow().canister_a);
 

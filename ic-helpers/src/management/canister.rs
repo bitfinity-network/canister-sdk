@@ -6,7 +6,7 @@
 
 use candid::utils::ArgumentEncoder;
 use candid::{encode_args, CandidType, Nat, Principal};
-use ic_cdk::api;
+use ic_canister::virtual_canister_call;
 use ic_cdk::api::call::RejectionCode;
 use serde::{Deserialize, Serialize};
 use std::convert::{AsRef, From};
@@ -100,57 +100,61 @@ struct ProvisionalTopUpCanisterInput {
 }
 
 impl Canister {
+    #[allow(unused_variables)]
     pub async fn create(
         settings: Option<CanisterSettings>,
         cycles: u64,
     ) -> Result<Self, (RejectionCode, String)> {
-        api::call::call_with_payment(
+        virtual_canister_call!(
             Principal::management_canister(),
             "create_canister",
             (CreateCanisterInput { settings },),
-            cycles,
+            CanisterIDArg,
+            cycles
         )
         .await
-        .map(|r: (CanisterIDArg,)| Self(r.0.canister_id))
+        .map(|r| Self(r.canister_id))
     }
 
     /// A helper method to accept cycles from caller.
     pub fn accept_cycles() -> u64 {
-        let amount = api::call::msg_cycles_available();
+        let amount = ic_kit::ic::msg_cycles_available();
         if amount == 0 {
             return 0;
         }
-        api::call::msg_cycles_accept(amount)
+        ic_kit::ic::msg_cycles_accept(amount)
     }
 
     pub async fn provisional_create_with_cycles(
         amount: u64,
         settings: Option<CanisterSettings>,
     ) -> Result<Self, (RejectionCode, String)> {
-        api::call::call_with_payment(
+        virtual_canister_call!(
             Principal::management_canister(),
             "provisional_create_canister_with_cycles",
             (ProvisionalCreateCanisterWithCyclesInput {
                 amount: Some(Nat::from(amount)),
                 settings,
             },),
-            amount,
+            CanisterIDArg,
+            amount
         )
         .await
-        .map(|r: (CanisterIDArg,)| Self(r.0.canister_id))
+        .map(|r| Self(r.canister_id))
     }
 
     pub async fn update_settings(
         &self,
         settings: CanisterSettings,
     ) -> Result<(), (RejectionCode, String)> {
-        api::call::call(
+        virtual_canister_call!(
             Principal::management_canister(),
             "update_settings",
             (UpdateSettingsInput {
                 canister_id: self.0,
                 settings,
             },),
+            ()
         )
         .await
     }
@@ -161,7 +165,7 @@ impl Canister {
         wasm_module: WasmModule,
         arg: T,
     ) -> Result<(), (RejectionCode, String)> {
-        api::call::call(
+        virtual_canister_call!(
             Principal::management_canister(),
             "install_code",
             (InstallCodeInput {
@@ -170,87 +174,92 @@ impl Canister {
                 wasm_module,
                 arg: encode_args(arg).unwrap_or_default(),
             },),
+            ()
         )
         .await
     }
 
     pub async fn uninstall_code(&self) -> Result<(), (RejectionCode, String)> {
-        api::call::call(
+        virtual_canister_call!(
             Principal::management_canister(),
             "uninstall_code",
-            self.as_canister_id_arg(),
+            (self.as_canister_id_arg(),),
+            ()
         )
         .await
     }
 
     pub async fn start(&self) -> Result<(), (RejectionCode, String)> {
-        api::call::call(
+        virtual_canister_call!(
             Principal::management_canister(),
             "start_canister",
-            self.as_canister_id_arg(),
+            (self.as_canister_id_arg(),),
+            ()
         )
         .await
     }
 
     pub async fn stop(&self) -> Result<(), (RejectionCode, String)> {
-        api::call::call(
+        virtual_canister_call!(
             Principal::management_canister(),
             "stop_canister",
-            self.as_canister_id_arg(),
+            (self.as_canister_id_arg(),),
+            ()
         )
         .await
     }
 
     pub async fn status(&self) -> Result<CanisterStatus, (RejectionCode, String)> {
-        api::call::call(
+        virtual_canister_call!(
             Principal::management_canister(),
             "canister_status",
-            self.as_canister_id_arg(),
+            (self.as_canister_id_arg(),),
+            CanisterStatus
         )
         .await
-        .map(|r: (CanisterStatus,)| r.0)
     }
 
     pub async fn delete(&self) -> Result<(), (RejectionCode, String)> {
-        api::call::call(
+        virtual_canister_call!(
             Principal::management_canister(),
             "delete_canister",
-            self.as_canister_id_arg(),
+            (self.as_canister_id_arg(),),
+            ()
         )
         .await
     }
 
     pub async fn deposit_cycles(&self) -> Result<(), (RejectionCode, String)> {
-        api::call::call(
+        virtual_canister_call!(
             Principal::management_canister(),
             "deposit_cycles",
-            self.as_canister_id_arg(),
+            (self.as_canister_id_arg(),),
+            ()
         )
         .await
     }
 
     pub async fn raw_rand(&self) -> Result<Vec<u8>, (RejectionCode, String)> {
-        api::call::call(Principal::management_canister(), "raw_rand", ())
-            .await
-            .map(|r: (Vec<u8>,)| r.0)
+        virtual_canister_call!(Principal::management_canister(), "raw_rand", (), Vec<u8>).await
     }
 
     pub async fn provisional_top_up(&self, amount: Nat) -> Result<(), (RejectionCode, String)> {
-        api::call::call(
+        virtual_canister_call!(
             Principal::management_canister(),
             "provisional_top_up_canister",
             (ProvisionalTopUpCanisterInput {
                 canister_id: self.0,
                 amount,
             },),
+            ()
         )
         .await
     }
 
-    fn as_canister_id_arg(&self) -> (CanisterIDArg,) {
-        (CanisterIDArg {
+    fn as_canister_id_arg(&self) -> CanisterIDArg {
+        CanisterIDArg {
             canister_id: self.0,
-        },)
+        }
     }
 }
 

@@ -160,7 +160,7 @@ async fn consume_provided_cycles_or_icp(
     icp_fee: u64,
     controller: Principal,
 ) -> Result<u64, FactoryError> {
-    if ic_cdk::api::call::msg_cycles_available() > 0 {
+    if ic_kit::ic::msg_cycles_available() > 0 {
         consume_message_cycles()
     } else {
         if caller != controller {
@@ -172,12 +172,12 @@ async fn consume_provided_cycles_or_icp(
 }
 
 fn consume_message_cycles() -> Result<u64, FactoryError> {
-    let amount = ic_cdk::api::call::msg_cycles_available();
+    let amount = ic_kit::ic::msg_cycles_available();
     if amount < MIN_CANISTER_CYCLES {
         return Err(FactoryError::NotEnoughCycles(amount, MIN_CANISTER_CYCLES));
     }
 
-    Ok(ic_cdk::api::call::msg_cycles_accept(amount))
+    Ok(ic_kit::ic::msg_cycles_accept(amount))
 }
 
 async fn consume_provided_icp(

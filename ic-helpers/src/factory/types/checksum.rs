@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 pub type Version = usize;
 
 /// Represents a hashed checksum to compare versions of wasm modules
-#[derive(CandidType, Clone, Serialize, Deserialize, Default, Eq)]
+#[derive(CandidType, Debug, Clone, Serialize, Deserialize, Default, Eq)]
 pub struct Checksum {
     pub version: Version,
     hash: Vec<u8>,

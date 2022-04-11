@@ -7,7 +7,7 @@ use ic_cdk::api::call::CallResult;
 use serde::{Deserialize, Serialize};
 
 /// Represents information of a canister.
-#[derive(CandidType, Clone, Serialize, Deserialize)]
+#[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct Canister(Principal, Version);
 
 impl Canister {
