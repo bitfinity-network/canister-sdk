@@ -9,6 +9,7 @@ use syn::{
 struct CanisterCall {
     method_call: ExprMethodCall,
     response_type: Type,
+    cycles: Option<Expr>,
 }
 
 impl Parse for CanisterCall {
@@ -16,9 +17,17 @@ impl Parse for CanisterCall {
         let method_call = input.parse()?;
         input.parse::<Token![,]>()?;
         let response_type = input.parse()?;
+        let cycles = if input.peek(Token![,]) {
+            input.parse::<Token![,]>()?;
+            let cycles = input.parse()?;
+            Some(cycles)
+        } else {
+            None
+        };
         Ok(Self {
             method_call,
             response_type,
+            cycles,
         })
     }
 }
@@ -31,12 +40,13 @@ pub(crate) fn canister_call(input: TokenStream) -> TokenStream {
     let method_name = method.to_string();
     let inner_method = Ident::new(&format!("__{method}"), method.span());
     let args = normalize_args(&input.method_call.args);
+    let cycles = input.cycles;
     let cdk_call = get_cdk_call(
         quote! {#canister.principal()},
         &method_name,
         &args,
         &input.response_type,
-        None,
+        cycles,
     );
 
     let expanded = quote! {
