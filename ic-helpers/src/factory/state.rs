@@ -23,11 +23,11 @@ macro_rules! impl_factory_state_management {
     ( $state:ident, $bytecode:expr ) => {
         impl $state {
             pub fn stable_save(&self) {
-                ::ic_cdk::storage::stable_save((self,)).unwrap();
+                ::ic_kit::ic::stable_store((self,)).unwrap();
             }
 
             pub fn stable_restore() {
-                let (mut loaded,): (Self,) = ::ic_cdk::storage::stable_restore().unwrap();
+                let (mut loaded,): (Self,) = ::ic_kit::ic::stable_restore().unwrap();
                 loaded.factory.restore($bytecode);
                 loaded.reset();
             }
@@ -135,7 +135,7 @@ pub trait FactoryState<K: Hash + Eq> {
     }
 
     fn check_controller_access(&self) -> Result<(), FactoryError> {
-        let caller = ic_cdk::caller();
+        let caller = ic_kit::ic::caller();
         if caller == self.controller() {
             Ok(())
         } else {
@@ -188,7 +188,7 @@ async fn consume_provided_icp(
 ) -> Result<(), FactoryError> {
     let balance = ledger
         .get_balance(
-            ic_cdk::api::id(),
+            ic_kit::ic::id(),
             Some(Subaccount::from(&PrincipalId::from(caller))),
         )
         .await
