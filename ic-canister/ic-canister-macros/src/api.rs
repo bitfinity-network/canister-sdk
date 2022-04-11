@@ -133,6 +133,7 @@ pub(crate) fn api_method(
         }
 
         #[cfg(not(target_arch = "wasm32"))]
+        #[allow(unused_mut)]
         pub async fn #internal_method(#args) -> ::ic_cdk::api::call::CallResult<#inner_return_type> {
             // todo: trap handler
             Ok(self. #method(#args_destr) #await_call)
