@@ -22,14 +22,21 @@ use std::pin::Pin;
 macro_rules! impl_factory_state_management {
     ( $state:ident, $bytecode:expr ) => {
         impl $state {
-            pub fn stable_save(&self) {
-                ::ic_kit::ic::stable_store((self,)).unwrap();
+            pub fn stable_save(&self) -> Result<(), ::ic_helpers::factory::error::FactoryError> {
+                ::ic_kit::ic::stable_store((self,)).map_err(|e| {
+                    use ::ic_helpers::factory::error::FactoryError;
+                    FactoryError::StableStorageError(format!("{}", e))
+                })
             }
 
-            pub fn stable_restore() {
-                let (mut loaded,): (Self,) = ::ic_kit::ic::stable_restore().unwrap();
+            pub fn stable_restore() -> Result<(), ::ic_helpers::factory::error::FactoryError> {
+                let (mut loaded,): (Self,) = ::ic_kit::ic::stable_restore().map_err(|e| {
+                    use ::ic_helpers::factory::error::FactoryError;
+                    FactoryError::StableStorageError(format!("{}", e))
+                })?;
                 loaded.factory.restore($bytecode);
                 loaded.reset();
+                Ok(())
             }
 
             pub fn reset(self) {

@@ -6,6 +6,9 @@ pub enum FactoryError {
     #[error("request to the ledger failed: {0}")]
     LedgerError(String),
 
+    #[error("stable storage error: {0}")]
+    StableStorageError(String),
+
     #[error("not enough cycles provided to create a canister. Provided: {0}. Required: {1}")]
     NotEnoughCycles(u64, u64),
 
