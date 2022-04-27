@@ -179,7 +179,7 @@ impl LedgerPrincipalExt for Principal {
     ) -> Result<u64, String> {
         if amount < DEFAULT_TRANSFER_FEE.get_e8s() {
             return Err(format!(
-                "cannot transfer tokens: amount '{}' is smaller then the fee '{}'",
+                "cannot transfer tokens: amount '{}' is less then the fee '{}'",
                 amount,
                 DEFAULT_TRANSFER_FEE.get_e8s()
             ));
