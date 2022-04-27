@@ -4,9 +4,9 @@ name = "ic-helpers"
 version = "0.2.1"
 
 [dependencies]
-dfn_core = {git = "https://github.com/infinity-swap/ic"}
-dfn_protobuf = {git = "https://github.com/infinity-swap/ic"}
-ledger-canister = {git = "https://github.com/infinity-swap/ic"}
+dfn_core = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-02-17"}
+dfn_protobuf = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-02-17"}
+ledger-canister = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-02-17"}
 async-trait = "0.1"
 hex = "0.4"
 candid = "0.7"

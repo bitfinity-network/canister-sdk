@@ -15,8 +15,15 @@ struct CanisterCall {
 impl Parse for CanisterCall {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let method_call = input.parse()?;
-        input.parse::<Token![,]>()?;
-        let response_type = input.parse()?;
+        input.parse::<Token![,]>().map_err(|e| {
+            syn::Error::new(
+                e.span(),
+                "second parameter is missing, expecting the method return type",
+            )
+        })?;
+        let response_type = input
+            .parse()
+            .map_err(|e| syn::Error::new(e.span(), "failed to parse method response type"))?;
         let cycles = if input.peek(Token![,]) {
             input.parse::<Token![,]>()?;
             let cycles = input.parse()?;

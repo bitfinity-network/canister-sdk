@@ -1,14 +1,14 @@
 use crate::ledger::account_id::FromPrincipal;
 use async_trait::async_trait;
-use dfn_core::api::call_with_cleanup;
+use dfn_core::api::{call_with_cleanup, PrincipalId};
+use dfn_core::CanisterId;
 use dfn_protobuf::protobuf;
 use ic_cdk::export::candid::{CandidType, Principal};
-use ic_types::{CanisterId, PrincipalId};
 use ledger_canister::{
     account_identifier::{AccountIdentifier, Subaccount},
     tokens::Tokens,
     BinaryAccountBalanceArgs, BlockHeight, BlockRes, Memo, Operation as Operate, SendArgs,
-    TransferArgs, TransferError, TRANSACTION_FEE,
+    TransferArgs, TransferError, DEFAULT_TRANSFER_FEE,
 };
 
 #[derive(CandidType, Debug, PartialEq)]
@@ -177,18 +177,18 @@ impl LedgerPrincipalExt for Principal {
         from_subaccount: Option<Subaccount>,
         to_subaccount: Option<Subaccount>,
     ) -> Result<u64, String> {
-        if amount < TRANSACTION_FEE.get_e8s() {
+        if amount < DEFAULT_TRANSFER_FEE.get_e8s() {
             return Err(format!(
                 "cannot transfer tokens: amount '{}' is smaller then the fee '{}'",
                 amount,
-                TRANSACTION_FEE.get_e8s()
+                DEFAULT_TRANSFER_FEE.get_e8s()
             ));
         }
 
         let args = TransferArgs {
             memo: Default::default(),
-            amount: (Tokens::from_e8s(amount) - TRANSACTION_FEE)?,
-            fee: TRANSACTION_FEE,
+            amount: (Tokens::from_e8s(amount) - DEFAULT_TRANSFER_FEE)?,
+            fee: DEFAULT_TRANSFER_FEE,
             from_subaccount,
             to: AccountIdentifier::from_principal(to, to_subaccount).to_address(),
             created_at_time: None,
