@@ -3,6 +3,9 @@ pub mod factory;
 pub mod management {
     mod canister;
     pub use self::canister::*;
+
+    mod types;
+    pub use self::types::*;
 }
 
 pub mod is20 {
