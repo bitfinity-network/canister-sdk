@@ -7,6 +7,8 @@ use num_traits::cast::ToPrimitive;
 use serde::Deserialize;
 use std::convert::From;
 
+use super::TxError;
+
 #[derive(CandidType, Deserialize, Debug)]
 pub struct Amount(u128);
 
@@ -14,18 +16,6 @@ impl From<Amount> for u128 {
     fn from(src: Amount) -> Self {
         src.0
     }
-}
-
-#[derive(CandidType, Debug, Eq, PartialEq, Deserialize)]
-enum TxError {
-    InsufficientBalance,
-    InsufficientAllowance,
-    Unauthorized,
-    AmountTooSmall,
-    FeeExceededLimit,
-    NotificationFailed,
-    AlreadyNotified,
-    TransactionDoesNotExist,
 }
 
 #[async_trait]

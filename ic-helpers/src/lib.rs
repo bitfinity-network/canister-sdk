@@ -11,6 +11,9 @@ pub mod management {
 pub mod is20 {
     mod principal_ext;
     pub use self::principal_ext::*;
+
+    mod types;
+    pub use self::types::*;
 }
 
 pub mod ledger {
