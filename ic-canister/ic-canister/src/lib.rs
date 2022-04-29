@@ -452,9 +452,7 @@ pub fn call_virtual_responder(
             None => Err((
                 RejectionCode::Unknown,
                 format!(
-                    "canister method {} is not registered for principal {}, METHODS: {:?}",
-                    method_name,
-                    principal,
+                    "canister method {method_name} is not registered for principal {principal}, METHODS: {:?}",
                     responders
                         .borrow()
                         .keys()
