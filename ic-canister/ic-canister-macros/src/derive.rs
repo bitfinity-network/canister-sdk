@@ -152,7 +152,8 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         impl #trait_name for #name {
             #[cfg(target_arch = "wasm32")]
             fn init_instance() -> Self {
-                Self { #principal_field : ::ic_cdk::export::Principal::anonymous() #state_fields_wasm #default_fields }
+                let principal = ::ic_cdk::api::id();
+                Self { #principal_field : principal #state_fields_wasm #default_fields }
             }
 
             #[cfg(not(target_arch = "wasm32"))]

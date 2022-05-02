@@ -1,9 +1,9 @@
 use crate::factory::error::FactoryError;
 use crate::factory::Factory;
 use crate::ledger::LedgerPrincipalExt;
+use dfn_core::api::PrincipalId;
 use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_types::PrincipalId;
-use ledger_canister::{Subaccount, TRANSACTION_FEE};
+use ledger_canister::{Subaccount, DEFAULT_TRANSFER_FEE};
 use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
@@ -151,10 +151,10 @@ async fn consume_provided_icp(
         .await
         .map_err(FactoryError::LedgerError)?;
 
-    if balance < icp_fee + TRANSACTION_FEE.get_e8s() {
+    if balance < icp_fee + DEFAULT_TRANSFER_FEE.get_e8s() {
         return Err(FactoryError::NotEnoughIcp(
             balance,
-            icp_fee + TRANSACTION_FEE.get_e8s(),
+            icp_fee + DEFAULT_TRANSFER_FEE.get_e8s(),
         ));
     }
 
