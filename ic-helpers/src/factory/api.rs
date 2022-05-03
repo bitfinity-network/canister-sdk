@@ -2,8 +2,8 @@
 /// * $state type must implement `ic_helpers::factory::FactoryState` and `ic_storage::IcStorage`
 ///   traits, and this traits must be in the scope of the macro invocation
 /// * the calling create must have `ic_cdk` create in the dependencies
-/// * the calling crate must have `ic_types` and `ledger_canister` crates in the dependencies. This
-///   crates are found in the `dfinity/ic` repo.
+/// * the calling crate must have `dfn-core` and `ledger-canister` crates in the dependencies. This
+///   crates are found in the `infinity-swap/ic` repo.
 /// * these types must be in scope of the macro invocation: `candid::{Nat, Principal, candid_type}`,
 ///   `ic_cdk_macros::{query, update}`. (Unfortunately, if we redo these imports inside the macro,
 ///   `candid_type` functionality does not work properly, so these imports must be taken care
@@ -153,9 +153,9 @@ macro_rules! init_factory_api {
         #[update]
         #[candid_method(update)]
         pub async fn refund_icp() -> ::std::result::Result<u64, FactoryError> {
+            use ::dfn_core::api::PrincipalId;
             use ::ic_helpers::ledger::LedgerPrincipalExt;
-            use ::ic_types::PrincipalId;
-            use ::ledger_canister::{Subaccount, TRANSACTION_FEE};
+            use ::ledger_canister::{Subaccount, DEFAULT_TRANSFER_FEE};
 
             let caller = ::ic_cdk::caller();
             let ledger = $state::get().borrow().ledger_principal();
@@ -167,7 +167,7 @@ macro_rules! init_factory_api {
                 .await
                 .map_err(|e| FactoryError::LedgerError(e))?;
 
-            if balance < TRANSACTION_FEE.get_e8s() {
+            if balance < DEFAULT_TRANSFER_FEE.get_e8s() {
                 // Nothing to refund
                 return Ok(0);
             }
@@ -201,8 +201,8 @@ macro_rules! init_factory_api {
         #[query]
         #[candid_method(query)]
         fn get_ledger_account_id() -> String {
+            use ::dfn_core::api::PrincipalId;
             use ::ic_helpers::ledger::FromPrincipal;
-            use ::ic_types::PrincipalId;
             use ::ledger_canister::{account_identifier::AccountIdentifier, Subaccount};
 
             let factory_id = ::ic_cdk::api::id();
@@ -351,9 +351,9 @@ macro_rules! extend_with_factory_api {
             /// not used ICP minus transaction fee.
             #[update]
             async fn refund_icp(&self) -> ::std::result::Result<u64, FactoryError> {
+                use ::dfn_core::api::PrincipalId;
                 use ::ic_helpers::ledger::LedgerPrincipalExt;
-                use ::ic_types::PrincipalId;
-                use ::ledger_canister::{Subaccount, TRANSACTION_FEE};
+                use ::ledger_canister::{Subaccount, DEFAULT_TRANSFER_FEE};
 
                 let caller = ::ic_cdk::caller();
                 let ledger = self.$state.borrow().ledger_principal();
@@ -365,7 +365,7 @@ macro_rules! extend_with_factory_api {
                     .await
                     .map_err(|e| FactoryError::LedgerError(e))?;
 
-                if balance < TRANSACTION_FEE.get_e8s() {
+                if balance < DEFAULT_TRANSFER_FEE.get_e8s() {
                     // Nothing to refund
                     return Ok(0);
                 }
@@ -399,8 +399,8 @@ macro_rules! extend_with_factory_api {
             /// Returns the AccountIdentifier for the caller subaccount in the factory account.
             #[query]
             fn get_ledger_account_id(&self) -> String {
+                use ::dfn_core::api::PrincipalId;
                 use ::ic_helpers::ledger::FromPrincipal;
-                use ::ic_types::PrincipalId;
                 use ::ledger_canister::{account_identifier::AccountIdentifier, Subaccount};
 
                 let factory_id = ::ic_cdk::api::id();
