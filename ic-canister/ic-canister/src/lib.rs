@@ -108,7 +108,7 @@
 //!
 //! # API
 //!
-//! The API of the canister can be declared using `#[query]` and `#[update]` macros. To prevent
+//! The API of the caniester can be declared using `#[query]` and `#[update]` macros. To prevent
 //! incorrect invocation of API methods, the macros do not allow the API methods to be public. All
 //! the arguments and output types must implement `CandidType` trait.
 //!

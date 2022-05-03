@@ -3,11 +3,12 @@ use crate::factory::Factory;
 use crate::ledger::LedgerPrincipalExt;
 use dfn_core::api::PrincipalId;
 use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ledger_canister::{Subaccount, DEFAULT_TRANSFER_FEE};
+use ledger_canister::{account_identifier::Subaccount, DEFAULT_TRANSFER_FEE};
+
 use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
-
+q
 #[derive(Debug, CandidType, Deserialize)]
 pub struct FactoryConfiguration {
     ledger_principal: Principal,

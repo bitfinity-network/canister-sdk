@@ -155,7 +155,8 @@ macro_rules! init_factory_api {
         pub async fn refund_icp() -> ::std::result::Result<u64, FactoryError> {
             use ::dfn_core::api::PrincipalId;
             use ::ic_helpers::ledger::LedgerPrincipalExt;
-            use ::ledger_canister::{Subaccount, DEFAULT_TRANSFER_FEE};
+            use ::ledger_canister::{account_identifier::Subaccount, DEFAULT_TRANSFER_FEE};
+
 
             let caller = ::ic_cdk::caller();
             let ledger = $state::get().borrow().ledger_principal();
@@ -203,7 +204,7 @@ macro_rules! init_factory_api {
         fn get_ledger_account_id() -> String {
             use ::dfn_core::api::PrincipalId;
             use ::ic_helpers::ledger::FromPrincipal;
-            use ::ledger_canister::{account_identifier::AccountIdentifier, Subaccount};
+            use ::ledger_canister::account_identifier::{AccountIdentifier, Subaccount};
 
             let factory_id = ::ic_cdk::api::id();
             let caller = ::ic_cdk::api::caller();
@@ -353,7 +354,7 @@ macro_rules! extend_with_factory_api {
             async fn refund_icp(&self) -> ::std::result::Result<u64, FactoryError> {
                 use ::dfn_core::api::PrincipalId;
                 use ::ic_helpers::ledger::LedgerPrincipalExt;
-                use ::ledger_canister::{Subaccount, DEFAULT_TRANSFER_FEE};
+                use ::ledger_canister::{account_identifier::Subaccount, DEFAULT_TRANSFER_FEE};
 
                 let caller = ::ic_cdk::caller();
                 let ledger = self.$state.borrow().ledger_principal();
@@ -401,7 +402,7 @@ macro_rules! extend_with_factory_api {
             fn get_ledger_account_id(&self) -> String {
                 use ::dfn_core::api::PrincipalId;
                 use ::ic_helpers::ledger::FromPrincipal;
-                use ::ledger_canister::{account_identifier::AccountIdentifier, Subaccount};
+                use ::ledger_canister::account_identifier::{AccountIdentifier, Subaccount};
 
                 let factory_id = ::ic_cdk::api::id();
                 let caller = ::ic_cdk::api::caller();
