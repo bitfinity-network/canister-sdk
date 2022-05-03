@@ -8,7 +8,7 @@ use ledger_canister::{account_identifier::Subaccount, DEFAULT_TRANSFER_FEE};
 use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
-q
+
 #[derive(Debug, CandidType, Deserialize)]
 pub struct FactoryConfiguration {
     ledger_principal: Principal,
