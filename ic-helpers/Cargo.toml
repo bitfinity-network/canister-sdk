@@ -16,6 +16,7 @@ num-traits = "0.2"
 serde = "1.0"
 serde_json = "1.0"
 sha2 = "0.10"
-ic-types = {git = "https://github.com/infinity-swap/ic"}
+ic-types = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-02-17"}
+ic-ic00-types = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-02-17"} 
 thiserror = "1.0"
 ic-canister = { path = "../ic-canister/ic-canister", package = "ic-canister" }

@@ -3,11 +3,10 @@ use async_trait::async_trait;
 use candid::{encode_args, CandidType, Nat, Principal};
 use ic_cdk::api;
 use ic_cdk::api::call::CallResult;
+use ledger_canister::TransferError;
 use num_traits::cast::ToPrimitive;
 use serde::Deserialize;
 use std::convert::From;
-
-use super::TxError;
 
 #[derive(CandidType, Deserialize, Debug)]
 pub struct Amount(u128);
@@ -62,8 +61,8 @@ impl IS20PrincipalExt for Principal {
             .unwrap_or_default()
     }
 
-    async fn transfer(&self, to: Self, amount: Nat) -> Result<u128, String> {
-        api::call::call::<_, (Result<Nat, TxError>,)>(*self, "transfer", (to, amount))
+    async fn transfer(&self, to: Self, amount: u128) -> Result<u128, String> {
+        api::call::call::<_, (Result<Nat, TransferError>,)>(*self, "transfer", (to, amount))
             .await
             .map_err(|e| format!("{:?}", e))?
             .0
@@ -71,13 +70,17 @@ impl IS20PrincipalExt for Principal {
             .map_err(|e| format!("{:?}", e))
     }
 
-    async fn transfer_include_fee(&self, to: Self, amount: Nat) -> Result<u128, String> {
-        api::call::call::<_, (Result<Nat, TxError>,)>(*self, "transferIncludeFee", (to, amount))
-            .await
-            .map_err(|e| format!("{:?}", e))?
-            .0
-            .map(|v| v.0.to_u128().unwrap())
-            .map_err(|e| format!("{:?}", e))
+    async fn transfer_include_fee(&self, to: Self, amount: u128) -> Result<u128, String> {
+        api::call::call::<_, (Result<Nat, TransferError>,)>(
+            *self,
+            "transferIncludeFee",
+            (to, amount),
+        )
+        .await
+        .map_err(|e| format!("{:?}", e))?
+        .0
+        .map(|v| v.0.to_u128().unwrap())
+        .map_err(|e| format!("{:?}", e))
     }
 
     async fn transfer_from(
@@ -86,12 +89,16 @@ impl IS20PrincipalExt for Principal {
         to: Principal,
         amount: Nat,
     ) -> Result<u128, String> {
-        api::call::call::<_, (Result<Nat, TxError>,)>(*self, "transferFrom", (from, to, amount))
-            .await
-            .map_err(|e| format!("{:?}", e))?
-            .0
-            .map(|v| v.0.to_u128().unwrap())
-            .map_err(|e| format!("{:?}", e))
+        api::call::call::<_, (Result<Nat, TransferError>,)>(
+            *self,
+            "transferFrom",
+            (from, to, amount),
+        )
+        .await
+        .map_err(|e| format!("{:?}", e))?
+        .0
+        .map(|v| v.0.to_u128().unwrap())
+        .map_err(|e| format!("{:?}", e))
     }
 
     async fn mint(&self, to: Principal, amount: Nat) -> u128 {

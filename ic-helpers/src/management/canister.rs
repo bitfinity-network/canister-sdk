@@ -11,7 +11,7 @@ use ic_cdk::api::call::RejectionCode;
 use serde::{Deserialize, Serialize};
 use std::convert::{AsRef, From};
 
-use super::types::*;
+use crate::Pubkey;
 
 pub type CanisterID = Principal;
 pub type UserID = Principal;
@@ -158,10 +158,10 @@ impl Canister {
             Principal::management_canister(),
             "get_ecdsa_public_key",
             (request,),
-            GetECDSAPublicKeyResponse
+            ECDSAPublicKeyResponse
         )
         .await
-        .map(|bytes| Pubkey::new(bytes.public_key))
+        .map(|res| Pubkey::new(res.public_key))
     }
 
     pub async fn sign_with_ecdsa(
@@ -169,6 +169,8 @@ impl Canister {
         derivation_path: Vec<Vec<u8>>,
     ) -> Result<SignWithECDSAReply, (RejectionCode, String)> {
         let request = SignWithECDSAArgs {
+    ) -> Result<ic_ic00_types::SignWithECDSAReply, (RejectionCode, String)> {
+        let request = ic_ic00_types::SignWithECDSAArgs {
             key_id: "secp256k1".into(),
             message_hash: hash,
             derivation_path,
@@ -177,7 +179,7 @@ impl Canister {
             Principal::management_canister(),
             "sign_with_ecdsa",
             (request,),
-            SignWithECDSAReply
+            ic_ic00_types::SignWithECDSAReply
         )
         .await
     }
