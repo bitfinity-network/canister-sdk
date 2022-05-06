@@ -147,10 +147,11 @@ impl Canister {
 
     pub async fn get_ecdsa_pubkey(
         principal: Option<Principal>,
+        derivation_path: Vec<Vec<u8>>,
     ) -> Result<Pubkey, (RejectionCode, String)> {
         let request = GetECDSAPublicKeyArgs {
             canister_id: principal,
-            derivation_path: vec![],
+            derivation_path,
             key_id: "secp256k1".to_string(),
         };
         virtual_canister_call!(
@@ -165,11 +166,12 @@ impl Canister {
 
     pub async fn sign_with_ecdsa(
         hash: Vec<u8>,
+        derivation_path: Vec<Vec<u8>>,
     ) -> Result<SignWithECDSAReply, (RejectionCode, String)> {
         let request = SignWithECDSAArgs {
             key_id: "secp256k1".into(),
             message_hash: hash,
-            derivation_path: vec![],
+            derivation_path,
         };
         virtual_canister_call!(
             Principal::management_canister(),
