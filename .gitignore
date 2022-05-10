@@ -1,12 +1,7 @@
 .idea
 .dfx
 target
-
-Cargo.lock
-
-# Added by cargo
-#
-# already existing elements were commented out
+/.vscode
 
 /target
-#Cargo.lock
+Cargo.lock
