@@ -4,11 +4,17 @@
 //!
 //! [`The IC Management Canister`]: https://sdk.dfinity.org/docs/interface-spec/index.html#ic-management-canister
 
+use crate::agent::request_id::to_request_id;
+use crate::agent::{construct_message, read_state_content, update_content, Envelope};
+use candid::types::ic_types::hash_tree::Label;
 use candid::utils::ArgumentEncoder;
 use candid::{encode_args, CandidType, Nat, Principal};
+use dfn_core::CanisterId;
 use ic_canister::virtual_canister_call;
 use ic_cdk::api::call::RejectionCode;
+use ic_ic00_types::{ECDSAPublicKeyArgs, ECDSAPublicKeyResponse, SignWithECDSAReply};
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use std::convert::{AsRef, From};
 
 use crate::Pubkey;
@@ -146,11 +152,11 @@ impl Canister {
     }
 
     pub async fn get_ecdsa_pubkey(
-        principal: Option<Principal>,
+        canister_id: Option<CanisterId>,
         derivation_path: Vec<Vec<u8>>,
     ) -> Result<Pubkey, (RejectionCode, String)> {
-        let request = GetECDSAPublicKeyArgs {
-            canister_id: principal,
+        let request = ECDSAPublicKeyArgs {
+            canister_id,
             derivation_path,
             key_id: "secp256k1".to_string(),
         };
@@ -168,8 +174,6 @@ impl Canister {
         hash: Vec<u8>,
         derivation_path: Vec<Vec<u8>>,
     ) -> Result<SignWithECDSAReply, (RejectionCode, String)> {
-        let request = SignWithECDSAArgs {
-    ) -> Result<ic_ic00_types::SignWithECDSAReply, (RejectionCode, String)> {
         let request = ic_ic00_types::SignWithECDSAArgs {
             key_id: "secp256k1".into(),
             message_hash: hash,
@@ -182,6 +186,77 @@ impl Canister {
             ic_ic00_types::SignWithECDSAReply
         )
         .await
+    }
+
+    pub async fn sign_canister_request(
+        canister: Principal,
+        method_name: &str,
+        pk: &Pubkey,
+    ) -> Result<CallSignature, String> {
+        let sender = Principal::self_authenticating(pk.as_bytes());
+        let args = encode_args(()).expect("never fails");
+        let ingress_expiry_sec = ic_cdk::api::time() / 1_000_000_000 + 5 * 60;
+        let ingress_expiry_nano = ingress_expiry_sec * 1_000_000_000;
+        let request = update_content(
+            sender,
+            &canister,
+            &method_name,
+            &args,
+            ingress_expiry_nano.to_le_bytes().to_vec(), // nonce
+            ingress_expiry_nano,
+        );
+
+        let request_id = to_request_id(&request).expect("request id err");
+        let msg = construct_message(&request_id);
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(&msg);
+
+        let res = Self::sign_with_ecdsa(hasher.finalize().to_vec(), vec![])
+            .await
+            .map_err(|(_, err)| err)?;
+
+        let envelope = Envelope {
+            content: request,
+            sender_pubkey: Some(pk.as_bytes().to_vec()),
+            sender_sig: Some(res.signature),
+        };
+
+        let mut serialized_bytes = Vec::new();
+        let mut serializer = serde_cbor::Serializer::new(&mut serialized_bytes);
+        serializer.self_describe().expect("ser err");
+        envelope.serialize(&mut serializer).expect("serialize err");
+        let content = serialized_bytes;
+
+        let paths: Vec<Vec<Label>> =
+            vec![vec!["request_status".into(), request_id.as_slice().into()]];
+        let request_new = read_state_content(sender, paths, ingress_expiry_nano);
+        let request_id_new = to_request_id(&request_new).expect("request id error");
+        let msg = construct_message(&request_id_new);
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(&msg);
+
+        let res = Self::sign_with_ecdsa(hasher.finalize().to_vec(), vec![])
+            .await
+            .map_err(|(_, err)| err)?;
+
+        let envelope = Envelope {
+            content: request_new,
+            sender_pubkey: Some(pk.as_bytes().to_vec()),
+            sender_sig: Some(res.signature),
+        };
+        let mut serialized_bytes = Vec::new();
+        let mut serializer = serde_cbor::Serializer::new(&mut serialized_bytes);
+        serializer.self_describe().expect("ser err");
+        envelope.serialize(&mut serializer).expect("serialize err");
+        let status_request_content = serialized_bytes;
+
+        Ok(CallSignature {
+            sender,
+            recipient: canister,
+            request_id: request_id.to_vec(),
+            content: content.to_vec(),
+            status_request_content,
+        })
     }
 
     pub async fn update_settings(
@@ -320,4 +395,13 @@ impl From<CanisterID> for Canister {
     fn from(id: CanisterID) -> Self {
         Self(id)
     }
+}
+
+#[derive(CandidType, Serialize, Debug)]
+pub struct CallSignature {
+    pub sender: Principal,
+    pub recipient: Principal,
+    pub request_id: Vec<u8>,
+    pub content: Vec<u8>,
+    pub status_request_content: Vec<u8>,
 }
