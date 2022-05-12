@@ -13,6 +13,10 @@ use dfn_core::CanisterId;
 use ic_canister::virtual_canister_call;
 use ic_cdk::api::call::RejectionCode;
 use ic_ic00_types::{ECDSAPublicKeyArgs, ECDSAPublicKeyResponse, SignWithECDSAReply};
+use k256::elliptic_curve::AlgorithmParameters;
+use k256::pkcs8::{PublicKeyDocument, SubjectPublicKeyInfo};
+use k256::Secp256k1;
+use libsecp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::convert::{AsRef, From};
@@ -188,13 +192,19 @@ impl Canister {
         .await
     }
 
-    pub async fn sign_canister_request(
+    pub async fn sign_canister_request<T>(
         canister: Principal,
         method_name: &str,
+        args: T,
         pk: &Pubkey,
-    ) -> Result<CallSignature, String> {
-        let sender = Principal::self_authenticating(pk.as_bytes());
-        let args = encode_args(()).expect("never fails");
+    ) -> Result<CallSignature, String>
+    where
+        T: ArgumentEncoder,
+    {
+        let der_pubkey = der_encode_pub_key(pk);
+
+        let sender = Principal::self_authenticating(&der_pubkey);
+        let args = encode_args(args).map_err(|err| format!("{err:?}"))?;
         let ingress_expiry_sec = ic_cdk::api::time() / 1_000_000_000 + 5 * 60;
         let ingress_expiry_nano = ingress_expiry_sec * 1_000_000_000;
         let request = update_content(
@@ -217,7 +227,7 @@ impl Canister {
 
         let envelope = Envelope {
             content: request,
-            sender_pubkey: Some(pk.as_bytes().to_vec()),
+            sender_pubkey: Some(der_pubkey.clone()),
             sender_sig: Some(res.signature),
         };
 
@@ -241,7 +251,7 @@ impl Canister {
 
         let envelope = Envelope {
             content: request_new,
-            sender_pubkey: Some(pk.as_bytes().to_vec()),
+            sender_pubkey: Some(der_pubkey),
             sender_sig: Some(res.signature),
         };
         let mut serialized_bytes = Vec::new();
@@ -397,11 +407,44 @@ impl From<CanisterID> for Canister {
     }
 }
 
-#[derive(CandidType, Serialize, Debug)]
+#[derive(CandidType, Serialize, Deserialize, Debug)]
 pub struct CallSignature {
     pub sender: Principal,
     pub recipient: Principal,
     pub request_id: Vec<u8>,
     pub content: Vec<u8>,
     pub status_request_content: Vec<u8>,
+}
+
+pub fn der_encode_pub_key(pk: &Pubkey) -> Vec<u8> {
+    let pubkey = PublicKey::parse_slice(pk.as_bytes(), None).expect("not a valid public key");
+    let pubkey_bytes_uncompress = pubkey.serialize();
+    let der_encoded_public_key: PublicKeyDocument = SubjectPublicKeyInfo {
+        algorithm: Secp256k1::algorithm_identifier(),
+        subject_public_key: &pubkey_bytes_uncompress,
+    }
+    .try_into()
+    .expect("not a valid PublicKeyDocument");
+
+    der_encoded_public_key.as_ref().into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn der_encode() {
+        let input = "03981eff1934f035cce8df1a7182793fba2b9a5e96cfc423ca102902b60257c8fb";
+        let bytes = hex::decode(input).unwrap();
+
+        let expected = vec![
+            48, 86, 48, 16, 6, 7, 42, 134, 72, 206, 61, 2, 1, 6, 5, 43, 129, 4, 0, 10, 3, 66, 0, 4,
+            152, 30, 255, 25, 52, 240, 53, 204, 232, 223, 26, 113, 130, 121, 63, 186, 43, 154, 94,
+            150, 207, 196, 35, 202, 16, 41, 2, 182, 2, 87, 200, 251, 208, 26, 138, 21, 221, 251,
+            147, 43, 144, 216, 172, 31, 217, 124, 69, 205, 161, 89, 36, 6, 89, 203, 231, 134, 226,
+            90, 62, 168, 242, 100, 183, 137,
+        ];
+        assert_eq!(der_encode_pub_key(&Pubkey::new(bytes)), expected);
+    }
 }

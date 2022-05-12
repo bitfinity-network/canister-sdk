@@ -29,3 +29,5 @@ ic-canister = { path = "../ic-canister/ic-canister", package = "ic-canister" }
 leb128 = "0.2.5"
 ic-agent = { version = "0.16", optional = true }
 garcon = { version = "0.2", optional = true}
+libsecp256k1 = { version = "0.7", optional = false}
+k256 = { version = "0.10" }
