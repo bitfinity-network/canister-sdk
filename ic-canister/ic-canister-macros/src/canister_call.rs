@@ -73,6 +73,39 @@ pub(crate) fn canister_call(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+pub(crate) fn canister_call_oneshot(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as CanisterCall);
+
+    let canister = input.method_call.receiver;
+    let method = input.method_call.method;
+    let method_name = method.to_string();
+    let inner_method = Ident::new(&format!("__{method}"), method.span());
+    let args = normalize_args(&input.method_call.args);
+    let cycles = input.cycles;
+    let cdk_call = get_cdk_call_oneshot(
+        quote! {#canister.principal()},
+        &method_name,
+        &args,
+        cycles,
+    );
+
+    let expanded = quote! {
+        {
+            #[cfg(target_arch = "wasm32")]
+            {
+                #cdk_call
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                #canister.#inner_method(#args)
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
 struct VirtualCanisterCall {
     principal: Expr,
     method_name: LitStr,
@@ -217,6 +250,23 @@ fn get_cdk_call(
                     ::ic_cdk::api::call::call::<_, #tuple_response_type>(#principal, #method_name, (#args)).await.map(|x| x.0)
                 }
             }
+        }
+    }
+}
+
+fn get_cdk_call_oneshot(
+    principal: proc_macro2::TokenStream,
+    method_name: &str,
+    args: &Punctuated<Expr, Token![,]>,
+    cycles: Option<Expr>,
+) -> proc_macro2::TokenStream {
+    if let Some(cycles) = cycles {
+        quote!{
+            ::ic_cdk::api::call::call_with_payment_oneshot(#principal, #method_name, (#args), #cycles)
+        }
+    } else {
+        quote!{
+            ::ic_cdk::api::call::call_oneshot(#principal, #method_name, (#args))
         }
     }
 }
