@@ -9,7 +9,7 @@ crate-type = ["lib", "cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ic-cdk = "0.3"
+ic-cdk = { git = "https://github.com/aewc/cdk-rs" }
 canister_a = {path = "../canister_a"}
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
