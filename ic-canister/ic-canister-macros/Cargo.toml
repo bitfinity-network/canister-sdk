@@ -12,5 +12,5 @@ proc-macro = true
 syn = "1.0"
 quote = "1.0"
 proc-macro2 = "1.0"
-ic-cdk = "0.3"
+ic-cdk = { git = "https://github.com/aewc/cdk-rs" }
 lazy_static = "1"
