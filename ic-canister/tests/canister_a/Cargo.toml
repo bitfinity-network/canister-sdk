@@ -12,8 +12,8 @@ export_api = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ic-cdk = { git = "https://github.com/aewc/cdk-rs" }
-ic-cdk-macros = { git = "https://github.com/aewc/cdk-rs" }
+ic-cdk = "0.5.1"
+ic-cdk-macros = "0.5.1"
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
 serde = "1.0"

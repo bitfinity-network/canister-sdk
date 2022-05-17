@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ic-cdk = { git = "https://github.com/aewc/cdk-rs" }
+ic-cdk = "0.5.1"
 ic-canister-macros = { path = "../ic-canister-macros" }
 ic-storage = { path = "../../ic-storage" }
 candid = "0.7.4"

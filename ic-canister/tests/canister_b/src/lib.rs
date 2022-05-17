@@ -1,5 +1,5 @@
 use canister_a::CanisterA;
-use ic_canister::{canister_call, canister_call_oneshot};
+use ic_canister::{canister_call, canister_call_oneway};
 use ic_cdk::export::candid::{CandidType, Deserialize};
 use ic_cdk::export::Principal;
 use ic_storage::stable::Versioned;
@@ -59,10 +59,9 @@ impl CanisterB {
 
     #[update]
     #[allow(unused_mut)]
-    fn call_increment_oneshot(&self, value: u32) -> bool {
+    fn call_increment_oneway(&self, value: u32) -> bool {
         let mut canister_a = CanisterA::from_principal(self.state.borrow().canister_a);
-
-        canister_call_oneshot!(canister_a.inc_counter(value), ());
+        canister_call_oneway!(canister_a.inc_counter(value), ()).unwrap();
         true
     }
 }
