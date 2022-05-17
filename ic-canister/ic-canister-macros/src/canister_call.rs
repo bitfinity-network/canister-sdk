@@ -73,7 +73,7 @@ pub(crate) fn canister_call(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-pub(crate) fn canister_call_oneshot(input: TokenStream) -> TokenStream {
+pub(crate) fn canister_call_oneway(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as CanisterCall);
 
     let canister = input.method_call.receiver;
@@ -82,7 +82,7 @@ pub(crate) fn canister_call_oneshot(input: TokenStream) -> TokenStream {
     let inner_method = Ident::new(&format!("__{method}"), method.span());
     let args = normalize_args(&input.method_call.args);
     let cycles = input.cycles;
-    let cdk_call = get_cdk_call_oneshot(
+    let cdk_call = get_cdk_call_oneway(
         quote! {#canister.principal()},
         &method_name,
         &args,
@@ -254,7 +254,7 @@ fn get_cdk_call(
     }
 }
 
-fn get_cdk_call_oneshot(
+fn get_cdk_call_oneway(
     principal: proc_macro2::TokenStream,
     method_name: &str,
     args: &Punctuated<Expr, Token![,]>,
@@ -262,11 +262,11 @@ fn get_cdk_call_oneshot(
 ) -> proc_macro2::TokenStream {
     if let Some(cycles) = cycles {
         quote!{
-            ::ic_cdk::api::call::call_with_payment_oneshot(#principal, #method_name, (#args), #cycles)
+            ::ic_cdk::api::call::notify_with_payment128(#principal, #method_name, (#args), #cycles)
         }
     } else {
         quote!{
-            ::ic_cdk::api::call::call_oneshot(#principal, #method_name, (#args))
+            ::ic_cdk::api::call::notify(#principal, #method_name, (#args))
         }
     }
 }

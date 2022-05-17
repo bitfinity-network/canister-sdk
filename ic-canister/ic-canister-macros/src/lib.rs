@@ -20,8 +20,8 @@ pub fn canister_call(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn canister_call_oneshot(input: TokenStream) -> TokenStream {
-    canister_call::canister_call_oneshot(input)
+pub fn canister_call_oneway(input: TokenStream) -> TokenStream {
+    canister_call::canister_call_oneway(input)
 }
 
 /// Makes an inter-canister call to a canister, that has no `Canister` trait implementation.
