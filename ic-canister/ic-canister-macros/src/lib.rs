@@ -38,6 +38,11 @@ pub fn virtual_canister_call(input: TokenStream) -> TokenStream {
     canister_call::virtual_canister_call(input)
 }
 
+#[proc_macro]
+pub fn virtual_canister_call_oneway(input: TokenStream) -> TokenStream {
+    canister_call::virtual_canister_call_oneway(input)
+}
+
 /// Marks the canister method as an `init` method.
 ///
 /// Only one method in a canister can be marked as `#[init]`. This method must not have a return value.

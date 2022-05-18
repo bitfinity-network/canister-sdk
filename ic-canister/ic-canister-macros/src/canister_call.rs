@@ -79,7 +79,6 @@ pub(crate) fn canister_call_oneway(input: TokenStream) -> TokenStream {
     let canister = input.method_call.receiver;
     let method = input.method_call.method;
     let method_name = method.to_string();
-    let inner_method = Ident::new(&format!("__{method}"), method.span());
     let args = normalize_args(&input.method_call.args);
     let cycles = input.cycles;
     let cdk_call = get_cdk_call_oneway(
@@ -98,7 +97,8 @@ pub(crate) fn canister_call_oneway(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                #canister.#inner_method(#args)
+                // todo how to run in not(wasm32)
+                Ok::<(), ::ic_cdk::api::call::RejectionCode>(())
             }
         }
     };
@@ -209,6 +209,39 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
+pub(crate) fn virtual_canister_call_oneway(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as VirtualCanisterCall);
+    let principal = &input.principal;
+    let args = normalize_args(&input.args.elems);
+    let method_name = input.method_name.value();
+    let cycles = input.cycles;
+
+    let cdk_call = get_cdk_call_oneway(
+        quote! {#principal},
+        &method_name,
+        &args,
+        cycles,
+    );
+
+    let expanded = quote! {
+        {
+            #[cfg(target_arch = "wasm32")]
+            {
+                #cdk_call
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                // todo how to run in not(wasm32)
+                Ok::<(), ::ic_cdk::api::call::RejectionCode>(())
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
 
 fn get_cdk_call(
     principal: proc_macro2::TokenStream,
