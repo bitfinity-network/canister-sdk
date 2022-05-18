@@ -139,13 +139,14 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
             static CANISTERS: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<Principal, #name>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::HashMap::new()));
             static __NEXT_ID: ::std::sync::atomic::AtomicU64 = {
                 let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-                let id: u64 = (nanos % 10 ^ 19).try_into().unwrap();
+                let id: u64 = (nanos % 10u128.pow(19)).try_into().unwrap();
                 id.into()
             };
         }
 
         #[cfg(not(target_arch = "wasm32"))]
         fn __next_id() -> [u8; 8] {
+            __NEXT_ID.with(|v| v.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed).to_le_bytes()); // don't ask
             __NEXT_ID.with(|v| v.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed).to_le_bytes())
         }
 
@@ -158,7 +159,8 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             fn init_instance() -> Self {
-                let instance = Self { #principal_field: ::ic_cdk::export::Principal::from_slice(&__next_id()) #state_fields_test #default_fields };
+                let principal = ::ic_cdk::export::Principal::from_slice(&__next_id());
+                let instance = Self { #principal_field: principal #state_fields_test #default_fields };
                 CANISTERS.with(|v| ::std::cell::RefCell::borrow_mut(v).insert(instance.principal(), instance.clone()));
 
                 instance
