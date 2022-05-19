@@ -153,17 +153,16 @@ macro_rules! init_factory_api {
         #[update]
         #[candid_method(update)]
         pub async fn refund_icp() -> ::std::result::Result<u64, FactoryError> {
-            use ::dfn_core::api::PrincipalId;
-            use ::ic_helpers::ledger::LedgerPrincipalExt;
-            use ::ledger_canister::{account_identifier::Subaccount, DEFAULT_TRANSFER_FEE};
-
+            use ::ic_helpers::ledger::{
+                LedgerPrincipalExt, PrincipalId, Subaccount, DEFAULT_TRANSFER_FEE,
+            };
 
             let caller = ::ic_cdk::caller();
             let ledger = $state::get().borrow().ledger_principal();
             let balance = ledger
                 .get_balance(
                     ::ic_cdk::api::id(),
-                    Some(Subaccount::from(&PrincipalId::from(caller))),
+                    Some(Subaccount::from(PrincipalId(caller))),
                 )
                 .await
                 .map_err(|e| FactoryError::LedgerError(e))?;
@@ -177,7 +176,7 @@ macro_rules! init_factory_api {
                 &ledger,
                 caller,
                 balance,
-                Some(Subaccount::from(&PrincipalId::from(caller))),
+                Some(Subaccount::from(PrincipalId(caller))),
                 None,
             )
             .await
@@ -202,14 +201,12 @@ macro_rules! init_factory_api {
         #[query]
         #[candid_method(query)]
         fn get_ledger_account_id() -> String {
-            use ::dfn_core::api::PrincipalId;
-            use ::ic_helpers::ledger::FromPrincipal;
-            use ::ledger_canister::account_identifier::{AccountIdentifier, Subaccount};
+            use ::ic_helpers::ledger::{AccountIdentifier, PrincipalId, Subaccount};
 
             let factory_id = ::ic_cdk::api::id();
             let caller = ::ic_cdk::api::caller();
-            let subaccount = Subaccount::from(&PrincipalId::from(caller));
-            let account = AccountIdentifier::from_principal(factory_id, Some(subaccount));
+            let account =
+                AccountIdentifier::new(factory_id, Some(Subaccount::from(PrincipalId(caller))));
 
             account.to_hex()
         }
@@ -352,16 +349,16 @@ macro_rules! extend_with_factory_api {
             /// not used ICP minus transaction fee.
             #[update]
             async fn refund_icp(&self) -> ::std::result::Result<u64, FactoryError> {
-                use ::dfn_core::api::PrincipalId;
-                use ::ic_helpers::ledger::LedgerPrincipalExt;
-                use ::ledger_canister::{account_identifier::Subaccount, DEFAULT_TRANSFER_FEE};
+                use ::ic_helpers::ledger::{
+                    LedgerPrincipalExt, PrincipalId, Subaccount, DEFAULT_TRANSFER_FEE,
+                };
 
                 let caller = ::ic_cdk::caller();
                 let ledger = self.$state.borrow().ledger_principal();
                 let balance = ledger
                     .get_balance(
                         ::ic_cdk::api::id(),
-                        Some(Subaccount::from(&PrincipalId::from(caller))),
+                        Some(Subaccount::from(&PrincipalId(caller))),
                     )
                     .await
                     .map_err(|e| FactoryError::LedgerError(e))?;
@@ -375,7 +372,7 @@ macro_rules! extend_with_factory_api {
                     &ledger,
                     caller,
                     balance,
-                    Some(Subaccount::from(&PrincipalId::from(caller))),
+                    Some(Subaccount::from(&PrincipalId(caller))),
                     None,
                 )
                 .await
@@ -400,14 +397,14 @@ macro_rules! extend_with_factory_api {
             /// Returns the AccountIdentifier for the caller subaccount in the factory account.
             #[query]
             fn get_ledger_account_id(&self) -> String {
-                use ::dfn_core::api::PrincipalId;
-                use ::ic_helpers::ledger::FromPrincipal;
-                use ::ledger_canister::account_identifier::{AccountIdentifier, Subaccount};
+                use ::ic_helpers::ledger::{AccountIdentifier, PrincipalId, Subaccount};
 
                 let factory_id = ::ic_cdk::api::id();
                 let caller = ::ic_cdk::api::caller();
-                let subaccount = Subaccount::from(&PrincipalId::from(caller));
-                let account = AccountIdentifier::from_principal(factory_id, Some(subaccount));
+                let account = AccountIdentifier::new(
+                    PrincipalId(factory_id),
+                    Some(Subaccount::from(&PrincipalId(caller))),
+                );
 
                 account.to_hex()
             }

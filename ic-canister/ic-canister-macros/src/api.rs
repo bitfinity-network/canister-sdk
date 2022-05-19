@@ -124,7 +124,7 @@ pub(crate) fn api_method(
         #[export_name = #export_name]
         fn #internal_method() {
             ::ic_cdk::setup();
-            ::ic_cdk::block_on(async {
+            ::ic_cdk::spawn(async {
                 let #args_destr_tuple: #arg_type = ::ic_cdk::api::call::arg_data();
                 let mut instance = Self::init_instance();
                 let result = instance. #method(#args_destr) #await_call;
