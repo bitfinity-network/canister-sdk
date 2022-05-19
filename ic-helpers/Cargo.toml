@@ -4,18 +4,23 @@ name = "ic-helpers"
 version = "0.2.1"
 
 [dependencies]
-dfn_core = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-02-17"}
-dfn_protobuf = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-02-17"}
-ledger-canister = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-02-17"}
+# dfn_core = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-05-18"}
+# dfn_protobuf = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-05-18"}
+# ledger-canister = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-05-18"}
+dfn_core = {path = "/Users/flyq/workspace/github-aewc/infinity-swap/ic/rs/rust_canisters/dfn_core" }
+dfn_protobuf = {path = "/Users/flyq/workspace/github-aewc/infinity-swap/ic/rs/rust_canisters/dfn_protobuf" }
+ledger-canister = {path = "/Users/flyq/workspace/github-aewc/infinity-swap/ic/rs/rosetta-api/ledger_canister" }
 async-trait = "0.1"
 hex = "0.4"
 candid = "0.7"
-ic-cdk = "0.3"
+ic-cdk = "0.5.1"
 ic-kit = { git = "https://github.com/infinity-swap/ic-kit" }
 num-traits = "0.2"
 serde = "1.0"
 serde_json = "1.0"
 sha2 = "0.10"
-ic-types = {git = "https://github.com/infinity-swap/ic"}
+# ic-types = {git = "https://github.com/infinity-swap/ic", branch = "rebased-2022-05-18"}
+# ic-types = {path = "/Users/flyq/workspace/github-aewc/infinity-swap/ic/rs/types/types" }
+ic-ic00-types = {path = "/Users/flyq/workspace/github-aewc/infinity-swap/ic/rs/types/ic00_types" }
 thiserror = "1.0"
 ic-canister = { path = "../ic-canister/ic-canister", package = "ic-canister" }

@@ -1,5 +1,5 @@
 use candid::{CandidType, Deserialize, Principal};
-use ic_types::ic00::Payload;
+use ic_ic00_types::Payload;
 
 #[derive(CandidType, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pubkey(Vec<u8>);
