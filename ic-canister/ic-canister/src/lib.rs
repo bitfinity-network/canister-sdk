@@ -113,7 +113,7 @@
 //! the arguments and output types must implement `CandidType` trait.
 //!
 //! ```
-//! use ic_cdk::export::candid::{Principal, CandidType, Deserialize};
+//! use candid::{Principal, CandidType, Deserialize};
 //! use ic_canister::{Canister, query, update};
 //! use ic_canister::storage::IcStorage;
 //! use std::cell::RefCell;
@@ -190,7 +190,7 @@
 //! The states of every created instance will be separate.
 //!
 //! ```
-//! # use ic_cdk::export::candid::{Principal, CandidType, Deserialize};
+//! # use candid::{Principal, CandidType, Deserialize};
 //! # use ic_canister::{Canister, query, update};
 //! # use ic_canister::storage::IcStorage;
 //! # use std::cell::RefCell;
@@ -246,7 +246,7 @@
 //! it shares the state with the first instance.
 //!
 //! ```
-//! # use ic_cdk::export::candid::{Principal, CandidType, Deserialize};
+//! # use candid::{Principal, CandidType, Deserialize};
 //! # use ic_canister::{Canister, query, update};
 //! # use ic_canister::storage::IcStorage;
 //! # use std::cell::RefCell;
