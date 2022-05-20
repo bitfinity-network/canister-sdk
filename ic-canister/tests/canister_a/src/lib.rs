@@ -1,4 +1,4 @@
-use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use candid::{CandidType, Deserialize, Principal};
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::cell::RefCell;

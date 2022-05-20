@@ -1,6 +1,6 @@
 [package]
 name = "canister_b"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [lib]
@@ -9,7 +9,8 @@ crate-type = ["lib", "cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ic-cdk = "0.3"
+ic-cdk = "0.5"
+candid = "0.7"
 canister_a = {path = "../canister_a"}
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}

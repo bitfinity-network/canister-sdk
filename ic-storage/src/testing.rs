@@ -59,7 +59,7 @@ pub fn stable_grow(new_pages: u32) -> Result<u32, StableMemoryError> {
                 storage.borrow_mut().append(&mut vec![0u8; additional_len]);
                 Ok(previous_size as u32)
             }
-            true => Err(StableMemoryError()),
+            true => Err(StableMemoryError::OutOfMemory),
         }
     })
 }
