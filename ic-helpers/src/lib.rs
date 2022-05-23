@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod agent;
 pub mod factory;
 
@@ -11,12 +13,7 @@ pub mod is20 {
     pub use self::principal_ext::*;
 }
 
-pub mod ledger {
-    mod account_id;
-    mod principal_ext;
-    pub use self::account_id::*;
-    pub use self::principal_ext::*;
-}
+pub mod ledger;
 
 pub mod pair {
     mod principal_ext;
