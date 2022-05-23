@@ -1,5 +1,4 @@
 use candid::{CandidType, Deserialize, Principal};
-use ic_types::ic00::Payload;
 
 #[derive(CandidType, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pubkey(Vec<u8>);
@@ -53,5 +52,3 @@ pub struct SignWithECDSAArgs {
     pub derivation_path: Vec<Vec<u8>>,
     pub key_id: String,
 }
-
-impl Payload<'_> for SignWithECDSAArgs {}

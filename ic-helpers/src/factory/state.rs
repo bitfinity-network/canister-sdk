@@ -1,10 +1,8 @@
 use crate::factory::error::FactoryError;
 use crate::factory::Factory;
-use crate::ledger::LedgerPrincipalExt;
-use dfn_core::api::PrincipalId;
 use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ledger_canister::{account_identifier::Subaccount, DEFAULT_TRANSFER_FEE};
 
+use crate::ledger::{LedgerPrincipalExt, PrincipalId, DEFAULT_TRANSFER_FEE};
 use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
@@ -145,10 +143,7 @@ async fn consume_provided_icp(
     icp_fee: u64,
 ) -> Result<(), FactoryError> {
     let balance = ledger
-        .get_balance(
-            ic_kit::ic::id(),
-            Some(Subaccount::from(&PrincipalId::from(caller))),
-        )
+        .get_balance(ic_kit::ic::id(), Some((&PrincipalId(caller)).into()))
         .await
         .map_err(FactoryError::LedgerError)?;
 
@@ -174,7 +169,7 @@ async fn consume_icp(
         &ledger,
         icp_to,
         amount,
-        Some(Subaccount::from(&PrincipalId::from(from))),
+        Some((&PrincipalId(from)).into()),
         None,
     )
     .await

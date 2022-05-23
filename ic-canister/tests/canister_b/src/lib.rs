@@ -1,7 +1,6 @@
+use candid::{CandidType, Deserialize, Principal};
 use canister_a::CanisterA;
 use ic_canister::{canister_call, canister_call_oneway, virtual_canister_call_oneway};
-use ic_cdk::export::candid::{CandidType, Deserialize};
-use ic_cdk::export::Principal;
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::cell::RefCell;
