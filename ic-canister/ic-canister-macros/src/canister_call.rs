@@ -79,6 +79,7 @@ pub(crate) fn canister_call_oneway(input: TokenStream) -> TokenStream {
     let canister = input.method_call.receiver;
     let method = input.method_call.method;
     let method_name = method.to_string();
+    let inner_method = Ident::new(&format!("__{method}"), method.span());
     let args = normalize_args(&input.method_call.args);
     let cycles = input.cycles;
     let cdk_call = get_cdk_call_oneway(
@@ -97,8 +98,7 @@ pub(crate) fn canister_call_oneway(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                // todo how to run in not(wasm32)
-                Ok::<(), ::ic_cdk::api::call::RejectionCode>(())
+                #canister.#inner_method(#args)
             }
         }
     };
@@ -233,7 +233,6 @@ pub(crate) fn virtual_canister_call_oneway(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                // todo how to run in not(wasm32)
                 Ok::<(), ::ic_cdk::api::call::RejectionCode>(())
             }
         }

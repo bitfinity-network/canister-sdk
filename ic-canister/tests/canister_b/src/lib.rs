@@ -59,9 +59,15 @@ impl CanisterB {
     #[update]
     #[allow(unused_mut)]
     #[allow(unused_variables)]
-    fn call_increment_oneway(&self, value: u32) -> bool {
+    async fn call_increment_oneway(&self, value: u32) -> bool {
         let mut canister_a = CanisterA::from_principal(self.state.borrow().canister_a);
+
+        #[cfg(target_arch = "wasm32")]
         canister_call_oneway!(canister_a.inc_counter(value), ()).unwrap();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        canister_call_oneway!(canister_a.inc_counter(value), ()).await.unwrap();
+        
         true
     }
 
@@ -94,6 +100,10 @@ mod tests {
 
         assert_eq!(canister_b.call_increment(5).await, 5);
         assert_eq!(canister_b.call_increment(15).await, 20);
+        assert_eq!(canister_b.call_increment_oneway(20).await, true);
+        assert_eq!(canister_a.__get_counter().await.unwrap(), 40);
+
         assert_eq!(canister_b2.call_increment(15).await, 15);
+
     }
 }
