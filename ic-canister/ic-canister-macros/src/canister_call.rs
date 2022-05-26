@@ -73,16 +73,16 @@ pub(crate) fn canister_call(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-pub(crate) fn canister_call_oneway(input: TokenStream) -> TokenStream {
+pub(crate) fn canister_notify(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as CanisterCall);
 
     let canister = input.method_call.receiver;
     let method = input.method_call.method;
     let method_name = method.to_string();
-    let inner_method = Ident::new(&format!("__{method}"), method.span());
+    let inner_method = Ident::new(&format!("___{method}"), method.span());
     let args = normalize_args(&input.method_call.args);
     let cycles = input.cycles;
-    let cdk_call = get_cdk_call_oneway(
+    let cdk_call = get_cdk_notify(
         quote! {#canister.principal()},
         &method_name,
         &args,
@@ -210,14 +210,14 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-pub(crate) fn virtual_canister_call_oneway(input: TokenStream) -> TokenStream {
+pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as VirtualCanisterCall);
     let principal = &input.principal;
     let args = normalize_args(&input.args.elems);
     let method_name = input.method_name.value();
     let cycles = input.cycles;
 
-    let cdk_call = get_cdk_call_oneway(
+    let cdk_call = get_cdk_notify(
         quote! {#principal},
         &method_name,
         &args,
@@ -286,7 +286,7 @@ fn get_cdk_call(
     }
 }
 
-fn get_cdk_call_oneway(
+fn get_cdk_notify(
     principal: proc_macro2::TokenStream,
     method_name: &str,
     args: &Punctuated<Expr, Token![,]>,
