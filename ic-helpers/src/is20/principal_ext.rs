@@ -1,22 +1,10 @@
 use crate::management::{Canister, InstallCodeMode};
 use async_trait::async_trait;
-use candid::{encode_args, CandidType, Nat, Principal};
+use candid::{encode_args, Nat, Principal};
 use ic_cdk::api;
 use ic_cdk::api::call::CallResult;
-use num_traits::cast::ToPrimitive;
-use serde::Deserialize;
+use ledger_canister::TransferError;
 use std::convert::From;
-
-use super::TxError;
-
-#[derive(CandidType, Deserialize, Debug)]
-pub struct Amount(u128);
-
-impl From<Amount> for u128 {
-    fn from(src: Amount) -> Self {
-        src.0
-    }
-}
 
 #[async_trait]
 pub trait IS20PrincipalExt {
@@ -24,15 +12,15 @@ pub trait IS20PrincipalExt {
     fn check_access(target: Self);
     fn cycles() -> Nat;
     async fn balance_of(&self, address: Self) -> Nat;
-    async fn transfer(&self, to: Self, amount: Nat) -> Result<u128, String>;
-    async fn transfer_include_fee(&self, to: Self, amount: Nat) -> Result<u128, String>;
+    async fn transfer(&self, to: Self, amount: Nat) -> Result<Nat, String>;
+    async fn transfer_include_fee(&self, to: Self, amount: Nat) -> Result<Nat, String>;
     async fn transfer_from(
         &self,
         from: Principal,
         to: Principal,
         amount: Nat,
-    ) -> Result<u128, String>;
-    async fn mint(&self, to: Principal, amount: Nat) -> u128;
+    ) -> Result<Nat, String>;
+    async fn mint(&self, to: Principal, amount: Nat) -> Nat;
     async fn burn(&self, to: Self, amount: Nat);
     async fn total_supply(&self) -> Nat;
     async fn upgrade(&self, code: &[u8]) -> CallResult<()>;
@@ -56,28 +44,30 @@ impl IS20PrincipalExt for Principal {
 
     async fn balance_of(&self, address: Self) -> Nat {
         let canister_args = encode_args((address,)).unwrap_or_default();
-        api::call::call::<_, (Amount,)>(*self, "balanceOf", (canister_args,))
+        api::call::call::<_, (Nat,)>(*self, "balanceOf", (canister_args,))
             .await
             .map(|(amount,)| Nat::from(amount.0))
             .unwrap_or_default()
     }
 
-    async fn transfer(&self, to: Self, amount: Nat) -> Result<u128, String> {
-        api::call::call::<_, (Result<Nat, TxError>,)>(*self, "transfer", (to, amount))
+    async fn transfer(&self, to: Self, amount: Nat) -> Result<Nat, String> {
+        api::call::call::<_, (Result<Nat, TransferError>,)>(*self, "transfer", (to, amount))
             .await
             .map_err(|e| format!("{:?}", e))?
             .0
-            .map(|v| v.0.to_u128().unwrap())
             .map_err(|e| format!("{:?}", e))
     }
 
-    async fn transfer_include_fee(&self, to: Self, amount: Nat) -> Result<u128, String> {
-        api::call::call::<_, (Result<Nat, TxError>,)>(*self, "transferIncludeFee", (to, amount))
-            .await
-            .map_err(|e| format!("{:?}", e))?
-            .0
-            .map(|v| v.0.to_u128().unwrap())
-            .map_err(|e| format!("{:?}", e))
+    async fn transfer_include_fee(&self, to: Self, amount: Nat) -> Result<Nat, String> {
+        api::call::call::<_, (Result<Nat, TransferError>,)>(
+            *self,
+            "transferIncludeFee",
+            (to, amount),
+        )
+        .await
+        .map_err(|e| format!("{:?}", e))?
+        .0
+        .map_err(|e| format!("{:?}", e))
     }
 
     async fn transfer_from(
@@ -85,32 +75,35 @@ impl IS20PrincipalExt for Principal {
         from: Principal,
         to: Principal,
         amount: Nat,
-    ) -> Result<u128, String> {
-        api::call::call::<_, (Result<Nat, TxError>,)>(*self, "transferFrom", (from, to, amount))
-            .await
-            .map_err(|e| format!("{:?}", e))?
-            .0
-            .map(|v| v.0.to_u128().unwrap())
-            .map_err(|e| format!("{:?}", e))
+    ) -> Result<Nat, String> {
+        api::call::call::<_, (Result<Nat, TransferError>,)>(
+            *self,
+            "transferFrom",
+            (from, to, amount),
+        )
+        .await
+        .map_err(|e| format!("{:?}", e))?
+        .0
+        .map_err(|e| format!("{:?}", e))
     }
 
-    async fn mint(&self, to: Principal, amount: Nat) -> u128 {
+    async fn mint(&self, to: Principal, amount: Nat) -> Nat {
         let canister_args = encode_args((to, amount)).unwrap_or_default();
-        api::call::call::<_, (Amount,)>(*self, "_mint", (canister_args,))
+        api::call::call::<_, (Nat,)>(*self, "_mint", (canister_args,))
             .await
-            .map(|(amount,)| amount.into())
+            .map(|(amount,)| amount)
             .unwrap_or_default()
     }
 
     async fn burn(&self, to: Self, amount: Nat) {
         let canister_args = encode_args((to, amount)).unwrap_or_default();
-        let _ = api::call::call::<_, (Amount,)>(*self, "_burn", (canister_args,)).await;
+        let _ = api::call::call::<_, (Nat,)>(*self, "_burn", (canister_args,)).await;
     }
 
     async fn total_supply(&self) -> Nat {
-        api::call::call::<_, (Amount,)>(*self, "totalSupply", ())
+        api::call::call::<_, (Nat,)>(*self, "totalSupply", ())
             .await
-            .map(|(amount,)| Nat::from(amount.0))
+            .map(|(amount,)| amount)
             .unwrap_or_default()
     }
 
