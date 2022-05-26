@@ -13,6 +13,7 @@ pub use agent::*;
 
 const IC_REQUEST_DOMAIN_SEPARATOR: &[u8; 11] = b"\x0Aic-request";
 
+/// Returns the content of an IC update call.
 pub fn update_content(
     sender: Principal,
     canister_id: &Principal,

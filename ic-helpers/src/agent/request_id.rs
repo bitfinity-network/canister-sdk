@@ -6,6 +6,10 @@
 //!
 //! A single method is exported, to_request_id, which returns a RequestId
 //! (a 256 bits slice) or an error.
+
+// This code is borrowed from `agent-rs` crate. We cannot get is a dependency because `agent-rs`
+// cannot be compiled to wasm32.
+
 use super::error::RequestIdFromStringError;
 use serde::{ser, Deserialize, Serialize};
 use sha2::{Digest, Sha256};

@@ -1,3 +1,8 @@
+// This code is borrowed from `agent-rs` crate. We cannot get is a dependency because `agent-rs`
+// cannot be compiled to wasm32.
+//
+// This module requires `agent` feature to be enabled on `ic-helpers` dependency.
+
 use crate::management::CallSignature;
 use candid::utils::ArgumentDecoder;
 use candid::{decode_args, CandidType, Decode};

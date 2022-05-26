@@ -1,4 +1,8 @@
 //! Error type for the RequestId calculation.
+
+// This code is borrowed from `agent-rs` crate. We cannot get is a dependency because `agent-rs`
+// cannot be compiled to wasm32.
+
 use thiserror::Error;
 
 /// Errors from reading a RequestId from a string. This is not the same as
