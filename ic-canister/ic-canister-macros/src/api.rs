@@ -143,6 +143,7 @@ pub(crate) fn api_method(
 
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(unused_mut)]
+        #[allow(unused_must_use)]
         pub fn #internal_method_notify(#args) -> Result<(), ::ic_cdk::api::call::RejectionCode> {
             // todo: trap handler
             self. #method(#args_destr);
