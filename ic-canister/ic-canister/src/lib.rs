@@ -108,7 +108,7 @@
 //!
 //! # API
 //!
-//! The API of the caniester can be declared using `#[query]` and `#[update]` macros. To prevent
+//! The API of the canister can be declared using `#[query]` and `#[update]` macros. To prevent
 //! incorrect invocation of API methods, the macros do not allow the API methods to be public. All
 //! the arguments and output types must implement `CandidType` trait.
 //!
@@ -153,6 +153,68 @@
 //! ```
 //!
 //! The API methods must be instance methods (taking `self` by reference).
+//!
+//! # Metrics
+//!
+//! Metrics for the canister can be collected by adding `#[metrics]` field to the canister struct.
+//!
+//! ```
+//! #[derive(IcStorage, Clone, Debug, Default)]
+//! pub struct Metrics {
+//!     pub cycles: u64,
+//! }
+//!
+//! #[derive(Clone, Canister)]
+//! struct MyCanister {
+//!     #[id]
+//!     principal: Principal,
+//!     
+//!     #[metrics]
+//!     metrics: std::rc::Rc<RefCell<ic_canister::MetricsMap<Metrics>>>,
+//!
+//!     #[state]
+//!     state: Rc<RefCell<MyCanisterState>>,
+//! }
+//! ```
+//!
+//! Note that `Metrics` is wrapped under the [`MetricsMap`] struct. This is an implementation
+//! detail used storing the metrics properly.
+//!
+//! Under the hood this adds two calls to the `MyCanister` that utilitzes `metrics` state: `collect_metrics()` and `get_metrics()`.
+//!
+//! With that in place we need to set up the logic for metrics calculation. This is done by setting
+//! `new_metric_snapshot` query method (that will ask you to set up if it's not yet present).
+//!
+//! ```
+//! impl MyCanister {
+//!     fn new_metric_snapshot(&self) -> Metrics {
+//!        Metrics { cycles: ic_kit::ic::balance() }
+//!     }
+//! }
+//! ```
+//!
+//! This method is pure in a sense that we don't have to think about how we should update the
+//! `metrics` field itself. Only the way the new metric is collected.
+//!
+//! You can set up interval for metrics collection by specifiying it explicitly (by default it collects
+//! metrics every day) via `#[metrics(interval = interval_value)]` where `interval_value` could be either
+//! a number of minutes or an ident from the list `[min, hour, day, week, month]`.
+//!
+//! ```
+//! #[derive(Clone, Canister)]
+//! struct MyCanister {
+//!     #[id]
+//!     principal: Principal,
+//!     
+//!     #[metrics(interval = hour)]
+//!     metrics: std::rc::Rc<RefCell<ic_canister::MetricsMap<Metrics>>>,
+//!
+//!     #[state]
+//!     state: Rc<RefCell<MyCanisterState>>,
+//! }
+//! ```
+//!
+//! For an example you can refer to the tests in `canister_b` crate.
 //!
 //! # Inter-canister calls
 //!
