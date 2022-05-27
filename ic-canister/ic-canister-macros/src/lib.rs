@@ -108,6 +108,11 @@ pub fn update(attr: TokenStream, item: TokenStream) -> TokenStream {
     api::api_method("update", attr, item, false)
 }
 
+#[proc_macro_attribute]
+pub fn metric_provider(attr: TokenStream, item: TokenStream) -> TokenStream {
+    api::api_method("update", attr, item, false)
+}
+
 /// Generates IDL (Candid) definition of the canister.
 ///
 /// ```ignore
@@ -128,7 +133,7 @@ pub fn generate_idl(_: TokenStream) -> TokenStream {
 }
 
 /// Derives [Canister] trait for a struct.
-#[proc_macro_derive(Canister, attributes(id, state, trait_name))]
+#[proc_macro_derive(Canister, attributes(id, state, metrics, trait_name))]
 pub fn derive_canister(input: TokenStream) -> TokenStream {
     derive::derive_canister(input)
 }

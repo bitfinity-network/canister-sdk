@@ -3,8 +3,8 @@ use quote::quote;
 use std::collections::HashSet;
 use syn::parse::{Parse, ParseStream};
 use syn::{
-    parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit, LitBool,
-    Meta, NestedMeta, Path, PathArguments, Type,
+    parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Ident, Lit,
+    LitBool, Meta, NestedMeta, Path, PathArguments, Token, Type,
 };
 
 #[derive(Debug)]
@@ -25,6 +25,35 @@ impl Default for TraitNameAttr {
         let path =
             parse_macro_input::parse::<Path>(tokens).expect("static value parsing always succeeds");
         Self { path }
+    }
+}
+
+struct Interval {
+    mins: u64,
+}
+
+impl Parse for Interval {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        input.parse::<Ident>()?;
+        input.parse::<Token![=]>()?;
+
+        if let Ok(lit) = input.parse::<syn::LitInt>() {
+            let value = lit.base10_parse::<u64>()?;
+            return Ok(Interval { mins: value });
+        }
+
+        let ident = input.parse::<syn::Ident>()?;
+        let interval = match ident.to_string().as_str() {
+            "min" => Interval { mins: 1 },
+            "hour" => Interval { mins: 60 },
+            "day" => Interval { mins: 60 * 24 },
+            "week" => Interval { mins: 60 * 24 * 7 },
+            "month" => Interval { mins: 60 * 24 * 30 },
+            _ => {
+                return Err(syn::Error::new(ident.span(), "invalid interval argument"));
+            }
+        };
+        Ok(interval)
     }
 }
 
@@ -61,10 +90,14 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
     let mut principal_fields = vec![];
     let mut state_fields = vec![];
+    let mut metric_fields = vec![];
     let mut default_fields = vec![];
     for field in fields {
         if field.attrs.iter().any(is_principal_attr) {
             principal_fields.push(field);
+        } else if field.attrs.iter().any(is_metrics_addr) {
+            metric_fields.push(field.clone());
+            default_fields.push(field);
         } else if field.attrs.iter().any(is_state_attr) {
             state_fields.push(field);
         } else {
@@ -80,6 +113,36 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         .remove(0)
         .ident
         .expect("at structure declaration there can be no field with name");
+
+    let metric_methods = match &metric_fields[..] {
+        [] => quote!(),
+        [metric_field] => {
+            let interval = match &metric_field.attrs[..] {
+                // #[metrics]
+                [attr] if attr.tokens.is_empty() => 60 * 24,
+                // #[metrics(interval = hour)]
+                [attr] => {
+                    let metric = match attr.parse_args::<Interval>() {
+                        Ok(interval) => interval,
+                        _ => panic!("invalid metric_name attribute syntax"),
+                    };
+                    metric.mins
+                }
+                _ => panic!("invalid metric_name attribute syntax"),
+            };
+            let metric_type = get_metric_type(&metric_field.ty);
+            expand_metric_methods(
+                &name,
+                &metric_field
+                    .ident
+                    .clone()
+                    .expect("impossible happened: no metric ident given"),
+                metric_type,
+                interval,
+            )
+        }
+        _ => panic!("canister struct must contain zero or one `metric` fields"),
+    };
 
     let mut used_types = HashSet::new();
     let state_fields = state_fields.iter().map(|field| {
@@ -185,9 +248,46 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
         #upgrade_methods
 
+        #metric_methods
+
     };
 
     TokenStream::from(expanded)
+}
+
+fn expand_metric_methods(
+    struct_name: &proc_macro2::Ident,
+    metric_field_ident: &proc_macro2::Ident,
+    metric_type: &Type,
+    interval: u64,
+) -> proc_macro2::TokenStream {
+    quote! {
+        impl #struct_name {
+            #[update]
+            async fn collect_metrics(&mut self) -> ::ic_cdk::api::call::CallResult<()>  {
+                let new_metrics = self.__new_metric_snapshot().await?;
+                let mut metrics = ::std::cell::RefCell::borrow_mut(&mut self.#metric_field_ident);
+                let current_ts = ::ic_kit::ic::time() / 6u64.pow(10);
+                let last_ts = metrics.iter().next_back().map(|(k, _)| *k).unwrap_or(current_ts);
+                let new_ts =
+                    if current_ts < last_ts + #interval {
+                        last_ts
+                    } else {
+                        current_ts - (current_ts % #interval)
+                    };
+                metrics
+                    .entry(new_ts)
+                    .and_modify(|e| { *e = new_metrics.clone() })
+                    .or_insert(new_metrics);
+                Ok(())
+            }
+
+            #[query]
+            fn get_metrics(&self) -> ::ic_canister::MetricsMap<#metric_type> {
+                self.#metric_field_ident.borrow().clone()
+            }
+        }
+    }
 }
 
 fn expand_upgrade_methods(
@@ -284,6 +384,15 @@ fn is_principal_attr(attribute: &Attribute) -> bool {
 
 fn is_state_attr(attribute: &Attribute) -> bool {
     attribute.path.is_ident("state")
+}
+
+fn is_metrics_addr(attribute: &Attribute) -> bool {
+    attribute.path.is_ident("metrics")
+}
+
+fn get_metric_type(input_type: &Type) -> &Type {
+    let metric_map_type = get_state_type(input_type);
+    extract_generic("MetricsMap", metric_map_type, input_type)
 }
 
 fn get_state_type(input_type: &Type) -> &Type {

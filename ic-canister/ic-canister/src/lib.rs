@@ -442,6 +442,8 @@ pub trait Canister {
     fn principal(&self) -> Principal;
 }
 
+pub type MetricsMap<T> = std::collections::BTreeMap<u64, T>;
+
 type ResponderFn = dyn Fn(Vec<u8>) -> CallResult<Vec<u8>>;
 type ResponderHashMap = HashMap<(Principal, String), Box<ResponderFn>>;
 
