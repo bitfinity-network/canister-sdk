@@ -1,6 +1,6 @@
 use candid::{CandidType, Deserialize, Principal};
 use canister_a::CanisterA;
-use ic_canister::{canister_call, virtual_canister_call, canister_notify, virtual_canister_notify};
+use ic_canister::{canister_call, virtual_canister_call, canister_notify, virtual_canister_notify, query};
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::cell::RefCell;
@@ -33,6 +33,7 @@ impl Versioned for State {
 pub struct CanisterB {
     #[id]
     principal: Principal,
+
     #[state(stable = false)]
     state: Rc<RefCell<State>>,
 
@@ -83,6 +84,18 @@ impl CanisterB {
         virtual_canister_notify!(self.state.borrow().canister_a, "inc_counter", (value, ), ()).await.unwrap();
         true
     }
+
+    #[query]
+    async fn get_metrics_a(&self) -> ic_canister::MetricsMap<canister_a::Metrics> {
+        let canister_a = CanisterA::from_principal(self.state.borrow().canister_a);
+
+        canister_call!(
+            canister_a.get_metrics(),
+            ic_canister::MetricsMap<canister_a::Metrics>
+        )
+        .await
+        .unwrap()
+    }
 }
 
 #[cfg(test)]
@@ -111,5 +124,30 @@ mod tests {
         assert_eq!(canister_b2.notify_increment(100).await, true);
         assert_eq!(canister_a2.__get_counter().await.unwrap(), 100);
 
+    }
+
+    #[tokio::test]
+    async fn get_metrics() {
+        let ctx = ic_kit::MockContext::new().inject();
+
+        let mut canister_a = CanisterA::init_instance();
+        let canister_b = get_canister_b(canister_a.principal());
+
+        canister_call!(canister_a.collect_metrics(), Result<()>)
+            .await
+            .unwrap()
+            .unwrap();
+
+        ctx.add_time(3 * 6u64.pow(10) * 10); // 30 minutes
+
+        canister_call!(canister_a.collect_metrics(), Result<()>)
+            .await
+            .unwrap()
+            .unwrap();
+
+        let metrics = canister_b.get_metrics_a().await;
+
+        assert_eq!(metrics.len(), 2);
+        assert_eq!(metrics.into_iter().next().unwrap().1.cycles, 120);
     }
 }
