@@ -19,6 +19,38 @@ pub fn canister_call(input: TokenStream) -> TokenStream {
     canister_call::canister_call(input)
 }
 
+/// Makes an inter-canister call, which sends a one-way message. This macro is the same as [`canister_call`] usage, except ignoring the reply.
+/// 
+/// Returns `Ok(())` if the message was successfully enqueued, otherwise returns a reject code.
+/// 
+/// ```ignore
+/// let result: Result<(), ic_cdk::api::call::RejectionCode> = canister_notify!(canister_instance.method_name(arg1, arg2), ());
+/// ```
+/// 
+/// To obtain a canister instance for this call, use [`ic_canister::Canister::from_principal`] method.
+/// If the canister to be called does not implement [`ic_canister::Canister`] trait, use
+/// [`virtual_canister_notify`] macro instead.
+/// 
+///  # Notes
+///
+///   * The caller has no way of checking whether the destination processed the notification.
+///     The system can drop the notification if the destination does not have resources to
+///     process the message (for example, if it's out of cycles or queue slots).
+///
+///   * The callee cannot tell whether the call is one-way or not.
+///     The callee must produce replies for all incoming messages.
+///
+///   * It is safe to upgrade a canister without stopping it first if it sends out *only*
+///     one-way messages.
+///
+///   * If the payment is non-zero and the system fails to deliver the notification, the behaviour
+///     is unspecified: the funds can be either reimbursed or consumed irrevocably by the IC depending
+///     on the underlying implementation of one-way calls.
+#[proc_macro]
+pub fn canister_notify(input: TokenStream) -> TokenStream {
+    canister_call::canister_notify(input)
+}
+
 /// Makes an inter-canister call to a canister, that has no `Canister` trait implementation.
 ///
 /// ```ignore
@@ -31,6 +63,20 @@ pub fn canister_call(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn virtual_canister_call(input: TokenStream) -> TokenStream {
     canister_call::virtual_canister_call(input)
+}
+
+/// Makes an inter-canister call to a canister, which sends a one-way message, when has no `Canister` trait implementation.
+///
+/// ```ignore
+/// let result: Result<(), ic_cdk::api::call::RejectionCode> = virtual_canister_notify!(canister_principal, "method_name", (arg1, arg2), ());
+/// ```
+///
+/// To test canister logic that uses such inter-canister calls, one should use `ic_canister::register_virtual_responder`
+/// function beforehand to set the function, that will generate responses for the inter-canister
+/// calls.
+#[proc_macro]
+pub fn virtual_canister_notify(input: TokenStream) -> TokenStream {
+    canister_call::virtual_canister_notify(input)
 }
 
 /// Marks the canister method as an `init` method.

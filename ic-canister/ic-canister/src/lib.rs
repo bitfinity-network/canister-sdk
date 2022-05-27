@@ -162,7 +162,7 @@
 //! use ic_cdk::api::call::CallResult;
 //!
 //! let my_canister = MyCanister::from_principal(canister_principal);
-//! canister_call(my_canister.add(10), ()).await.unwrap();
+//! canister_call!(my_canister.add(10), ()).await.unwrap();
 //! let counter: CallResult<u64> = canister_call!(my_canister.get_counter(), (u64)).await;
 //! ```
 //!
@@ -181,6 +181,31 @@
 //! let result: CallResult<ReturnType> = virtual_canister_call!(principal, "remote_method_name", (arg1, arg2), ReturnType).await;
 //! ```
 //!
+//! //! # Inter-canister notifys
+//!
+//! When another canister needs to call these API methods with one-way messages, the [canister_notify]` macro can be used.
+//!
+//! ```ignore
+//! use ic_cdk::api::call::RejectionCode;
+//!
+//! let my_canister = MyCanister::from_principal(canister_principal);
+//! let result: Result<(), ic_cdk::api::call::RejectionCode> = canister_notify!(my_canister.add(10), ());
+//! ```
+//!
+//! ## Virtual canister notifys
+//!
+//! Often you want to make a one-way remote call to a canister that was not written using `ic-canister` crate.
+//! In this case you don't have a [Canister] trait implementation, so the `canister_notify` macro
+//! cannot be used. Instead, you can use [virtual_canister_notify] macro.
+//!
+//! ```ignore
+//! use ic_cdk::export::Principal;
+//! use ic_canister::virtual_canister_notify;
+//!
+//! let principal = Principal::from_text("qd4yy-7yaaa-aaaag-aacdq-cai").unwrap();
+//! let result: Result<(), ic_cdk::api::call::RejectionCode>= virtual_canister_notify!(principal, "remote_method_name", (arg1, arg2), ());
+//! ```
+//! 
 //! # Testing canisters
 //!
 //! ## Internal canister logic

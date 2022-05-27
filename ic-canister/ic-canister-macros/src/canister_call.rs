@@ -73,6 +73,39 @@ pub(crate) fn canister_call(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+pub(crate) fn canister_notify(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as CanisterCall);
+
+    let canister = input.method_call.receiver;
+    let method = input.method_call.method;
+    let method_name = method.to_string();
+    let inner_method = Ident::new(&format!("___{method}"), method.span());
+    let args = normalize_args(&input.method_call.args);
+    let cycles = input.cycles;
+    let cdk_call = get_cdk_notify(
+        quote! {#canister.principal()},
+        &method_name,
+        &args,
+        cycles,
+    );
+
+    let expanded = quote! {
+        {
+            #[cfg(target_arch = "wasm32")]
+            {
+                #cdk_call
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                #canister.#inner_method(#args)
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
 struct VirtualCanisterCall {
     principal: Expr,
     method_name: LitStr,
@@ -177,6 +210,70 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+
+//Ok::<(), ::ic_cdk::api::call::RejectionCode>(())
+
+pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as VirtualCanisterCall);
+    let principal = &input.principal;
+    let args = normalize_args(&input.args.elems);
+    let method_name = input.method_name.value();
+    let response_type = &input.response_type;
+    let cycles = input.cycles;
+
+    let cdk_call = get_cdk_notify(
+        quote! {#principal},
+        &method_name,
+        &args,
+        cycles,
+    );
+
+    let is_tuple = matches!(response_type, Type::Tuple(_));
+
+    let (decode, tuple_index) = if is_tuple {
+        (
+            quote! { ::ic_cdk::export::candid::decode_args::<#response_type>(&result) },
+            quote! {},
+        )
+    } else {
+        (
+            quote! { ::ic_cdk::export::candid::decode_args::<(#response_type,)>(&result) },
+            quote! {.0},
+        )
+    };
+
+    let responder_call = quote! {
+        async {
+            let encoded_args = match ::ic_cdk::export::candid::encode_args((#args)) {
+                Ok(v) => v,
+                Err(e) => return Err((::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
+            };
+
+            let result = ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args)?;
+            Ok(())
+        }
+    };
+
+    let expanded = quote! {
+        {
+            #[cfg(target_arch = "wasm32")]
+           {
+               async {
+                    #cdk_call
+               }
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                #responder_call
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+
 fn get_cdk_call(
     principal: proc_macro2::TokenStream,
     method_name: &str,
@@ -217,6 +314,27 @@ fn get_cdk_call(
                     ::ic_cdk::api::call::call::<_, #tuple_response_type>(#principal, #method_name, (#args)).await.map(|x| x.0)
                 }
             }
+        }
+    }
+}
+
+
+fn get_cdk_notify(
+    principal: proc_macro2::TokenStream,
+    method_name: &str,
+    args: &Punctuated<Expr, Token![,]>,
+    cycles: Option<Expr>,
+) -> proc_macro2::TokenStream {
+    if let Some(cycles) = cycles {
+        quote!{
+
+                ::ic_cdk::api::call::notify_with_payment128(#principal, #method_name, (#args), #cycles)
+
+        }
+    } else {
+        quote!{
+                ::ic_cdk::api::call::notify(#principal, #method_name, (#args))
+
         }
     }
 }

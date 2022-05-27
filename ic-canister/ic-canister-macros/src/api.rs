@@ -37,6 +37,8 @@ pub(crate) fn api_method(
 
     let internal_method = Ident::new(&format!("__{method_name}"), method.span());
 
+    let internal_method_notify = Ident::new(&format!("___{method_name}"), method.span());
+
     let return_type = &input.sig.output;
     let reply_call = if is_management_api {
         if *return_type != ReturnType::Default {
@@ -137,6 +139,15 @@ pub(crate) fn api_method(
         pub async fn #internal_method(#args) -> ::ic_cdk::api::call::CallResult<#inner_return_type> {
             // todo: trap handler
             Ok(self. #method(#args_destr) #await_call)
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        #[allow(unused_mut)]
+        #[allow(unused_must_use)]
+        pub fn #internal_method_notify(#args) -> Result<(), ::ic_cdk::api::call::RejectionCode> {
+            // todo: trap handler
+            self. #method(#args_destr);
+            Ok(())
         }
     };
 
