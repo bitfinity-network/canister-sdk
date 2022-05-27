@@ -210,11 +210,15 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+
+//Ok::<(), ::ic_cdk::api::call::RejectionCode>(())
+
 pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as VirtualCanisterCall);
     let principal = &input.principal;
     let args = normalize_args(&input.args.elems);
     let method_name = input.method_name.value();
+    let response_type = &input.response_type;
     let cycles = input.cycles;
 
     let cdk_call = get_cdk_notify(
@@ -224,16 +228,44 @@ pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
         cycles,
     );
 
+    let is_tuple = matches!(response_type, Type::Tuple(_));
+
+    let (decode, tuple_index) = if is_tuple {
+        (
+            quote! { ::ic_cdk::export::candid::decode_args::<#response_type>(&result) },
+            quote! {},
+        )
+    } else {
+        (
+            quote! { ::ic_cdk::export::candid::decode_args::<(#response_type,)>(&result) },
+            quote! {.0},
+        )
+    };
+
+    let responder_call = quote! {
+        async {
+            let encoded_args = match ::ic_cdk::export::candid::encode_args((#args)) {
+                Ok(v) => v,
+                Err(e) => return Err((::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
+            };
+
+            let result = ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args)?;
+            Ok(())
+        }
+    };
+
     let expanded = quote! {
         {
             #[cfg(target_arch = "wasm32")]
-            {
-                #cdk_call
+           {
+               async {
+                    #cdk_call
+               }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                Ok::<(), ::ic_cdk::api::call::RejectionCode>(())
+                #responder_call
             }
         }
     };
@@ -286,6 +318,7 @@ fn get_cdk_call(
     }
 }
 
+
 fn get_cdk_notify(
     principal: proc_macro2::TokenStream,
     method_name: &str,
@@ -294,11 +327,14 @@ fn get_cdk_notify(
 ) -> proc_macro2::TokenStream {
     if let Some(cycles) = cycles {
         quote!{
-            ::ic_cdk::api::call::notify_with_payment128(#principal, #method_name, (#args), #cycles)
+
+                ::ic_cdk::api::call::notify_with_payment128(#principal, #method_name, (#args), #cycles)
+
         }
     } else {
         quote!{
-            ::ic_cdk::api::call::notify(#principal, #method_name, (#args))
+                ::ic_cdk::api::call::notify(#principal, #method_name, (#args))
+
         }
     }
 }
