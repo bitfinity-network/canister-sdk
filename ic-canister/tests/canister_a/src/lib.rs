@@ -27,7 +27,7 @@ pub struct Metrics {
 pub struct CanisterA {
     #[id]
     principal: Principal,
-    #[metrics(interval = 1)]
+    #[metrics(interval = hourly)]
     metrics: std::rc::Rc<RefCell<ic_canister::MetricsMap<Metrics>>>,
     #[state(stable_store = true)]
     state: std::rc::Rc<RefCell<State>>,

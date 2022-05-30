@@ -34,22 +34,27 @@ struct Interval {
 
 impl Parse for Interval {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        input.parse::<Ident>()?;
-        input.parse::<Token![=]>()?;
-
-        if let Ok(lit) = input.parse::<syn::LitInt>() {
-            let value = lit.base10_parse::<u64>()?;
-            return Ok(Interval { hours: value });
+        let ident = input.parse::<Ident>()?;
+        if ident.to_string().to_lowercase() != "interval" {
+            return Err(syn::Error::new(
+                ident.span(),
+                format!("invalid identifier \"{ident}\""),
+            ));
         }
 
-        let ident = input.parse::<syn::Ident>()?;
+        input.parse::<Token![=]>()?;
+
+        let ident = input.parse::<Ident>()?;
         let interval = match ident.to_string().as_str() {
             "hourly" => Interval { hours: 1 },
             "daily" => Interval { hours: 24 },
             "weekly" => Interval { hours: 24 * 7 },
             "monthly" => Interval { hours: 24 * 30 },
             _ => {
-                return Err(syn::Error::new(ident.span(), "invalid interval argument"));
+                return Err(syn::Error::new(
+                    ident.span(),
+                    format!("invalid interval argument \"{ident}\""),
+                ));
             }
         };
         Ok(interval)
@@ -123,7 +128,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
                 [attr] => {
                     let metric = match attr.parse_args::<Interval>() {
                         Ok(interval) => interval,
-                        _ => panic!("invalid metric_name attribute syntax"),
+                        Err(e) => panic!("invalid metric_name attribute syntax: {e}"),
                     };
                     metric.hours
                 }
