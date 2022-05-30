@@ -45,7 +45,7 @@ impl CanisterA {
     }
 
     #[query]
-    fn new_metric_snapshot(&self) -> Metrics {
+    async fn new_metric_snapshot(&self) -> Metrics {
         Metrics { cycles: 120 }
     }
 }

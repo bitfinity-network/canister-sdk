@@ -140,14 +140,12 @@ mod tests {
 
         canister_call!(canister_a.collect_metrics(), Result<()>)
             .await
-            .unwrap()
             .unwrap();
 
         ctx.add_time(6u64.pow(10) * 60 * 3); // 3 hours
 
         canister_call!(canister_a.collect_metrics(), Result<()>)
             .await
-            .unwrap()
             .unwrap();
 
         let metrics = canister_b.get_metrics_a().await;

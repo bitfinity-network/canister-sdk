@@ -268,8 +268,8 @@ fn expand_metric_methods(
     quote! {
         impl #struct_name {
             #[update]
-            async fn collect_metrics(&mut self) -> ::ic_cdk::api::call::CallResult<()>  {
-                let new_metrics = self.__new_metric_snapshot().await?;
+            async fn collect_metrics(&mut self) {
+                let new_metrics = self.new_metric_snapshot().await;
                 let mut metrics = ::std::cell::RefCell::borrow_mut(&mut self.#metric_field_ident);
                 let current_ts = ::ic_kit::ic::time() / 6u64.pow(10);
                 let last_ts = metrics.iter().next_back().map(|(k, _)| *k).unwrap_or(current_ts);
@@ -280,7 +280,6 @@ fn expand_metric_methods(
                         current_ts - (current_ts % #interval)
                     };
                 metrics.insert(new_ts, new_metrics);
-                Ok(())
             }
 
             #[query]
