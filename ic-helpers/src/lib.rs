@@ -15,10 +15,7 @@ pub mod is20 {
 
 pub mod ledger;
 
-pub mod pair {
-    mod principal_ext;
-    pub use self::principal_ext::*;
-}
+pub mod pair;
 
 pub mod types;
 pub use types::*;

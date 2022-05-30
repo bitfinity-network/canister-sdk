@@ -208,7 +208,7 @@ fn expand_upgrade_methods(
 
     quote! {
         impl #struct_name {
-            #[cfg(feature = "export_api")]
+            #[cfg(not(feature = "no_api"))]
             #[export_name = "canister_pre_upgrade"]
             fn __pre_upgrade() {
                 let instance = Self::init_instance();
@@ -223,7 +223,7 @@ fn expand_upgrade_methods(
                 ::ic_storage::stable::write(#state_borrow).unwrap();
             }
 
-            #[cfg(feature = "export_api")]
+            #[cfg(not(feature = "no_api"))]
             #[export_name = "canister_post_upgrade"]
             fn __post_upgrade() {
                 let instance = Self::init_instance();
