@@ -9,10 +9,10 @@ use crate::agent::{construct_message, read_state_content, update_content, Envelo
 use candid::types::ic_types::hash_tree::Label;
 use candid::utils::ArgumentEncoder;
 use candid::{encode_args, CandidType, Nat, Principal};
+use ic_base_types::CanisterId;
 use ic_canister::virtual_canister_call;
 use ic_cdk::api::call::RejectionCode;
-use ic_ic00_types::{ECDSAPublicKeyArgs, ECDSAPublicKeyResponse, SignWithECDSAReply};
-use ic_types::CanisterId;
+use ic_ic00_types::{ECDSAPublicKeyArgs, ECDSAPublicKeyResponse, EcdsaKeyId, SignWithECDSAReply};
 use k256::elliptic_curve::AlgorithmParameters;
 use k256::pkcs8::{PublicKeyDocument, SubjectPublicKeyInfo};
 use k256::Secp256k1;
@@ -20,6 +20,7 @@ use libsecp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::convert::{AsRef, From};
+use std::str::FromStr;
 
 use crate::Pubkey;
 
@@ -162,7 +163,7 @@ impl Canister {
         let request = ECDSAPublicKeyArgs {
             canister_id,
             derivation_path,
-            key_id: "secp256k1".to_string(),
+            key_id: EcdsaKeyId::from_str("secp256k1").expect("known id"),
         };
         virtual_canister_call!(
             Principal::management_canister(),
@@ -179,7 +180,7 @@ impl Canister {
         derivation_path: Vec<Vec<u8>>,
     ) -> Result<SignWithECDSAReply, (RejectionCode, String)> {
         let request = ic_ic00_types::SignWithECDSAArgs {
-            key_id: "secp256k1".into(),
+            key_id: EcdsaKeyId::from_str("secp256k1").expect("known id"),
             message_hash: hash,
             derivation_path,
         };
