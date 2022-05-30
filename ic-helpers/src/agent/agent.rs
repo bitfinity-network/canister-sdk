@@ -4,8 +4,7 @@
 // This module requires `agent` feature to be enabled on `ic-helpers` dependency.
 
 use crate::management::CallSignature;
-use candid::utils::ArgumentDecoder;
-use candid::{decode_args, CandidType, Decode};
+use candid::{CandidType, Decode};
 use garcon::Waiter;
 use ic_agent::agent::{PollResult, Replied, RequestStatusResponse};
 use ic_agent::{Agent, AgentError, RequestId};
@@ -24,7 +23,7 @@ pub async fn proxy_update<T>(agent: &Agent, call: CallSignature) -> Result<T, Ag
 where
     for<'a> T: CandidType + Deserialize<'a>,
 {
-    let mut waiter = garcon::Delay::builder()
+    let waiter = garcon::Delay::builder()
         .throttle(std::time::Duration::from_millis(500))
         .timeout(std::time::Duration::from_secs(60 * 5))
         .build();
