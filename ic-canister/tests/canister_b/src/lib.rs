@@ -1,6 +1,8 @@
 use candid::{CandidType, Deserialize, Principal};
 use canister_a::CanisterA;
-use ic_canister::{canister_call, virtual_canister_call, canister_notify, virtual_canister_notify, query};
+use ic_canister::{
+    canister_call, canister_notify, query, virtual_canister_call, virtual_canister_notify,
+};
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::cell::RefCell;
@@ -62,10 +64,12 @@ impl CanisterB {
     async fn call_increment_virtual(&self, value: u32) -> u32 {
         let mut canister_a = self.state.borrow().canister_a;
 
-        virtual_canister_call!(canister_a, "inc_counter", (value, ), ())
+        virtual_canister_call!(canister_a, "inc_counter", (value,), ())
             .await
             .unwrap();
-        virtual_canister_call!(canister_a, "get_counter", (), u32).await.unwrap()
+        virtual_canister_call!(canister_a, "get_counter", (), u32)
+            .await
+            .unwrap()
     }
 
     #[update]
@@ -81,7 +85,9 @@ impl CanisterB {
     #[allow(unused_mut)]
     #[allow(unused_variables)]
     async fn notify_increment_virtual(&self, value: u32) -> bool {
-        virtual_canister_notify!(self.state.borrow().canister_a, "inc_counter", (value, ), ()).await.unwrap();
+        virtual_canister_notify!(self.state.borrow().canister_a, "inc_counter", (value,), ())
+            .await
+            .unwrap();
         true
     }
 
@@ -123,7 +129,6 @@ mod tests {
 
         assert_eq!(canister_b2.notify_increment(100).await, true);
         assert_eq!(canister_a2.__get_counter().await.unwrap(), 100);
-
     }
 
     #[tokio::test]
@@ -138,7 +143,7 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        ctx.add_time(3 * 6u64.pow(10) * 10); // 30 minutes
+        ctx.add_time(6u64.pow(10) * 60 * 3); // 3 hours
 
         canister_call!(canister_a.collect_metrics(), Result<()>)
             .await

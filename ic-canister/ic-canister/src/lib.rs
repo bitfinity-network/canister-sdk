@@ -156,7 +156,7 @@
 //!
 //! # Metrics
 //!
-//! Metrics for the canister can be collected by adding `#[metrics]` field to the canister struct.
+//! Metrics for the canister can be collected by adding a `#[metrics]` field to the canister struct.
 //!
 //! ```
 //! #[derive(IcStorage, Clone, Debug, Default)]
@@ -177,13 +177,13 @@
 //! }
 //! ```
 //!
-//! Note that `Metrics` is wrapped under the [`MetricsMap`] struct. This is an implementation
-//! detail used storing the metrics properly.
+//! Note that `Metrics` is wrapped inside the [`MetricsMap`] struct. This is an implementation
+//! detail used for storing the metrics properly.
 //!
-//! Under the hood this adds two calls to the `MyCanister` that utilitzes `metrics` state: `collect_metrics()` and `get_metrics()`.
+//! Under the hood this adds two calls to the `MyCanister` struct that utilizes `metrics` state: `collect_metrics()` and `get_metrics()`.
 //!
 //! With that in place we need to set up the logic for metrics calculation. This is done by setting
-//! `new_metric_snapshot` query method (that will ask you to set up if it's not yet present).
+//! the `new_metric_snapshot` query method (see example below).
 //!
 //! ```
 //! impl MyCanister {
@@ -196,9 +196,9 @@
 //! This method is pure in a sense that we don't have to think about how we should update the
 //! `metrics` field itself. Only the way the new metric is collected.
 //!
-//! You can set up interval for metrics collection by specifiying it explicitly (by default it collects
-//! metrics every day) via `#[metrics(interval = interval_value)]` where `interval_value` could be either
-//! a number of minutes or an ident from the list `[min, hour, day, week, month]`.
+//! You can specify an interval for metrics collection by setting it explicitly (by default it collects
+//! metrics every day) via `#[metrics(interval = interval_value)]` where `interval_value` is an ident from
+//! the list `[hourly, daily, weekly, monthly]`.
 //!
 //! ```
 //! #[derive(Clone, Canister)]
@@ -214,7 +214,7 @@
 //! }
 //! ```
 //!
-//! For an example you can refer to the tests in `canister_b` crate.
+//! For an example you can refer to the tests in the `canister_b` crate.
 //!
 //! # Inter-canister calls
 //!
@@ -267,7 +267,7 @@
 //! let principal = Principal::from_text("qd4yy-7yaaa-aaaag-aacdq-cai").unwrap();
 //! let result: Result<(), ic_cdk::api::call::RejectionCode>= virtual_canister_notify!(principal, "remote_method_name", (arg1, arg2), ());
 //! ```
-//! 
+//!
 //! # Testing canisters
 //!
 //! ## Internal canister logic

@@ -29,7 +29,7 @@ impl Default for TraitNameAttr {
 }
 
 struct Interval {
-    mins: u64,
+    hours: u64,
 }
 
 impl Parse for Interval {
@@ -39,16 +39,15 @@ impl Parse for Interval {
 
         if let Ok(lit) = input.parse::<syn::LitInt>() {
             let value = lit.base10_parse::<u64>()?;
-            return Ok(Interval { mins: value });
+            return Ok(Interval { hours: value });
         }
 
         let ident = input.parse::<syn::Ident>()?;
         let interval = match ident.to_string().as_str() {
-            "min" => Interval { mins: 1 },
-            "hour" => Interval { mins: 60 },
-            "day" => Interval { mins: 60 * 24 },
-            "week" => Interval { mins: 60 * 24 * 7 },
-            "month" => Interval { mins: 60 * 24 * 30 },
+            "hourly" => Interval { hours: 1 },
+            "daily" => Interval { hours: 24 },
+            "weekly" => Interval { hours: 24 * 7 },
+            "monthly" => Interval { hours: 24 * 30 },
             _ => {
                 return Err(syn::Error::new(ident.span(), "invalid interval argument"));
             }
@@ -119,14 +118,14 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         [metric_field] => {
             let interval = match &metric_field.attrs[..] {
                 // #[metrics]
-                [attr] if attr.tokens.is_empty() => 60 * 24,
+                [attr] if attr.tokens.is_empty() => 24,
                 // #[metrics(interval = hour)]
                 [attr] => {
                     let metric = match attr.parse_args::<Interval>() {
                         Ok(interval) => interval,
                         _ => panic!("invalid metric_name attribute syntax"),
                     };
-                    metric.mins
+                    metric.hours
                 }
                 _ => panic!("invalid metric_name attribute syntax"),
             };
@@ -275,10 +274,7 @@ fn expand_metric_methods(
                     } else {
                         current_ts - (current_ts % #interval)
                     };
-                metrics
-                    .entry(new_ts)
-                    .and_modify(|e| { *e = new_metrics.clone() })
-                    .or_insert(new_metrics);
+                metrics.insert(new_ts, new_metrics);
                 Ok(())
             }
 
