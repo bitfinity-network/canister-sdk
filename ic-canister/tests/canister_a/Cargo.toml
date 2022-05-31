@@ -16,4 +16,5 @@ ic-cdk = "0.5"
 candid = "0.7"
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
+ic-helpers = {path = "../../../ic-helpers"}
 serde = "1.0"
