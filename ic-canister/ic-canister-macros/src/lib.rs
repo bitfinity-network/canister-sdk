@@ -20,17 +20,17 @@ pub fn canister_call(input: TokenStream) -> TokenStream {
 }
 
 /// Makes an inter-canister call, which sends a one-way message. This macro is the same as [`canister_call`] usage, except ignoring the reply.
-/// 
+///
 /// Returns `Ok(())` if the message was successfully enqueued, otherwise returns a reject code.
-/// 
+///
 /// ```ignore
 /// let result: Result<(), ic_cdk::api::call::RejectionCode> = canister_notify!(canister_instance.method_name(arg1, arg2), ());
 /// ```
-/// 
+///
 /// To obtain a canister instance for this call, use [`ic_canister::Canister::from_principal`] method.
 /// If the canister to be called does not implement [`ic_canister::Canister`] trait, use
 /// [`virtual_canister_notify`] macro instead.
-/// 
+///
 ///  # Notes
 ///
 ///   * The caller has no way of checking whether the destination processed the notification.

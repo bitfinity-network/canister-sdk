@@ -28,8 +28,8 @@ pub type UserID = Principal;
 pub type WasmModule = Vec<u8>;
 
 /// WARNING!!!
-/// This struct is not imported from `ic00_types` 
-/// because `dfx 0.9.3` uses older version of this struct then 
+/// This struct is not imported from `ic00_types`
+/// because `dfx 0.9.3` uses older version of this struct then
 /// the `ic-ic00-types` dependency of this crate.
 /// Code that uses this struct may not work on later versions of dfx.
 #[derive(CandidType, Deserialize, Debug)]
@@ -40,8 +40,8 @@ pub struct ECDSAPublicKeyArgs {
 }
 
 /// WARNING!!!
-/// This struct is not imported from `ic00_types` 
-/// because `dfx 0.9.3` uses older version of this struct then 
+/// This struct is not imported from `ic00_types`
+/// because `dfx 0.9.3` uses older version of this struct then
 /// the `ic-ic00-types` dependency of this crate.
 /// Code that uses this struct may not work on later versions of dfx.
 #[derive(CandidType, Deserialize, Debug)]
@@ -190,7 +190,7 @@ impl Canister {
         };
         virtual_canister_call!(
             Principal::management_canister(),
-            "ecdsa_public_key",
+            "get_ecdsa_public_key", // WARNING! This method renamed in dfx 0.10.0 to `ecdsa_public_key`
             (request,),
             ECDSAPublicKeyResponse
         )
