@@ -12,7 +12,7 @@ use candid::{encode_args, CandidType, Nat, Principal};
 use ic_base_types::CanisterId;
 use ic_canister::virtual_canister_call;
 use ic_cdk::api::call::RejectionCode;
-use ic_ic00_types::{ECDSAPublicKeyArgs, ECDSAPublicKeyResponse, EcdsaKeyId, SignWithECDSAReply};
+use ic_ic00_types::{ECDSAPublicKeyResponse, SignWithECDSAReply};
 use k256::elliptic_curve::AlgorithmParameters;
 use k256::pkcs8::{PublicKeyDocument, SubjectPublicKeyInfo};
 use k256::Secp256k1;
@@ -20,13 +20,36 @@ use libsecp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::convert::{AsRef, From};
-use std::str::FromStr;
 
 use crate::Pubkey;
 
 pub type CanisterID = Principal;
 pub type UserID = Principal;
 pub type WasmModule = Vec<u8>;
+
+/// WARNING!!!
+/// This struct is not imported from `ic00_types`
+/// because `dfx 0.9.3` uses older version of this struct then
+/// the `ic-ic00-types` dependency of this crate.
+/// Code that uses this struct may not work on later versions of dfx.
+#[derive(CandidType, Deserialize, Debug)]
+pub struct ECDSAPublicKeyArgs {
+    pub canister_id: Option<CanisterId>,
+    pub derivation_path: Vec<Vec<u8>>,
+    pub key_id: String,
+}
+
+/// WARNING!!!
+/// This struct is not imported from `ic00_types`
+/// because `dfx 0.9.3` uses older version of this struct then
+/// the `ic-ic00-types` dependency of this crate.
+/// Code that uses this struct may not work on later versions of dfx.
+#[derive(CandidType, Deserialize, Debug)]
+pub struct SignWithECDSAArgs {
+    pub message_hash: Vec<u8>,
+    pub derivation_path: Vec<Vec<u8>>,
+    pub key_id: String,
+}
 
 #[derive(CandidType, Clone, Deserialize, Default)]
 pub struct CanisterSettings {
@@ -163,11 +186,11 @@ impl Canister {
         let request = ECDSAPublicKeyArgs {
             canister_id,
             derivation_path,
-            key_id: EcdsaKeyId::from_str("secp256k1").expect("known id"),
+            key_id: "secp256k1".into(),
         };
         virtual_canister_call!(
             Principal::management_canister(),
-            "get_ecdsa_public_key",
+            "get_ecdsa_public_key", // WARNING! This method renamed in dfx 0.10.0 to `ecdsa_public_key`
             (request,),
             ECDSAPublicKeyResponse
         )
@@ -179,8 +202,8 @@ impl Canister {
         hash: Vec<u8>,
         derivation_path: Vec<Vec<u8>>,
     ) -> Result<SignWithECDSAReply, (RejectionCode, String)> {
-        let request = ic_ic00_types::SignWithECDSAArgs {
-            key_id: EcdsaKeyId::from_str("secp256k1").expect("known id"),
+        let request = SignWithECDSAArgs {
+            key_id: "secp256k1".into(),
             message_hash: hash,
             derivation_path,
         };

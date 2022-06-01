@@ -205,7 +205,7 @@
 //! let principal = Principal::from_text("qd4yy-7yaaa-aaaag-aacdq-cai").unwrap();
 //! let result: Result<(), ic_cdk::api::call::RejectionCode>= virtual_canister_notify!(principal, "remote_method_name", (arg1, arg2), ());
 //! ```
-//! 
+//!
 //! # Testing canisters
 //!
 //! ## Internal canister logic
