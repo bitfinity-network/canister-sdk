@@ -416,6 +416,9 @@ use std::rc::Rc;
 
 pub use ic_canister_macros::*;
 
+// Reexport ic_kit of required version to simplify the dependency hell.
+pub use ic_kit;
+
 pub mod storage;
 
 /// Main trait for a testable canister. Do not implement this trait manually, use the derive macro.
