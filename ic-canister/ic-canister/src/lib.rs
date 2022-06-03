@@ -412,6 +412,8 @@ use ic_cdk::export::candid::{CandidType, Deserialize};
 use ic_cdk::export::Principal;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::rc::Rc;
 
 pub use ic_canister_macros::*;
@@ -444,6 +446,10 @@ pub trait Canister {
     /// Returns the principal of the canister.
     fn principal(&self) -> Principal;
 }
+
+// Important: If you're renaming this type, don't forget to update
+// the `ic_canister_macros::api::get_args` as well.
+pub type AsyncReturn<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 type ResponderFn = dyn Fn(Vec<u8>) -> CallResult<Vec<u8>>;
 type ResponderHashMap = HashMap<(Principal, String), Box<ResponderFn>>;
