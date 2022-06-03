@@ -28,12 +28,12 @@ pub struct CanisterA {
 
 impl CanisterA {
     #[query]
-    fn get_counter(&self) -> u32 {
+    pub fn get_counter(&self) -> u32 {
         self.state.borrow().counter
     }
 
     #[update]
-    fn inc_counter(&mut self, value: u32) {
+    pub fn inc_counter(&mut self, value: u32) {
         RefCell::borrow_mut(&self.state).counter += value;
     }
 }

@@ -47,7 +47,7 @@ impl CanisterB {
 
     #[update]
     #[allow(unused_mut)]
-    async fn call_increment(&self, value: u32) -> u32 {
+    async fn call_increment<'a>(&'a self, value: u32) -> u32 {
         let mut canister_a = CanisterA::from_principal(self.state.borrow().canister_a);
 
         canister_call!(canister_a.inc_counter(value), ())
@@ -58,7 +58,7 @@ impl CanisterB {
 
     #[update]
     #[allow(unused_mut)]
-    async fn call_increment_virtual(&self, value: u32) -> u32 {
+    async fn call_increment_virtual<'a>(&'a self, value: u32) -> u32 {
         let mut canister_a = self.state.borrow().canister_a;
 
         virtual_canister_call!(canister_a, "inc_counter", (value,), ())
@@ -71,7 +71,7 @@ impl CanisterB {
 
     #[update]
     #[allow(unused_mut)]
-    async fn notify_increment(&self, value: u32) -> bool {
+    async fn notify_increment<'a>(&'a self, value: u32) -> bool {
         let mut canister_a = CanisterA::from_principal(self.state.borrow().canister_a);
 
         canister_notify!(canister_a.inc_counter(value), ()).unwrap();
@@ -81,7 +81,7 @@ impl CanisterB {
     #[update]
     #[allow(unused_mut)]
     #[allow(unused_variables)]
-    async fn notify_increment_virtual(&self, value: u32) -> bool {
+    async fn notify_increment_virtual<'a>(&'a self, value: u32) -> bool {
         virtual_canister_notify!(self.state.borrow().canister_a, "inc_counter", (value,), ())
             .await
             .unwrap();

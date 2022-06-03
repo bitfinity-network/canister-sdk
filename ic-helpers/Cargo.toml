@@ -24,6 +24,7 @@ serde_cbor = "0.11.2"
 ic-ic00-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18_18-31"}
 thiserror = "1.0"
 ic-canister = { path = "../ic-canister/ic-canister", package = "ic-canister" }
+ic-canister-macros = { path = "../ic-canister/ic-canister-macros", package = "ic-canister-macros" }
 leb128 = "0.2.5"
 ic-agent = { version = "0.16", optional = true }
 garcon = { version = "0.2", optional = true}
