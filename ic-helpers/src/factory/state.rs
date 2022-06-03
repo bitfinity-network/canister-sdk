@@ -7,6 +7,8 @@ use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
 
+use super::types::Checksum;
+
 #[derive(Debug, CandidType, Deserialize)]
 pub struct FactoryConfiguration {
     ledger_principal: Principal,
@@ -36,6 +38,8 @@ impl FactoryConfiguration {
 pub trait FactoryState<K: Hash + Eq> {
     fn factory(&self) -> &Factory<K>;
     fn factory_mut(&mut self) -> &mut Factory<K>;
+
+    fn checksum(&self) -> Checksum;
 
     fn configuration(&self) -> &FactoryConfiguration;
     fn configuration_mut(&mut self) -> &mut FactoryConfiguration;
