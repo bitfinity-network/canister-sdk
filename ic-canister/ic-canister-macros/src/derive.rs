@@ -291,6 +291,46 @@ fn get_state_type(input_type: &Type) -> &Type {
     extract_generic("RefCell", ref_cell, input_type)
 }
 
+pub(crate) fn extract_type_if_matches<'a>(type_name: &str, generic_base: &'a Type) -> &'a Type {
+    let v = match generic_base {
+        Type::Path(v) => v,
+        Type::Reference(r) => match r.elem.as_ref() {
+            Type::Path(v) => v,
+            // who would even return references to references?
+            ty => {
+                panic!("Referenced type should be concrete (either generic or primitive): {ty:#?}")
+            }
+        },
+        ty => panic!("Type is not concrete not is reference: {ty:#?}"),
+    };
+
+    let last = v.path.segments.iter().last();
+
+    let last_segment = match last {
+        Some(segment) => segment,
+        None => panic!("Given type does not have generic parameters: {v:#?}"),
+    };
+
+    // In case if the `type_name` does not wrap the `generic_base` we simply return it.
+    if last_segment.ident != type_name {
+        return generic_base;
+    }
+
+    let arg = match &last_segment.arguments {
+        PathArguments::AngleBracketed(arg) => arg,
+        _ => panic!("Given type does not have generic parameters: {v:#?}"),
+    };
+
+    if arg.args.len() != 1 {
+        panic!("Cannot extract given type since it has multiple generic parameters: {v:#?}");
+    }
+
+    match &arg.args[0] {
+        GenericArgument::Type(t) => t,
+        arg => panic!("Generic parameter to a type is not a generic argument: {arg:#?}"),
+    }
+}
+
 fn extract_generic<'a>(type_name: &str, generic_base: &'a Type, input_type: &'a Type) -> &'a Type {
     let v = match generic_base {
         Type::Path(v) => v,

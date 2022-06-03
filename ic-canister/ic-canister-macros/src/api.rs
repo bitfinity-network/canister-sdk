@@ -18,11 +18,17 @@ pub(crate) fn api_method(
 ) -> TokenStream {
     let input = parse_macro_input!(item as ImplItemMethod);
     let method = &input.sig.ident;
-    if matches!(input.vis, Visibility::Public(_)) {
-        panic!(
-            "Canister methods should not be public. Check declaration for the method `{method}`."
-        );
-    }
+    let orig_vis = input.vis.clone();
+
+    let _ = &input
+        .sig
+        .generics
+        .params
+        .iter()
+        .filter_map(|generic| match generic {
+            syn::GenericParam::Lifetime(_) => Some(generic),
+            _ => panic!("candid method does not support generics that are not lifetimes"),
+        });
 
     if let Err(e) = store_candid_definitions(method_type, &input.sig) {
         return e.to_compile_error().into();
@@ -66,11 +72,21 @@ pub(crate) fn api_method(
     let mut args_destr = Punctuated::new();
     let mut has_self = false;
 
+    let mut self_lifetime = quote! {};
     for arg in args {
         let (arg_type, arg_pat) = match arg {
-            FnArg::Receiver(_) => {
+            FnArg::Receiver(r) => {
                 has_self = true;
-                continue;
+                match &r.reference {
+                    Some((_, None)) if input.sig.asyncness.is_some() => {
+                        panic!("async methods should have a lifetime for &self specified");
+                    }
+                    Some((_, Some(lt))) => {
+                        self_lifetime = quote! {#lt};
+                        continue;
+                    }
+                    _ => continue,
+                }
             }
             FnArg::Typed(t) => (&t.ty, t.pat.as_ref()),
         };
@@ -135,16 +151,17 @@ pub(crate) fn api_method(
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        #[allow(unused_mut)]
-        pub async fn #internal_method(#args) -> ::ic_cdk::api::call::CallResult<#inner_return_type> {
+        #[allow(dead_code)]
+        #orig_vis fn #internal_method<#self_lifetime>(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_cdk::api::call::CallResult<#inner_return_type>> + #self_lifetime>> {
             // todo: trap handler
-            Ok(self. #method(#args_destr) #await_call)
+            let result = self. #method(#args_destr);
+            Box::pin(async move { Ok(result #await_call) })
         }
 
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(unused_mut)]
         #[allow(unused_must_use)]
-        pub fn #internal_method_notify(#args) -> ::std::result::Result<(), ::ic_cdk::api::call::RejectionCode> {
+        #orig_vis fn #internal_method_notify<#self_lifetime>(#args) -> ::std::result::Result<(), ::ic_cdk::api::call::RejectionCode> {
             // todo: trap handler
             self. #method(#args_destr);
             Ok(())
@@ -154,7 +171,8 @@ pub(crate) fn api_method(
     TokenStream::from(expanded)
 }
 
-struct Method {
+#[derive(Clone)]
+pub struct Method {
     args: Vec<String>,
     rets: Vec<String>,
     modes: String,
@@ -170,12 +188,6 @@ lazy_static! {
 }
 
 fn store_candid_definitions(modes: &str, sig: &Signature) -> Result<(), syn::Error> {
-    if !sig.generics.params.is_empty() {
-        return Err(Error::new_spanned(
-            &sig.generics,
-            "candid_method doesn't support generic parameters",
-        ));
-    }
     let name = sig.ident.to_string();
 
     let (args, rets) = get_args(sig)?;
@@ -252,10 +264,8 @@ pub(crate) fn generate_idl() -> TokenStream {
         res
     });
 
-    // Methods
-    let mut meths = METHODS.lock().unwrap();
-
-    let gen_tys = meths.iter().map(|(name, Method { args, rets, modes })| {
+    let mut methods = METHODS.lock().unwrap();
+    let gen_tys = methods.iter().map(|(name, Method { args, rets, modes })| {
         let args = args
             .iter()
             .map(|t| generate_arg(quote! { args }, t))
@@ -294,26 +304,21 @@ pub(crate) fn generate_idl() -> TokenStream {
         let ty = Type::Service(service);
     };
 
-    meths.clear();
+    methods.clear();
 
     let actor = match init {
         Some(init) => quote! {
             #init
-            let actor = Some(Type::Class(init_args, Box::new(ty)));
+            let actor = Type::Class(init_args, Box::new(ty));
         },
-        None => quote! { let actor = Some(ty); },
+        None => quote! { let actor = ty; },
     };
 
     let res = quote! {
         {
-            fn __export_service() -> String {
-                #service
-                #actor
-                let result = #candid::bindings::candid::compile(&env.env, &actor);
-                format!("{}", result)
-            }
-
-            __export_service()
+            #service
+            #actor
+            ::ic_canister::Idl::new(env, actor)
         }
     };
 
@@ -346,7 +351,13 @@ fn get_args(sig: &Signature) -> Result<(Vec<Type>, Vec<Type>), Error> {
         ReturnType::Default => Vec::new(),
         ReturnType::Type(_, ty) => match ty.as_ref() {
             Type::Tuple(tuple) => tuple.elems.iter().cloned().collect(),
-            _ => vec![ty.as_ref().clone()],
+            ty => {
+                // Some types in trait canisters had to be marked as `AsyncReturn` as implementation detail
+                // but we do not need this when exporting them to candid files as ic calls them correctly
+                // in any case.
+                let extracted_type = crate::derive::extract_type_if_matches("AsyncReturn", ty);
+                vec![extracted_type.clone()]
+            }
         },
     };
     Ok((args, rets))
