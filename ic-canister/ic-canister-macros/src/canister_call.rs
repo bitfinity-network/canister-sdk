@@ -64,8 +64,17 @@ pub(crate) fn canister_call(input: TokenStream) -> TokenStream {
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            {
-                #canister.#inner_method(#args)
+            async {
+                let __caller = ::ic_canister::ic_kit::ic::caller();
+                let __id = ::ic_canister::ic_kit::ic::id();
+                ::ic_canister::ic_kit::inject::get_context().update_caller(__id);
+                ::ic_canister::ic_kit::inject::get_context().update_id(#canister.principal());
+
+                let result = #canister.#inner_method(#args).await;
+
+                ::ic_canister::ic_kit::inject::get_context().update_caller(__caller);
+                ::ic_canister::ic_kit::inject::get_context().update_id(__id);
+                result
             }
         }
     };
@@ -82,12 +91,7 @@ pub(crate) fn canister_notify(input: TokenStream) -> TokenStream {
     let inner_method = Ident::new(&format!("___{method}"), method.span());
     let args = normalize_args(&input.method_call.args);
     let cycles = input.cycles;
-    let cdk_call = get_cdk_notify(
-        quote! {#canister.principal()},
-        &method_name,
-        &args,
-        cycles,
-    );
+    let cdk_call = get_cdk_notify(quote! {#canister.principal()}, &method_name, &args, cycles);
 
     let expanded = quote! {
         {
@@ -98,7 +102,16 @@ pub(crate) fn canister_notify(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                #canister.#inner_method(#args)
+                let __caller = ::ic_canister::ic_kit::ic::caller();
+                let __id = ::ic_canister::ic_kit::ic::id();
+                ::ic_canister::ic_kit::inject::get_context().update_caller(__id);
+                ::ic_canister::ic_kit::inject::get_context().update_id(#canister.principal());
+
+                let result = #canister.#inner_method(#args);
+
+                ::ic_canister::ic_kit::inject::get_context().update_caller(__caller);
+                ::ic_canister::ic_kit::inject::get_context().update_id(__id);
+                result
             }
         }
     };
@@ -210,7 +223,6 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-
 //Ok::<(), ::ic_cdk::api::call::RejectionCode>(())
 
 pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
@@ -221,12 +233,7 @@ pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
     let response_type = &input.response_type;
     let cycles = input.cycles;
 
-    let cdk_call = get_cdk_notify(
-        quote! {#principal},
-        &method_name,
-        &args,
-        cycles,
-    );
+    let cdk_call = get_cdk_notify(quote! {#principal}, &method_name, &args, cycles);
 
     let is_tuple = matches!(response_type, Type::Tuple(_));
 
@@ -273,7 +280,6 @@ pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-
 fn get_cdk_call(
     principal: proc_macro2::TokenStream,
     method_name: &str,
@@ -318,7 +324,6 @@ fn get_cdk_call(
     }
 }
 
-
 fn get_cdk_notify(
     principal: proc_macro2::TokenStream,
     method_name: &str,
@@ -326,13 +331,13 @@ fn get_cdk_notify(
     cycles: Option<Expr>,
 ) -> proc_macro2::TokenStream {
     if let Some(cycles) = cycles {
-        quote!{
+        quote! {
 
                 ::ic_cdk::api::call::notify_with_payment128(#principal, #method_name, (#args), #cycles)
 
         }
     } else {
-        quote!{
+        quote! {
                 ::ic_cdk::api::call::notify(#principal, #method_name, (#args))
 
         }
