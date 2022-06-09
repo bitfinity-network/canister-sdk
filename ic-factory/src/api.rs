@@ -1,7 +1,5 @@
 use std::{
     cell::{Ref, RefCell, RefMut},
-    future::Future,
-    pin::Pin,
     rc::Rc,
 };
 
@@ -224,19 +222,11 @@ pub struct FactoryExport {
     state: Rc<RefCell<FactoryState>>,
 }
 
-const FACTORY_WASM_PATH: &str = "./target/wasm32-unknown-unknown/release/factory.wasm";
+const FACTORY_WASM_PATH: &str = "../../target/wasm32-unknown-unknown/release/factory.wasm";
 
 impl FactoryCanister for FactoryExport {
     fn get_canister_bytecode() -> Vec<u8> {
-        // TODO: move onto a separate function
-        match std::fs::read(FACTORY_WASM_PATH) {
-            Ok(bytes) => bytes,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => panic!(
-                "{} does not exist. Consider building the factory with `--release` flag",
-                FACTORY_WASM_PATH
-            ),
-            Err(e) => panic!("{}", e),
-        }
+        ic_helpers::get_canister_bytecode_for(FACTORY_WASM_PATH)
     }
 
     fn state(&self) -> Ref<FactoryState> {
