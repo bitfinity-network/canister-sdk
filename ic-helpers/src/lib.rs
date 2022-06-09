@@ -1,7 +1,6 @@
 extern crate core;
 
 pub mod agent;
-pub mod factory;
 
 pub mod management {
     mod canister;
