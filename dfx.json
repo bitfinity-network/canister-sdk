@@ -1,13 +1,13 @@
 {
   "canisters": {
     "canister_a": {
-      "build": "cargo build -p canister_a --target wasm32-unknown-unknown --release --features export_api",
+      "build": "bash scripts/build.sh",
       "candid": "ic-canister/tests/canister_a/canister_a.did",
       "wasm": "target/wasm32-unknown-unknown/release/canister_a-opt.wasm",
       "type": "custom"
     },
     "canister_b": {
-      "build": "bash build.sh",
+      "build": "bash scripts/build.sh",
       "candid": "ic-canister/tests/canister_b/canister_b.did",
       "wasm": "target/wasm32-unknown-unknown/release/canister_b-opt.wasm",
       "type": "custom"
