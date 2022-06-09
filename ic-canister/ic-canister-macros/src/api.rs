@@ -1,24 +1,35 @@
 use lazy_static::lazy_static;
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::{quote, ToTokens};
+use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
     parse_macro_input, Error, FnArg, Ident, ImplItemMethod, Pat, PatIdent, PatTuple, ReturnType,
-    Signature, Type, TypeTuple, Visibility,
+    Signature, Type, TypeTuple,
 };
+
+#[derive(Default, Deserialize, Debug)]
+struct ApiAttrParameters {
+    #[serde(rename = "trait", default)]
+    pub is_trait: bool,
+}
 
 pub(crate) fn api_method(
     method_type: &str,
-    _attr: TokenStream,
+    attr: TokenStream,
     item: TokenStream,
     is_management_api: bool,
 ) -> TokenStream {
     let input = parse_macro_input!(item as ImplItemMethod);
     let method = &input.sig.ident;
     let orig_vis = input.vis.clone();
+
+    let parameters =
+        serde_tokenstream::from_tokenstream::<ApiAttrParameters>(&attr.into()).unwrap();
 
     let _ = &input
         .sig
@@ -128,27 +139,63 @@ pub(crate) fn api_method(
         elems: args_destr.clone(),
     };
 
+    let is_async_return_type = if let ReturnType::Type(_, ty) = &input.sig.output {
+        let extracted = crate::derive::extract_type_if_matches("AsyncReturn", ty);
+        &**ty != extracted
+    } else {
+        false
+    };
+
     let await_call = if input.sig.asyncness.is_some() {
         quote! { .await }
     } else {
         quote! {}
     };
 
+    let await_call_if_result_is_async = if is_async_return_type {
+        quote! { .await }
+    } else {
+        quote! {}
+    };
+
+    let export_function = if parameters.is_trait {
+        let mut methods = METHODS_EXPORTS.lock().unwrap();
+        methods.push(ExportMethodData {
+            method_name,
+            export_name: export_name.clone(),
+            arg_count: args.len(),
+            is_async: input.sig.asyncness.is_some(),
+            is_return_type_async: is_async_return_type,
+            return_type: match return_type {
+                ReturnType::Default => ReturnVariant::Default,
+                ReturnType::Type(_, t) => match t.as_ref() {
+                    Type::Tuple(_) => ReturnVariant::Tuple,
+                    _ => ReturnVariant::Type,
+                },
+            },
+        });
+        quote! {}
+    } else {
+        quote! {
+            #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
+            #[export_name = #export_name]
+            fn #internal_method() {
+                ::ic_cdk::setup();
+                ::ic_cdk::spawn(async {
+                    let #args_destr_tuple: #arg_type = ::ic_cdk::api::call::arg_data();
+                    let mut instance = Self::init_instance();
+                    let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
+                    #reply_call
+                });
+            }
+        }
+    };
+
     let expanded = quote! {
         #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
         #input
 
-        #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
-        #[export_name = #export_name]
-        fn #internal_method() {
-            ::ic_cdk::setup();
-            ::ic_cdk::spawn(async {
-                let #args_destr_tuple: #arg_type = ::ic_cdk::api::call::arg_data();
-                let mut instance = Self::init_instance();
-                let result = instance. #method(#args_destr) #await_call;
-                #reply_call
-            });
-        }
+        #export_function
 
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(dead_code)]
@@ -169,6 +216,77 @@ pub(crate) fn api_method(
     };
 
     TokenStream::from(expanded)
+}
+
+#[derive(Clone)]
+enum ReturnVariant {
+    Default,
+    Type,
+    Tuple,
+}
+
+#[derive(Clone)]
+struct ExportMethodData {
+    method_name: String,
+    export_name: String,
+    arg_count: usize,
+    is_async: bool,
+    is_return_type_async: bool,
+    return_type: ReturnVariant,
+}
+
+lazy_static! {
+    static ref METHODS_EXPORTS: Mutex<Vec<ExportMethodData>> = Mutex::new(Default::default());
+}
+
+pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
+    let input_type = parse_macro_input!(input as Ident);
+    let methods = METHODS_EXPORTS.lock().unwrap();
+
+    let methods = methods.iter().map(|method| {
+        let owned: ExportMethodData = method.clone();
+        let ExportMethodData { method_name, export_name, arg_count, is_async, is_return_type_async, return_type } = owned;
+
+        let method = Ident::new(&method_name, Span::call_site());
+        let internal_method = Ident::new(&format!("__{method}"), Span::call_site());
+
+        // skip first argument as it is always self
+        let (args_destr_tuple, args_destr) = if arg_count > 1 {
+            let args: Vec<Ident> = (1..arg_count).map(|x| Ident::new(&format!("__arg_{x}"), Span::call_site())).collect();
+            (
+                quote! { let ( #(#args),* , ) = ::ic_cdk::api::call::arg_data(); },
+                quote! { #(#args),* }
+            )
+        } else {
+            (quote! {}, quote! {})
+        };
+
+        let await_call = if is_async { quote! {.await}} else {quote! {}};
+        let await_call_if_result_is_async = if is_return_type_async { quote! {.await} } else {quote! {}};
+        let reply_call = match return_type {
+            ReturnVariant::Default => quote! { ::ic_cdk::api::call::reply(()); },
+            ReturnVariant::Type => quote! {::ic_cdk::api::call::reply((result,)); },
+            ReturnVariant::Tuple => quote! { ::ic_cdk::api::call::reply(result); },
+        };
+
+        quote! {
+            #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
+            #[export_name = #export_name]
+            fn #internal_method() {
+                ::ic_cdk::setup();
+                ::ic_cdk::spawn(async {
+                    #args_destr_tuple
+                    let mut instance = #input_type ::init_instance();
+                    let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
+
+                    #reply_call
+                });
+            }
+        }
+    });
+
+    let expanded = quote! { #(#methods)*};
+    expanded.into()
 }
 
 #[derive(Clone)]

@@ -11,7 +11,7 @@ crate-type = ["lib", "cdylib"]
 [dependencies]
 ic-cdk = "0.5"
 candid = "0.7"
-canister_a = {path = "../canister_a"}
+canister_a = {path = "../canister_a", features = ["no_api"]}
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
 ic-helpers = {path = "../../../ic-helpers"}

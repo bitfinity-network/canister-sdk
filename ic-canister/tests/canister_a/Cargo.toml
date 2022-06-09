@@ -7,7 +7,8 @@ edition = "2021"
 crate-type = ["lib", "cdylib"]
 
 [features]
-export_api = []
+default = []
+no_api = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

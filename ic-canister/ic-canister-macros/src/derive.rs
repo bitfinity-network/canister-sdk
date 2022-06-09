@@ -294,6 +294,7 @@ fn get_state_type(input_type: &Type) -> &Type {
 pub(crate) fn extract_type_if_matches<'a>(type_name: &str, generic_base: &'a Type) -> &'a Type {
     let v = match generic_base {
         Type::Path(v) => v,
+        Type::Tuple(_) => return generic_base,
         Type::Reference(r) => match r.elem.as_ref() {
             Type::Path(v) => v,
             // who would even return references to references?
@@ -301,7 +302,7 @@ pub(crate) fn extract_type_if_matches<'a>(type_name: &str, generic_base: &'a Typ
                 panic!("Referenced type should be concrete (either generic or primitive): {ty:#?}")
             }
         },
-        ty => panic!("Type is not concrete not is reference: {ty:#?}"),
+        ty => panic!("Type is not concrete nor is reference: {ty:#?}"),
     };
 
     let last = v.path.segments.iter().last();

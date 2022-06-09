@@ -1,10 +1,12 @@
 use candid::{CandidType, Deserialize, Principal};
-use canister_a::CanisterA;
+use canister_a::CanisterAExports;
 use ic_canister::{canister_call, canister_notify, virtual_canister_call, virtual_canister_notify};
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::cell::RefCell;
 use std::rc::Rc;
+
+use canister_a::CanisterA;
 
 use ic_canister::{init, update, Canister};
 
@@ -48,7 +50,7 @@ impl CanisterB {
     #[update]
     #[allow(unused_mut)]
     async fn call_increment<'a>(&'a self, value: u32) -> u32 {
-        let mut canister_a = CanisterA::from_principal(self.state.borrow().canister_a);
+        let mut canister_a = CanisterAExports::from_principal(self.state.borrow().canister_a);
 
         canister_call!(canister_a.inc_counter(value), ())
             .await
@@ -72,7 +74,7 @@ impl CanisterB {
     #[update]
     #[allow(unused_mut)]
     async fn notify_increment<'a>(&'a self, value: u32) -> bool {
-        let mut canister_a = CanisterA::from_principal(self.state.borrow().canister_a);
+        let mut canister_a = CanisterAExports::from_principal(self.state.borrow().canister_a);
 
         canister_notify!(canister_a.inc_counter(value), ()).unwrap();
         true
@@ -92,6 +94,7 @@ impl CanisterB {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ic_canister::ic_kit::MockContext;
 
     fn get_canister_b(canister_a: Principal) -> CanisterB {
         let canister = CanisterB::init_instance();
@@ -102,8 +105,10 @@ mod tests {
 
     #[tokio::test]
     async fn inter_canister_call() {
-        let canister_a = CanisterA::init_instance();
-        let canister_a2 = CanisterA::init_instance();
+        MockContext::new().inject();
+
+        let canister_a = CanisterAExports::init_instance();
+        let canister_a2 = CanisterAExports::init_instance();
         let canister_b = get_canister_b(canister_a.principal());
         let canister_b2 = get_canister_b(canister_a2.principal());
 
