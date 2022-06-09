@@ -16,12 +16,24 @@ impl Idl {
         };
 
         match (&mut self.actor, &other.actor) {
-            (Type::Class(ref class, box Type::Service(ref mut left)), Type::Service(ref right))
-            | (Type::Service(ref mut left), Type::Class(ref class, box Type::Service(ref right))) =>
-            {
-                left.extend(right.clone());
-                self.actor = Type::Class(class.to_vec(), Box::new(Type::Service(left.clone())));
-            }
+            (Type::Class(ref class, left), Type::Service(ref right)) => match **left {
+                Type::Service(ref mut left) => {
+                    left.extend(right.clone());
+                    self.actor = Type::Class(class.to_vec(), Box::new(Type::Service(left.clone())));
+                }
+                _ => {
+                    panic!("type {left:#?} is not a service")
+                }
+            },
+            (Type::Service(ref mut left), Type::Class(ref class, right)) => match **right {
+                Type::Service(ref right) => {
+                    left.extend(right.clone());
+                    self.actor = Type::Class(class.to_vec(), Box::new(Type::Service(left.clone())));
+                }
+                _ => {
+                    panic!("type {right:#?} is not a service")
+                }
+            },
             (Type::Service(left), Type::Service(right)) => {
                 left.extend(right.clone());
             }
