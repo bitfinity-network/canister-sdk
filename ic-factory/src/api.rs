@@ -1,7 +1,4 @@
-use std::{
-    cell::{Ref, RefCell, RefMut},
-    rc::Rc,
-};
+use std::{cell::RefCell, rc::Rc};
 
 use candid::{Nat, Principal};
 use ic_canister::{generate_exports, query, update, AsyncReturn, Canister};
@@ -26,15 +23,14 @@ use super::{error::FactoryError, FactoryState};
 /// * set_controller
 /// * refund_icp
 pub trait FactoryCanister: Canister + Sized {
-    fn state(&self) -> Ref<'_, FactoryState>;
-    fn state_mut(&self) -> RefMut<'_, FactoryState>;
+    fn state(&self) -> Rc<RefCell<FactoryState>>;
 
     fn get_canister_bytecode() -> Vec<u8>;
 
     /// Returns the checksum of a wasm module in hex representation.
     // #[query(trait = true)]
     fn get_checksum<'a>(&'a self) -> String {
-        self.state().factory.checksum.to_string()
+        self.state().borrow().factory.checksum.to_string()
     }
 
     /// Returns the cycles balances.
@@ -76,8 +72,8 @@ pub trait FactoryCanister: Canister + Sized {
 
         let canister_bytecode = <Self as FactoryCanister>::get_canister_bytecode();
         Box::pin(async move {
-            let canisters = self.state_mut().factory.canisters.clone();
-            let curr_version = self.state().factory.checksum.version;
+            let canisters = self.state().borrow_mut().factory.canisters.clone();
+            let curr_version = self.state().borrow().factory.checksum.version;
             let mut outdated_canisters = vec![];
 
             for (key, canister) in canisters
@@ -85,11 +81,15 @@ pub trait FactoryCanister: Canister + Sized {
                 .filter(|(_, c)| c.version() == curr_version)
             {
                 let upgrader = self
-                    .state_mut()
+                    .state()
+                    .borrow_mut()
                     .factory
                     .upgrade(&canister, canister_bytecode.clone());
                 if let Ok(upgraded) = upgrader.await {
-                    self.state_mut().factory.register_upgraded(&key, upgraded)
+                    self.state()
+                        .borrow_mut()
+                        .factory
+                        .register_upgraded(&key, upgraded)
                 } else {
                     outdated_canisters.push(canister.identity())
                 }
@@ -108,39 +108,39 @@ pub trait FactoryCanister: Canister + Sized {
     /// Returns the number of canisters created by the factory.
     #[query(trait = true)]
     fn length(&self) -> usize {
-        self.state().factory.canisters.len()
+        self.state().borrow().factory.canisters.len()
     }
 
     /// Returns a vector of all canisters created by the factory.
     #[query(trait = true)]
     fn get_all(&self) -> Vec<Principal> {
-        self.state().factory.all()
+        self.state().borrow().factory.all()
     }
 
     /// Returns the ICP fee amount for canister creation.
     #[query(trait = true)]
     fn get_icp_fee(&self) -> u64 {
-        self.state().icp_fee()
+        self.state().borrow().icp_fee()
     }
 
     /// Sets the ICP fee amount for canister creation. This method can only be called
     /// by the factory controller.
     #[update(trait = true)]
     fn set_icp_fee(&self, e8s: u64) -> Result<(), FactoryError> {
-        self.state_mut().set_icp_fee(e8s)
+        self.state().borrow_mut().set_icp_fee(e8s)
     }
 
     /// Returns the principal that will receive the ICP fees.
     #[query(trait = true)]
     fn get_icp_to(&self) -> Principal {
-        self.state().icp_to()
+        self.state().borrow().icp_to()
     }
 
     /// Sets the principal that will receive the ICP fees. This method can only be called
     /// by the factory controller.
     #[update(trait = true)]
     fn set_icp_to(&self, to: Principal) -> ::std::result::Result<(), FactoryError> {
-        self.state_mut().set_icp_to(to)
+        self.state().borrow_mut().set_icp_to(to)
     }
 
     /// Returns the ICPs transferred to the factory by the caller. This method returns all
@@ -151,7 +151,7 @@ pub trait FactoryCanister: Canister + Sized {
             LedgerPrincipalExt, PrincipalId, Subaccount, DEFAULT_TRANSFER_FEE,
         };
 
-        let ledger = self.state().ledger_principal();
+        let ledger = self.state().borrow().ledger_principal();
         Box::pin(async move {
             let caller = ic_kit::ic::caller();
             let balance = ledger
@@ -182,13 +182,13 @@ pub trait FactoryCanister: Canister + Sized {
     /// Sets the factory controller principal.
     #[update(trait = true)]
     fn set_controller(&self, controller: Principal) -> Result<(), FactoryError> {
-        self.state_mut().set_controller(controller)
+        self.state().borrow_mut().set_controller(controller)
     }
 
     /// Returns the factory controller principal.
     #[query(trait = true)]
     fn get_controller(&self) -> Principal {
-        self.state().controller()
+        self.state().borrow().controller()
     }
 
     /// Returns the AccountIdentifier for the caller subaccount in the factory account.
@@ -229,13 +229,17 @@ impl FactoryCanister for FactoryExport {
         ic_helpers::get_canister_bytecode_for(FACTORY_WASM_PATH)
     }
 
-    fn state(&self) -> Ref<FactoryState> {
-        self.state.borrow()
+    fn state(&self) -> Rc<RefCell<FactoryState>> {
+        self.state.clone()
     }
 
-    fn state_mut(&self) -> RefMut<FactoryState> {
-        self.state.borrow_mut()
-    }
+    //     fn state(&self) -> Ref<FactoryState> {
+    //         self.state.borrow()
+    //     }
+
+    //     fn state_mut(&self) -> RefMut<FactoryState> {
+    //         self.state.borrow_mut()
+    //     }
 }
 
 generate_exports!(FactoryExport);
