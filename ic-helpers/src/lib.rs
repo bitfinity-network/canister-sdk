@@ -17,7 +17,5 @@ pub mod ledger;
 
 pub mod pair;
 
-pub mod metrics;
-
 pub mod types;
 pub use types::*;

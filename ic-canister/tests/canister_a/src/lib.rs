@@ -1,8 +1,7 @@
 use candid::{CandidType, Deserialize, Principal};
-use ic_helpers::metrics::MetricsMap;
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
 
 use ic_canister::{query, update, Canister};
 
@@ -19,19 +18,12 @@ impl Versioned for State {
     }
 }
 
-#[derive(IcStorage, Clone, Debug, Default)]
-
-pub struct Metrics {
-    pub cycles: u64,
-}
-
 #[derive(Clone, Canister)]
 pub struct CanisterA {
     #[id]
     principal: Principal,
     #[state(stable_store = true)]
-    state: Rc<RefCell<State>>,
-    metrics: Rc<RefCell<MetricsMap<Metrics>>>,
+    state: std::rc::Rc<RefCell<State>>,
 }
 
 impl CanisterA {
@@ -43,16 +35,5 @@ impl CanisterA {
     #[update]
     fn inc_counter(&mut self, value: u32) {
         RefCell::borrow_mut(&self.state).counter += value;
-    }
-
-    #[update]
-    fn collect_metrics(&mut self) {
-        let mut metrics = self.metrics.borrow_mut();
-        metrics.insert(Metrics { cycles: 100 });
-    }
-
-    #[query]
-    fn get_metrics(&self) -> MetricsMap<Metrics> {
-        self.metrics.borrow().clone()
     }
 }
