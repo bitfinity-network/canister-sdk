@@ -159,7 +159,7 @@
 //! When we want to enrich a canister with some generic structure, we can define a trait that the
 //! given canister will implement, for instance:
 //!
-//! ```
+//! ```ignore
 //! struct FactoryState;
 //!
 //! trait FactoryAPI {
@@ -181,7 +181,7 @@
 //! have to define canister state accessor to be able to see it from the trait
 //! perspective. For instance
 //!
-//! ```
+//! ```ignore
 //! struct FactoryState;
 //!
 //! trait FactoryAPI {
@@ -263,7 +263,8 @@
 //! And since this dependency will be compiled from other crate's perspective, the code
 //! for `get_idl()` will be constant and will return the necessary struct which will be
 //! merged via [Idl::merge] with idl of the canister, we're implementing, like
-//! ```
+//!
+//! ```ignore
 //! let canister_idl = ic_canister::generate_idl!();
 //! let mut factory_idl = <TokenFactoryCanister as FactoryCanister>::get_idl();
 //! factory_idl.merge(&canister_idl);
