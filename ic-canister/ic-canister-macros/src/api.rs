@@ -91,9 +91,6 @@ pub(crate) fn api_method(
             FnArg::Receiver(r) => {
                 has_self = true;
                 match &r.reference {
-                    // Some((_, None)) if input.sig.asyncness.is_some() => {
-                    //     panic!("async methods should have a lifetime for &self specified");
-                    // }
                     Some((_, Some(lt))) => {
                         self_lifetime = quote! {#lt};
                         continue;

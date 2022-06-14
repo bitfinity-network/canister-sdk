@@ -232,14 +232,6 @@ impl FactoryCanister for FactoryExport {
     fn state(&self) -> Rc<RefCell<FactoryState>> {
         self.state.clone()
     }
-
-    //     fn state(&self) -> Ref<FactoryState> {
-    //         self.state.borrow()
-    //     }
-
-    //     fn state_mut(&self) -> RefMut<FactoryState> {
-    //         self.state.borrow_mut()
-    //     }
 }
 
 generate_exports!(FactoryExport);
