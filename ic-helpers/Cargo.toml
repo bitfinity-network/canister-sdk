@@ -29,6 +29,8 @@ ic-agent = { version = "0.16", optional = true }
 garcon = { version = "0.2", optional = true}
 libsecp256k1 = { version = "0.7", optional = false}
 k256 = { version = "0.10" }
+auto_ops = "0.3"
+crypto-bigint = { version = "0.4", features = ["serde"] }
 
 # This dependency is not used direcly, but we must enable `custom` feature for it to compile for wasm32 target.
 [target.'cfg(target = "wasm32-unknown-unknown")'.dependencies]
