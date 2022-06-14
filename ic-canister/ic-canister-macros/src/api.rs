@@ -39,7 +39,8 @@ pub(crate) fn api_method(
         .filter_map(|generic| match generic {
             syn::GenericParam::Lifetime(_) => Some(generic),
             _ => panic!("candid method does not support generics that are not lifetimes"),
-        });
+        })
+        .collect::<Vec<_>>();
 
     if let Err(e) = store_candid_definitions(method_type, &input.sig) {
         return e.to_compile_error().into();
@@ -84,14 +85,15 @@ pub(crate) fn api_method(
     let mut has_self = false;
 
     let mut self_lifetime = quote! {};
+
     for arg in args {
         let (arg_type, arg_pat) = match arg {
             FnArg::Receiver(r) => {
                 has_self = true;
                 match &r.reference {
-                    Some((_, None)) if input.sig.asyncness.is_some() => {
-                        panic!("async methods should have a lifetime for &self specified");
-                    }
+                    // Some((_, None)) if input.sig.asyncness.is_some() => {
+                    //     panic!("async methods should have a lifetime for &self specified");
+                    // }
                     Some((_, Some(lt))) => {
                         self_lifetime = quote! {#lt};
                         continue;
@@ -120,6 +122,12 @@ pub(crate) fn api_method(
         args_destr.push_value(Pat::Ident(ident));
         args_destr.push_punct(Default::default());
     }
+
+    let return_lifetime = if parameters.is_trait || input.sig.asyncness.is_none() {
+        quote! { #self_lifetime }
+    } else {
+        quote! { '_ }
+    };
 
     if !has_self {
         return TokenStream::from(
@@ -199,7 +207,7 @@ pub(crate) fn api_method(
 
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(dead_code)]
-        #orig_vis fn #internal_method<#self_lifetime>(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_cdk::api::call::CallResult<#inner_return_type>> + #self_lifetime>> {
+            #orig_vis fn #internal_method<#self_lifetime>(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_cdk::api::call::CallResult<#inner_return_type>> + #return_lifetime>> {
             // todo: trap handler
             let result = self. #method(#args_destr);
             Box::pin(async move { Ok(result #await_call) })

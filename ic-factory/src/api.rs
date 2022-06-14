@@ -146,7 +146,7 @@ pub trait FactoryCanister: Canister + Sized {
     /// Returns the ICPs transferred to the factory by the caller. This method returns all
     /// not used ICP minus transaction fee.
     #[update(trait = true)]
-    fn refund_icp<'a>(&'a self) -> AsyncReturn<Result<u64, FactoryError>> {
+    fn refund_icp<'a>(&'a self) -> AsyncReturn<'a, Result<u64, FactoryError>> {
         use ic_helpers::ledger::{
             LedgerPrincipalExt, PrincipalId, Subaccount, DEFAULT_TRANSFER_FEE,
         };

@@ -322,11 +322,21 @@ pub(crate) fn extract_type_if_matches<'a>(type_name: &str, generic_base: &'a Typ
         _ => panic!("Given type does not have generic parameters: {v:#?}"),
     };
 
-    if arg.args.len() != 1 {
+    // Get rid of lifetimes
+    let args = arg
+        .args
+        .iter()
+        .filter_map(|a| match a {
+            g @ GenericArgument::Type(_) => Some(g),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    if args.len() != 1 {
         panic!("Cannot extract given type since it has multiple generic parameters: {v:#?}");
     }
 
-    match &arg.args[0] {
+    match args[0] {
         GenericArgument::Type(t) => t,
         arg => panic!("Generic parameter to a type is not a generic argument: {arg:#?}"),
     }
