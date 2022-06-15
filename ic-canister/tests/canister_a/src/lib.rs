@@ -31,17 +31,6 @@ pub trait CanisterA {
     fn inc_counter(&mut self, value: u32) {
         RefCell::borrow_mut(&self.state()).counter += value;
     }
-
-    #[update]
-    fn collect_metrics(&mut self) {
-        let mut metrics = self.metrics.borrow_mut();
-        metrics.insert(Metrics { cycles: 100 });
-    }
-
-    #[query]
-    fn get_metrics(&self) -> MetricsMap<Metrics> {
-        self.metrics.borrow().clone()
-    }
 }
 
 #[derive(Clone, Canister)]
