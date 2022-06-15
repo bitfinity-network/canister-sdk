@@ -19,5 +19,7 @@ pub mod pair;
 pub mod utils;
 pub use utils::*;
 
+pub mod metrics;
+
 pub mod types;
 pub use types::*;

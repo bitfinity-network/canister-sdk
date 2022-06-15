@@ -300,7 +300,7 @@
 //! let result: CallResult<ReturnType> = virtual_canister_call!(principal, "remote_method_name", (arg1, arg2), ReturnType).await;
 //! ```
 //!
-//! //! # Inter-canister notifys
+//! //! # Inter-canister notifications
 //!
 //! When another canister needs to call these API methods with one-way messages, the [canister_notify]` macro can be used.
 //!

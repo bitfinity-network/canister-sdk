@@ -24,7 +24,20 @@ pub(crate) fn api_method(
     item: TokenStream,
     is_management_api: bool,
 ) -> TokenStream {
-    let input = parse_macro_input!(item as ImplItemMethod);
+    let mut input = parse_macro_input!(item as ImplItemMethod);
+
+    if method_type == "update"
+        && *crate::derive::IS_METRIC_CANISTER.lock().unwrap()
+        && input.sig.ident != "collect_metrics"
+    {
+        let collect_metrics_stmt = syn::parse2::<syn::Stmt>(quote! {
+            self.collect_metrics();
+        })
+        .unwrap();
+        input.block.stmts.insert(0, collect_metrics_stmt);
+    }
+
+    let input = input;
     let method = &input.sig.ident;
     let orig_vis = input.vis.clone();
 

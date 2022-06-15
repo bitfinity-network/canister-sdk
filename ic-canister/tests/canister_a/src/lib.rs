@@ -1,8 +1,8 @@
 use candid::{CandidType, Deserialize, Principal};
+use ic_helpers::metrics::MetricsMap;
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use ic_canister::{generate_exports, query, update, Canister};
 
@@ -30,6 +30,17 @@ pub trait CanisterA {
     #[update(trait = true)]
     fn inc_counter(&mut self, value: u32) {
         RefCell::borrow_mut(&self.state()).counter += value;
+    }
+
+    #[update]
+    fn collect_metrics(&mut self) {
+        let mut metrics = self.metrics.borrow_mut();
+        metrics.insert(Metrics { cycles: 100 });
+    }
+
+    #[query]
+    fn get_metrics(&self) -> MetricsMap<Metrics> {
+        self.metrics.borrow().clone()
     }
 }
 
