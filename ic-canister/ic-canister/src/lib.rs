@@ -154,6 +154,125 @@
 //!
 //! The API methods must be instance methods (taking `self` by reference).
 //!
+//! # Traits as canisters
+//!
+//! When we want to enrich a canister with some generic structure, we can define a trait that the
+//! given canister will implement, for instance:
+//!
+//! ```ignore
+//! struct FactoryState;
+//!
+//! trait FactoryAPI {
+//!     fn factory_state(&self) -> Rc<RefCell<FactoryState>>;
+//!
+//!     fn get_all(&self) -> Vec<Canister> {
+//!       self.factory_state().canisters.get_all()
+//!     }
+//! }
+//! ```
+//!
+//! There're few limitations that we're currently facing with this approach, in particular
+//! ### The state of the trait canister must not be a stable storage and accessor to which must be defined explicitly.
+//!
+//! This means that at the time being the state of the trait canisters, that the given
+//! canister implements, *must* be defined as a separate state field and *not* present
+//! inside the main canister state since the sub-states (of trait canisters) won't be
+//! updated. Also, when working with some canister state inside of trait canister we
+//! have to define canister state accessor to be able to see it from the trait
+//! perspective. For instance
+//!
+//! ```ignore
+//! struct FactoryState;
+//!
+//! trait FactoryAPI {
+//!     fn factory_state(&self) -> Rc<RefCell<FactoryState>>;
+//!
+//!     #[update(trait = true)]
+//!     fn get_all(&self) -> Vec<Canister> {
+//!       self.factory_state().canisters.get_all()
+//!     }
+//! }
+//!
+//! struct State;
+//!
+//! struct TokenFactory {
+//!    #[id]
+//!    id: Principal,
+//!
+//!    #[state]
+//!    state: Rc<RefCell<State>>,
+//!
+//!    #[state(stable_storage = false)]
+//!    factory_state: Rc<RefCell<FactoryState>>,
+//! }
+//!
+//! impl FactoryAPI {
+//!    fn factory_state(&self) -> Rc<RefCell<FactoryState>> {
+//!        self.factory_state.clone()
+//!    }
+//! }
+//!
+//! generate_exports!(TokenFactory);
+//! ```
+//! Note, the `factory_state` field in `TokenFactory`.
+//!
+//! ### For each trait an exporting struct must be defined.
+//!
+//! There's a limitation with trait methods in rust that unfortunatelly we cannot
+//! give attributes to them. This is because monomorphisation in rust is optional
+//! to allow for trait objects to exist, hence it's quite a non-trivial task to
+//! export these implementation-dependent functions to wasm. What we are currently
+//! forcing the user to do is to define an exporting struct, which will be used as
+//! a buffer, that we'll generate methods for and export to wasm via [generate_exports]
+//! macro. This is done on the previous example for `TokenFactory`.
+//!
+//! ### Each trait method must be marked with `#[update/query(trait = true)]` macro.
+//!
+//! This is to allow for [generate_exports!] to actually collect all of the methods to
+//! be able to export them further to wasm.
+//!
+//! ### Each async function in trait definition must return a pinned future.
+//!
+//! Since async functions in traits are [hard](https://smallcultfollowing.com/babysteps/blog/2019/10/26/async-fn-in-traits-are-hard/), and due to the order of macro expansion
+//! we cannot use `#[async_trait]` macro for our trait. Instead we need to return a
+//! `Pin<Box<dyn Future<Output = T>>>` where `T` is the output type of the async function.
+//! There's a type alias [AsyncReturn] defined for it.
+//!
+//! ### Lifetime specifiers for async methods in non-trait canister needs to be defined.
+//!
+//! This is an implementation detail because rust cannot infer lifetime for
+//! `Pin<Box<impl Future<Output = T>> + 'self>>` when needed.
+//!
+//! ### `get_idl()` method needs to be implemented for a trait canister to allow for exporting idl to other crates.
+//!
+//! This is an implementation detail. Since macros are expanded at compile time, the
+//! [generate_idl] macro will always be constant *and* crate-local. This is because under
+//! the hood this macro uses local `lazy_static` variables to allow for sharing state
+//! between macro expansions. Unfortunately we cannot export this static state explicitly
+//! in procedural crates such as [ic-canister-macros] (a rust limitation that is being discussed since 2016).
+//! Also, macroses themself cannot export concrete values (unless primitives that implement `ToTokens` trait).
+//! But there's a workaround. We, can make a method `get_idl()` for trait that we want
+//! to export idl from and generate a code via macro, that will return more sensible
+//! struct ([Idl] in this case) that later can be exported by the crate. This is what
+//! we're essentially doing in the `ic-factory::FactoryCanister` trait.
+//!
+//! Note: Since [generate_idl] macro depends on the order of the method macro expansion,
+//! it's adviced to put the declaration of `get_idl()` method to the end of the trait
+//! definition.
+//!
+//! And since this dependency will be compiled from other crate's perspective, the code
+//! for `get_idl()` will be constant and will return the necessary struct which will be
+//! merged via [Idl::merge] with idl of the canister, we're implementing, like
+//!
+//! ```ignore
+//! let canister_idl = ic_canister::generate_idl!();
+//! let mut factory_idl = <TokenFactoryCanister as FactoryCanister>::get_idl();
+//! factory_idl.merge(&canister_idl);
+//!
+//! let result = candid::bindings::candid::compile(&factory_idl.env.env, &Some(factory_idl.actor));
+//! println!("{result}");
+//! ```
+//!
 //! # Inter-canister calls
 //!
 //! When another canister needs to call these API methods, the [canister_call]` macro can be used.
@@ -192,7 +311,7 @@
 //! let result: Result<(), ic_cdk::api::call::RejectionCode> = canister_notify!(my_canister.add(10), ());
 //! ```
 //!
-//! ## Virtual canister notifys
+//! ## Virtual canister notifications
 //!
 //! Often you want to make a one-way remote call to a canister that was not written using `ic-canister` crate.
 //! In this case you don't have a [Canister] trait implementation, so the `canister_notify` macro
@@ -404,7 +523,7 @@
 //!
 //! # Generating idl
 //!
-//! You can generate IDL (Candid) definition for your canister using [generate_idl] macro.
+//! You can generate IDL (Candid) definition for your canister using [generate_idl] macro and then compile it via `candid::bindings::candid::compile()`.
 
 use ic_cdk::api::call::{CallResult, RejectionCode};
 use ic_cdk::export::candid::utils::ArgumentDecoder;
@@ -412,14 +531,18 @@ use ic_cdk::export::candid::{CandidType, Deserialize};
 use ic_cdk::export::Principal;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::rc::Rc;
 
 pub use ic_canister_macros::*;
 
-// Reexport ic_kit of required version to simplify the dependency hell.
 pub use ic_kit;
 
+pub mod idl;
 pub mod storage;
+
+pub use idl::*;
 
 /// Main trait for a testable canister. Do not implement this trait manually, use the derive macro.
 pub trait Canister {
@@ -444,6 +567,10 @@ pub trait Canister {
     /// Returns the principal of the canister.
     fn principal(&self) -> Principal;
 }
+
+// Important: If you're renaming this type, don't forget to update
+// the `ic_canister_macros::api::get_args` as well.
+pub type AsyncReturn<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 type ResponderFn = dyn Fn(Vec<u8>) -> CallResult<Vec<u8>>;
 type ResponderHashMap = HashMap<(Principal, String), Box<ResponderFn>>;

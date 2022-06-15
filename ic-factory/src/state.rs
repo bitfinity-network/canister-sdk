@@ -1,11 +1,14 @@
-use crate::factory::error::FactoryError;
-use crate::factory::Factory;
+use crate::error::FactoryError;
+use crate::Factory;
 use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 
-use crate::ledger::{LedgerPrincipalExt, PrincipalId, DEFAULT_TRANSFER_FEE};
+use ic_helpers::ledger::{LedgerPrincipalExt, PrincipalId, DEFAULT_TRANSFER_FEE};
+use ic_storage::stable::Versioned;
+use ic_storage::IcStorage;
 use std::future::Future;
-use std::hash::Hash;
 use std::pin::Pin;
+
+pub const DEFAULT_ICP_FEE: u64 = 10u64.pow(8);
 
 #[derive(Debug, CandidType, Deserialize)]
 pub struct FactoryConfiguration {
@@ -31,55 +34,84 @@ impl FactoryConfiguration {
     }
 }
 
+impl Default for FactoryConfiguration {
+    fn default() -> Self {
+        Self {
+            ledger_principal: Principal::anonymous(),
+            icp_fee: DEFAULT_ICP_FEE,
+            icp_to: Principal::anonymous(),
+            controller: Principal::anonymous(),
+        }
+    }
+}
+
+#[derive(CandidType, Deserialize, IcStorage)]
+pub struct FactoryState {
+    pub configuration: FactoryConfiguration,
+    pub factory: Factory,
+}
+
+impl Versioned for FactoryState {
+    type Previous = ();
+
+    fn upgrade((): ()) -> Self {
+        Self::default()
+    }
+}
+
+impl Default for FactoryState {
+    fn default() -> Self {
+        Self {
+            configuration: FactoryConfiguration::default(),
+            factory: Factory::new(&[]),
+        }
+    }
+}
+
 /// This trait must be implemented by a factory state to make using of `init_factory_api` macro
 /// possible.
-pub trait FactoryState<K: Hash + Eq> {
-    fn factory(&self) -> &Factory<K>;
-    fn factory_mut(&mut self) -> &mut Factory<K>;
-
-    fn configuration(&self) -> &FactoryConfiguration;
-    fn configuration_mut(&mut self) -> &mut FactoryConfiguration;
-
-    fn ledger_principal(&self) -> Principal {
-        self.configuration().ledger_principal
+impl FactoryState {
+    pub fn ledger_principal(&self) -> Principal {
+        self.configuration.ledger_principal
     }
 
-    fn controller(&self) -> Principal {
-        self.configuration().controller
+    pub fn controller(&self) -> Principal {
+        self.configuration.controller
     }
 
-    fn set_controller(&mut self, controller: Principal) -> Result<(), FactoryError> {
+    pub fn set_controller(&mut self, controller: Principal) -> Result<(), FactoryError> {
         self.check_controller_access()?;
-        self.configuration_mut().controller = controller;
+        self.configuration.controller = controller;
 
         Ok(())
     }
 
-    fn icp_fee(&self) -> u64 {
-        self.configuration().icp_fee
+    pub fn icp_fee(&self) -> u64 {
+        self.configuration.icp_fee
     }
 
-    fn set_icp_fee(&mut self, fee: u64) -> Result<(), FactoryError> {
+    pub fn set_icp_fee(&mut self, fee: u64) -> Result<(), FactoryError> {
         self.check_controller_access()?;
-        self.configuration_mut().icp_fee = fee;
+        self.configuration.icp_fee = fee;
 
         Ok(())
     }
 
-    fn icp_to(&self) -> Principal {
-        self.configuration().icp_to
+    pub fn icp_to(&self) -> Principal {
+        self.configuration.icp_to
     }
 
-    fn set_icp_to(&mut self, to: Principal) -> Result<(), FactoryError> {
+    pub fn set_icp_to(&mut self, to: Principal) -> Result<(), FactoryError> {
         self.check_controller_access()?;
-        self.configuration_mut().icp_to = to;
+        self.configuration.icp_to = to;
 
         Ok(())
     }
 
-    fn consume_provided_cycles_or_icp(
+    pub fn consume_provided_cycles_or_icp(
         &self,
         caller: Principal,
+        // ) -> Pin<Box<dyn Future<Output = Result<u64, FactoryError>> + Send>> {
     ) -> Pin<Box<dyn Future<Output = Result<u64, FactoryError>>>> {
         Box::pin(consume_provided_cycles_or_icp(
             caller,
@@ -90,7 +122,7 @@ pub trait FactoryState<K: Hash + Eq> {
         ))
     }
 
-    fn check_controller_access(&self) -> Result<(), FactoryError> {
+    pub fn check_controller_access(&self) -> Result<(), FactoryError> {
         let caller = ic_kit::ic::caller();
         if caller == self.controller() {
             Ok(())
@@ -99,9 +131,9 @@ pub trait FactoryState<K: Hash + Eq> {
         }
     }
 
-    fn forget_canister(&mut self, canister: &K) -> Result<(), FactoryError> {
+    pub fn forget_canister(&mut self, canister: &Principal) -> Result<(), FactoryError> {
         self.check_controller_access()?;
-        self.factory_mut().forget(canister)
+        self.factory.forget(canister)
     }
 }
 

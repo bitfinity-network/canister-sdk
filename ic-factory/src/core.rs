@@ -1,21 +1,20 @@
-use crate::factory::error::FactoryError;
-use crate::factory::types::{Canister, Checksum, Version};
+use crate::error::FactoryError;
+use crate::types::{Canister, Checksum, Version};
 use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Principal};
 use ic_cdk::api::call::CallResult;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
-use std::hash::Hash;
 
 /// Represents a state that manages ic-helpers.
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize, Default)]
-pub struct Factory<K: Hash + Eq> {
-    pub canisters: HashMap<K, Canister>,
+pub struct Factory {
+    pub canisters: HashMap<Principal, Canister>,
     pub checksum: Checksum,
 }
 
-impl<K: Hash + Eq> Factory<K> {
+impl Factory {
     /// Creates a new instance of `Factory`.
     pub fn new(wasm_module: &[u8]) -> Self {
         Self {
@@ -30,7 +29,7 @@ impl<K: Hash + Eq> Factory<K> {
     }
 
     /// Returns a canister that has been created by the factory.
-    pub fn get(&self, key: &K) -> Option<Principal> {
+    pub fn get(&self, key: &Principal) -> Option<Principal> {
         self.canisters.get(key).map(|canister| canister.identity())
     }
 
@@ -50,16 +49,6 @@ impl<K: Hash + Eq> Factory<K> {
             .values()
             .map(|canister| canister.identity())
             .collect()
-    }
-
-    // This method does ont work in IC main net because of how the cycles are consumed.
-    #[deprecated(since = "0.2.0", note = "use create_with_cycles instead")]
-    pub fn create<A: ArgumentEncoder>(
-        &self,
-        wasm_module: &[u8],
-        arg: A,
-    ) -> impl Future<Output = CallResult<Canister>> {
-        Canister::create(self.checksum.version, wasm_module.into(), arg, 0)
     }
 
     /// Creates a pair with cycles in it to make it workable.
@@ -84,13 +73,13 @@ impl<K: Hash + Eq> Factory<K> {
 
     /// Adds a new canister to the canister registry. If a canister with the given key is already
     /// registered, it will be replaced with the new one.
-    pub fn register(&mut self, key: K, canister: Canister) {
+    pub fn register(&mut self, key: Principal, canister: Canister) {
         self.canisters.insert(key, canister);
     }
 
     /// Removes the canister from the registry. Return error if the canister with the given key is
     /// not registered.
-    pub fn forget(&mut self, key: &K) -> Result<(), FactoryError> {
+    pub fn forget(&mut self, key: &Principal) -> Result<(), FactoryError> {
         self.canisters
             .remove(key)
             .ok_or(FactoryError::NotFound)
@@ -113,7 +102,7 @@ impl<K: Hash + Eq> Factory<K> {
 
     /// Updates the canister to the newer version. If no canister with the given key is registered,
     /// nothing is done.
-    pub fn register_upgraded(&mut self, key: &K, canister: Canister) {
+    pub fn register_upgraded(&mut self, key: &Principal, canister: Canister) {
         if let Some(val) = self.canisters.get_mut(key) {
             *val = canister;
         }
@@ -130,7 +119,7 @@ async fn upgrade_canister(
 }
 
 async fn drop_canister(canister: Principal) -> Result<(), FactoryError> {
-    let canister = crate::management::Canister::from(canister);
+    let canister = ic_helpers::management::Canister::from(canister);
     canister
         .stop()
         .await

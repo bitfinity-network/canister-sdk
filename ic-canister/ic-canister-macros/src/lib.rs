@@ -127,6 +127,11 @@ pub fn generate_idl(_: TokenStream) -> TokenStream {
     api::generate_idl()
 }
 
+#[proc_macro]
+pub fn generate_exports(input: TokenStream) -> TokenStream {
+    api::generate_exports(input)
+}
+
 /// Derives [Canister] trait for a struct.
 #[proc_macro_derive(Canister, attributes(id, state, trait_name))]
 pub fn derive_canister(input: TokenStream) -> TokenStream {

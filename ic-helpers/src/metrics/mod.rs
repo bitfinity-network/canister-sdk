@@ -1,6 +1,6 @@
 //! Metrics for the canister can be collected by adding a specific state field to the canister struct
 //!
-//! ```
+//! ```ignore
 //! #[derive(IcStorage, Clone, Debug, Default)]
 //! pub struct Metrics {
 //!     pub cycles: u64,
@@ -26,7 +26,7 @@
 //!
 //! For example, to actually store and get metrics the user has to define two endpoints
 //!
-//! ```
+//! ```ignore
 //! #[update]
 //! fn collect_metrics(&mut self) {
 //!     let mut metrics = self.metrics.borrow_mut();

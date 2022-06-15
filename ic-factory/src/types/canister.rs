@@ -1,9 +1,9 @@
 use super::checksum::Version;
-use crate::management::Canister as ManagementCanister;
-use crate::management::InstallCodeMode;
 use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Principal};
 use ic_cdk::api::call::CallResult;
+use ic_helpers::management::Canister as ManagementCanister;
+use ic_helpers::management::InstallCodeMode;
 use serde::{Deserialize, Serialize};
 
 /// Represents information of a canister.

@@ -1,7 +1,6 @@
 extern crate core;
 
 pub mod agent;
-pub mod factory;
 
 pub mod management {
     mod canister;
@@ -16,6 +15,9 @@ pub mod is20 {
 pub mod ledger;
 
 pub mod pair;
+
+pub mod utils;
+pub use utils::*;
 
 pub mod metrics;
 
