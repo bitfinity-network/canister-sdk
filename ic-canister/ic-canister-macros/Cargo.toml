@@ -1,6 +1,6 @@
 [package]
 name = "ic-canister-macros"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 
 [lib]
@@ -14,3 +14,5 @@ quote = "1.0"
 proc-macro2 = "1.0"
 ic-cdk = "0.5"
 lazy_static = "1"
+serde = "1.0"
+serde_tokenstream = "0.1"

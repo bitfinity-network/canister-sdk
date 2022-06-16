@@ -1,11 +1,12 @@
 [package]
 edition = "2021"
-name = "ic-helpers"
+name = "ic-factory"
 version = "0.3.5"
 
 [features]
 default = []
 agent = ["ic-agent", "garcon"]
+no_api = []
 
 [dependencies]
 ledger-canister = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18_18-31"}
@@ -25,14 +26,13 @@ ic-ic00-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18
 thiserror = "1.0"
 ic-canister = { path = "../ic-canister/ic-canister", package = "ic-canister" }
 ic-canister-macros = { path = "../ic-canister/ic-canister-macros", package = "ic-canister-macros" }
+ic-storage = { path = "../ic-storage", package = "ic-storage" }
+ic-helpers = { path = "../ic-helpers", package = "ic-helpers" }
 leb128 = "0.2.5"
 ic-agent = { version = "0.16", optional = true }
 garcon = { version = "0.2", optional = true}
 libsecp256k1 = { version = "0.7", optional = false}
 k256 = { version = "0.10" }
-auto_ops = "0.3"
-crypto-bigint = { version = "0.4", features = ["serde"] }
-subtle = "2"
 
 # This dependency is not used direcly, but we must enable `custom` feature for it to compile for wasm32 target.
 [target.'cfg(target = "wasm32-unknown-unknown")'.dependencies]

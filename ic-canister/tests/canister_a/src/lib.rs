@@ -4,10 +4,10 @@ use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{query, update, Canister};
+use ic_canister::{generate_exports, query, update, Canister};
 
 #[derive(Default, CandidType, Deserialize, IcStorage)]
-struct State {
+pub struct State {
     counter: u32,
 }
 
@@ -19,40 +19,32 @@ impl Versioned for State {
     }
 }
 
-#[derive(IcStorage, Clone, Debug, Default)]
+pub trait CanisterA {
+    fn state(&self) -> Rc<RefCell<State>>;
 
-pub struct Metrics {
-    pub cycles: u64,
+    #[query(trait = true)]
+    fn get_counter(&self) -> u32 {
+        self.state().borrow().counter
+    }
+
+    #[update(trait = true)]
+    fn inc_counter(&mut self, value: u32) {
+        RefCell::borrow_mut(&self.state()).counter += value;
+    }
 }
 
 #[derive(Clone, Canister)]
-pub struct CanisterA {
+pub struct CanisterAExports {
     #[id]
     principal: Principal,
-    #[state(stable_store = true)]
+    #[state]
     state: Rc<RefCell<State>>,
-    metrics: Rc<RefCell<MetricsMap<Metrics>>>,
 }
 
-impl CanisterA {
-    #[query]
-    fn get_counter(&self) -> u32 {
-        self.state.borrow().counter
-    }
-
-    #[update]
-    fn inc_counter(&mut self, value: u32) {
-        RefCell::borrow_mut(&self.state).counter += value;
-    }
-
-    #[update]
-    fn collect_metrics(&mut self) {
-        let mut metrics = self.metrics.borrow_mut();
-        metrics.insert(Metrics { cycles: 100 });
-    }
-
-    #[query]
-    fn get_metrics(&self) -> MetricsMap<Metrics> {
-        self.metrics.borrow().clone()
+impl CanisterA for CanisterAExports {
+    fn state(&self) -> Rc<RefCell<State>> {
+        self.state.clone()
     }
 }
+
+generate_exports!(CanisterAExports);

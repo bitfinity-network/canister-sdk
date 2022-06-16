@@ -230,24 +230,9 @@ pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
     let principal = &input.principal;
     let args = normalize_args(&input.args.elems);
     let method_name = input.method_name.value();
-    let response_type = &input.response_type;
     let cycles = input.cycles;
 
     let cdk_call = get_cdk_notify(quote! {#principal}, &method_name, &args, cycles);
-
-    let is_tuple = matches!(response_type, Type::Tuple(_));
-
-    let (decode, tuple_index) = if is_tuple {
-        (
-            quote! { ::ic_cdk::export::candid::decode_args::<#response_type>(&result) },
-            quote! {},
-        )
-    } else {
-        (
-            quote! { ::ic_cdk::export::candid::decode_args::<(#response_type,)>(&result) },
-            quote! {.0},
-        )
-    };
 
     let responder_call = quote! {
         async {
