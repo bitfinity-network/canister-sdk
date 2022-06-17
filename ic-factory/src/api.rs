@@ -160,7 +160,7 @@ pub trait FactoryCanister: Canister + Sized {
                     Some(Subaccount::from(&PrincipalId(caller))),
                 )
                 .await
-                .map_err(|e| FactoryError::LedgerError(e))?;
+                .map_err(FactoryError::LedgerError)?;
 
             if balance < DEFAULT_TRANSFER_FEE.get_e8s() {
                 // Nothing to refund
@@ -175,7 +175,7 @@ pub trait FactoryCanister: Canister + Sized {
                 None,
             )
             .await
-            .map_err(|e| FactoryError::LedgerError(e))
+            .map_err(FactoryError::LedgerError)
         })
     }
 

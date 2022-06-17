@@ -1,5 +1,4 @@
 use candid::{CandidType, Deserialize, Principal};
-use ic_helpers::metrics::MetricsMap;
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::{cell::RefCell, rc::Rc};

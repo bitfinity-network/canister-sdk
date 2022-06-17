@@ -1,13 +1,20 @@
 use auto_ops::impl_op_ex;
-use candid::types::{Serializer, Type};
+use candid::types::{Serializer, Type, TypeId};
 use candid::{CandidType, Deserialize};
-use crypto_bigint::{CheckedAdd, CheckedMul, CheckedSub, Limb, NonZero, U256};
-use num_traits::SaturatingSub;
-use serde::de::{Error, SeqAccess, Visitor};
-use serde::ser::SerializeSeq;
+use crypto_bigint::{CheckedAdd, CheckedMul, CheckedSub, NonZero, U256};
+use num_bigint::BigUint;
+use num_traits::{FromPrimitive, ToPrimitive};
+use serde::de::{Error, Unexpected};
 use serde::{Deserializer, Serialize};
 use std::fmt::{Display, Formatter};
 
+/// Token amount limited by the value of u128::MAX (2^128 - 1).
+///
+/// This structure does not specify the number of decimal places after the point, and thus can be
+/// used to represent 8 decimal places (like in BTC or ICP) or 18 decimal places (like in ETH).
+///
+/// All the arithmetic operation are specifically designed to check for any overflows/underflows and
+/// make all the bound checks explicit for the consumer.
 #[derive(
     Default,
     Debug,
@@ -27,13 +34,18 @@ pub struct Tokens128 {
 }
 
 impl Tokens128 {
+    /// Zero value.
     pub const ZERO: Tokens128 = Tokens128 { amount: 0 };
+
+    /// Max value.
     pub const MAX: Tokens128 = Tokens128 { amount: u128::MAX };
 
+    /// Returns true if the amount of the tokens is 0.
     pub fn is_zero(&self) -> bool {
         *self == Self::ZERO
     }
 
+    /// Converts f64 value to the tokens value. Returns None if the value is negative or larger than 128::MAX.
     pub fn from_f64(amount: f64) -> Option<Self> {
         if amount < 0.0 || amount > u128::MAX as f64 {
             None
@@ -44,10 +56,13 @@ impl Tokens128 {
         }
     }
 
+    /// Lossy conversion to f64. If the value cannot be expressed exactly by f64, the mantissa will
+    /// be floored.
     pub fn to_f64(&self) -> f64 {
         self.amount as f64
     }
 
+    /// Converts the value to u64. Returns None if the value is greater than u64::MAX.
     pub fn to_u64(&self) -> Option<u64> {
         if self.amount > u64::MAX as u128 {
             None
@@ -56,10 +71,19 @@ impl Tokens128 {
         }
     }
 
-    // we don't use the trait here because the `Sub` trait implementation returns an option
-    pub fn saturating_sub(&self, v: Self) -> Self {
+    /// Subtracts `other` from `self`, returning Tokens128::ZERO on underflow.
+    pub fn saturating_sub(&self, other: Self) -> Self {
+        // we don't use the trait here because the `Sub` trait implementation returns an option
         Self {
-            amount: self.amount.saturating_sub(v.amount),
+            amount: self.amount.saturating_sub(other.amount),
+        }
+    }
+
+    /// Adds `other` to `self` returning Tokens128::MAX on overflow.
+    pub fn saturating_add(&self, other: Self) -> Self {
+        match self + other {
+            Some(v) => v,
+            None => Self::MAX,
         }
     }
 }
@@ -68,6 +92,7 @@ impl_op_ex!(+ |a: &Tokens128, b: &Tokens128| -> Option<Tokens128> { Some(Tokens1
 impl_op_ex!(-|a: &Tokens128, b: &Tokens128| -> Option<Tokens128> {
     Some(Tokens128::from(a.amount.checked_sub(b.amount)?))
 });
+impl_op_ex!(-|a: &Tokens128, b: &u128| -> Option<Tokens128> { a - Tokens128::from(*b) });
 impl_op_ex!(*|a: &Tokens128, b: &Tokens128| -> Tokens256 {
     Tokens256(U256::from(a.amount).saturating_mul(&U256::from(b.amount)))
 });
@@ -94,6 +119,18 @@ impl Display for Tokens128 {
     }
 }
 
+/// Token amount limited by the value of u256 (2^256 - 1).
+///
+/// This structure has fixed memory size and thus is Copy.
+///
+/// This structure does not specify the number of decimal places after the point, and thus can be
+/// used to represent 8 decimal places (like in BTC or ICP) or 18 decimal places (like in ETH).
+///
+/// All the arithmetic operation are specifically designed to check for any overflows/underflows and
+/// make all the bound checks explicit for the consumer.
+///
+/// The intended use of this struct is to return aggregated values of Tokens128. As such, it is
+/// usually not used as an input value in APIs, os it's serialized by Candid to `Nat`.
 #[derive(Default, Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Tokens256(pub U256);
 
@@ -150,9 +187,16 @@ impl_op_ex!(/ |a: &Tokens256, b: &u128| -> Option<Tokens256> {
 impl_op_ex!(/ |a: &Tokens256, b: &u64| -> Option<Tokens256> { a / *b as u128 });
 
 impl Tokens256 {
+    /// Zero value.
     pub const ZERO: Tokens256 = Tokens256(U256::ZERO);
+
+    /// Max possible value.
     pub const MAX: Tokens256 = Tokens256(U256::MAX);
 
+    /// Number of bytes needed to represent the value.
+    pub const BYTE_LENGTH: usize = 256 / 8;
+
+    /// Converts the value to Tokens128. Returns `None` if the value is greater than `Tokens128::MAX`.
     pub fn to_tokens128(&self) -> Option<Tokens128> {
         let limbs = self.0.limbs();
         if limbs[2].0 != 0 || limbs[3].0 != 0 {
@@ -163,14 +207,18 @@ impl Tokens256 {
         Some(Tokens128::from(num))
     }
 
+    /// Rounded square root of the value.
     pub fn sqrt(&self) -> Self {
         Self(self.0.sqrt())
     }
 
+    /// Returns true if the value equals zero.
     pub fn is_zero(&self) -> bool {
         *self == Self::ZERO
     }
 
+    /// Lossy conversion to f64. If the value cannot be expressed exactly by f64, the mantissa will
+    /// be floored.
     pub fn to_f64(&self) -> f64 {
         let mut val = 0.0;
         for (i, limb) in self.0.limbs().iter().enumerate() {
@@ -178,6 +226,52 @@ impl Tokens256 {
         }
 
         val
+    }
+
+    /// Converts f64 value to the tokens value. Returns None if the value is negative or larger than `Tokens256::MAX`.
+    pub fn from_f64(amount: f64) -> Option<Self> {
+        let bigint = BigUint::from_f64(amount)?;
+        Self::from_nat(&candid::Nat(bigint))
+    }
+
+    /// Converts the value to `candid::Nat`.
+    pub fn to_nat(&self) -> candid::Nat {
+        let limbs = self.0.limbs().map(|l| l.0.to_u64().expect("never panics"));
+        let mut nums = vec![];
+        for limb in limbs.into_iter() {
+            // We use little endian since WASM is little endian
+            nums.append(&mut limb.to_le_bytes().to_vec());
+        }
+
+        candid::Nat(BigUint::from_bytes_le(&nums))
+    }
+
+    /// Constructs the value from `candid::Nat`. Returns `None` if the `Nat` value is greater than
+    /// `Tokens256::MAX`.
+    pub fn from_nat(nat: &candid::Nat) -> Option<Self> {
+        let mut bytes = nat.0.to_bytes_le();
+        if bytes.len() > Self::BYTE_LENGTH {
+            None
+        } else {
+            bytes.resize(Self::BYTE_LENGTH, 0);
+            Some(Self(U256::from_le_slice(&bytes)))
+        }
+    }
+
+    /// Adds `other` to `self` returning Tokens128::MAX on overflow.
+    pub fn saturating_add(&self, other: Self) -> Self {
+        match *self + other {
+            Some(v) => v,
+            None => Self::MAX,
+        }
+    }
+
+    /// Subtracts `other` from `self`, returning Tokens128::ZERO on underflow.
+    pub fn saturating_sub(&self, other: Self) -> Self {
+        match *self - other {
+            Some(v) => v,
+            None => Self::ZERO,
+        }
     }
 }
 
@@ -194,49 +288,18 @@ impl From<Tokens128> for Tokens256 {
 }
 
 impl CandidType for Tokens256 {
+    fn id() -> TypeId {
+        TypeId::of::<candid::Nat>()
+    }
     fn _ty() -> Type {
-        Type::Vec(Box::new(Type::Nat64))
+        Type::Nat
     }
 
     fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
     where
         S: Serializer + Serializer,
     {
-        self.0
-            .limbs()
-            .iter()
-            .map(|limb| limb.0)
-            .collect::<Vec<u64>>()
-            .idl_serialize(serializer)
-    }
-}
-
-struct Tokens256Visitor;
-
-impl<'de> Visitor<'de> for Tokens256Visitor {
-    type Value = Vec<u64>;
-
-    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-        formatter.write_str("vector of u64 of the length 4")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let mut numbers: Vec<u64> = vec![];
-        for i in 0..4 {
-            numbers.push(
-                seq.next_element()?
-                    .ok_or_else(|| A::Error::invalid_length(i, &self))?,
-            );
-        }
-
-        if seq.next_element::<u64>()?.is_some() {
-            return Err(A::Error::invalid_length(5, &self));
-        }
-
-        Ok(numbers)
+        serializer.serialize_nat(&self.to_nat())
     }
 }
 
@@ -245,27 +308,10 @@ impl<'de> Deserialize<'de> for Tokens256 {
     where
         D: Deserializer<'de>,
     {
-        let numbers = deserializer
-            .deserialize_seq(Tokens256Visitor)
-            .expect("couldn't read numbers vec");
-        let limbs = numbers.iter().map(|n| Limb(*n)).collect::<Vec<Limb>>();
-        let mut limbs_fixed: [Limb; 4] = [Limb::ZERO; 4];
-        limbs_fixed.copy_from_slice(&limbs);
-        Ok(Tokens256(U256::new(limbs_fixed)))
-    }
-}
-
-impl Serialize for Tokens256 {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(4))?;
-        for limb in self.0.limbs() {
-            seq.serialize_element(&u64::from(limb.0))?;
-        }
-
-        seq.end()
+        let nat = candid::Nat::deserialize(deserializer)?;
+        Self::from_nat(&nat).ok_or_else(|| {
+            D::Error::invalid_value(Unexpected::Str(&nat.to_string()), &"value is too large")
+        })
     }
 }
 
@@ -371,5 +417,27 @@ mod tests {
         let expected = u128::MAX as f64 * 100500.0;
         let converted = num.to_f64();
         assert_eq!(converted, expected);
+    }
+
+    #[test]
+    fn tokens256_to_nat() {
+        let num = U256::from(u128::MAX)
+            .saturating_mul(&U256::from(47u128))
+            .saturating_mul(&U256::from(u64::MAX));
+        let converted = Tokens256(num).to_nat();
+        let expected =
+            candid::Nat(BigUint::from(u128::MAX) * BigUint::from(47u128) * BigUint::from(u64::MAX));
+        assert_eq!(converted, expected);
+    }
+
+    #[test]
+    fn tokens256_serialization() {
+        let num = U256::from(u128::MAX)
+            .saturating_mul(&U256::from(47u128))
+            .saturating_mul(&U256::from(u64::MAX));
+        let tokens = Tokens256(num);
+        let serialized = candid::Encode!(&tokens).unwrap();
+        let deserialized = candid::Decode!(&serialized, Tokens256).unwrap();
+        assert_eq!(deserialized, tokens);
     }
 }

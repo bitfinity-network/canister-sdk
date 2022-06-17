@@ -180,7 +180,7 @@ pub(crate) fn api_method(
         let mut methods = METHODS_EXPORTS.lock().unwrap();
         methods.push(ExportMethodData {
             method_name,
-            export_name: export_name.clone(),
+            export_name,
             arg_count: args.len(),
             is_async: input.sig.asyncness.is_some(),
             is_return_type_async: is_async_return_type,

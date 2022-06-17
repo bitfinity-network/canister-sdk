@@ -32,6 +32,7 @@ libsecp256k1 = { version = "0.7", optional = false}
 k256 = { version = "0.10" }
 auto_ops = "0.3"
 crypto-bigint = { version = "0.4", features = ["serde"] }
+num-bigint = "0.4"
 subtle = "2"
 
 # This dependency is not used direcly, but we must enable `custom` feature for it to compile for wasm32 target.
