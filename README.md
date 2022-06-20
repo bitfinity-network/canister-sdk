@@ -139,7 +139,7 @@ Introduces traits `IcStorage` and `Versioned` for in-memory and stable storage m
 
 ### In-memory storage
 
-Int he past, the `ic-cdk` crate provided methods in the `ic_cdk::storage` module to store and get structs from the canister's memory, but they were removed in version `0.5.0` (for a good reason). The recommended way to store the data in the canister
+In the past, the `ic-cdk` crate provided methods in the `ic_cdk::storage` module to store and get structs from the canister's memory, but they were removed in version `0.5.0` (for a good reason). The recommended way to store the data in the canister
 memory is to use `thread_local` storage with `RefCell` controlling access to the struct.
 
 The `ic_storage::IcStorage` derive macro does exactly, but saving you some boilerplate. Using it is quite
