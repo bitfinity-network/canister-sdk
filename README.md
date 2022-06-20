@@ -41,18 +41,23 @@ local_state.borrow_mut().value = 42;
 assert_eq!(local_state.borrow().value, 42);
 ```
 
-It also allows having generic state structures. For detailed information, check out the crate level documentation.
+It also allows having generic state structures. For detailed information, check out the [crate level documentation](./ic-storage/src/lib.rs).
 
 ### Versioned state
 
 The `ic_storage::stable` module introduces `Versioned` trait that allows transparent upgrades for you state on
-canister upgrades (event over several versions of state at once). Check out the module level documentation for details.
+canister upgrades (event over several versions of state at once). When using this trait, the state structure can
+be serialized into the stable storage using `ic_storage::stable::write` method. Then after the upgrade, simply use
+`ic_storage::stable::read::<NewStateType>()`. This will read the serialized previous version of the state, check its
+version and run the upgrade methods until the current version of the type (the `NewStateType` struct) is reached.
+
+Check out the [module level documentation](./ic-storage/src/stable.rs) for more details.
 
 ## ic-canister
 
 This crate introduces a framework to write easily testable canisters, including testing inter-canister communications,
 as well as a way to compose a canister APIs using rust traits. There are a few examples bellow, but for the details
-check out the crate documentation.
+check out the [crate documentation](./ic-canister/ic-canister/src/lib.rs).
 
 ### Inter-canister calls and testing
 
@@ -114,6 +119,18 @@ async fn test_increment_get() {
 
 Even though the canisters use statics internally to store the state, the tests can initialize multiple instances of
 canisters with `init_instance` method, and each one of them will have a separate state.
+
+### Canister state and upgrades
+
+When using `Canister` derive macro, the fields that are marked with `#[state]` attribute are all preserved over
+canister upgrades. This is done using `Versioned` trait. This means that at this moment you can have only one `#[state]`
+in a canister. If the state type is changed, the new state must have the previous state type as its `Versioned::Previous`
+type. The `Canister` derive macro take care of generating the `pre_upgrade` and `post_upgrade` functions and updating
+the state to the new type when needed.
+
+If a canister needs to have a state that is not preserved during the upgrade process (like caches or some other
+temporary data), `#[state(stable_store = false)]` can be used in addition to the `#[state]` field. Any number of 
+non-stable state fields can be added to a canister.
 
 ### Canister traits and composition
 
