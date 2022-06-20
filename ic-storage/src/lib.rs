@@ -1,8 +1,6 @@
-//! This crate provides a safe way to use canister state, as well as versioned storage. At the moment, ic_cdk storage has an
-//! implementation bug, that make memory corruption possible <https://github.com/dfinity/cdk-rs/issues/73>.
+//! This crate provides a safe way to use canister state, as well as versioned storage.
 //!
-//! * For in memory storage use [`IcStorage`].
-//!   Structs that derive [`IcStorage`] must also implement `std::fmt::Default`.
+//! * For in memory storage use [`IcStorage`]. Structs that derive [`IcStorage`] must also implement `std::fmt::Default`.
 //! * For versioned storage see [`crate::stable`].
 //!
 //! ```
@@ -38,6 +36,10 @@
 //! assert_eq!(local_state.borrow().val1, 0);
 //! assert_eq!(local_state.borrow().val2, "".to_string());
 //! ```
+//!
+//! `IcStorage` derive macro uses `RefCell` to control the access to the state struct, so all the
+//! borrow checks of `RefCell` apply to using `IcStorage` (e.g. trying to call `state.borrow_mut()`
+//! when there is another borrow of the same type in scope will produce runtime panic).
 //!
 //! *IMPORTANT*: `IcStorage` only provides local canister state storage. It DOES NOT in any way
 //! related to the stable storage. See [`crate::stable`] for stable storage.
