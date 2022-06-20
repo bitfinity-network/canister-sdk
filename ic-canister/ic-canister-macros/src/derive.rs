@@ -226,13 +226,14 @@ fn expand_upgrade_methods(
 
     quote! {
         impl #struct_name {
-            #[cfg(not(feature = "no_api"))]
+            #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
             #[export_name = "canister_pre_upgrade"]
             fn __pre_upgrade() {
                 let instance = Self::init_instance();
                 instance.__pre_upgrade_inst();
             }
 
+            #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
             fn __pre_upgrade_inst(&self) {
                 use ::ic_storage::IcStorage;
 
@@ -241,13 +242,14 @@ fn expand_upgrade_methods(
                 ::ic_storage::stable::write(#state_borrow).unwrap();
             }
 
-            #[cfg(not(feature = "no_api"))]
+            #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
             #[export_name = "canister_post_upgrade"]
             fn __post_upgrade() {
                 let instance = Self::init_instance();
                 instance.__post_upgrade_inst();
             }
 
+            #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
             fn __post_upgrade_inst(&self) {
                 use ::ic_storage::IcStorage;
                 use ::ic_storage::stable::Versioned;
