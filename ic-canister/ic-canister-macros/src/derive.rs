@@ -295,7 +295,7 @@ fn is_state_field_stable(field: &Field) -> bool {
         Some(_) | None => return true,
     }
 
-    return !matches!(next_named_val.lit, Lit::Bool(LitBool { value: false, .. }));
+    !matches!(next_named_val.lit, Lit::Bool(LitBool { value: false, .. }))
 }
 
 fn is_principal_attr(attribute: &Attribute) -> bool {
@@ -310,7 +310,7 @@ fn is_metric_field(field: &Field) -> bool {
     field
         .ident
         .clone()
-        .map(|ident| return ident.to_string() == "metrics")
+        .map(|ident| ident == "metrics")
         .unwrap_or(false)
 }
 

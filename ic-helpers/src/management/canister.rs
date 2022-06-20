@@ -234,7 +234,7 @@ impl Canister {
         let request = update_content(
             sender,
             &canister,
-            &method_name,
+            method_name,
             &args,
             ingress_expiry_nano.to_le_bytes().to_vec(), // nonce
             ingress_expiry_nano,
