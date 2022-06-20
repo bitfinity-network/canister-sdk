@@ -1,57 +1,20 @@
 # canister-sdk
 
 An SDK for writing and testing canisters for the Internet Computer in Rust. This repo includes a few crates that help to
-simplify different tricky aspects of IC canisters development:
+simplify the tricky aspects of IC canisters development:
 
-* [in-memory state management](#in-memory-storage)
-* [versioning of the state for canister upgrades](#versioned-state)
+
 * [simplifying and testing of inter-canister communications](#inter-canister-calls-and-testing)
 * [allowing dependencies between canisters](#dependencies-between-canisters)
 * [canisters composition](#canister-traits-and-composition) (combining APIs from different crates into a single canister)
+* [in-memory state management](#in-memory-storage)
+* [versioning of the state for canister upgrades](#versioned-state)
 
 This project builds on top of `ic-cdk` and `ic-kit` crates. It is not intended to replace them, but adds some types and
 macros to simplify things that are not dealt with by those crates.
 
 # Crates
 
-## ic-storage
-
-Introduces traits `IcStorage` and `Versioned` for in-memory and stable storage management respectively.
-
-### In-memory storage
-
-`ic-cdk` did provide methods in the `ic_cdk::storage` module to store and get structs from the canister memory, but
-they were removed in version `0.5.0` (for a good reason). The recommended way to store the data in the canister
-memory is to use `thread_local` storage with `RefCell` controlling access to the struct.
-
-`ic_storage::IcStorage` derive macro does exactly that saving you some boilerplate code. Using it is quite
-straightforward:
-
-```rust
-use ic_storage::IcStorage;
-
-#[derive(IcStorage, Default)]
-struct MyCanisterState {
-    value: u32,
-}
-
-let local_state = MyCanisterState::get();
-assert_eq!(local_state.borrow().value, 0);
-local_state.borrow_mut().value = 42;
-assert_eq!(local_state.borrow().value, 42);
-```
-
-It also allows having generic state structures. For detailed information, check out the [crate level documentation](./ic-storage/src/lib.rs).
-
-### Versioned state
-
-The `ic_storage::stable` module introduces `Versioned` trait that allows transparent upgrades for you state on
-canister upgrades (event over several versions of state at once). When using this trait, the state structure can
-be serialized into the stable storage using `ic_storage::stable::write` method. Then after the upgrade, simply use
-`ic_storage::stable::read::<NewStateType>()`. This will read the serialized previous version of the state, check its
-version and run the upgrade methods until the current version of the type (the `NewStateType` struct) is reached.
-
-Check out the [module level documentation](./ic-storage/src/stable.rs) for more details.
 
 ## ic-canister
 
@@ -168,3 +131,42 @@ canisters of you type. It also provides a convenient way to upgrade all the cani
 
 This crate contains some types, helper functions and re-exports for `ic` repo. These are just used for convenience and
 the overall structure of the crate is not finalized (and some stuff is outdated and will be removed in the future).
+
+
+## ic-storage
+
+Introduces traits `IcStorage` and `Versioned` for in-memory and stable storage management respectively.
+
+### In-memory storage
+
+Int he past, the `ic-cdk` crate provided methods in the `ic_cdk::storage` module to store and get structs from the canister's memory, but they were removed in version `0.5.0` (for a good reason). The recommended way to store the data in the canister
+memory is to use `thread_local` storage with `RefCell` controlling access to the struct.
+
+The `ic_storage::IcStorage` derive macro does exactly, but saving you some boilerplate. Using it is quite
+straightforward:
+
+```rust
+use ic_storage::IcStorage;
+
+#[derive(IcStorage, Default)]
+struct MyCanisterState {
+    value: u32,
+}
+
+let local_state = MyCanisterState::get();
+assert_eq!(local_state.borrow().value, 0);
+local_state.borrow_mut().value = 42;
+assert_eq!(local_state.borrow().value, 42);
+```
+
+It also allows having generic state structures. For detailed information, check out the [crate level documentation](./ic-storage/src/lib.rs).
+
+### Versioned state
+
+The `ic_storage::stable` module introduces `Versioned` trait that allows transparent upgrades for you state on
+canister upgrades (event over several versions of state at once). When using this trait, the state structure can
+be serialized into the stable storage using `ic_storage::stable::write` method. Then after the upgrade, simply use
+`ic_storage::stable::read::<NewStateType>()`. This will read the serialized previous version of the state, check its
+version and run the upgrade methods until the current version of the type (the `NewStateType` struct) is reached.
+
+Check out the [module level documentation](./ic-storage/src/stable.rs) for more details.
