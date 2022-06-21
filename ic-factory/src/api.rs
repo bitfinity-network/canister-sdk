@@ -28,7 +28,7 @@ pub trait FactoryCanister: Canister + Sized {
     fn get_canister_bytecode() -> Vec<u8>;
 
     /// Returns the checksum of a wasm module in hex representation.
-    // #[query(trait = true)]
+    #[query(trait = true)]
     fn get_checksum<'a>(&'a self) -> String {
         self.state().borrow().factory.checksum.to_string()
     }
