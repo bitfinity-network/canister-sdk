@@ -23,4 +23,7 @@ pub enum FactoryError {
 
     #[error("canister management operation failed: {0}")]
     ManagementError(String),
+
+    #[error("factory is not initialized properly: canister wasm not set")]
+    CanisterWasmNotSet,
 }

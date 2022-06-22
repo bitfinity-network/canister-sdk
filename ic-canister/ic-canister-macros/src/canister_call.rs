@@ -65,16 +65,7 @@ pub(crate) fn canister_call(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             async {
-                let __caller = ::ic_canister::ic_kit::ic::caller();
-                let __id = ::ic_canister::ic_kit::ic::id();
-                ::ic_canister::ic_kit::inject::get_context().update_caller(__id);
-                ::ic_canister::ic_kit::inject::get_context().update_id(#canister.principal());
-
-                let result = #canister.#inner_method(#args).await;
-
-                ::ic_canister::ic_kit::inject::get_context().update_caller(__caller);
-                ::ic_canister::ic_kit::inject::get_context().update_id(__id);
-                result
+                #canister.#inner_method(#args).await
             }
         }
     };
@@ -102,16 +93,7 @@ pub(crate) fn canister_notify(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                let __caller = ::ic_canister::ic_kit::ic::caller();
-                let __id = ::ic_canister::ic_kit::ic::id();
-                ::ic_canister::ic_kit::inject::get_context().update_caller(__id);
-                ::ic_canister::ic_kit::inject::get_context().update_id(#canister.principal());
-
-                let result = #canister.#inner_method(#args);
-
-                ::ic_canister::ic_kit::inject::get_context().update_caller(__caller);
-                ::ic_canister::ic_kit::inject::get_context().update_id(__id);
-                result
+                #canister.#inner_method(#args)
             }
         }
     };

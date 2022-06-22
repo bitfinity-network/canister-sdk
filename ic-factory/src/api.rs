@@ -23,14 +23,17 @@ use super::{error::FactoryError, FactoryState};
 /// * set_controller
 /// * refund_icp
 pub trait FactoryCanister: Canister + Sized {
-    fn state(&self) -> Rc<RefCell<FactoryState>>;
+    fn factory_state(&self) -> Rc<RefCell<FactoryState>> {
+        use ic_storage::IcStorage;
+        FactoryState::get()
+    }
 
-    fn get_canister_bytecode() -> Vec<u8>;
+    fn get_canister_bytecode(&self) -> Option<Vec<u8>>;
 
     /// Returns the checksum of a wasm module in hex representation.
     // #[query(trait = true)]
     fn get_checksum<'a>(&'a self) -> String {
-        self.state().borrow().factory.checksum.to_string()
+        self.factory_state().borrow().factory.checksum.to_string()
     }
 
     /// Returns the cycles balances.
@@ -64,16 +67,17 @@ pub trait FactoryCanister: Canister + Sized {
     /// Upgrades canisters controller by the factory and returns a list of outdated canisters
     /// (in case an upgrade error occurs).
     #[update(trait = true)]
-    fn upgrade<'a>(&'a mut self) -> AsyncReturn<Vec<Principal>> {
+    fn upgrade<'a>(&'a mut self) -> AsyncReturn<Result<Vec<Principal>, FactoryError>> {
         // TODO: At the moment we do not do any security checks for this method, for even if there's
         // nothing to upgrade, it will just check all ic-helpers and do nothing else.
         // Later, we should add here (and in create_canister methods) a cycle check,
         // to make the caller to pay for the execution of this method.
 
-        let canister_bytecode = <Self as FactoryCanister>::get_canister_bytecode();
+        let canister_bytecode = self.get_canister_bytecode();
         Box::pin(async move {
-            let canisters = self.state().borrow_mut().factory.canisters.clone();
-            let curr_version = self.state().borrow().factory.checksum.version;
+            let wasm = canister_bytecode.ok_or(FactoryError::CanisterWasmNotSet)?;
+            let canisters = self.factory_state().borrow_mut().factory.canisters.clone();
+            let curr_version = self.factory_state().borrow().factory.checksum.version;
             let mut outdated_canisters = vec![];
 
             for (key, canister) in canisters
@@ -81,12 +85,12 @@ pub trait FactoryCanister: Canister + Sized {
                 .filter(|(_, c)| c.version() == curr_version)
             {
                 let upgrader = self
-                    .state()
+                    .factory_state()
                     .borrow_mut()
                     .factory
-                    .upgrade(&canister, canister_bytecode.clone());
+                    .upgrade(&canister, wasm.clone());
                 if let Ok(upgraded) = upgrader.await {
-                    self.state()
+                    self.factory_state()
                         .borrow_mut()
                         .factory
                         .register_upgraded(&key, upgraded)
@@ -95,7 +99,7 @@ pub trait FactoryCanister: Canister + Sized {
                 }
             }
 
-            outdated_canisters
+            Ok(outdated_canisters)
         })
     }
 
@@ -108,39 +112,39 @@ pub trait FactoryCanister: Canister + Sized {
     /// Returns the number of canisters created by the factory.
     #[query(trait = true)]
     fn length(&self) -> usize {
-        self.state().borrow().factory.canisters.len()
+        self.factory_state().borrow().factory.canisters.len()
     }
 
     /// Returns a vector of all canisters created by the factory.
     #[query(trait = true)]
     fn get_all(&self) -> Vec<Principal> {
-        self.state().borrow().factory.all()
+        self.factory_state().borrow().factory.all()
     }
 
     /// Returns the ICP fee amount for canister creation.
     #[query(trait = true)]
     fn get_icp_fee(&self) -> u64 {
-        self.state().borrow().icp_fee()
+        self.factory_state().borrow().icp_fee()
     }
 
     /// Sets the ICP fee amount for canister creation. This method can only be called
     /// by the factory controller.
     #[update(trait = true)]
     fn set_icp_fee(&self, e8s: u64) -> Result<(), FactoryError> {
-        self.state().borrow_mut().set_icp_fee(e8s)
+        self.factory_state().borrow_mut().set_icp_fee(e8s)
     }
 
     /// Returns the principal that will receive the ICP fees.
     #[query(trait = true)]
     fn get_icp_to(&self) -> Principal {
-        self.state().borrow().icp_to()
+        self.factory_state().borrow().icp_to()
     }
 
     /// Sets the principal that will receive the ICP fees. This method can only be called
     /// by the factory controller.
     #[update(trait = true)]
     fn set_icp_to(&self, to: Principal) -> ::std::result::Result<(), FactoryError> {
-        self.state().borrow_mut().set_icp_to(to)
+        self.factory_state().borrow_mut().set_icp_to(to)
     }
 
     /// Returns the ICPs transferred to the factory by the caller. This method returns all
@@ -151,7 +155,7 @@ pub trait FactoryCanister: Canister + Sized {
             LedgerPrincipalExt, PrincipalId, Subaccount, DEFAULT_TRANSFER_FEE,
         };
 
-        let ledger = self.state().borrow().ledger_principal();
+        let ledger = self.factory_state().borrow().ledger_principal();
         Box::pin(async move {
             let caller = ic_kit::ic::caller();
             let balance = ledger
@@ -182,13 +186,13 @@ pub trait FactoryCanister: Canister + Sized {
     /// Sets the factory controller principal.
     #[update(trait = true)]
     fn set_controller(&self, controller: Principal) -> Result<(), FactoryError> {
-        self.state().borrow_mut().set_controller(controller)
+        self.factory_state().borrow_mut().set_controller(controller)
     }
 
     /// Returns the factory controller principal.
     #[query(trait = true)]
     fn get_controller(&self) -> Principal {
-        self.state().borrow().controller()
+        self.factory_state().borrow().controller()
     }
 
     /// Returns the AccountIdentifier for the caller subaccount in the factory account.
@@ -218,19 +222,11 @@ pub trait FactoryCanister: Canister + Sized {
 pub struct FactoryExport {
     #[id]
     principal: Principal,
-    #[state(stable_store = false)]
-    state: Rc<RefCell<FactoryState>>,
 }
 
-const FACTORY_WASM_PATH: &str = "../../target/wasm32-unknown-unknown/release/factory.wasm";
-
 impl FactoryCanister for FactoryExport {
-    fn get_canister_bytecode() -> Vec<u8> {
-        ic_helpers::get_canister_bytecode_for(FACTORY_WASM_PATH)
-    }
-
-    fn state(&self) -> Rc<RefCell<FactoryState>> {
-        self.state.clone()
+    fn get_canister_bytecode(&self) -> Option<Vec<u8>> {
+        panic!("this implementation must not be used")
     }
 }
 

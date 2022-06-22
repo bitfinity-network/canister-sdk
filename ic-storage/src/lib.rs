@@ -4,6 +4,7 @@
 //! * For versioned storage see [`crate::stable`].
 //!
 //! ```
+//! # ic_canister::ic_kit::MockContext::new().inject();
 //! use ic_storage::IcStorage;
 //!
 //! #[derive(IcStorage, Default)]
@@ -22,6 +23,7 @@
 //! `generic_derive!` macro for them:
 //!
 //! ```
+//! # ic_canister::ic_kit::MockContext::new().inject();
 //! use ic_storage::IcStorage;
 //!
 //! #[derive(Default)]
@@ -71,6 +73,14 @@
 //!    type (e.g a tuple or a custom struct), as writing to stable storage overwrites what is
 //!    currently there (meaning if we write one struct and then another, the second would overwrite
 //!    the first).
+//!
+//! # Testing
+//!
+//! When running unit tests sometimes more than one state is needed to simulate different canister
+//! instances. For that, `ic-storage` macros generate a little different code for architectures
+//! other then `wasm32`. In this case you need to use `ic_canister::ic_kit` to set up the
+//! `MockingContext` and set the current `id` in that context. For each `id` different storage will
+//! be returned by `IcStorage::get()` method even in the same test case.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -93,6 +103,7 @@ pub trait IcStorage {
 #[macro_export]
 macro_rules! generic_derive {
     ($storage:ty) => {
+        #[cfg(target_arch = "wasm32")]
         impl ::ic_storage::IcStorage for $storage {
             fn get() -> ::std::rc::Rc<::std::cell::RefCell<Self>> {
                 use ::std::rc::Rc;
@@ -103,6 +114,26 @@ macro_rules! generic_derive {
                 }
 
                 store.with(|v| v.clone())
+            }
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        impl ::ic_storage::IcStorage for $storage {
+            fn get() -> ::std::rc::Rc<::std::cell::RefCell<Self>> {
+                use ::std::rc::Rc;
+                use ::std::cell::RefCell;
+                use ::std::collections::HashMap;
+                use ::candid::Principal;
+
+                thread_local! {
+                    static store: RefCell<HashMap<Principal, Rc<RefCell<$storage>>>> = RefCell::new(HashMap::default());
+                }
+
+                let id = ::ic_canister::ic_kit::ic::id();
+                store.with(|v| {
+                    let mut borrowed_store = v.borrow_mut();
+                    (*borrowed_store.entry(id).or_default()).clone()
+                })
             }
         }
     }
