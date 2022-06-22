@@ -209,15 +209,38 @@ pub(crate) fn api_method(
         }
     };
 
+    let input_attrs = &input.attrs;
+    let input_vis = &input.vis;
+    let input_defaultness = &input.defaultness;
+    let input_sig = &input.sig;
+    let input_block = &input.block;
+
     let expanded = quote! {
-        #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+        #[cfg(target_arch = "wasm32")]
+        #[allow(dead_code)]
         #input
+
+        #[cfg(not(target_arch = "wasm32"))]
+        #(#input_attrs)*
+        #input_vis #input_defaultness #input_sig
+        {
+            let __id = ::ic_canister::ic_kit::ic::id();
+            let __caller = ::ic_canister::ic_kit::ic::caller();
+            ::ic_canister::ic_kit::inject::get_context().update_id(self.principal());
+            ::ic_canister::ic_kit::inject::get_context().update_caller(__id);
+
+            let result = #input_block;
+            ::ic_canister::ic_kit::inject::get_context().update_id(__id);
+            ::ic_canister::ic_kit::inject::get_context().update_caller(__caller);
+
+            result
+        }
 
         #export_function
 
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(dead_code)]
-            #orig_vis fn #internal_method<#self_lifetime>(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_cdk::api::call::CallResult<#inner_return_type>> + #return_lifetime>> {
+        #orig_vis fn #internal_method<#self_lifetime>(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_cdk::api::call::CallResult<#inner_return_type>> + #return_lifetime>> {
             // todo: trap handler
             let result = self. #method(#args_destr);
             Box::pin(async move { Ok(result #await_call) })
@@ -358,6 +381,10 @@ fn store_candid_definitions(modes: &str, sig: &Signature) -> Result<(), syn::Err
             Some(_) => return Err(Error::new_spanned(&sig.ident, "duplicate init method")),
             ret @ None => *ret = Some(args),
         }
+        return Ok(());
+    }
+
+    if modes == "pre_upgrade" || modes == "post_upgrade" {
         return Ok(());
     }
 

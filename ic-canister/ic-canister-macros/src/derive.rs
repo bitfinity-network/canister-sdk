@@ -36,23 +36,10 @@ impl Default for TraitNameAttr {
 
 pub fn derive_canister(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+    let trait_name = get_canister_trait_name(&input);
+    let derive_upgrade = derive_upgrade_methods(&input);
+
     let name = input.ident;
-    let trait_name_attr = input.attrs.iter().find(|x| {
-        x.path
-            .segments
-            .last()
-            .map(|last| last.ident == "trait_name")
-            .unwrap_or(false)
-    });
-
-    let trait_attr = match trait_name_attr {
-        Some(v) => v.parse_args().expect(
-            "invalid trait_name attribute syntax, expected format: `#[trait_name(path::to::Canister)]`",
-        ),
-        None => TraitNameAttr::default(),
-    };
-
-    let trait_name = trait_attr.path;
 
     let data = match input.data {
         Data::Struct(v) => v,
@@ -113,14 +100,12 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
     });
 
     let mut stable_field = None;
-    let (state_fields_wasm, state_fields_test) = if state_fields.len() > 0 {
+    let state_fields_wasm = if state_fields.len() > 0 {
         let mut state_fields_wasm = vec![];
-        let mut state_fields_test = vec![];
 
         for (field_name, field_type, is_stable) in state_fields {
             state_fields_wasm
                 .push(quote! {#field_name : <#field_type as ::ic_storage::IcStorage>::get()});
-            state_fields_test.push(quote! {#field_name : ::std::rc::Rc::new(::std::cell::RefCell::new(<#field_type as ::std::default::Default>::default()))});
 
             if is_stable {
                 match stable_field {
@@ -129,12 +114,10 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
                 }
             }
         }
-        (
-            quote! {, #(#state_fields_wasm),* },
-            quote! {, #(#state_fields_test),* },
-        )
+
+        quote! {, #(#state_fields_wasm),* }
     } else {
-        (quote! {}, quote! {})
+        quote! {}
     };
 
     let default_fields = default_fields.iter().map(|x| {
@@ -149,12 +132,15 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         quote! {}
     };
 
-    let upgrade_methods = expand_upgrade_methods(&name, stable_field);
+    let upgrade_methods = if derive_upgrade {
+        expand_upgrade_methods(&name, stable_field)
+    } else {
+        quote! {}
+    };
 
     let expanded = quote! {
         #[cfg(not(target_arch = "wasm32"))]
         thread_local! {
-            static CANISTERS: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<Principal, #name>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::HashMap::new()));
             static __NEXT_ID: ::std::sync::atomic::AtomicU64 = {
                 let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
                 let id: u64 = (nanos % 10u128.pow(19)).try_into().unwrap();
@@ -164,7 +150,6 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
         #[cfg(not(target_arch = "wasm32"))]
         fn __next_id() -> [u8; 8] {
-            __NEXT_ID.with(|v| v.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed).to_le_bytes()); // don't ask
             __NEXT_ID.with(|v| v.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed).to_le_bytes())
         }
 
@@ -178,10 +163,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
             #[cfg(not(target_arch = "wasm32"))]
             fn init_instance() -> Self {
                 let principal = ::ic_cdk::export::Principal::from_slice(&__next_id());
-                let instance = Self { #principal_field: principal #state_fields_test #default_fields };
-                CANISTERS.with(|v| ::std::cell::RefCell::borrow_mut(v).insert(instance.principal(), instance.clone()));
-
-                instance
+                Self::from_principal(principal)
             }
 
             #[cfg(target_arch = "wasm32")]
@@ -191,9 +173,16 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             fn from_principal(principal: ::ic_cdk::export::Principal) -> Self {
-                let registry: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<::ic_cdk::export::Principal, #name>>> = CANISTERS.with(|v| v.clone());
-                let mut registry = ::std::cell::RefCell::borrow_mut(&registry);
-                registry.get(&principal).expect(&format!("canister of type {} with principal {} is not registered", ::std::any::type_name::<Self>(), principal)).clone()
+                let curr_id = ::ic_canister::ic_kit::ic::id();
+
+                // We set the id in the mock context to be the one of new canister to initialize
+                // the state of that canister in local storage
+                ::ic_canister::ic_kit::inject::get_context().update_id(principal);
+                let instance = Self { #principal_field: principal #state_fields_wasm #default_fields };
+
+                // And then we reset the id to what it was
+                ::ic_canister::ic_kit::inject::get_context().update_id(curr_id);
+                instance
             }
 
             fn principal(&self) -> Principal {
@@ -414,4 +403,33 @@ fn extract_generic<'a>(type_name: &str, generic_base: &'a Type, input_type: &'a 
 
 fn state_type_error(input_type: &Type) -> ! {
     panic!("state field type must be Rc<RefCell<T>> where T: IcStorage, but the actual type is {input_type:?}")
+}
+
+fn get_canister_trait_name(input: &DeriveInput) -> Path {
+    let trait_name_attr = input.attrs.iter().find(|x| {
+        x.path
+            .segments
+            .last()
+            .map(|last| last.ident == "canister_trait_name")
+            .unwrap_or(false)
+    });
+
+    let trait_attr = match trait_name_attr {
+        Some(v) => v.parse_args().expect(
+            "invalid trait_name attribute syntax, expected format: `#[canister_trait_name(path::to::Canister)]`",
+        ),
+        None => TraitNameAttr::default(),
+    };
+
+    trait_attr.path
+}
+
+fn derive_upgrade_methods(input: &DeriveInput) -> bool {
+    !input.attrs.iter().any(|x| {
+        x.path
+            .segments
+            .last()
+            .map(|last| last.ident == "canister_no_upgrade_methods")
+            .unwrap_or(false)
+    })
 }

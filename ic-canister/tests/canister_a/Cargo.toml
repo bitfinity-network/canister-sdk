@@ -19,3 +19,6 @@ ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
 ic-helpers = {path = "../../../ic-helpers"}
 serde = "1.0"
+
+[dev-dependencies]
+tokio = {version = "1", features = ["rt", "macros"]}

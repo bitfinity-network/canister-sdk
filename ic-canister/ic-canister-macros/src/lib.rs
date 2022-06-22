@@ -108,6 +108,24 @@ pub fn update(attr: TokenStream, item: TokenStream) -> TokenStream {
     api::api_method("update", attr, item, false)
 }
 
+/// Marks the canister method as an `pre_upgrade` method.
+///
+/// Only one method in a canister can be marked as `#[pre_upgrade]`. This method must not have any
+/// arguments or a return value.
+#[proc_macro_attribute]
+pub fn pre_upgrade(attr: TokenStream, item: TokenStream) -> TokenStream {
+    api::api_method("pre_upgrade", attr, item, true)
+}
+
+/// Marks the canister method as an `post_upgrade` method.
+///
+/// Only one method in a canister can be marked as `#[post_upgrade]`. This method must not have any
+/// arguments or a return value.
+#[proc_macro_attribute]
+pub fn post_upgrade(attr: TokenStream, item: TokenStream) -> TokenStream {
+    api::api_method("post_upgrade", attr, item, true)
+}
+
 /// Generates IDL (Candid) definition of the canister.
 ///
 /// ```ignore
@@ -133,7 +151,10 @@ pub fn generate_exports(input: TokenStream) -> TokenStream {
 }
 
 /// Derives [Canister] trait for a struct.
-#[proc_macro_derive(Canister, attributes(id, state, trait_name))]
+#[proc_macro_derive(
+    Canister,
+    attributes(id, state, canister_trait_name, canister_no_upgrade_methods)
+)]
 pub fn derive_canister(input: TokenStream) -> TokenStream {
     derive::derive_canister(input)
 }
