@@ -104,7 +104,7 @@ pub trait IcStorage {
 macro_rules! generic_derive {
     ($storage:ty) => {
         #[cfg(target_arch = "wasm32")]
-        impl ::ic_storage::IcStorage for $storage {
+        impl ::ic_cansiter::storage::IcStorage for $storage {
             fn get() -> ::std::rc::Rc<::std::cell::RefCell<Self>> {
                 use ::std::rc::Rc;
                 use ::std::cell::RefCell;
@@ -118,7 +118,7 @@ macro_rules! generic_derive {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        impl ::ic_storage::IcStorage for $storage {
+        impl ::ic_canister::storage::IcStorage for $storage {
             fn get() -> ::std::rc::Rc<::std::cell::RefCell<Self>> {
                 use ::std::rc::Rc;
                 use ::std::cell::RefCell;

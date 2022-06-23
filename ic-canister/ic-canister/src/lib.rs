@@ -512,8 +512,39 @@ pub mod storage;
 
 pub use idl::*;
 
+pub enum MethodType {
+    Query,
+    Update,
+    Oneway,
+}
+
+impl<T: AsRef<str>> From<T> for MethodType {
+    fn from(s: T) -> Self {
+        match s.as_ref() {
+            "query" => MethodType::Query,
+            "update" => MethodType::Update,
+            "oneway" => MethodType::Oneway,
+            _ => panic!("Unknown method type: {}", s.as_ref()),
+        }
+    }
+}
+
+impl std::fmt::Display for MethodType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MethodType::Query => write!(f, "query"),
+            MethodType::Update => write!(f, "update"),
+            MethodType::Oneway => write!(f, "oneway"),
+        }
+    }
+}
+
+pub trait CanisterBase {
+    fn pre_update(&self, _method_name: &str, _method_type: MethodType) {}
+}
+
 /// Main trait for a testable canister. Do not implement this trait manually, use the derive macro.
-pub trait Canister {
+pub trait Canister: CanisterBase {
     /// Creates a new instance of the canister with the default state. Call this method to initialize
     /// a canister for testing.
     ///

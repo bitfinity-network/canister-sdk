@@ -1,17 +1,11 @@
-use lazy_static::lazy_static;
 use proc_macro::TokenStream;
 use quote::quote;
 use std::collections::HashSet;
-use std::sync::Mutex;
 use syn::parse::{Parse, ParseStream};
 use syn::{
     parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit, LitBool,
     Meta, NestedMeta, Path, PathArguments, Type,
 };
-
-lazy_static! {
-    pub static ref IS_METRIC_CANISTER: Mutex<bool> = Mutex::new(false);
-}
 
 #[derive(Debug)]
 struct TraitNameAttr {
@@ -56,10 +50,6 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
     let mut state_fields = vec![];
     let mut default_fields = vec![];
     'field: for field in fields {
-        if is_metric_field(&field) {
-            *IS_METRIC_CANISTER.lock().unwrap() = true;
-        }
-
         for attr in field.attrs.iter() {
             match attr {
                 attr if is_principal_attr(attr) => {
@@ -303,14 +293,6 @@ fn is_principal_attr(attribute: &Attribute) -> bool {
 
 fn is_state_attr(attribute: &Attribute) -> bool {
     attribute.path.is_ident("state")
-}
-
-fn is_metric_field(field: &Field) -> bool {
-    field
-        .ident
-        .clone()
-        .map(|ident| ident == "metrics")
-        .unwrap_or(false)
 }
 
 fn get_state_type(input_type: &Type) -> &Type {

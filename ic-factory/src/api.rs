@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use candid::{Nat, Principal};
-use ic_canister::{generate_exports, query, update, AsyncReturn, Canister};
+use ic_canister::{generate_exports, query, update, AsyncReturn, Canister, CanisterBase};
 
 use ic_helpers::management;
 
@@ -22,7 +22,7 @@ use super::{error::FactoryError, FactoryState};
 /// * get_controller
 /// * set_controller
 /// * refund_icp
-pub trait FactoryCanister: Canister + Sized {
+pub trait FactoryCanister: Canister + Sized + CanisterBase {
     fn factory_state(&self) -> Rc<RefCell<FactoryState>> {
         use ic_storage::IcStorage;
         FactoryState::get()
@@ -223,6 +223,8 @@ pub struct FactoryExport {
     #[id]
     principal: Principal,
 }
+
+impl CanisterBase for FactoryExport {}
 
 impl FactoryCanister for FactoryExport {
     fn get_canister_bytecode(&self) -> Option<Vec<u8>> {

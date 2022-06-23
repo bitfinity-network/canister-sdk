@@ -1,11 +1,13 @@
 use candid::{CandidType, Deserialize, Principal};
-use canister_a::CanisterAImpl;
-use ic_canister::{canister_call, canister_notify, virtual_canister_call, virtual_canister_notify};
+use canister_a::{CanisterA, CanisterAImpl};
+use ic_canister::{
+    canister_call, canister_notify, query, virtual_canister_call, virtual_canister_notify,
+    CanisterBase,
+};
+use ic_helpers::metrics::{Metrics, MetricsMap};
 use ic_storage::IcStorage;
 use std::cell::RefCell;
 use std::rc::Rc;
-
-use canister_a::CanisterA;
 
 use ic_canister::{init, update, Canister};
 
@@ -32,6 +34,12 @@ pub struct CanisterB {
     state: Rc<RefCell<StateB>>,
 
     _another: u32,
+}
+
+impl CanisterBase for CanisterB {}
+
+impl Metrics for CanisterB {
+    type MetricsStruct = ic_helpers::metrics::DefaultMetrics; // associated type defaults are unstable
 }
 
 impl CanisterB {
@@ -99,6 +107,18 @@ impl CanisterB {
             .unwrap();
 
         (ic_canister::ic_kit::ic::caller(), canister_a_caller)
+    }
+
+    #[query]
+    async fn get_metrics_a(&self) -> MetricsMap<canister_a::MetricsSnapshot> {
+        let canister_a = CanisterAImpl::from_principal(self.state.borrow().canister_a);
+
+        canister_call!(
+            canister_a.get_metrics_(),
+            MetricsMap<canister_a::MetricsSnapshot>
+        )
+        .await
+        .unwrap()
     }
 }
 
@@ -181,5 +201,24 @@ mod tests {
             canister_call!(canister.get_counter(), u32).await.unwrap(),
             18
         );
+    }
+
+    #[tokio::test]
+    async fn get_metrics() {
+        let ctx = MockContext::new().inject();
+
+        let canister_a = CanisterAImpl::init_instance();
+        let canister_b = get_canister_b(canister_a.principal());
+
+        let _ = canister_b.call_increment(5).await;
+
+        ctx.add_time(6 * 10u64.pow(9) * 60 * 3); // 3 hours
+
+        let _ = canister_b.call_increment(5).await;
+
+        let metrics = canister_b.get_metrics_a().await;
+
+        assert_eq!(metrics.map.len(), 2);
+        assert_eq!(metrics.map.into_iter().next().unwrap().1.cycles, 100);
     }
 }

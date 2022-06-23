@@ -8,7 +8,7 @@ pub fn derive_ic_storage(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, .. } = syn::parse_macro_input!(input);
     let output = quote::quote! {
         #[cfg(target_arch = "wasm32")]
-        impl ::ic_storage::IcStorage for #ident {
+        impl ::ic_canister::storage::IcStorage for #ident {
             fn get() -> ::std::rc::Rc<::std::cell::RefCell<Self>> {
                 use ::std::rc::Rc;
                 use ::std::cell::RefCell;
@@ -22,7 +22,7 @@ pub fn derive_ic_storage(input: TokenStream) -> TokenStream {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        impl ::ic_storage::IcStorage for #ident {
+        impl ::ic_canister::storage::IcStorage for #ident {
             fn get() -> ::std::rc::Rc<::std::cell::RefCell<Self>> {
                 use ::std::rc::Rc;
                 use ::std::cell::RefCell;
