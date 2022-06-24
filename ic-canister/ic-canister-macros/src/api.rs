@@ -209,32 +209,9 @@ pub(crate) fn api_method(
         }
     };
 
-    let input_attrs = &input.attrs;
-    let input_vis = &input.vis;
-    let input_defaultness = &input.defaultness;
-    let input_sig = &input.sig;
-    let input_block = &input.block;
-
     let expanded = quote! {
-        #[cfg(target_arch = "wasm32")]
         #[allow(dead_code)]
         #input
-
-        #[cfg(not(target_arch = "wasm32"))]
-        #(#input_attrs)*
-        #input_vis #input_defaultness #input_sig
-        {
-            let __id = ::ic_canister::ic_kit::ic::id();
-            let __caller = ::ic_canister::ic_kit::ic::caller();
-            ::ic_canister::ic_kit::inject::get_context().update_id(self.principal());
-            ::ic_canister::ic_kit::inject::get_context().update_caller(__id);
-
-            let result = #input_block;
-            ::ic_canister::ic_kit::inject::get_context().update_id(__id);
-            ::ic_canister::ic_kit::inject::get_context().update_caller(__caller);
-
-            result
-        }
 
         #export_function
 

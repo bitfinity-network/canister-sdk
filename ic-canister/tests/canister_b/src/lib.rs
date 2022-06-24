@@ -107,6 +107,7 @@ impl CanisterA for CanisterB {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ic_canister::ic_kit::mock_principals::alice;
     use ic_canister::ic_kit::MockContext;
 
     fn get_canister_b(canister_a: Principal) -> CanisterB {
@@ -118,7 +119,7 @@ mod tests {
 
     #[tokio::test]
     async fn inter_canister_call() {
-        MockContext::new().inject();
+        let ctx = MockContext::new().with_id(alice()).inject();
 
         let canister_a = CanisterAImpl::init_instance();
         let canister_a2 = CanisterAImpl::init_instance();
@@ -128,9 +129,13 @@ mod tests {
         assert_eq!(canister_b.call_increment(5).await, 5);
         assert_eq!(canister_b.call_increment(15).await, 20);
         assert_eq!(canister_b.notify_increment(20).await, true);
+
+        ctx.update_id(canister_a.principal());
         assert_eq!(canister_a.__get_counter().await.unwrap(), 40);
 
         assert_eq!(canister_b2.notify_increment(100).await, true);
+
+        ctx.update_id(canister_a2.principal());
         assert_eq!(canister_a2.__get_counter().await.unwrap(), 100);
     }
 
@@ -141,7 +146,7 @@ mod tests {
         MockContext::new().with_id(id).with_caller(caller).inject();
 
         let canister_a = CanisterAImpl::init_instance();
-        let canister_b = CanisterB::init_instance();
+        let canister_b = CanisterB::from_principal(id);
         canister_b.init(canister_a.principal());
 
         assert_eq!(
@@ -157,7 +162,7 @@ mod tests {
 
         assert_eq!(
             canister_b.callers().await.0,
-            id,
+            caller,
             "invalid canister_b caller"
         );
         assert_eq!(
@@ -169,8 +174,8 @@ mod tests {
 
     #[tokio::test]
     async fn trait_methods() {
-        MockContext::new().inject();
-        let mut canister = CanisterB::init_instance();
+        MockContext::new().with_id(alice()).inject();
+        let mut canister = CanisterB::from_principal(alice());
 
         canister.inc_counter(13);
         canister.inc_counter(2);
