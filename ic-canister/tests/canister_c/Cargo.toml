@@ -1,0 +1,24 @@
+[package]
+name = "canister_c"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[features]
+default = []
+no_api = []
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ic-cdk = "0.5"
+candid = "0.7"
+ic-storage = {path = "../../../ic-storage"}
+ic-canister = {path = "../../ic-canister"}
+ic-helpers = {path = "../../../ic-helpers"}
+serde = "1.0"
+
+[dev-dependencies]
+tokio = {version = "1", features = ["rt", "macros"]}

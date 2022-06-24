@@ -539,12 +539,12 @@ impl std::fmt::Display for MethodType {
     }
 }
 
-pub trait CanisterBase {
+pub trait PreUpdate {
     fn pre_update(&self, _method_name: &str, _method_type: MethodType) {}
 }
 
 /// Main trait for a testable canister. Do not implement this trait manually, use the derive macro.
-pub trait Canister: CanisterBase {
+pub trait Canister: PreUpdate {
     /// Creates a new instance of the canister with the default state. Call this method to initialize
     /// a canister for testing.
     ///

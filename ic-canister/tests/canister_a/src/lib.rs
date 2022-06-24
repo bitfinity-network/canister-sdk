@@ -1,15 +1,14 @@
 use candid::{CandidType, Deserialize, Principal};
-use ic_helpers::metrics::{Metrics, MetricsMap};
+use ic_helpers::metrics::Metrics;
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{generate_exports, query, update, Canister, CanisterBase, MethodType};
+use ic_canister::{generate_exports, query, update, Canister, MethodType, PreUpdate};
 
 #[derive(Default, CandidType, Deserialize, IcStorage)]
 pub struct StateA {
     counter: u32,
-    metrics: MetricsMap<MetricsSnapshot>,
 }
 
 impl Versioned for StateA {
@@ -31,11 +30,6 @@ pub trait CanisterA: Canister + Metrics {
         self.state().borrow().counter
     }
 
-    #[query(trait = true)]
-    fn get_metrics_<'a>(&'a self) -> MetricsMap<<Self as Metrics>::MetricsStruct> {
-        self.get_metrics()
-    }
-
     #[update(trait = true)]
     fn inc_counter(&mut self, value: u32) {
         RefCell::borrow_mut(&self.state()).counter += value;
@@ -52,35 +46,19 @@ pub trait CanisterA: Canister + Metrics {
     }
 }
 
-#[derive(CandidType, Deserialize, IcStorage, Default, Clone)]
-pub struct MetricsSnapshot {
-    pub cycles: u64,
-}
-
 #[derive(Clone, Canister)]
 pub struct CanisterAImpl {
     #[id]
     principal: Principal,
 }
 
-impl CanisterBase for CanisterAImpl {
+impl PreUpdate for CanisterAImpl {
     fn pre_update(&self, _method_name: &str, _method_type: MethodType) {
         self.update_metrics();
     }
 }
 
-impl Metrics for CanisterAImpl {
-    type MetricsStruct = MetricsSnapshot;
-    fn get_metrics(&self) -> MetricsMap<Self::MetricsStruct> {
-        self.state().borrow().metrics.clone()
-    }
-    fn update_metrics(&self) {
-        self.state()
-            .borrow_mut()
-            .metrics
-            .insert(MetricsSnapshot { cycles: 100 });
-    }
-}
+impl Metrics for CanisterAImpl {}
 
 impl CanisterA for CanisterAImpl {}
 

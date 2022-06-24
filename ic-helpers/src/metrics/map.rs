@@ -1,18 +1,55 @@
 use candid::{CandidType, Deserialize};
-use ic_canister::storage::IcStorage;
+use ic_canister::{query, storage::IcStorage, Canister};
 
-#[derive(CandidType, Deserialize, IcStorage, Default)]
-pub struct DefaultMetrics;
+const WASM_PAGE_SIZE: u64 = 65536;
 
-pub trait Metrics {
-    type MetricsStruct: IcStorage;
-    fn get_metrics(&self) -> MetricsMap<Self::MetricsStruct> {
-        MetricsMap::new::<1>()
-    }
-    fn update_metrics(&self) {}
+#[derive(CandidType, Deserialize, IcStorage, Default, Clone, Debug)]
+pub struct MetricsStorage {
+    pub metrics: MetricsMap<MetricsData>,
 }
 
-#[derive(Clone, CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, IcStorage, Default, Clone, Debug)]
+pub struct MetricsData {
+    pub cycles: u64,
+    pub stable_memory_size: u64,
+    pub heap_memory_size: u64,
+}
+
+pub trait Metrics: Canister {
+    #[query(trait = true)]
+    fn get_metrics(&self) -> MetricsStorage {
+        MetricsStorage::get().borrow().clone()
+    }
+    fn update_metrics(&self) {
+        let metrics = MetricsStorage::get();
+        let mut metrics = metrics.borrow_mut();
+        metrics.metrics.insert(MetricsData {
+            cycles: ic_canister::ic_kit::ic::balance(),
+            stable_memory_size: {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    ic_cdk::api::stable::stable64_size()
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    0
+                }
+            },
+            heap_memory_size: {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    (core::arch::wasm32::memory_size(0) as u64) * WASM_PAGE_SIZE
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    0
+                }
+            },
+        });
+    }
+}
+
+#[derive(Clone, CandidType, Deserialize, Debug)]
 pub struct MetricsMap<T: IcStorage> {
     interval_hours: u64,
     pub map: std::collections::BTreeMap<u64, T>,
