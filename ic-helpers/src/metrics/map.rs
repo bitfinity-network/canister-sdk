@@ -20,6 +20,7 @@ pub trait Metrics: Canister {
     fn get_metrics(&self) -> MetricsStorage {
         MetricsStorage::get().borrow().clone()
     }
+
     fn update_metrics(&self) {
         let metrics = MetricsStorage::get();
         let mut metrics = metrics.borrow_mut();
@@ -46,6 +47,10 @@ pub trait Metrics: Canister {
                 }
             },
         });
+    }
+
+    fn set_interval(hours: u64) {
+        MetricsStorage::get().borrow_mut().metrics.interval_hours = hours;
     }
 }
 
@@ -86,9 +91,6 @@ impl<T: IcStorage> MetricsMap<T> {
 
 impl<T: IcStorage> std::default::Default for MetricsMap<T> {
     fn default() -> Self {
-        Self {
-            interval_hours: 1,
-            map: std::collections::BTreeMap::new(),
-        }
+        Self::new::<1>()
     }
 }
