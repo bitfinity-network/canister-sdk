@@ -1,11 +1,10 @@
 use candid::{CandidType, Deserialize, Principal};
-use canister_a::CanisterAImpl;
 use ic_canister::{canister_call, canister_notify, virtual_canister_call, virtual_canister_notify};
 use ic_storage::IcStorage;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use canister_a::CanisterA;
+use canister_a::{CanisterA, CanisterAImpl};
 
 use ic_canister::{init, update, Canister};
 

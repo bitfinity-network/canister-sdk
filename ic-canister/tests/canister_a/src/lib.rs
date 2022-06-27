@@ -3,7 +3,7 @@ use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{generate_exports, query, update, Canister};
+use ic_canister::{generate_exports, query, update};
 
 #[derive(Default, CandidType, Deserialize, IcStorage)]
 pub struct StateA {
@@ -45,21 +45,13 @@ pub trait CanisterA: ic_canister::Canister {
     }
 }
 
-#[derive(Clone, Canister)]
-pub struct CanisterAImpl {
-    #[id]
-    principal: Principal,
-}
-
-impl CanisterA for CanisterAImpl {}
-
-generate_exports!(CanisterAImpl);
+generate_exports!(CanisterA, CanisterAImpl);
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ic_canister::canister_call;
     use ic_canister::ic_kit::MockContext;
+    use ic_canister::{canister_call, Canister};
 
     #[test]
     fn independent_states() {
