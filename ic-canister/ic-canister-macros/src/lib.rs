@@ -87,7 +87,7 @@ pub fn virtual_canister_notify(input: TokenStream) -> TokenStream {
 /// function. Thus, there's no need to mark it with `candid::candid_method` macro.
 #[proc_macro_attribute]
 pub fn init(attr: TokenStream, item: TokenStream) -> TokenStream {
-    api::api_method("init", attr, item, true)
+    api::api_method("init", attr, item, true, true)
 }
 
 /// Marks the canister method as an API query method.
@@ -96,7 +96,7 @@ pub fn init(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// function. Thus, there's no need to mark it with `candid::candid_method` macro.
 #[proc_macro_attribute]
 pub fn query(attr: TokenStream, item: TokenStream) -> TokenStream {
-    api::api_method("query", attr, item, false)
+    api::api_method("query", attr, item, false, true)
 }
 
 /// Marks the canister method as an API update method.
@@ -105,7 +105,7 @@ pub fn query(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// function. Thus, there's no need to mark it with `candid::candid_method` macro.
 #[proc_macro_attribute]
 pub fn update(attr: TokenStream, item: TokenStream) -> TokenStream {
-    api::api_method("update", attr, item, false)
+    api::api_method("update", attr, item, false, true)
 }
 
 /// Marks the canister method as an `pre_upgrade` method.
@@ -114,7 +114,7 @@ pub fn update(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// arguments or a return value.
 #[proc_macro_attribute]
 pub fn pre_upgrade(attr: TokenStream, item: TokenStream) -> TokenStream {
-    api::api_method("pre_upgrade", attr, item, true)
+    api::api_method("pre_upgrade", attr, item, true, false)
 }
 
 /// Marks the canister method as an `post_upgrade` method.
@@ -123,7 +123,7 @@ pub fn pre_upgrade(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// arguments or a return value.
 #[proc_macro_attribute]
 pub fn post_upgrade(attr: TokenStream, item: TokenStream) -> TokenStream {
-    api::api_method("post_upgrade", attr, item, true)
+    api::api_method("post_upgrade", attr, item, true, false)
 }
 
 /// Generates IDL (Candid) definition of the canister.

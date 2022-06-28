@@ -5,11 +5,12 @@ use quote::{quote, ToTokens};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::sync::Mutex;
+use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
     parse_macro_input, Error, FnArg, Ident, ImplItemMethod, Pat, PatIdent, PatTuple, ReturnType,
-    Signature, Type, TypeTuple,
+    Signature, Token, Type, TypeTuple, VisPublic, Visibility,
 };
 
 #[derive(Default, Deserialize, Debug)]
@@ -23,6 +24,7 @@ pub(crate) fn api_method(
     attr: TokenStream,
     item: TokenStream,
     is_management_api: bool,
+    with_args: bool,
 ) -> TokenStream {
     let mut input = parse_macro_input!(item as ImplItemMethod);
 
@@ -133,6 +135,15 @@ pub(crate) fn api_method(
         args_destr.push_punct(Default::default());
     }
 
+    if !with_args && !args_destr.is_empty() {
+        return syn::Error::new(
+            input.span(),
+            format!("{} method cannot have arguments", method_type),
+        )
+        .to_compile_error()
+        .into();
+    }
+
     let return_lifetime = if parameters.is_trait || input.sig.asyncness.is_none() {
         quote! { #self_lifetime }
     } else {
@@ -194,13 +205,20 @@ pub(crate) fn api_method(
         });
         quote! {}
     } else {
+        let args_destr_tuple = if with_args {
+            quote! {
+                let #args_destr_tuple: #arg_type = ::ic_cdk::api::call::arg_data();
+            }
+        } else {
+            quote! {}
+        };
         quote! {
             #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
             #[export_name = #export_name]
             fn #internal_method() {
                 ::ic_cdk::setup();
                 ::ic_cdk::spawn(async {
-                    let #args_destr_tuple: #arg_type = ::ic_cdk::api::call::arg_data();
+                    #args_destr_tuple
                     let mut instance = Self::init_instance();
                     let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
                     #reply_call
@@ -257,8 +275,45 @@ lazy_static! {
     static ref METHODS_EXPORTS: Mutex<Vec<ExportMethodData>> = Mutex::new(Default::default());
 }
 
+struct GenerateExportsInput {
+    trait_name: Ident,
+    struct_name: Ident,
+    struct_vis: Visibility,
+}
+
+impl Parse for GenerateExportsInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let trait_name = input.parse::<Ident>()?;
+        let (struct_name, struct_vis) = if input.is_empty() {
+            (
+                Ident::new(&format!("__{}_Ident", trait_name.to_string()), input.span()),
+                Visibility::Inherited,
+            )
+        } else {
+            input.parse::<Token![,]>()?;
+            (
+                input.parse::<Ident>()?,
+                Visibility::Public(VisPublic {
+                    pub_token: Default::default(),
+                }),
+            )
+        };
+
+        Ok(Self {
+            trait_name,
+            struct_name,
+            struct_vis,
+        })
+    }
+}
+
 pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
-    let input_type = parse_macro_input!(input as Ident);
+    let generate_input = parse_macro_input!(input as GenerateExportsInput);
+    let GenerateExportsInput {
+        trait_name,
+        struct_name,
+        struct_vis,
+    } = generate_input;
     let methods = METHODS_EXPORTS.lock().unwrap();
 
     let methods = methods.iter().map(|method| {
@@ -294,7 +349,7 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
                 ::ic_cdk::setup();
                 ::ic_cdk::spawn(async {
                     #args_destr_tuple
-                    let mut instance = #input_type ::init_instance();
+                    let mut instance = #struct_name ::init_instance();
                     let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
 
                     #reply_call
@@ -303,7 +358,18 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         }
     });
 
-    let expanded = quote! { #(#methods)*};
+    let expanded = quote! {
+        #[derive(::std::clone::Clone, ::ic_canister::Canister)]
+        #[allow(non_camel_case_types)]
+        #struct_vis struct #struct_name {
+            #[id]
+            principal: ::ic_cdk::export::Principal,
+        }
+
+        impl #trait_name for #struct_name {}
+
+        #(#methods)*
+    };
     expanded.into()
 }
 
