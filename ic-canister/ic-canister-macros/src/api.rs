@@ -367,6 +367,8 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
 
         impl #trait_name for #struct_name {}
 
+        impl ::ic_canister::PreUpdate for #struct_name {}
+
         #(#methods)*
     };
     expanded.into()

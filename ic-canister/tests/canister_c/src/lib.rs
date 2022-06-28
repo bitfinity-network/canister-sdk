@@ -4,7 +4,7 @@ use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{generate_exports, update, Canister, MethodType, PreUpdate};
+use ic_canister::{update, Canister, MethodType, PreUpdate};
 
 #[derive(Default, CandidType, Deserialize, IcStorage)]
 pub struct State {
@@ -19,39 +19,34 @@ impl Versioned for State {
     }
 }
 
-pub trait CanisterC: Canister + Metrics {
-    fn state(&self) -> Rc<RefCell<State>> {
-        State::get()
-    }
-
-    #[update(trait = true)]
-    fn inc_counter(&mut self, value: u32) {
-        RefCell::borrow_mut(&self.state()).counter += value;
-    }
-}
-
 #[derive(CandidType, Deserialize, IcStorage, Default, Clone)]
 pub struct MetricsSnapshot {
     pub cycles: u64,
 }
 
 #[derive(Clone, Canister)]
-pub struct CanisterCExports {
+pub struct CanisterC {
     #[id]
     principal: Principal,
+
+    #[state]
+    state: Rc<RefCell<State>>,
 }
 
-impl PreUpdate for CanisterCExports {
+impl CanisterC {
+    #[update]
+    fn inc_counter(&mut self, value: u32) {
+        self.state.borrow_mut().counter += value;
+    }
+}
+
+impl Metrics for CanisterC {}
+
+impl PreUpdate for CanisterC {
     fn pre_update(&self, _method_name: &str, _method_type: MethodType) {
         self.update_metrics();
     }
 }
-
-impl Metrics for CanisterCExports {}
-
-impl CanisterC for CanisterCExports {}
-
-generate_exports!(CanisterCExports);
 
 #[cfg(test)]
 mod tests {
@@ -62,7 +57,7 @@ mod tests {
     async fn get_metrics() {
         let ctx = MockContext::new().inject();
 
-        let mut canister_c = CanisterCExports::init_instance();
+        let mut canister_c = CanisterC::init_instance();
 
         let _ = canister_call!(canister_c.inc_counter(5), ()).await;
 

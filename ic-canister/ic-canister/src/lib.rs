@@ -36,7 +36,7 @@
 //! use std::cell::RefCell;
 //! use std::rc::Rc;
 //! use ic_cdk::export::candid::{Principal, CandidType, Deserialize};
-//! use ic_canister::Canister;
+//! use ic_canister::{Canister, PreUpdate};
 //! use ic_canister::storage::IcStorage;
 //!
 //! #[derive(Default, IcStorage, CandidType, Deserialize)]
@@ -62,6 +62,8 @@
 //!
 //!     other_field: u32,
 //! }
+//!
+//! impl PreUpdate for MyCanister {}
 //! ```
 //!
 //! # Canister lifetime
@@ -72,7 +74,7 @@
 //!
 //! ```
 //! use ic_cdk::export::Principal;
-//! use ic_canister::{Canister, init};
+//! use ic_canister::{Canister, PreUpdate, init};
 //!
 //! #[derive(Clone, Canister)]
 //! struct MyCanister {
@@ -86,6 +88,8 @@
 //!         // initialization code here
 //!     }
 //! }
+//!
+//! impl PreUpdate for MyCanister {}
 //! ```
 //!
 //! `#[init]` method must follow the following rules:
@@ -119,7 +123,7 @@
 //!
 //! ```
 //! use candid::{Principal, CandidType, Deserialize};
-//! use ic_canister::{Canister, query, update};
+//! use ic_canister::{Canister, PreUpdate, query, update};
 //! use ic_canister::storage::IcStorage;
 //! use std::cell::RefCell;
 //! use std::rc::Rc;
@@ -155,6 +159,8 @@
 //!         self.state.borrow_mut().counter += value;
 //!     }
 //! }
+//!
+//! impl PreUpdate for MyCanister {}
 //! ```
 //!
 //! The API methods must be instance methods (taking `self` by reference).
@@ -299,7 +305,7 @@
 //!
 //! ```
 //! # use candid::{Principal, CandidType, Deserialize};
-//! # use ic_canister::{Canister, query, update};
+//! # use ic_canister::{Canister, PreUpdate, query, update};
 //! # use ic_canister::storage::IcStorage;
 //! # use std::cell::RefCell;
 //! # use std::rc::Rc;
@@ -338,6 +344,8 @@
 //! #         self.state.borrow_mut().counter += value;
 //! #     }
 //! # }
+//! #
+//! # impl PreUpdate for MyCanister {}
 //!
 //! let my_canister = MyCanister::init_instance();
 //! my_canister.add(1);
@@ -357,7 +365,7 @@
 //!
 //! ```
 //! # use candid::{Principal, CandidType, Deserialize};
-//! # use ic_canister::{Canister, query, update};
+//! # use ic_canister::{Canister, PreUpdate, query, update};
 //! # use ic_canister::storage::IcStorage;
 //! # use std::cell::RefCell;
 //! # use std::rc::Rc;
@@ -396,6 +404,8 @@
 //! #         self.state.borrow_mut().counter += value;
 //! #     }
 //! # }
+//! #
+//! # impl PreUpdate for MyCanister {}
 //!
 //! let my_canister = MyCanister::init_instance();
 //! my_canister.add(1);

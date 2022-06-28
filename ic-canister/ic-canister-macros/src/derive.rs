@@ -1,36 +1,18 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use std::collections::HashSet;
-use syn::parse::{Parse, ParseStream};
 use syn::{
     parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit, LitBool,
     Meta, NestedMeta, Path, PathArguments, Type,
 };
 
-#[derive(Debug)]
-struct TraitNameAttr {
-    path: Path,
-}
-
-impl Parse for TraitNameAttr {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let path = input.parse()?;
-        Ok(Self { path })
-    }
-}
-
-impl Default for TraitNameAttr {
-    fn default() -> Self {
-        let tokens = TokenStream::from(quote! {::ic_canister::Canister});
-        let path =
-            parse_macro_input::parse::<Path>(tokens).expect("static value parsing always succeeds");
-        Self { path }
-    }
-}
-
 pub fn derive_canister(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let trait_name = get_canister_trait_name(&input);
+
+    let trait_stream = TokenStream::from(quote! {::ic_canister::Canister});
+    let trait_name = parse_macro_input::parse::<Path>(trait_stream)
+        .expect("static value parsing always succeeds");
+
     let derive_upgrade = derive_upgrade_methods(&input);
 
     let name = input.ident;
@@ -386,25 +368,6 @@ fn extract_generic<'a>(type_name: &str, generic_base: &'a Type, input_type: &'a 
 
 fn state_type_error(input_type: &Type) -> ! {
     panic!("state field type must be Rc<RefCell<T>> where T: IcStorage, but the actual type is {input_type:?}")
-}
-
-fn get_canister_trait_name(input: &DeriveInput) -> Path {
-    let trait_name_attr = input.attrs.iter().find(|x| {
-        x.path
-            .segments
-            .last()
-            .map(|last| last.ident == "canister_trait_name")
-            .unwrap_or(false)
-    });
-
-    let trait_attr = match trait_name_attr {
-        Some(v) => v.parse_args().expect(
-            "invalid trait_name attribute syntax, expected format: `#[canister_trait_name(path::to::Canister)]`",
-        ),
-        None => TraitNameAttr::default(),
-    };
-
-    trait_attr.path
 }
 
 fn derive_upgrade_methods(input: &DeriveInput) -> bool {

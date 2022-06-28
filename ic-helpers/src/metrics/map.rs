@@ -1,6 +1,7 @@
 use candid::{CandidType, Deserialize};
 use ic_canister::{query, storage::IcStorage, Canister};
 
+#[cfg(target_arch = "wasm32")]
 const WASM_PAGE_SIZE: u64 = 65536;
 
 #[derive(CandidType, Deserialize, IcStorage, Default, Clone, Debug)]

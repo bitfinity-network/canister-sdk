@@ -1,10 +1,9 @@
 use candid::{CandidType, Deserialize, Principal};
-use ic_helpers::metrics::Metrics;
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{generate_exports, query, update};
+use ic_canister::{generate_exports, query, update, Canister};
 
 #[derive(Default, CandidType, Deserialize, IcStorage)]
 pub struct StateA {
@@ -19,12 +18,11 @@ impl Versioned for StateA {
     }
 }
 
-pub trait CanisterA: Canister + Metrics {
+pub trait CanisterA: Canister {
     fn state(&self) -> Rc<RefCell<StateA>> {
         StateA::get()
     }
 
-    /// Documentation for get_counter
     #[query(trait = true)]
     fn get_counter(&self) -> u32 {
         self.state().borrow().counter
