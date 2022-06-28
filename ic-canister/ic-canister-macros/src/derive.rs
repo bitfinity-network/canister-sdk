@@ -143,6 +143,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
             __NEXT_ID.with(|v| v.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed).to_le_bytes())
         }
 
+        #[automatically_derived]
         impl #trait_name for #name {
             #[cfg(target_arch = "wasm32")]
             fn init_instance() -> Self {

@@ -4,6 +4,7 @@ use candid::{Nat, Principal};
 use ic_canister::{generate_exports, query, update, AsyncReturn, Canister, PreUpdate};
 
 use ic_helpers::management;
+use ic_helpers::management::WasmModule;
 
 use super::{error::FactoryError, FactoryState};
 
@@ -27,8 +28,6 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         use ic_storage::IcStorage;
         FactoryState::get()
     }
-
-    fn get_canister_bytecode(&self) -> Option<Vec<u8>>;
 
     /// Returns the checksum of a wasm module in hex representation.
     #[query(trait = true)]
@@ -66,14 +65,15 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
 
     /// Upgrades canisters controller by the factory and returns a list of outdated canisters
     /// (in case an upgrade error occurs).
-    #[update(trait = true)]
-    fn upgrade<'a>(&'a mut self) -> AsyncReturn<Result<Vec<Principal>, FactoryError>> {
+    fn upgrade<'a>(
+        &'a mut self,
+        canister_bytecode: Option<WasmModule>,
+    ) -> AsyncReturn<Result<Vec<Principal>, FactoryError>> {
         // TODO: At the moment we do not do any security checks for this method, for even if there's
         // nothing to upgrade, it will just check all ic-helpers and do nothing else.
         // Later, we should add here (and in create_canister methods) a cycle check,
         // to make the caller to pay for the execution of this method.
 
-        let canister_bytecode = self.get_canister_bytecode();
         Box::pin(async move {
             let wasm = canister_bytecode.ok_or(FactoryError::CanisterWasmNotSet)?;
             let canisters = self.factory_state().borrow_mut().factory.canisters.clone();
@@ -218,18 +218,4 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     }
 }
 
-#[derive(Clone, Canister)]
-pub struct FactoryExport {
-    #[id]
-    principal: Principal,
-}
-
-impl PreUpdate for FactoryExport {}
-
-impl FactoryCanister for FactoryExport {
-    fn get_canister_bytecode(&self) -> Option<Vec<u8>> {
-        panic!("this implementation must not be used")
-    }
-}
-
-generate_exports!(FactoryExport);
+generate_exports!(FactoryCanister);

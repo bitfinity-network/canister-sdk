@@ -4,7 +4,7 @@ use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{generate_exports, query, update, Canister, MethodType, PreUpdate};
+use ic_canister::{generate_exports, query, update};
 
 #[derive(Default, CandidType, Deserialize, IcStorage)]
 pub struct StateA {
@@ -46,69 +46,44 @@ pub trait CanisterA: Canister + Metrics {
     }
 }
 
-#[derive(Clone, Canister)]
-pub struct CanisterAImpl {
-    #[id]
-    principal: Principal,
-}
-
-impl PreUpdate for CanisterAImpl {
-    fn pre_update(&self, _method_name: &str, _method_type: MethodType) {
-        self.update_metrics();
-    }
-}
-
-impl Metrics for CanisterAImpl {}
-
-impl CanisterA for CanisterAImpl {}
-
-generate_exports!(CanisterAImpl);
+generate_exports!(CanisterA, CanisterAImpl);
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ic_canister::canister_call;
     use ic_canister::ic_kit::MockContext;
+    use ic_canister::{canister_call, Canister};
 
     #[test]
     fn independent_states() {
-        MockContext::new().inject();
-        let curr_id = ic_canister::ic_kit::ic::id();
+        let ctx = MockContext::new().inject();
 
         let mut canister1 = CanisterAImpl::init_instance();
         let mut canister2 = CanisterAImpl::init_instance();
 
-        assert_eq!(ic_canister::ic_kit::ic::id(), curr_id);
-
+        ctx.update_id(canister1.principal());
         canister1.inc_counter(3);
+
+        ctx.update_id(canister2.principal());
         canister2.inc_counter(5);
 
+        ctx.update_id(canister1.principal());
         assert_eq!(canister1.get_counter(), 3);
+
+        ctx.update_id(canister2.principal());
         assert_eq!(canister2.get_counter(), 5);
 
+        ctx.update_id(canister1.principal());
         assert_eq!(
             CanisterAImpl::from_principal(canister1.principal()).get_counter(),
             3
         );
+
+        ctx.update_id(canister2.principal());
         assert_eq!(
             CanisterAImpl::from_principal(canister2.principal()).get_counter(),
             5
         );
-    }
-
-    #[test]
-    fn method_execution_context() {
-        let id = ic_canister::ic_kit::mock_principals::alice();
-        let caller = ic_canister::ic_kit::mock_principals::bob();
-
-        MockContext::new().with_id(id).with_caller(caller).inject();
-
-        let canister = CanisterAImpl::init_instance();
-        assert_eq!(canister.caller(), id, "wrong caller");
-        assert_eq!(canister.id(), canister.principal(), "wrong canister id");
-
-        assert_eq!(ic_canister::ic_kit::ic::id(), id);
-        assert_eq!(ic_canister::ic_kit::ic::caller(), caller);
     }
 
     #[tokio::test]
