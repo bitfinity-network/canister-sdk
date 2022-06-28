@@ -1,5 +1,7 @@
 use candid::{CandidType, Deserialize, Principal};
-use ic_canister::{canister_call, canister_notify, virtual_canister_call, virtual_canister_notify};
+use ic_canister::{
+    canister_call, canister_notify, virtual_canister_call, virtual_canister_notify, PreUpdate,
+};
 use ic_storage::IcStorage;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -22,7 +24,6 @@ impl Default for StateB {
 }
 
 #[derive(Clone, Canister)]
-#[canister_trait_name(Canister)]
 #[canister_no_upgrade_methods]
 pub struct CanisterB {
     #[id]
@@ -32,6 +33,8 @@ pub struct CanisterB {
 
     _another: u32,
 }
+
+impl PreUpdate for CanisterB {}
 
 impl CanisterB {
     #[init]

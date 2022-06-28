@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use candid::{Nat, Principal};
-use ic_canister::{generate_exports, query, update, AsyncReturn, Canister};
+use ic_canister::{generate_exports, query, update, AsyncReturn, Canister, PreUpdate};
 
 use ic_helpers::management;
 use ic_helpers::management::WasmModule;
@@ -23,7 +23,7 @@ use super::{error::FactoryError, FactoryState};
 /// * get_controller
 /// * set_controller
 /// * refund_icp
-pub trait FactoryCanister: Canister + Sized {
+pub trait FactoryCanister: Canister + Sized + PreUpdate {
     fn factory_state(&self) -> Rc<RefCell<FactoryState>> {
         use ic_storage::IcStorage;
         FactoryState::get()

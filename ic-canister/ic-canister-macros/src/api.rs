@@ -28,15 +28,14 @@ pub(crate) fn api_method(
 ) -> TokenStream {
     let mut input = parse_macro_input!(item as ImplItemMethod);
 
-    if method_type == "update"
-        && *crate::derive::IS_METRIC_CANISTER.lock().unwrap()
-        && input.sig.ident != "collect_metrics"
-    {
-        let collect_metrics_stmt = syn::parse2::<syn::Stmt>(quote! {
-            self.collect_metrics();
+    // Insert `pre_update` call before executing the method first
+    let method_name = input.sig.ident.to_string();
+    if method_type == "update" && method_name != "pre_update" {
+        let pre_update_stmt = syn::parse2::<syn::Stmt>(quote! {
+            self.pre_update(#method_name, #method_type.into());
         })
         .unwrap();
-        input.block.stmts.insert(0, collect_metrics_stmt);
+        input.block.stmts.insert(0, pre_update_stmt);
     }
 
     let input = input;
@@ -359,7 +358,7 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
     });
 
     let expanded = quote! {
-        #[derive(::std::clone::Clone, ::ic_canister::Canister)]
+        #[derive(::std::clone::Clone, ::std::fmt::Debug, ::ic_canister::Canister)]
         #[allow(non_camel_case_types)]
         #struct_vis struct #struct_name {
             #[id]
@@ -367,6 +366,8 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         }
 
         impl #trait_name for #struct_name {}
+
+        impl ::ic_canister::PreUpdate for #struct_name {}
 
         #(#methods)*
     };

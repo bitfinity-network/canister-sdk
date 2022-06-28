@@ -8,5 +8,6 @@ members = [
   "ic-canister/ic-canister-macros",
   "ic-canister/tests/canister_a",
   "ic-canister/tests/canister_b",
+  "ic-canister/tests/canister_c",
 ]
 

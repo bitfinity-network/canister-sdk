@@ -151,10 +151,7 @@ pub fn generate_exports(input: TokenStream) -> TokenStream {
 }
 
 /// Derives [Canister] trait for a struct.
-#[proc_macro_derive(
-    Canister,
-    attributes(id, state, canister_trait_name, canister_no_upgrade_methods)
-)]
+#[proc_macro_derive(Canister, attributes(id, state, canister_no_upgrade_methods))]
 pub fn derive_canister(input: TokenStream) -> TokenStream {
     derive::derive_canister(input)
 }
