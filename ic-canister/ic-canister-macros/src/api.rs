@@ -358,7 +358,7 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
     });
 
     let expanded = quote! {
-        #[derive(::std::clone::Clone, ::ic_canister::Canister)]
+        #[derive(::std::clone::Clone, ::std::fmt::Debug, ::ic_canister::Canister)]
         #[allow(non_camel_case_types)]
         #struct_vis struct #struct_name {
             #[id]
