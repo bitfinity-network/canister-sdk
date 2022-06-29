@@ -56,6 +56,10 @@ pub(crate) fn api_method(
         })
         .collect::<Vec<_>>();
 
+    if method_type == "init" && parameters.is_trait {
+        panic!("Cannot set up init method for a trait definition. This should be done by the struct that implements this trait.");
+    }
+
     if let Err(e) = store_candid_definitions(method_type, &input.sig) {
         return e.to_compile_error().into();
     }
