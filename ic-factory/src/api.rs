@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use candid::{Nat, Principal};
-use ic_canister::{generate_exports, query, update, AsyncReturn, Canister, PreUpdate};
 
+use ic_canister::{AsyncReturn, Canister, generate_exports, PreUpdate, query, update};
 use ic_helpers::management;
 use ic_helpers::management::WasmModule;
 
@@ -209,6 +209,37 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
 
         account.to_hex()
     }
+
+    /// Delete derived canister if any.
+    /// Before and after deletion calls trait methods `can_delete_canister` and `canister_deleted`.
+    /// You could override this methods to customize your factory behaviour.
+    #[update(trait = true)]
+    fn delete_canister<'a>(&'a self, principal: Principal) -> AsyncReturn<Result<(), FactoryError>> {
+        Box::pin(async move {
+            self.canister_delete_begin(principal)?;
+
+            {
+                // We use this block to drop a RefCell borrow before the future is awaited
+                let future = self.factory_state().borrow_mut().factory.drop(principal);
+                future
+            }.await?;
+
+            self.factory_state().borrow_mut().factory.forget(&principal)?;
+            self.canister_delete_complete(principal);
+            Ok(())
+        })
+    }
+
+    /// Method for pre-delete custom logic.
+    /// Could be used to check is it Ok to delete the canister.
+    /// Should override this method depending of your particular implementation needs.
+    fn canister_delete_begin(&self, canister: Principal) -> Result<(), FactoryError> {
+        Ok(())
+    }
+
+    /// Called right after canister was successfully deleted and removed from the factory state.
+    /// Override this method to clean custom state in your implementation.
+    fn canister_delete_complete(&self, canister: Principal) {}
 
     // Important: This function *must* be defined to be the
     // last one in the trait because it depends on the order
