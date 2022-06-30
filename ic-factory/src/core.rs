@@ -77,13 +77,26 @@ impl Factory {
         self.canisters.insert(key, canister);
     }
 
-    /// Removes the canister from the registry. Return error if the canister with the given key is
-    /// not registered.
+    /// Removes the canister from the registry.
+    /// Return error if the canister with the given key is not registered.
     pub fn forget(&mut self, key: &Principal) -> Result<(), FactoryError> {
         self.canisters
             .remove(key)
             .ok_or(FactoryError::NotFound)
             .map(|_| ())
+    }
+
+    /// Restore canister in the registry, this is an opposite to `forget` method.
+    /// Return error if the canister with the given key is already exists.
+    pub fn recall(&mut self, principal: Principal, version: Version) -> Result<(), FactoryError> {
+        if self.canisters.contains_key(&principal) {
+            let msg = format!("Already in the registry {}", principal);
+            Err(FactoryError::ManagementError(msg))
+        } else {
+            let canister = Canister::new(principal, version);
+            self.canisters.insert(principal, canister);
+            Ok(())
+        }
     }
 
     /// Returns a future that upgrades a canister to the given bytecode. After the future is

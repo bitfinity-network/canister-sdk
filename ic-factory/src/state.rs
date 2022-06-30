@@ -7,6 +7,7 @@ use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::future::Future;
 use std::pin::Pin;
+use crate::types::Version;
 
 pub const DEFAULT_ICP_FEE: u64 = 10u64.pow(8);
 
@@ -134,6 +135,11 @@ impl FactoryState {
     pub fn forget_canister(&mut self, canister: &Principal) -> Result<(), FactoryError> {
         self.check_controller_access()?;
         self.factory.forget(canister)
+    }
+
+    pub fn recall_canister(&mut self, canister: Principal, version: Version) -> Result<(), FactoryError> {
+        self.check_controller_access()?;
+        self.factory.recall(canister, version)
     }
 }
 
