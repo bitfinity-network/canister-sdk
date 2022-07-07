@@ -9,12 +9,24 @@ use ic_storage::stable::Versioned;
 pub const MAGIC: &[u8] = b"DIDL";
 
 /// Candid header of a versioned state struct.
+///
+/// When candid serializes structures, the resulting binary consists of three parts:
+/// 1. The [`MAGIC`] prefix, signifying that the binary is acutally a candid serialized file.
+/// 2. The header containing definition of the serialized type. This header includes field order,
+///    names and types.
+/// 3. Actual values of the fields.
+///
+/// This sturcture represents the second part of the candid serialized structure - the header,
+/// aloong with the version of the type as defined by the `Versioned` trait implementation.
+///
+/// This header can be used to transfer information about the type between canisters or to verify
+/// that the type used by a canister is what the consumr expects.
 #[derive(CandidType, Deserialize)]
 pub struct CandidHeader {
     /// Version of the state as defined by the `Versioned` trait.
     pub version: u32,
 
-    /// Candid header for the struct, not inluding the magic prefix.
+    /// Candid header for the struct, not inluding the [`MAGIC`] prefix.
     pub header: Vec<u8>,
 }
 
