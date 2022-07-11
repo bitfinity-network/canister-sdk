@@ -4,6 +4,8 @@ use std::rc::Rc;
 
 const WASM_PAGE_SIZE: u64 = 65536;
 
+/// Manger is used to manage VistualMemory. The specific function is to mark which wasm page in
+/// memory belongs to which data, for example, the 0th page belongs to Balance, the 1st page belongs to History, etc.
 pub struct Manager<M: Memory> {
     data: StableBTreeMap<M, Vec<u8>, Vec<u8>>,
 }
@@ -16,6 +18,10 @@ impl<M: Memory + Clone> Manager<M> {
     }
 }
 
+/// Pack fragmented memory composed of different pages into contiguous memory.
+///
+/// index stand for different data structures, in the same canister,
+/// different data structures should use different indexes.
 pub struct VistualMemory<M1: Memory, M2: Memory + Clone> {
     memory: M1,
     page_range: Rc<RefCell<Manager<M2>>>,
