@@ -21,7 +21,7 @@ pub const MAGIC: &[u8] = b"DIDL";
 ///
 /// This header can be used to transfer information about the type between canisters or to verify
 /// that the type used by a canister is what the consumr expects.
-#[derive(CandidType, Deserialize)]
+#[derive(Debug, CandidType, Deserialize)]
 pub struct CandidHeader {
     /// Version of the state as defined by the `Versioned` trait.
     pub version: u32,
@@ -43,6 +43,93 @@ pub fn candid_header<T: CandidType + Versioned>() -> CandidHeader {
     let version = T::version();
 
     CandidHeader { version, header }
+}
+
+#[derive(Debug, CandidType, Deserialize)]
+pub enum TypeCheckResult {
+    Ok {
+        remote_version: u32,
+        current_version: u32,
+    },
+    Error {
+        remote_version: u32,
+        current_version: u32,
+        error_message: String,
+    },
+}
+
+impl TypeCheckResult {
+    pub fn is_err(&self) -> bool {
+        matches!(self, TypeCheckResult::Error { .. })
+    }
+}
+
+pub fn validate_header<T: CandidType + Versioned>(remote_header: &CandidHeader) -> TypeCheckResult {
+    let current_version = T::version();
+
+    match get_historic_header::<T>(remote_header.version) {
+        Some(historic_header) => {
+            if historic_header == remote_header.header {
+                TypeCheckResult::Ok {
+                    remote_version: remote_header.version,
+                    current_version,
+                }
+            } else {
+                TypeCheckResult::Error {
+                    remote_version: remote_header.version,
+                    current_version,
+                    error_message: generate_state_error(remote_header, &historic_header),
+                }
+            }
+        }
+        None => TypeCheckResult::Error {
+            remote_version: remote_header.version,
+            current_version,
+            error_message: "The remote type is not a historic version of the current type".into(),
+        },
+    }
+}
+
+fn get_historic_header<T: Versioned + CandidType>(version: u32) -> Option<Vec<u8>> {
+    if T::version() == 0 {
+        None
+    } else if T::version() == version {
+        Some(candid_header::<T>().header)
+    } else {
+        get_historic_header::<T::Previous>(version)
+    }
+}
+
+fn generate_state_error(canister_state: &CandidHeader, historic_state_header: &[u8]) -> String {
+    let canister_type = get_type_definition(&canister_state.header);
+    let crate_type = get_type_definition(historic_state_header);
+
+    format!("The canister state structure differs from the expected state structure of the same version.
+
+Canister state:
+{canister_type}
+
+
+Expected state type of the same state version:
+{crate_type}
+
+The canister state cannot be safely upgraded to the newer version.")
+}
+
+fn get_type_definition(state_header: &[u8]) -> candid::TypeEnv {
+    use binread::BinRead;
+    use candid::binary_parser::Header;
+    use std::io::Cursor;
+
+    let mut with_magic = vec![];
+    with_magic.append(&mut MAGIC.to_vec());
+    with_magic.append(&mut state_header.to_vec());
+
+    let mut reader = Cursor::new(&with_magic);
+    let header = Header::read(&mut reader).unwrap();
+    let (env, _) = header.to_types().unwrap();
+
+    env
 }
 
 #[cfg(test)]

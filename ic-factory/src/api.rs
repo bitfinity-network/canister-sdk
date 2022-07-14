@@ -1,38 +1,25 @@
+use super::{error::FactoryError, FactoryState};
+use candid::{CandidType, Nat, Principal};
+use ic_canister::{
+    generate_exports, query, update, virtual_canister_call, AsyncReturn, Canister, PreUpdate,
+};
+use ic_cdk::export::candid::utils::ArgumentEncoder;
+use ic_helpers::candid_header::{validate_header, CandidHeader, TypeCheckResult};
+use ic_helpers::management;
+use ic_storage::stable::Versioned;
+use ic_storage::IcStorage;
+use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 
-use candid::{Nat, Principal};
-use ic_canister::{generate_exports, query, update, AsyncReturn, Canister, PreUpdate};
-
-use ic_helpers::management;
-use ic_helpers::management::WasmModule;
-
-use super::{error::FactoryError, FactoryState};
-
-/// API methods that are added:
-/// * get_checksum
-/// * get_cycles
-/// * top_up
-/// * upgrade
-/// * version
-/// * length
-/// * get_all
-/// * get_icp_fee
-/// * set_icp_fee
-/// * get_icp_to
-/// * set_icp_to
-/// * get_controller
-/// * set_controller
-/// * refund_icp
 pub trait FactoryCanister: Canister + Sized + PreUpdate {
     fn factory_state(&self) -> Rc<RefCell<FactoryState>> {
-        use ic_storage::IcStorage;
         FactoryState::get()
     }
 
     /// Returns the checksum of a wasm module in hex representation.
     #[query(trait = true)]
-    fn get_checksum<'a>(&'a self) -> String {
-        self.factory_state().borrow().factory.checksum.to_string()
+    fn get_checksum(&self) -> Result<String, FactoryError> {
+        Ok(hex::encode(&self.factory_state().borrow().module()?.hash()))
     }
 
     /// Returns the cycles balances.
@@ -63,62 +50,178 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         management::Canister::accept_cycles()
     }
 
-    /// Upgrades canisters controller by the factory and returns a list of outdated canisters
-    /// (in case an upgrade error occurs).
-    fn upgrade<'a>(
-        &'a mut self,
-        canister_bytecode: Option<WasmModule>,
-    ) -> AsyncReturn<Result<Vec<Principal>, FactoryError>> {
-        // TODO: At the moment we do not do any security checks for this method, for even if there's
-        // nothing to upgrade, it will just check all ic-helpers and do nothing else.
-        // Later, we should add here (and in create_canister methods) a cycle check,
-        // to make the caller to pay for the execution of this method.
-
+    fn check_all_states<T: CandidType + Versioned>(
+        &self,
+    ) -> AsyncReturn<HashMap<Principal, TypeCheckResult>> {
         Box::pin(async move {
-            let wasm = canister_bytecode.ok_or(FactoryError::CanisterWasmNotSet)?;
-            let canisters = self.factory_state().borrow_mut().factory.canisters.clone();
-            let curr_version = self.factory_state().borrow().factory.checksum.version;
-            let mut outdated_canisters = vec![];
+            let canisters = self.factory_state().borrow().canister_list();
+            let mut results = HashMap::default();
 
-            for (key, canister) in canisters
-                .into_iter()
-                .filter(|(_, c)| c.version() == curr_version)
+            for canister in canisters {
+                match virtual_canister_call!(canister, "state_check", (), CandidHeader).await {
+                    Ok(canister_header) => {
+                        results.insert(canister, validate_header::<T>(&canister_header))
+                    }
+                    Err(e) => results.insert(
+                        canister,
+                        TypeCheckResult::Error {
+                            remote_version: 0,
+                            current_version: T::version(),
+                            error_message: format!(
+                                "Failed to query canister state header: {}",
+                                e.1
+                            ),
+                        },
+                    ),
+                };
+            }
+
+            results
+        })
+    }
+
+    fn set_canister_code<T: CandidType + Versioned>(
+        &self,
+        wasm: Vec<u8>,
+        state_header: CandidHeader,
+    ) -> Result<u32, FactoryError> {
+        let validate_res = validate_header::<T>(&state_header);
+        if validate_res.is_err() {
+            return Err(FactoryError::StateCheckFailed(HashMap::from([(
+                self.principal(),
+                validate_res,
+            )])));
+        }
+
+        self.factory_state()
+            .borrow_mut()
+            .authorize_owner()?
+            .set_canister_wasm(wasm, state_header)
+    }
+
+    fn create_canister<'a, T: ArgumentEncoder + 'a>(
+        &'a self,
+        init_args: T,
+        controller: Option<Principal>,
+    ) -> AsyncReturn<'a, Result<Principal, FactoryError>> {
+        Box::pin(async move {
+            let state_lock = self.factory_state().borrow_mut().lock()?;
+
+            let caller = ic_canister::ic_kit::ic::caller();
+            let actor = self
+                .factory_state()
+                .borrow()
+                .consume_provided_cycles_or_icp(caller);
+            let cycles = actor.await?;
+
+            let actor = self.factory_state().borrow().create_canister(
+                init_args,
+                cycles,
+                &state_lock,
+                controller,
+            )?;
+
+            let principal = actor
+                .await
+                .map_err(|e| FactoryError::CanisterCreateFailed(e.1))?;
+
+            self.factory_state()
+                .borrow_mut()
+                .register_created(principal, &state_lock)
+                .expect("correct state lock");
+
+            Ok(principal)
+        })
+    }
+
+    fn upgrade<T: CandidType + Versioned>(
+        &mut self,
+    ) -> AsyncReturn<Result<HashMap<Principal, UpgradeResult>, FactoryError>> {
+        Box::pin(async move {
+            let state_rc = self.factory_state();
+            let state_lock = state_rc.borrow_mut().lock()?;
+
+            let caller = ic_canister::ic_kit::ic::caller();
+
+            let state_checks = self.check_all_states::<T>().await;
+            if state_checks
+                .iter()
+                .any(|(_, res)| matches!(res, TypeCheckResult::Error { .. }))
             {
-                let upgrader = self
-                    .factory_state()
+                return Err(FactoryError::StateCheckFailed(state_checks));
+            }
+
+            let module_hash = state_rc
+                .borrow()
+                .module()
+                .expect("state checks passed, it means the module is there")
+                .hash()
+                .clone();
+            let mut results = HashMap::new();
+            for (canister, _) in state_checks {
+                if state_rc.borrow().canisters()[&canister] == module_hash {
+                    results.insert(canister, UpgradeResult::Noop);
+                    continue;
+                }
+
+                // Set future to local variable to drop the state before the async call
+                let upgrader = state_rc
                     .borrow_mut()
-                    .factory
-                    .upgrade(&canister, wasm.clone());
-                if let Ok(upgraded) = upgrader.await {
-                    self.factory_state()
-                        .borrow_mut()
-                        .factory
-                        .register_upgraded(&key, upgraded)
-                } else {
-                    outdated_canisters.push(canister.identity())
+                    .authorize_owner_int(caller)?
+                    .upgrade(canister, &state_lock)
+                    .expect("module is set checked by state checks");
+
+                match upgrader.await {
+                    Ok(_) => {
+                        results.insert(canister, UpgradeResult::Upgraded);
+                    }
+                    Err(e) => {
+                        results.insert(canister, UpgradeResult::Error(e.1));
+                    }
                 }
             }
 
-            Ok(outdated_canisters)
+            {
+                let mut state = state_rc.borrow_mut();
+                let mut state = state.authorize_owner_int(caller)?;
+                for (canister, upgrade_result) in results.iter() {
+                    if matches!(upgrade_result, UpgradeResult::Upgraded) {
+                        state
+                            .register_upgraded(*canister, &state_lock)
+                            .expect("correct lock");
+                    }
+                }
+            }
+
+            Ok(results)
         })
+    }
+
+    #[update(trait = true)]
+    fn reset_update_lock(&self) -> Result<(), FactoryError> {
+        self.factory_state()
+            .borrow_mut()
+            .authorize_owner()?
+            .release_update_lock();
+        Ok(())
     }
 
     /// Returns the current version of canister.
     #[query(trait = true)]
-    fn version(&self) -> &'static str {
-        env!("CARGO_PKG_VERSION")
+    fn version(&self) -> Result<u32, FactoryError> {
+        Ok(self.factory_state().borrow().module()?.version())
     }
 
     /// Returns the number of canisters created by the factory.
     #[query(trait = true)]
     fn length(&self) -> usize {
-        self.factory_state().borrow().factory.canisters.len()
+        self.factory_state().borrow().canister_count()
     }
 
     /// Returns a vector of all canisters created by the factory.
     #[query(trait = true)]
     fn get_all(&self) -> Vec<Principal> {
-        self.factory_state().borrow().factory.all()
+        self.factory_state().borrow().canister_list()
     }
 
     /// Returns the ICP fee amount for canister creation.
@@ -131,7 +234,10 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// by the factory controller.
     #[update(trait = true)]
     fn set_icp_fee(&self, e8s: u64) -> Result<(), FactoryError> {
-        self.factory_state().borrow_mut().set_icp_fee(e8s)
+        self.factory_state()
+            .borrow_mut()
+            .authorize_owner()?
+            .set_icp_fee(e8s)
     }
 
     /// Returns the principal that will receive the ICP fees.
@@ -143,8 +249,11 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Sets the principal that will receive the ICP fees. This method can only be called
     /// by the factory controller.
     #[update(trait = true)]
-    fn set_icp_to(&self, to: Principal) -> ::std::result::Result<(), FactoryError> {
-        self.factory_state().borrow_mut().set_icp_to(to)
+    fn set_icp_to(&self, to: Principal) -> Result<(), FactoryError> {
+        self.factory_state()
+            .borrow_mut()
+            .authorize_owner()?
+            .set_fee_to(to)
     }
 
     /// Returns the ICPs transferred to the factory by the caller. This method returns all
@@ -186,7 +295,10 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Sets the factory controller principal.
     #[update(trait = true)]
     fn set_controller(&self, controller: Principal) -> Result<(), FactoryError> {
-        self.factory_state().borrow_mut().set_controller(controller)
+        self.factory_state()
+            .borrow_mut()
+            .authorize_owner()?
+            .set_controller(controller)
     }
 
     /// Returns the factory controller principal.
@@ -216,6 +328,32 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     fn get_idl() -> ic_canister::Idl {
         ic_canister::generate_idl!()
     }
+
+    fn drop_canister(&self, canister_id: Principal) -> AsyncReturn<Result<(), FactoryError>> {
+        Box::pin(async move {
+            let caller = ic_canister::ic_kit::ic::caller();
+            let state_lock = self.factory_state().borrow_mut().lock()?;
+            let actor = self
+                .factory_state()
+                .borrow_mut()
+                .authorize_owner_int(caller)?
+                .drop_canister(canister_id, &state_lock);
+
+            actor.await?;
+
+            self.factory_state()
+                .borrow_mut()
+                .authorize_owner_int(caller)?
+                .register_dropped(canister_id, &state_lock)
+        })
+    }
+}
+
+#[derive(Debug, CandidType)]
+pub enum UpgradeResult {
+    Noop,
+    Upgraded,
+    Error(String),
 }
 
 generate_exports!(FactoryCanister);
