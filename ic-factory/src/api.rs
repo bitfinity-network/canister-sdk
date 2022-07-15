@@ -134,7 +134,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         })
     }
 
-    fn upgrade<T: CandidType + Versioned>(
+    fn upgrade_canister<T: CandidType + Versioned>(
         &mut self,
     ) -> AsyncReturn<Result<HashMap<Principal, UpgradeResult>, FactoryError>> {
         Box::pin(async move {

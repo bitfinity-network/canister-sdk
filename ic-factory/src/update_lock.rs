@@ -3,7 +3,7 @@ use ic_cdk::export::candid::{CandidType, Deserialize};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// A guard to prevent factory state changes whily an async operation is in process.
+/// A guard to prevent factory state changes while an async operation is in process.
 ///
 /// The guarded structure stores the original lock object as one of its fields. To set the lock
 /// [`lock`] method is called, returning a clone of this object in the locked state. Any consequent
@@ -11,7 +11,7 @@ use std::rc::Rc;
 ///
 /// We need to use this lock type instead of relying on `RefCell` borrowed `Ref` as a lock because
 /// it is possible in IC environment to get the canister to a state when the `Ref` object is lost
-/// without dropping it, which makes the state locked forever. The `UpdateLock` allowes to fix such
+/// without dropping it, which makes the state locked forever. The `UpdateLock` allows to fix such
 /// state by calling the [`unlock`] method.
 #[derive(Debug, Default)]
 pub struct UpdateLock {
@@ -25,7 +25,7 @@ impl UpdateLock {
     /// # Errors
     ///
     /// If the lock is already in the locked state, calling `lock` will return
-    /// `Err(FactoryError::StateLocked)` error;
+    /// `Err(FactoryError::StateLocked)` error.
     pub fn lock(&self) -> Result<Self, FactoryError> {
         if *self.is_locked.borrow() {
             return Err(FactoryError::StateLocked);

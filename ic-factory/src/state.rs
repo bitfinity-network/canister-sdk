@@ -21,17 +21,25 @@ type CanisterHash = Vec<u8>;
 
 #[derive(Debug, Default, CandidType, Deserialize, IcStorage)]
 pub struct FactoryState {
+    /// Immutable configuration of the factory.
     configuration: FactoryConfiguration,
-    module: Option<CanisterModule>,
+    /// Module that will be used for upgrading canisters on factory owns.
+    upgrading_module: Option<CanisterModule>,
+    /// Canisters that were created by the factory.
     canisters: HashMap<Principal, CanisterHash>,
+    /// A flag used for locking the factory during the upgrade to prevent malforming the canister states.
     update_lock: UpdateLock,
 }
 
 #[derive(Debug, CandidType, Deserialize)]
 pub struct CanisterModule {
+    /// The canister wasm.
     wasm: Vec<u8>,
+    /// Canister wasm hash.
     hash: CanisterHash,
+    /// Canister state version.
     version: u32,
+    /// Candid-serialized definition of the canister state type.
     state_header: CandidHeader,
 }
 
@@ -65,7 +73,7 @@ impl Versioned for FactoryState {
 
             // After the upgrade the canister wasm module would have to be uploaded again to
             // provide the state header.
-            module: None,
+            upgrading_module: None,
 
             // We assume for now that the canisters were not modified by external controllers, as
             // we didn't keep track of each canister has before.
@@ -206,7 +214,9 @@ impl FactoryState {
 
     /// Returns information about the wasm code the factory uses to create canisters.
     pub fn module(&self) -> Result<&CanisterModule, FactoryError> {
-        self.module.as_ref().ok_or(FactoryError::CanisterWasmNotSet)
+        self.upgrading_module
+            .as_ref()
+            .ok_or(FactoryError::CanisterWasmNotSet)
     }
 
     /// Number of canisters the factory keeps track of.
@@ -280,7 +290,12 @@ impl<'a> Authorized<'a, Owner> {
         state_header: CandidHeader,
     ) -> Result<u32, FactoryError> {
         self.factory.check_update_allowed()?;
-        let module_version = self.factory.module.as_ref().map(|m| m.version).unwrap_or(0);
+        let module_version = self
+            .factory
+            .upgrading_module
+            .as_ref()
+            .map(|m| m.version)
+            .unwrap_or(0);
         let hash = get_canister_hash(&wasm);
 
         let module = CanisterModule {
@@ -290,7 +305,7 @@ impl<'a> Authorized<'a, Owner> {
             state_header,
         };
 
-        self.factory.module = Some(module);
+        self.factory.upgrading_module = Some(module);
         Ok(module_version)
     }
 
@@ -313,7 +328,7 @@ impl<'a> Authorized<'a, Owner> {
         Ok(())
     }
 
-    /// UYpdate the icp_fee configuration.
+    /// Uppdate the icp_fee configuration.
     pub fn set_icp_fee(&mut self, fee: u64) -> Result<(), FactoryError> {
         self.factory.check_update_allowed()?;
         self.factory.configuration.icp_fee = fee;
