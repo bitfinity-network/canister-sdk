@@ -37,8 +37,9 @@ impl<M1: Memory, M2: Memory + Clone> VistualMemory<M1, M2> {
         }
     }
 
+    /// Get a `Vec` of page byte offsets
     /// `start` and `end` represents byte index here.
-    pub fn base_index(&self, start_byte: u64, end_byte: u64) -> Vec<u64> {
+    pub fn page_byte_offsets(&self, start_byte: u64, end_byte: u64) -> Vec<u64> {
         let start_page = start_byte / WASM_PAGE_SIZE;
         let end_page = end_byte / WASM_PAGE_SIZE;
 
@@ -54,7 +55,8 @@ impl<M1: Memory, M2: Memory + Clone> VistualMemory<M1, M2> {
                     .expect("failed to convert Vec<u8> to [u8;4] in base_index");
                 self.decode(page_index) as u64
             })
-            .collect()
+            .map(|page_index| page_index * WASM_PAGE_SIZE)
+            .collect::<Vec<_>>()
     }
 
     pub fn encode(&self, key: u32) -> Vec<u8> {
@@ -102,63 +104,44 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
         size
     }
 
-    fn read(&self, offset: u64, dst: &mut [u8]) {
-        let n = offset + dst.len() as u64;
+    fn read(&self, byte_offset: u64, dst: &mut [u8]) {
+        let n = byte_offset + dst.len() as u64;
 
         if n > self.size() * WASM_PAGE_SIZE {
             panic!("read: out of bounds");
         }
 
-        let offset_position = offset % WASM_PAGE_SIZE;
-        let mut offset_position = offset_position as usize;
+        // Offset position inside a wasm page
+        let mut offset_position = (byte_offset % WASM_PAGE_SIZE) as usize;
 
-        let base_pages = self.base_index(offset, n - 1);
-        let len = base_pages.len();
+        let base_pages = self.page_byte_offsets(byte_offset, n - 1);
 
-        for (i, page_index) in base_pages.iter().enumerate() {
+        for (i, page_offset) in base_pages.into_iter().enumerate() {
             let start = offset_position + i * WASM_PAGE_SIZE as usize;
             let end = (start + WASM_PAGE_SIZE as usize).min(dst.len());
             let slice = &mut dst[start..end];
-            self.memory.read(page_index * WASM_PAGE_SIZE, slice);
+            self.memory.read(page_offset, slice);
             offset_position = 0;
         }
     }
 
     fn write(&self, offset: u64, src: &[u8]) {
-        let n = offset
-            .checked_add(src.len() as u64)
-            .expect("write: out of bounds");
+        let n = offset + src.len() as u64;
+
         if n > self.size() * WASM_PAGE_SIZE {
             panic!("write: out of bounds");
         }
 
-        let offset_postion = offset % WASM_PAGE_SIZE;
+        // Offset position in wasm page
+        let mut offset_position = (offset % WASM_PAGE_SIZE) as usize;
 
-        let base_pages = self.base_index(offset, n - 1);
-        let len = base_pages.len();
-        if len == 0 {
-            panic!("write: out of bounds");
-        } else if len == 1 {
-            self.memory
-                .write(base_pages[0] * WASM_PAGE_SIZE + offset_postion, src)
-        } else {
-            self.memory.write(
-                base_pages[0] * WASM_PAGE_SIZE + offset_postion,
-                &src[..(WASM_PAGE_SIZE - offset_postion) as usize],
-            );
-            for (i, value) in base_pages.iter().enumerate() {
-                if i != 0 && i != len - 1 {
-                    self.memory.write(
-                        value * WASM_PAGE_SIZE,
-                        &src[(WASM_PAGE_SIZE * i as u64 - offset_postion) as usize
-                            ..(WASM_PAGE_SIZE * (i as u64 + 1) - offset_postion) as usize],
-                    );
-                }
-            }
-            self.memory.write(
-                base_pages[len - 1] * WASM_PAGE_SIZE,
-                &src[((len - 1) as u64 * WASM_PAGE_SIZE - offset_postion) as usize..],
-            );
+        let base_pages = self.page_byte_offsets(offset, n - 1);
+
+        for (i, page_offset) in base_pages.into_iter().enumerate() {
+            let start = offset_position + i * WASM_PAGE_SIZE as usize;
+            let end = (start + WASM_PAGE_SIZE as usize).min(src.len());
+            self.memory.write(page_offset, &src[start..end]);
+            offset_position = 0;
         }
     }
 }
