@@ -22,6 +22,7 @@ impl<M: Memory + Clone> Manager<M> {
 ///
 /// index stand for different data structures, in the same canister,
 /// different data structures should use different indexes.
+#[derive(Clone)]
 pub struct VistualMemory<M1: Memory, M2: Memory + Clone> {
     memory: M1,
     page_range: Rc<RefCell<Manager<M2>>>,
@@ -61,7 +62,7 @@ impl<M1: Memory, M2: Memory + Clone> VistualMemory<M1, M2> {
 
     pub fn encode(&self, key: u32) -> Vec<u8> {
         let mut key = key.to_be_bytes().to_vec();
-        assert!(key[0] != 0);
+        assert!(key[0] == 0);
         key[0] = self.index;
         key
     }
@@ -90,7 +91,7 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
             return -1;
         }
 
-        let amount = u32::try_from(result).expect("wasm pages amount too large"); // max pages's amount is 131072(8G)
+        let amount = u32::try_from(result).expect("wasm pages amount too large"); // max pages's amount is 131072(8G-300G)
         let new_amount =
             u32::try_from(result as u64 + pages).expect("new wasm pages amount too large");
         for i in amount..new_amount {

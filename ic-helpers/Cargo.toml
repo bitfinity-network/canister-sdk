@@ -22,7 +22,7 @@ sha2 = "0.9"
 serde_bytes = "0.11.2"
 serde_cbor = "0.11.2"
 ic-ic00-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18_18-31"}
-stable-structures = { git = "https://github.com/dfinity/ic", rev = "ab63860413356c272c7dcb66a4ecda279638bde3" }
+stable-structures = { git = "https://github.com/dfinity/ic" }
 thiserror = "1.0"
 ic-canister = { path = "../ic-canister/ic-canister", package = "ic-canister" }
 ic-canister-macros = { path = "../ic-canister/ic-canister-macros", package = "ic-canister-macros" }
