@@ -20,17 +20,7 @@ use serde::{Deserializer, Serialize};
 ///
 /// **Note**: this struct exists explicitly to remove the burden of constantly calling
 /// `u128::checked_add` etc.
-#[derive(
-    Default,
-    Debug,
-    Clone,
-    Copy,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Hash,
-)]
+#[derive(Default, Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Tokens128 {
     pub amount: u128,
 }
