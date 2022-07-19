@@ -38,6 +38,15 @@ impl<M1: Memory, M2: Memory + Clone> VistualMemory<M1, M2> {
         }
     }
 
+    pub fn pages(&self) -> Vec<u32> {
+        self.page_range
+            .borrow()
+            .data
+            .range(vec![self.index], None)
+            .map(|a| self.decode(a.0.try_into().expect("decode err in pages")))
+            .collect()
+    }
+
     pub fn base_index(&self, start: u64, end: u64) -> Vec<u64> {
         let start_page = start / WASM_PAGE_SIZE;
         let end_page = end / WASM_PAGE_SIZE;
@@ -116,7 +125,7 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
             .checked_add(dst.len() as u64)
             .expect("read: out of bounds");
         if n > self.size() * WASM_PAGE_SIZE {
-            panic!("read: out of bounds");
+            panic!("read: out of bounds"); // todos
         }
         if n == 0 {
             return;
@@ -146,10 +155,9 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
 
             let mut last: Vec<u8> =
                 vec![0; dst.len() - (WASM_PAGE_SIZE * (len - 1) as u64 - offset_postion) as usize];
-            self.memory.read(
-                base_pages[len - 1] * WASM_PAGE_SIZE + offset_postion,
-                &mut last,
-            );
+            self.memory
+                .read(base_pages[len - 1] * WASM_PAGE_SIZE, &mut last);
+
             first.extend_from_slice(&last);
             dst.copy_from_slice(&first);
         }
@@ -168,7 +176,7 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
         let base_pages = self.base_index(offset, n - 1);
         let len = base_pages.len();
         if len == 0 {
-            panic!("write: out of bounds");
+            panic!("write: out of bounds"); // todo
         } else if len == 1 {
             self.memory
                 .write(base_pages[0] * WASM_PAGE_SIZE + offset_postion, src)
