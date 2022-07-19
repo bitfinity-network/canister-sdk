@@ -91,7 +91,7 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
             return -1;
         }
 
-        let begin = result as u32; // max pages's amount is 131072-4915200(8G-300G)
+        let begin = result as u32; // max pages's amount is 131072(8G) - 4915200(300G)
         let end = begin + pages as u32;
 
         for i in begin..end {
@@ -108,19 +108,27 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
         let n = byte_offset + dst.len() as u64;
 
         if n > self.size() * WASM_PAGE_SIZE {
-            panic!("read: out of bounds"); // todos
+            panic!("read: out of bounds");
         }
 
         // Offset position inside a wasm page
         let mut offset_position = (byte_offset % WASM_PAGE_SIZE) as usize;
+        let init_section = (WASM_PAGE_SIZE as usize - offset_position).min(dst.len());
 
         let base_pages = self.page_byte_offsets(byte_offset, n - 1);
-
+        let len = base_pages.len();
         for (i, page_offset) in base_pages.into_iter().enumerate() {
-            let start = offset_position + i * WASM_PAGE_SIZE as usize;
-            let end = (start + WASM_PAGE_SIZE as usize).min(dst.len());
-            let slice = &mut dst[start..end];
-            self.memory.read(page_offset, slice);
+            let start = offset_position + page_offset as usize;
+            let slice = if i == 0 {
+                &mut dst[0..init_section]
+            } else if i < len - 1 {
+                &mut dst[init_section + (i - 1) * WASM_PAGE_SIZE as usize
+                    ..init_section + i * WASM_PAGE_SIZE as usize]
+            } else {
+                &mut dst[init_section + (i - 1) * WASM_PAGE_SIZE as usize..]
+            };
+
+            self.memory.read(start as u64, slice);
             offset_position = 0;
         }
     }
@@ -134,13 +142,26 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
 
         // Offset position in wasm page
         let mut offset_position = (offset % WASM_PAGE_SIZE) as usize;
+        let init_section = (WASM_PAGE_SIZE as usize - offset_position).min(src.len());
 
         let base_pages = self.page_byte_offsets(offset, n - 1);
-
+        let len = base_pages.len();
         for (i, page_offset) in base_pages.into_iter().enumerate() {
-            let start = offset_position + i * WASM_PAGE_SIZE as usize;
-            let end = (start + WASM_PAGE_SIZE as usize).min(src.len());
-            self.memory.write(page_offset, &src[start..end]);
+            let start = offset_position as u64 + page_offset;
+            if i == 0 {
+                self.memory.write(start, &src[0..init_section]);
+            } else if i < len - 1 {
+                self.memory.write(
+                    start,
+                    &src[init_section + (i - 1) * WASM_PAGE_SIZE as usize
+                        ..init_section + i * WASM_PAGE_SIZE as usize],
+                )
+            } else {
+                self.memory.write(
+                    start,
+                    &src[init_section + (i - 1) * WASM_PAGE_SIZE as usize..],
+                )
+            }
             offset_position = 0;
         }
     }
