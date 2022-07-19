@@ -97,17 +97,16 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
             return -1;
         }
 
-        let amount = u32::try_from(result).expect("wasm pages amount too large"); // max pages's amount is 131072(8G-300G)
-        let new_amount =
-            u32::try_from(result as u64 + pages).expect("new wasm pages amount too large");
-        for i in amount..new_amount {
+        let begin = result as u32; // max pages's amount is 131072-4915200(8G-300G)
+        let end = begin + pages as u32;
+
+        for i in begin..end {
             self.page_range
                 .borrow_mut()
                 .data
                 .insert(self.encode(i), vec![])
                 .expect("failed to insert index to manager");
         }
-        assert_eq!(self.page_range.borrow().data.len(), new_amount as u64);
         size
     }
 
