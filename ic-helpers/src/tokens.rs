@@ -17,6 +17,9 @@ use serde::{Deserializer, Serialize};
 ///
 /// All the arithmetic operation are specifically designed to check for any overflows/underflows and
 /// make all the bound checks explicit for the consumer.
+///
+/// **Note**: this struct exists explicitly to remove the burden of constantly calling
+/// `u128::checked_add` etc.
 #[derive(
     Default,
     Debug,
