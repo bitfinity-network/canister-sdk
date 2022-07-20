@@ -6,19 +6,15 @@ const WASM_PAGE_SIZE: u64 = 65536;
 
 /// Manger is used to manage VirtualMemory. The specific function is to mark which wasm page in
 /// memory belongs to which data, for example, the 0th page belongs to Balance, the 1st page belongs to History, etc.
-pub struct Manager<M: Memory> {
-    pub data: StableBTreeMap<M, Vec<u8>, Vec<u8>>,
-}
+pub struct Manager<M: Memory>(StableBTreeMap<M, Vec<u8>, Vec<u8>>);
 
 impl<M: Memory + Clone> Manager<M> {
     pub fn init(memory: M) -> Self {
-        Self {
-            data: StableBTreeMap::init(memory, 4, 0),
-        }
+        Self(StableBTreeMap::init(memory, 4, 0))
     }
 
-    pub fn reload(&mut self) {
-        self.data = StableBTreeMap::load(self.data.get_memory());
+    pub(super) fn reload(&mut self) {
+        self.0 = StableBTreeMap::load(self.0.get_memory());
     }
 }
 
@@ -44,13 +40,13 @@ impl<M1: Memory, M2: Memory + Clone> VirtualMemory<M1, M2> {
 
     /// Get a `Vec` of page byte offsets
     /// `start` and `end` represents byte index here.
-    pub fn page_byte_offsets(&self, start_byte: u64, end_byte: u64) -> Vec<u64> {
+    fn page_byte_offsets(&self, start_byte: u64, end_byte: u64) -> Vec<u64> {
         let start_page = start_byte / WASM_PAGE_SIZE;
         let end_page = end_byte / WASM_PAGE_SIZE;
 
         self.page_range
             .borrow()
-            .data
+            .0
             .range(vec![self.index], None)
             .skip(start_page as usize)
             .take((end_page - start_page + 1) as usize)
@@ -64,18 +60,33 @@ impl<M1: Memory, M2: Memory + Clone> VirtualMemory<M1, M2> {
             .collect::<Vec<_>>()
     }
 
-    pub fn encode(&self, key: u32) -> Vec<u8> {
+    fn encode(&self, key: u32) -> Vec<u8> {
         let mut key = key.to_be_bytes().to_vec();
         assert!(key[0] == 0);
         key[0] = self.index;
         key
     }
 
-    pub fn decode(&self, bytes: [u8; 4]) -> u32 {
+    fn decode(&self, bytes: [u8; 4]) -> u32 {
         assert!(bytes[0] == self.index);
         let mut bytes = bytes;
         bytes[0] = 0;
         u32::from_be_bytes(bytes)
+    }
+
+    // Find the last byte position given an offset and a buffer.
+    fn last_byte(&self, offset: u64, buffer: &[u8]) -> u64 {
+        let last_byte = offset + buffer.len() as u64 - 1;
+
+        // Get the latest state of page manager after other VirtualMemory modifies it.
+        if last_byte >= self.size() * WASM_PAGE_SIZE {
+            self.page_range.borrow_mut().reload();
+        }
+        if last_byte >= self.size() * WASM_PAGE_SIZE {
+            panic!("out of bounds");
+        }
+
+        last_byte
     }
 }
 
@@ -83,13 +94,14 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VirtualMemory<M1, M2> {
     fn size(&self) -> u64 {
         self.page_range
             .borrow()
-            .data
+            .0
             .range(vec![self.index], None)
             .count() as u64
     }
 
     fn grow(&self, pages: u64) -> i64 {
         let size = self.size() as i64;
+
         let result = self.memory.grow(pages);
         if result == -1 {
             return -1;
@@ -98,32 +110,21 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VirtualMemory<M1, M2> {
         let begin = result as u32; // max pages's amount is 131072(8G) - 4915200(300G)
         let end = begin + pages as u32;
 
-        for i in begin..end {
-            self.page_range
-                .borrow_mut()
-                .data
-                .insert(self.encode(i), vec![])
-                .expect("failed to insert index to manager");
-        }
+        let storage = &mut self.page_range.borrow_mut().0;
+
+        (begin..end).for_each(|i| drop(storage.insert(self.encode(i), vec![])));
+
         size
     }
 
     fn read(&self, byte_offset: u64, dst: &mut [u8]) {
-        let n = byte_offset + dst.len() as u64;
-
-        // Get the latest state of manager after other VirtualMemory modifies it.
-        if n > self.size() * WASM_PAGE_SIZE {
-            self.page_range.borrow_mut().reload();
-        }
-        if n > self.size() * WASM_PAGE_SIZE {
-            panic!("read: out of bounds");
-        }
+        let read_to = self.last_byte(byte_offset, dst);
 
         // Offset position inside a wasm page
         let mut offset_position = (byte_offset % WASM_PAGE_SIZE) as usize;
         let init_section = (WASM_PAGE_SIZE as usize - offset_position).min(dst.len());
 
-        let base_pages = self.page_byte_offsets(byte_offset, n - 1);
+        let base_pages = self.page_byte_offsets(byte_offset, read_to);
         let len = base_pages.len();
         for (i, page_offset) in base_pages.into_iter().enumerate() {
             let start = offset_position + page_offset as usize;
@@ -141,22 +142,16 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VirtualMemory<M1, M2> {
         }
     }
 
-    fn write(&self, offset: u64, src: &[u8]) {
-        let n = offset + src.len() as u64;
-
-        // Get the latest state of page manager after other VirtualMemory modifies it.
-        if n > self.size() * WASM_PAGE_SIZE {
-            self.page_range.borrow_mut().reload();
-        }
-        if n > self.size() * WASM_PAGE_SIZE {
-            panic!("read: out of bounds");
-        }
+    // NOTE: `StableBTreeMap` will check size and call `grow` if required
+    // so it's not necessary to do that here.
+    fn write(&self, byte_offset: u64, src: &[u8]) {
+        let write_to = self.last_byte(byte_offset, src);
 
         // Offset position in wasm page
-        let mut offset_position = (offset % WASM_PAGE_SIZE) as usize;
+        let mut offset_position = (byte_offset % WASM_PAGE_SIZE) as usize;
         let init_section = (WASM_PAGE_SIZE as usize - offset_position).min(src.len());
 
-        let base_pages = self.page_byte_offsets(offset, n - 1);
+        let base_pages = self.page_byte_offsets(byte_offset, write_to);
         let len = base_pages.len();
         for (i, page_offset) in base_pages.into_iter().enumerate() {
             let start = offset_position as u64 + page_offset;
