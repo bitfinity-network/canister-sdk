@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 const WASM_PAGE_SIZE: u64 = 65536;
 
-/// Manger is used to manage VistualMemory. The specific function is to mark which wasm page in
+/// Manger is used to manage VirtualMemory. The specific function is to mark which wasm page in
 /// memory belongs to which data, for example, the 0th page belongs to Balance, the 1st page belongs to History, etc.
 pub struct Manager<M: Memory> {
     data: StableBTreeMap<M, Vec<u8>, Vec<u8>>,
@@ -16,6 +16,10 @@ impl<M: Memory + Clone> Manager<M> {
             data: StableBTreeMap::init(memory, 4, 0),
         }
     }
+
+    pub fn reload(&mut self) {
+        self.data = StableBTreeMap::load(self.data.get_memory());
+    }
 }
 
 /// Pack fragmented memory composed of different pages into contiguous memory.
@@ -23,13 +27,13 @@ impl<M: Memory + Clone> Manager<M> {
 /// index stand for different data structures, in the same canister,
 /// different data structures should use different indexes.
 #[derive(Clone)]
-pub struct VistualMemory<M1: Memory, M2: Memory + Clone> {
+pub struct VirtualMemory<M1: Memory, M2: Memory + Clone> {
     memory: M1,
     page_range: Rc<RefCell<Manager<M2>>>,
     index: u8,
 }
 
-impl<M1: Memory, M2: Memory + Clone> VistualMemory<M1, M2> {
+impl<M1: Memory, M2: Memory + Clone> VirtualMemory<M1, M2> {
     pub fn init(memory: M1, manager_memory: M2, index: u8) -> Self {
         Self {
             memory,
@@ -75,7 +79,7 @@ impl<M1: Memory, M2: Memory + Clone> VistualMemory<M1, M2> {
     }
 }
 
-impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
+impl<M1: Memory, M2: Memory + Clone> Memory for VirtualMemory<M1, M2> {
     fn size(&self) -> u64 {
         self.page_range
             .borrow()
@@ -107,6 +111,10 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
     fn read(&self, byte_offset: u64, dst: &mut [u8]) {
         let n = byte_offset + dst.len() as u64;
 
+        // Get the latest state of manager after other VirtualMemory modifies it.
+        if n > self.size() * WASM_PAGE_SIZE {
+            self.page_range.borrow_mut().reload();
+        }
         if n > self.size() * WASM_PAGE_SIZE {
             panic!("read: out of bounds");
         }
@@ -136,8 +144,12 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VistualMemory<M1, M2> {
     fn write(&self, offset: u64, src: &[u8]) {
         let n = offset + src.len() as u64;
 
+        // Get the latest state of page manager after other VirtualMemory modifies it.
         if n > self.size() * WASM_PAGE_SIZE {
-            panic!("write: out of bounds");
+            self.page_range.borrow_mut().reload();
+        }
+        if n > self.size() * WASM_PAGE_SIZE {
+            panic!("read: out of bounds");
         }
 
         // Offset position in wasm page
