@@ -12,9 +12,7 @@ pub async fn create_canister<T: ArgumentEncoder>(
 ) -> CallResult<Principal> {
     let settings = CanisterSettings {
         controllers,
-        compute_allocation: None,
-        memory_allocation: None,
-        freezing_threshold: None,
+        ..Default::default()
     };
 
     let canister = ManagementCanister::create(Some(settings), cycles).await?;

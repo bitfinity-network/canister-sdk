@@ -68,20 +68,15 @@ pub fn validate_header<T: CandidType + Versioned>(remote_header: &CandidHeader) 
     let current_version = T::version();
 
     match get_historic_header::<T>(remote_header.version) {
-        Some(historic_header) => {
-            if historic_header == remote_header.header {
-                TypeCheckResult::Ok {
-                    remote_version: remote_header.version,
-                    current_version,
-                }
-            } else {
-                TypeCheckResult::Error {
-                    remote_version: remote_header.version,
-                    current_version,
-                    error_message: generate_state_error(remote_header, &historic_header),
-                }
-            }
-        }
+        Some(historic_header) if historic_header == remote_header.header => TypeCheckResult::Ok {
+            remote_version: remote_header.version,
+            current_version,
+        },
+        Some(historic_header) => TypeCheckResult::Error {
+            remote_version: remote_header.version,
+            current_version,
+            error_message: generate_state_error(remote_header, &historic_header),
+        },
         None => TypeCheckResult::Error {
             remote_version: remote_header.version,
             current_version,
@@ -101,8 +96,15 @@ fn get_historic_header<T: Versioned + CandidType>(version: u32) -> Option<Vec<u8
 }
 
 fn generate_state_error(canister_state: &CandidHeader, historic_state_header: &[u8]) -> String {
-    let canister_type = get_type_definition(&canister_state.header);
-    let crate_type = get_type_definition(historic_state_header);
+    let canister_type = match get_type_definition(&canister_state.header) {
+        Ok(type_definition) => type_definition,
+        Err(e) => return e,
+    };
+
+    let crate_type = match get_type_definition(historic_state_header) {
+        Ok(type_definition) => type_definition,
+        Err(e) => return e,
+    };
 
     format!("The canister state structure differs from the expected state structure of the same version.
 
@@ -116,20 +118,20 @@ Expected state type of the same state version:
 The canister state cannot be safely upgraded to the newer version.")
 }
 
-fn get_type_definition(state_header: &[u8]) -> candid::TypeEnv {
+fn get_type_definition(state_header: &[u8]) -> Result<candid::TypeEnv, String> {
     use binread::BinRead;
     use candid::binary_parser::Header;
     use std::io::Cursor;
 
     let mut with_magic = vec![];
-    with_magic.append(&mut MAGIC.to_vec());
-    with_magic.append(&mut state_header.to_vec());
+    with_magic.extend(MAGIC);
+    with_magic.extend(state_header);
 
     let mut reader = Cursor::new(&with_magic);
-    let header = Header::read(&mut reader).unwrap();
-    let (env, _) = header.to_types().unwrap();
+    let header = Header::read(&mut reader).map_err(|e| e.to_string())?;
+    let (env, _) = header.to_types().map_err(|e| e.to_string())?;
 
-    env
+    Ok(env)
 }
 
 #[cfg(test)]

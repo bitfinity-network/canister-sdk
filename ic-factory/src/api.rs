@@ -108,20 +108,16 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
             let state_lock = self.factory_state().borrow_mut().lock()?;
 
             let caller = ic_canister::ic_kit::ic::caller();
-            let actor = self
+            let cycles = self
                 .factory_state()
                 .borrow()
-                .consume_provided_cycles_or_icp(caller);
-            let cycles = actor.await?;
+                .consume_provided_cycles_or_icp(caller)
+                .await?;
 
-            let actor = self.factory_state().borrow().create_canister(
-                init_args,
-                cycles,
-                &state_lock,
-                controller,
-            )?;
-
-            let principal = actor
+            let principal = self
+                .factory_state()
+                .borrow()
+                .create_canister(init_args, cycles, &state_lock, controller)?
                 .await
                 .map_err(|e| FactoryError::CanisterCreateFailed(e.1))?;
 
@@ -151,12 +147,8 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
                 return Err(FactoryError::StateCheckFailed(state_checks));
             }
 
-            let module_hash = state_rc
-                .borrow()
-                .module()
-                .expect("state checks passed, it means the module is there")
-                .hash()
-                .clone();
+            let module_hash = state_rc.borrow().module()?.hash().clone();
+
             let mut results = HashMap::new();
             for (canister, _) in state_checks {
                 if state_rc.borrow().canisters()[&canister] == module_hash {
@@ -164,26 +156,22 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
                     continue;
                 }
 
-                // Set future to local variable to drop the state before the async call
                 let upgrader = state_rc
                     .borrow_mut()
-                    .authorize_owner_int(caller)?
-                    .upgrade(canister, &state_lock)
-                    .expect("module is set checked by state checks");
+                    .authorize_owner()?
+                    .upgrade(canister, &state_lock)?;
 
-                match upgrader.await {
-                    Ok(_) => {
-                        results.insert(canister, UpgradeResult::Upgraded);
-                    }
-                    Err(e) => {
-                        results.insert(canister, UpgradeResult::Error(e.1));
-                    }
-                }
+                let upgrade_result = match upgrader.await {
+                    Ok(()) => UpgradeResult::Upgraded,
+                    Err(e) => UpgradeResult::Error(e.1),
+                };
+
+                results.insert(canister, upgrade_result);
             }
 
             {
                 let mut state = state_rc.borrow_mut();
-                let mut state = state.authorize_owner_int(caller)?;
+                let mut state = state.authorize_owner()?;
                 for (canister, upgrade_result) in results.iter() {
                     if matches!(upgrade_result, UpgradeResult::Upgraded) {
                         state
@@ -331,19 +319,17 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
 
     fn drop_canister(&self, canister_id: Principal) -> AsyncReturn<Result<(), FactoryError>> {
         Box::pin(async move {
-            let caller = ic_canister::ic_kit::ic::caller();
             let state_lock = self.factory_state().borrow_mut().lock()?;
-            let actor = self
-                .factory_state()
-                .borrow_mut()
-                .authorize_owner_int(caller)?
-                .drop_canister(canister_id, &state_lock);
-
-            actor.await?;
 
             self.factory_state()
                 .borrow_mut()
-                .authorize_owner_int(caller)?
+                .authorize_owner()?
+                .drop_canister(canister_id, &state_lock)
+                .await?;
+
+            self.factory_state()
+                .borrow_mut()
+                .authorize_owner()?
                 .register_dropped(canister_id, &state_lock)
         })
     }

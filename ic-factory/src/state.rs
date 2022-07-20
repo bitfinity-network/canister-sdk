@@ -44,7 +44,7 @@ pub struct CanisterModule {
 }
 
 impl CanisterModule {
-    pub fn hash(&self) -> &Vec<u8> {
+    pub fn hash(&self) -> &CanisterHash {
         &self.hash
     }
 
@@ -102,19 +102,8 @@ impl FactoryState {
     /// Returns `FactoryError::AccessDenied` if the caller is not the factory controller.
     pub fn authorize_owner(&mut self) -> Result<Authorized<Owner>, FactoryError> {
         let caller = ic_canister::ic_kit::ic::caller();
-        self.authorize_owner_int(caller)
-    }
-
-    // In some cases we need to call owner-only operations after `await` point, when `ic::caller()`
-    // cannot be called (due to IC limitation). In this case we use this method with the caller,
-    // retrieved before the `await` point. To prevent incorrect usage of this method it is
-    // `pub(crate)` only.
-    pub(crate) fn authorize_owner_int<'a>(
-        &'a mut self,
-        caller: Principal,
-    ) -> Result<Authorized<'a, Owner>, FactoryError> {
         if caller == self.configuration.controller {
-            Ok(Authorized::<'a, Owner> {
+            Ok(Authorized::<Owner> {
                 factory: self,
                 phantom: PhantomData::default(),
             })
@@ -250,7 +239,7 @@ impl FactoryState {
     // If the caller can provide a lock to this method, it means that the state is locked, as there
     // is no way to get the lock object except by calling the [`lock`] method. So the purpose of
     // this check is to guard against creating a completely different `UpdateLock` object and
-    // giving it to a facotry method. In such case we simply panick to make it clear that the code
+    // giving it to a factory method. In such case we simply panic to make it clear that the code
     // that did such a thing is broken and must be fixed.
     fn check_lock(&self, lock: &UpdateLock) {
         assert_eq!(*lock, self.update_lock, "invalid update lock usage")
@@ -328,7 +317,7 @@ impl<'a> Authorized<'a, Owner> {
         Ok(())
     }
 
-    /// Uppdate the icp_fee configuration.
+    /// Update the icp_fee configuration.
     pub fn set_icp_fee(&mut self, fee: u64) -> Result<(), FactoryError> {
         self.factory.check_update_allowed()?;
         self.factory.configuration.icp_fee = fee;

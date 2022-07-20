@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_helpers::candid_header::TypeCheckResult;
 use thiserror::Error;
 
 #[derive(Debug, Error, CandidType, Deserialize)]
@@ -28,9 +31,7 @@ pub enum FactoryError {
     CanisterWasmNotSet,
 
     #[error("upgrade failed becuase one or more canisters have incompatable type")]
-    StateCheckFailed(
-        std::collections::HashMap<Principal, ic_helpers::candid_header::TypeCheckResult>,
-    ),
+    StateCheckFailed(HashMap<Principal, TypeCheckResult>),
 
     #[error("factory state is locked due to another async operation running")]
     StateLocked,
