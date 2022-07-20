@@ -103,7 +103,7 @@ impl FactoryState {
     pub fn authorize_owner(&mut self) -> Result<Authorized<Owner>, FactoryError> {
         let caller = ic_canister::ic_kit::ic::caller();
         if caller == self.configuration.controller {
-            Ok(Authorized::<Owner> {
+            Ok(Authorized::<Owner<'_>> {
                 auth: Owner { factory: self },
             })
         } else {
