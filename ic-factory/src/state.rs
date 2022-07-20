@@ -104,8 +104,7 @@ impl FactoryState {
         let caller = ic_canister::ic_kit::ic::caller();
         if caller == self.configuration.controller {
             Ok(Authorized::<Owner> {
-                factory: self,
-                phantom: PhantomData::default(),
+                auth: Owner { factory: self },
             })
         } else {
             Err(FactoryError::AccessDenied)
@@ -262,15 +261,16 @@ impl FactoryState {
 }
 
 /// Abstraction to provided compile time checks for factory method access.
-pub struct Authorized<'a, T> {
-    factory: &'a mut FactoryState,
-    phantom: PhantomData<T>,
+pub struct Authorized<T> {
+    auth: T,
 }
 
 /// The operation caller is the factory controller (owner).
-pub struct Owner;
+pub struct Owner<'a> {
+    factory: &'a mut FactoryState,
+}
 
-impl<'a> Authorized<'a, Owner> {
+impl<'a> Authorized<Owner<'a>> {
     /// Sets the new version of the wasm code that is used to create new canisters. The
     /// `state_header` argument must provide the current canister state descrition.
     pub fn set_canister_wasm(
@@ -278,8 +278,9 @@ impl<'a> Authorized<'a, Owner> {
         wasm: Vec<u8>,
         state_header: CandidHeader,
     ) -> Result<u32, FactoryError> {
-        self.factory.check_update_allowed()?;
+        self.auth.factory.check_update_allowed()?;
         let module_version = self
+            .auth
             .factory
             .upgrading_module
             .as_ref()
@@ -294,14 +295,14 @@ impl<'a> Authorized<'a, Owner> {
             state_header,
         };
 
-        self.factory.upgrading_module = Some(module);
+        self.auth.factory.upgrading_module = Some(module);
         Ok(module_version)
     }
 
     /// Update the factory controller.
     pub fn set_controller(&mut self, controller: Principal) -> Result<(), FactoryError> {
-        self.factory.check_update_allowed()?;
-        self.factory.configuration.controller = controller;
+        self.auth.factory.check_update_allowed()?;
+        self.auth.factory.configuration.controller = controller;
 
         Ok(())
     }
@@ -311,24 +312,24 @@ impl<'a> Authorized<'a, Owner> {
         &mut self,
         ledger_principal: Principal,
     ) -> Result<(), FactoryError> {
-        self.factory.check_update_allowed()?;
-        self.factory.configuration.ledger_principal = ledger_principal;
+        self.auth.factory.check_update_allowed()?;
+        self.auth.factory.configuration.ledger_principal = ledger_principal;
 
         Ok(())
     }
 
     /// Update the icp_fee configuration.
     pub fn set_icp_fee(&mut self, fee: u64) -> Result<(), FactoryError> {
-        self.factory.check_update_allowed()?;
-        self.factory.configuration.icp_fee = fee;
+        self.auth.factory.check_update_allowed()?;
+        self.auth.factory.configuration.icp_fee = fee;
 
         Ok(())
     }
 
     /// Update the icp_to configuration.
     pub fn set_fee_to(&mut self, fee_to: Principal) -> Result<(), FactoryError> {
-        self.factory.check_update_allowed()?;
-        self.factory.configuration.icp_to = fee_to;
+        self.auth.factory.check_update_allowed()?;
+        self.auth.factory.configuration.icp_to = fee_to;
 
         Ok(())
     }
@@ -343,11 +344,11 @@ impl<'a> Authorized<'a, Owner> {
         canister_id: Principal,
         lock: &UpdateLock,
     ) -> Result<impl Future<Output = CallResult<()>>, FactoryError> {
-        self.factory.check_lock(lock);
+        self.auth.factory.check_lock(lock);
 
         Ok(upgrade_canister(
             canister_id,
-            self.factory.module()?.wasm.clone(),
+            self.auth.factory.module()?.wasm.clone(),
         ))
     }
 
@@ -357,10 +358,11 @@ impl<'a> Authorized<'a, Owner> {
         canister_id: Principal,
         lock: &UpdateLock,
     ) -> Result<(), FactoryError> {
-        self.factory.check_lock(lock);
-        self.factory
+        self.auth.factory.check_lock(lock);
+        self.auth
+            .factory
             .canisters
-            .insert(canister_id, self.factory.module()?.hash.clone());
+            .insert(canister_id, self.auth.factory.module()?.hash.clone());
 
         Ok(())
     }
@@ -369,7 +371,7 @@ impl<'a> Authorized<'a, Owner> {
     /// the factory controller and is supposed to be used only in case the state was broken by some
     /// disaster.
     pub(crate) fn release_update_lock(&mut self) {
-        self.factory.update_lock.unlock()
+        self.auth.factory.update_lock.unlock()
     }
 
     /// Drops the canister.
@@ -381,7 +383,7 @@ impl<'a> Authorized<'a, Owner> {
         canister_id: Principal,
         lock: &UpdateLock,
     ) -> impl Future<Output = Result<(), FactoryError>> {
-        self.factory.check_lock(lock);
+        self.auth.factory.check_lock(lock);
         drop_canister(canister_id)
     }
 
@@ -391,8 +393,8 @@ impl<'a> Authorized<'a, Owner> {
         canister_id: Principal,
         lock: &UpdateLock,
     ) -> Result<(), FactoryError> {
-        self.factory.check_lock(lock);
-        match self.factory.canisters.remove(&canister_id) {
+        self.auth.factory.check_lock(lock);
+        match self.auth.factory.canisters.remove(&canister_id) {
             Some(_) => Ok(()),
             None => Err(FactoryError::NotFound),
         }
