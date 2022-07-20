@@ -1,3 +1,6 @@
+use std::fmt::{Display, Formatter};
+use std::mem::size_of;
+
 use auto_ops::impl_op_ex;
 use candid::types::{Serializer, Type, TypeId};
 use candid::{CandidType, Deserialize};
@@ -6,7 +9,6 @@ use num_bigint::BigUint;
 use num_traits::{FromPrimitive, ToPrimitive};
 use serde::de::{Error, Unexpected};
 use serde::{Deserializer, Serialize};
-use std::fmt::{Display, Formatter};
 
 /// Token amount limited by the value of u128::MAX (2^128 - 1).
 ///
@@ -15,22 +17,46 @@ use std::fmt::{Display, Formatter};
 ///
 /// All the arithmetic operation are specifically designed to check for any overflows/underflows and
 /// make all the bound checks explicit for the consumer.
-#[derive(
-    Default,
-    Debug,
-    Clone,
-    Copy,
-    CandidType,
-    Deserialize,
-    Serialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Hash,
-)]
+///
+/// **Note**: this struct exists explicitly to remove the burden of constantly calling
+/// `u128::checked_add` etc.
+#[derive(Default, Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Tokens128 {
     pub amount: u128,
+}
+
+impl CandidType for Tokens128 {
+    fn _ty() -> Type {
+        Type::Nat
+    }
+
+    fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_nat(&candid::types::number::Nat::from(self.amount))
+    }
+}
+
+impl Serialize for Tokens128 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_u128(self.amount)
+    }
+}
+
+impl<'de> Deserialize<'de> for Tokens128 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let nat = candid::Nat::deserialize(deserializer)?;
+        Self::from_nat(&nat).ok_or_else(|| {
+            D::Error::invalid_value(Unexpected::Str(&nat.to_string()), &"value is too large")
+        })
+    }
 }
 
 impl Tokens128 {
@@ -84,6 +110,18 @@ impl Tokens128 {
         match self + other {
             Some(v) => v,
             None => Self::MAX,
+        }
+    }
+
+    pub fn from_nat(nat: &candid::Nat) -> Option<Self> {
+        let mut bytes = nat.0.to_bytes_le();
+        if bytes.len() > size_of::<u128>() {
+            None
+        } else {
+            bytes.resize(size_of::<u128>(), 0);
+            Some(Self {
+                amount: u128::from_le_bytes(bytes.try_into().ok()?),
+            })
         }
     }
 }
