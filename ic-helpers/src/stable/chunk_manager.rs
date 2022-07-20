@@ -7,7 +7,7 @@ const WASM_PAGE_SIZE: u64 = 65536;
 /// Manger is used to manage VirtualMemory. The specific function is to mark which wasm page in
 /// memory belongs to which data, for example, the 0th page belongs to Balance, the 1st page belongs to History, etc.
 pub struct Manager<M: Memory> {
-    data: StableBTreeMap<M, Vec<u8>, Vec<u8>>,
+    pub data: StableBTreeMap<M, Vec<u8>, Vec<u8>>,
 }
 
 impl<M: Memory + Clone> Manager<M> {
@@ -29,7 +29,7 @@ impl<M: Memory + Clone> Manager<M> {
 #[derive(Clone)]
 pub struct VirtualMemory<M1: Memory, M2: Memory + Clone> {
     memory: M1,
-    page_range: Rc<RefCell<Manager<M2>>>,
+    pub page_range: Rc<RefCell<Manager<M2>>>,
     index: u8,
 }
 
