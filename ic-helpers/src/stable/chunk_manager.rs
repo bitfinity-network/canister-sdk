@@ -112,7 +112,11 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VirtualMemory<M1, M2> {
 
         let storage = &mut self.page_range.borrow_mut().0;
 
-        (begin..end).for_each(|i| drop(storage.insert(self.encode(i), vec![])));
+        (begin..end).for_each(|i| {
+            storage
+                .insert(self.encode(i), vec![])
+                .expect("insert pages to manager err");
+        });
 
         size
     }
