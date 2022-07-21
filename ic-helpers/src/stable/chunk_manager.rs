@@ -139,28 +139,17 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VirtualMemory<M1, M2> {
         let write_to = self.last_byte(byte_offset, src);
 
         // Offset position in wasm page
-        let mut offset_position = (byte_offset % WASM_PAGE_SIZE) as usize;
-        let init_section = (WASM_PAGE_SIZE as usize - offset_position).min(src.len());
-
+        let mut offset_position = byte_offset % WASM_PAGE_SIZE;
         let base_pages = self.page_byte_offsets(byte_offset, write_to);
-        let len = base_pages.len();
-        for (i, page_offset) in base_pages.into_iter().enumerate() {
-            let start = offset_position as u64 + page_offset;
-            if i == 0 {
-                self.memory.write(start, &src[0..init_section]);
-            } else if i < len - 1 {
-                self.memory.write(
-                    start,
-                    &src[init_section + (i - 1) * WASM_PAGE_SIZE as usize
-                        ..init_section + i * WASM_PAGE_SIZE as usize],
-                )
-            } else {
-                self.memory.write(
-                    start,
-                    &src[init_section + (i - 1) * WASM_PAGE_SIZE as usize..],
-                )
-            }
+
+        let mut start = 0;
+        for page in base_pages {
+            let end = (start + (WASM_PAGE_SIZE - offset_position) as usize).min(src.len());
+            let slice = &src[start..end];
+            start += (WASM_PAGE_SIZE - offset_position) as usize;
+            self.memory.write(page + offset_position as u64, slice);
             offset_position = 0;
         }
+
     }
 }
