@@ -35,6 +35,7 @@ auto_ops = "0.3"
 crypto-bigint = { version = "0.4", features = ["serde"] }
 num-bigint = "0.4"
 subtle = "2"
+binread = "2.2"
 
 # This dependency is not used direcly, but we must enable `custom` feature for it to compile for wasm32 target.
 [target.'cfg(target = "wasm32-unknown-unknown")'.dependencies]

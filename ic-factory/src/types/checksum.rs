@@ -9,7 +9,7 @@ pub type Version = usize;
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize, Default, Eq)]
 pub struct Checksum {
     pub version: Version,
-    hash: Vec<u8>,
+    pub hash: Vec<u8>,
 }
 
 impl Checksum {

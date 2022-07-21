@@ -1,7 +1,10 @@
-use ic_cdk::export::candid::{CandidType, Deserialize};
+use std::collections::HashMap;
+
+use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_helpers::candid_header::TypeCheckResult;
 use thiserror::Error;
 
-#[derive(Debug, Error, CandidType, Deserialize, PartialEq)]
+#[derive(Debug, Error, CandidType, Deserialize)]
 pub enum FactoryError {
     #[error("request to the ledger failed: {0}")]
     LedgerError(String),
@@ -26,4 +29,13 @@ pub enum FactoryError {
 
     #[error("factory is not initialized properly: canister wasm not set")]
     CanisterWasmNotSet,
+
+    #[error("upgrade failed becuase one or more canisters have incompatable type")]
+    StateCheckFailed(HashMap<Principal, TypeCheckResult>),
+
+    #[error("factory state is locked due to another async operation running")]
+    StateLocked,
+
+    #[error("failed to create canister: {0}")]
+    CanisterCreateFailed(String),
 }
