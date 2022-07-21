@@ -106,7 +106,13 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Returns the current version of canister.
     #[query(trait = true)]
     fn version(&self) -> &'static str {
-        env!("CARGO_PKG_VERSION")
+        let key: Option<&'static str> = option_env!("API_PACKAGE_VERSION");
+        if key.is_some() {
+            key.unwrap()
+        } else {
+            // Fallback if custom package version was not provided
+            env!("CARGO_PKG_VERSION")
+        }
     }
 
     /// Returns the number of canisters created by the factory.
