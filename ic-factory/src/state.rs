@@ -10,7 +10,6 @@ use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::collections::HashMap;
 use std::future::Future;
-use std::marker::PhantomData;
 use v1::{Factory, FactoryStateV1};
 
 pub mod v1;
