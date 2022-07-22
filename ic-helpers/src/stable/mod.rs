@@ -37,7 +37,7 @@ mod test {
         //   virtual_memory index is 0; data_memory page 0 belongs to virtual_memory;
         //                                                                                  \
         //      StableBTreeMap<vec![0, 0, 0, 1], vec![]>
-        //                          ↕   \   /                                                 usable page 0;
+        //                          ↕   \   /                                           manager_memory usable page 0
         //   virtual_memory index is 0; data_memory page 1 belongs to virtual_memory;
         // ...                                                                              /
         //      StableBTreeMap<vec![0, 0, 0, 9], vec![]>
@@ -45,15 +45,16 @@ mod test {
         //   virtual_memory index is 0; data_memory page 9 belongs to virtual_memory;
         // ...
         // ------------------------------------------------------------------------- <- Address 65536
-        //                                                                                    potential pages;
+        //                                                                              manager_memory potential pages
         //
         //
         // data_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //      vec![0; 10 * WASM_PAGE_SIZE as usize]                                         usable pages [0, 10),
-        //                                                                                    all belongs to virtual_memory;
+        //      vec![0; 10 * WASM_PAGE_SIZE as usize]                                   data_memory usable pages [0, 10)
+        //                                                                              virtual_memory usable pages [0, 10)
+        //
         // ------------------------------------------------------------------------- <- Address 65536 * 10
-        //                                                                                    potential pages;
+        //                                                                              data_memory potential pages
         //
     }
 
@@ -99,8 +100,8 @@ mod test {
         // ...
         //      StableBTreeMap<vec![0, 0, 0, 17], vec![]>                                      \
         //                          ↕   \   /
-        //   virtual_memory index is 0; data_memory page 17 belongs to virtual_memory_0;       usable page 0;
-        //
+        //   virtual_memory index is 0; data_memory page 17 belongs to virtual_memory_0;
+        //                                                                                 manager_memory usable page 0
         //      StableBTreeMap<vec![1, 0, 0, 5], vec![]>
         //                          ↕   \   /
         //   virtual_memory index is 1; data_memory page 5 belongs to virtual_memory_1;         /
@@ -116,25 +117,30 @@ mod test {
         //      StableBTreeMap<vec![1, 0, 0, 25], vec![]>
         //                          ↕   \   /                                              /
         //   virtual_memory index is 1; data_memory page 15 belongs to virtual_memory_1;
+        // ...
         // ------------------------------------------------------------------------- <- Address 65536
-        //                                                                                   potential pages;
+        //                                                                              manager_memory potential pages
         //
         //
         // data_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //      vec![0; 5 * WASM_PAGE_SIZE as usize]                                         usable pages [0, 5),
-        //                                                                                   all belongs to virtual_memory_0;
+        //      vec![0; 5 * WASM_PAGE_SIZE as usize]                                    data_memory usable pages [0, 5)
+        //                                                                              virtual_memory_0 usable pages [0, 5)
+        //
         // ------------------------------------------------------------------------- <- Address 65536 * 5
-        //      vec![0; 6 * WASM_PAGE_SIZE as usize]                                         usable pages [5, 11),
-        //                                                                                   all belongs to virtual_memory_1;
+        //      vec![0; 6 * WASM_PAGE_SIZE as usize]                                    data_memory usable pages [5, 11)
+        //                                                                              virtual_memory_1 usable pages [0, 6)
+        //
         // ------------------------------------------------------------------------- <- Address 65536 * 11
-        //      vec![0; 7 * WASM_PAGE_SIZE as usize]                                         usable pages [11, 18),
-        //                                                                                   all belongs to virtual_memory_0;
+        //      vec![0; 7 * WASM_PAGE_SIZE as usize]                                    data_memory usable pages [11, 18),
+        //                                                                              virtual_memory_0 usable pages [5, 12)
+        //
         // ------------------------------------------------------------------------- <- Address 65536 * 18
-        //      vec![0; 8 * WASM_PAGE_SIZE as usize]                                         usable pages [18, 26),
-        //                                                                                   all belongs to virtual_memory_1;
+        //      vec![0; 8 * WASM_PAGE_SIZE as usize]                                    data_memory usable pages [18, 26)
+        //                                                                              virtual_memory_1 usable pages [6, 14)
+        //
         // ------------------------------------------------------------------------- <- Address 65536 * 26
-        //                                                                                   potential pages;
+        //                                                                              data_memory potential pages
         //
     }
 
@@ -153,19 +159,20 @@ mod test {
         //
         // manager_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //      StableBTreeMap<vec![0, 0, 0, 0], vec![]>
-        //                          ↕   \   /                                                usable page 0;
+        //      StableBTreeMap<vec![0, 0, 0, 0], vec![]>                                manager_memory usable page 0
+        //                          ↕   \   /
         //   virtual_memory index is 0; data_memory page 0 belongs to virtual_memory;
         // ...
         // ------------------------------------------------------------------------- <- Address 65536
-        //                                                                                   potential pages;
+        //                                                                              manager_memory potential pages
         //
         //
         // data_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //      vec![0; WASM_PAGE_SIZE as usize]                                             usable page 0,
-        //                                                                                   all belongs to virtual_memory;
-        // ------------------------------------------------------------------------- <- Address 65536 -> belongs to potential pages, try to write out of memory, panic.
+        //      vec![0; WASM_PAGE_SIZE as usize]                                        data_memory usable page 0
+        //                                                                              virtual_memory usable page 0
+        //
+        // ------------------------------------------------------------------------- <- Address 65536 -> belongs to potential pages, virtual_memory try to write to it, panic.
         //
     }
 
@@ -185,12 +192,12 @@ mod test {
         //
         // manager_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //                                                                                   potential pages;
+        //                                                                              manager_memory potential pages;
         //
         //
         // data_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //                                                                                   potential page;
+        //                                                                              data_memory only 1 potential page;
         //
         // ------------------------------------------------------------------------- <- Address 65536
         //
@@ -229,22 +236,24 @@ mod test {
         //
         // manager_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //      StableBTreeMap<vec![0, 0, 0, 0], vec![]>
-        //                          ↕   \   /                                                usable page 0;
+        //      StableBTreeMap<vec![0, 0, 0, 0], vec![]>                                manager_memory usable page 0
+        //                          ↕   \   /
         //   virtual_memory index is 0; data_memory page 0 belongs to virtual_memory_0 & virtual_memory_1;
         // ...
         // ------------------------------------------------------------------------- <- Address 65536
-        //                                                                                   potential pages;
+        //                                                                              manager_memory potential pages
         //
         //
         // data_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //      vec![2; WASM_PAGE_SIZE as usize]                                             usable page 0,
-        //                                                                                   it belongs to virtual_memory_0 & virtual_memory_1;
-        // ------------------------------------------------------------------------- <- Address 65536
-        //                                                                                   potential pages;
+        //      vec![2; WASM_PAGE_SIZE as usize]                                        data_memory usable page 0
+        //                                                                              virtual_memory_0 usable page 0
+        //                                                                              virtual_memory_1 usable page 0
         //
-        // Because virtual_memory_0 and virtual_memory_1 use the same virtual_memory index, they will all have the same memory pages.
+        // ------------------------------------------------------------------------- <- Address 65536
+        //                                                                              data_memory potential pages;
+        //
+        // Because virtual_memory_0 and virtual_memory_1 use the same virtual_memory index 0, they will all have the same memory pages.
     }
 
     #[test]
@@ -269,7 +278,7 @@ mod test {
         //   virtual_memory index is 0; data_memory page 0 belongs to virtual_memory;
         //                                                                                  \
         //      StableBTreeMap<vec![0, 0, 0, 1], vec![]>
-        //                          ↕   \   /                                                 usable page 0;
+        //                          ↕   \   /                                           manager_memory usable page 0
         //   virtual_memory index is 0; data_memory page 1 belongs to virtual_memory;
         //                                                                                  /
         //      StableBTreeMap<vec![0, 0, 0, 2], vec![]>
@@ -277,21 +286,24 @@ mod test {
         //   virtual_memory index is 0; data_memory page 2 belongs to virtual_memory;
         // ...
         // ------------------------------------------------------------------------- <- Address 65536
-        //                                                                                    potential pages;
+        //                                                                              manager_memory potential pages
         //
         //
         // data_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //      vec![1; WASM_PAGE_SIZE as usize]                                              usable page 0
+        //      vec![1; WASM_PAGE_SIZE as usize]                                        data_memory usable page 0
+        //                                                                              virtual_memory usable page 0
         //
         // ------------------------------------------------------------------------- <- Address 65536
-        //      vec![1; WASM_PAGE_SIZE as usize]                                              usable page 1
+        //      vec![1; WASM_PAGE_SIZE as usize]                                        data_memory usable page 1
+        //                                                                              virtual_memory usable page 1
         //
         // ------------------------------------------------------------------------- <- Address 65536 * 2
-        //      vec![1]                                                                    usable page 2
-        //      vec![0; WASM_PAGE_SIZE as usize - 1 ]
+        //      vec![1]                                                                 data_memory usable page 2
+        //      vec![0; WASM_PAGE_SIZE as usize - 1 ]                                   virtual_memory usable page 2
+        //
         // ------------------------------------------------------------------------- <- Address 65536 * 3
-        //                                                                                    potential pages;
+        //                                                                              data_memory potential pages;
         //
     }
 
@@ -360,7 +372,7 @@ mod test {
         //      StableBTreeMap<vec![1, 0, 0, 1], vec![]>                                       \
         //                          ↕   \   /
         //   virtual_memory index is 1; data_memory page 1 belongs to virtual_memory_1;
-        //                                                                                   manager_memory usable page 0;
+        //                                                                                   manager_memory usable page 0
         //      StableBTreeMap<vec![1, 0, 0, 4], vec![]>
         //                          ↕   \   /
         //   virtual_memory index is 1; data_memory page 4 belongs to virtual_memory_1;        /
@@ -382,48 +394,48 @@ mod test {
         //   virtual_memory index is 2; data_memory page 8 belongs to virtual_memory_2;
         // ...
         // ------------------------------------------------------------------------- <- Address 65536
-        //                                                                                    potential pages;
+        //                                                                              manager_memory potential pages
         //
         //
         // data_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //      vec![0]                                                                      data_memory usable page 0
-        //      vec![1; WASM_PAGE_SIZE as usize - 1]                                         virtual_memory_0 page 0
+        //      vec![0]                                                                 data_memory usable page 0
+        //      vec![1; WASM_PAGE_SIZE as usize - 1]                                    virtual_memory_0 page 0
         //
         // ------------------------------------------------------------------------- <- Address 65536
-        //      vec![0]                                                                      data_memory usable page 1
-        //      vec![2; WASM_PAGE_SIZE as usize - 1]                                         virtual_memory_1 page 0
+        //      vec![0]                                                                 data_memory usable page 1
+        //      vec![2; WASM_PAGE_SIZE as usize - 1]                                    virtual_memory_1 page 0
         //
         // ------------------------------------------------------------------------- <- Address 65536 * 2
-        //      vec![0]                                                                      data_memory usable page 2
-        //      vec![3; WASM_PAGE_SIZE as usize - 1]                                         virtual_memory_2 page 0
+        //      vec![0]                                                                 data_memory usable page 2
+        //      vec![3; WASM_PAGE_SIZE as usize - 1]                                    virtual_memory_2 page 0
         //
         // ------------------------------------------------------------------------- <- Address 65536 * 3
-        //      vec![1; WASM_PAGE_SIZE as usize]                                             data_memory usable page 3
-        //                                                                                   virtual_memory_0 page 1
+        //      vec![1; WASM_PAGE_SIZE as usize]                                        data_memory usable page 3
+        //                                                                              virtual_memory_0 page 1
         //
         // ------------------------------------------------------------------------- <- Address 65536 * 4
-        //      vec![2; WASM_PAGE_SIZE as usize]                                              data_memory usable page 4
-        //                                                                                    virtual_memory_1 page 1
+        //      vec![2; WASM_PAGE_SIZE as usize]                                        data_memory usable page 4
+        //                                                                              virtual_memory_1 page 1
         //
         // ------------------------------------------------------------------------- <- Address 65536 * 5
-        //      vec![3; WASM_PAGE_SIZE as usize]                                              data_memory usable page 5
-        //                                                                                    virtual_memory_2 page 1
+        //      vec![3; WASM_PAGE_SIZE as usize]                                        data_memory usable page 5
+        //                                                                              virtual_memory_2 page 1
         //
         // ------------------------------------------------------------------------- <- Address 65536 * 6
-        //      vec![1; WASM_PAGE_SIZE as usize - 1]                                          data_memory usable page 6
-        //      vec![0]                                                                       virtual_memory_0 page 2
+        //      vec![1; WASM_PAGE_SIZE as usize - 1]                                    data_memory usable page 6
+        //      vec![0]                                                                 virtual_memory_0 page 2
         //
         // ------------------------------------------------------------------------- <- Address 65536 * 7
-        //      vec![2; WASM_PAGE_SIZE as usize - 1]                                          data_memory usable page 7
-        //      vec![0]                                                                       virtual_memory_1 page 2
+        //      vec![2; WASM_PAGE_SIZE as usize - 1]                                    data_memory usable page 7
+        //      vec![0]                                                                 virtual_memory_1 page 2
         //
         // ------------------------------------------------------------------------- <- Address 65536 * 8
-        //      vec![3; WASM_PAGE_SIZE as usize - 1]                                          data_memory usable page 8
-        //      vec![0]                                                                       virtual_memory_2 page 2
+        //      vec![3; WASM_PAGE_SIZE as usize - 1]                                    data_memory usable page 8
+        //      vec![0]                                                                 virtual_memory_2 page 2
         //
         // ------------------------------------------------------------------------- <- Address 65536 * 9
-        //                                                                                    potential pages;
+        //                                                                              data_memory potential pages;
         //
     }
 

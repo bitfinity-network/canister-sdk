@@ -24,9 +24,9 @@
    * More capacity for state, 4G vs 8G, and possibly more in the future.
    * Reduce the risk when canister upgrade, such as serializing the state of the entire state in wasm heap memory, which will also cause the wasm heap memory to have only 2G of effective space, and another 2G needs to be reserved for the serialized bytes.
 * What are the disadvantages?
-  * Stable memory currently has only a few low-level interfaces, and it is troublesome to build on them. Fortunately, there is currently a StableBTreeMap that can be used
-  * Compared with operating directly in wasm heap memory, stable memory is a system call, which reduces performance.
-  * Will take up additional storage space to manage the stable memory.
+  * Stable memory currently has only a few low-level interfaces, and it is troublesome to build on them. Fortunately, there is currently a StableBTreeMap that can be used.
+  * Compared with operating directly in wasm heap memory, stable memory is a system call, which reduces performance. However, I think it has something to do with the specific scenario, if it is a large block of data writing and reading, the speed of stable memory and wasm heap is almost [the same](https://github.com/aewc/balance/tree/bench#readme).
+  * Will take up [additional storage space](https://github.com/aewc/balance/tree/size#readme) to manage the stable memory.
 * Why not develop a generic dynamic allocator for stable memory？
   >> Q: One direction worth investigating for the future might be to generalize the underlying allocators. Both StableBTreeMap and senior.joinu’s data structures use an allocator if I understand correctly. On one hand, it’s what needs to be generalized to remove the fixed size contstraint of StableBTreeMap. Secondly multiple data structures using the same allocator is also a path to having them side by side.
 
@@ -77,7 +77,7 @@ pub trait Memory {
 ```
 It is similar to the system api, but with some changes:
 * When the value of `i64` is definitely greater than or equal to 0, use `u64`.
-* Use slice instead of pointers and size in the wasm heap, the size is the slice's length. So we need to carefully control the length of the slice
+* Use slice instead of pointers and size in the wasm heap, the size is the slice's length. So we need to carefully control the length of the slice.
 
  
 
@@ -86,8 +86,10 @@ It is similar to the system api, but with some changes:
 ```rs
 pub struct StableBTreeMap<M: Memory, K: Storable, V: Storable>
 ```
-* StableBTreeMap is a data structure built on stable memory that implements most of the methods of BTreeMap. And it comes with an allocator, the allocator will store the meta data of itself and the data in the map in stable memory through the four methods of the structure `M`
-* When `M` is `Ic0StableMemory`, this StableBTreeMap will occupy the entire stable memory, because the methods of Ic0StableMemory are to directly call the system API. If we create another structure, both of them will overwrite each other's data and destroy the whole state.
+* StableBTreeMap is a data structure built on stable memory that implements most of the methods of BTreeMap. And it comes with an allocator, so StableBTreeMap can complete the addressing very well by itself.
+* `M` is required to implement the `Memory` trait, so it has four methods for manipulating memory, and StableBTreeMap interacts with memory through `M`'s four methods.
+* Therefore, when `M` is `Rc<RefCell<Vec<u8>>>`, we can easily perform unit testing locally, when `M` is `Ic0StableMemory`, the StableBTreeMap can run in the canister wasm environment.
+* When `M` is `Ic0StableMemory`, this StableBTreeMap will occupy the entire stable memory, because the methods of `Ic0StableMemory` are to directly call the system API. If we create another structure, both of them will overwrite each other's data and destroy the whole state.
 
 ```rs
 #[derive(Clone, Copy, Default)]
@@ -117,17 +119,65 @@ impl Memory for Ic0StableMemory {
 }
 ```
 
-* But we do need to store multiple different types of data structures, so we manage pages by allocating on demand.
-* For example, we use [0,20) pages of stable memory to store `StableBTreeMap<Struct_index, Vec<page_index>>`, We assume that there are two data structures, balance and history, and balance
-```
----------------------------------------- <- Address 0
-page_0
----------------------------------------- <- Address 65536*1
-page_1
----------------------------------------- <- Address 65536*2
-...
----------------------------------------- <- Address 65536*19
-page_19
----------------------------------------- <- Address 65536*20
-page_1
+## Memory Page Manger
+We'd better have a page manager so that we can store different types of structures.
 
+### RestrictedMemory
+One Option is `RestrictedMemory`:
+```rs
+/// RestrictedMemory creates a limited view of another memory.  This
+/// allows one to divide the main memory into non-intersecting ranges
+/// and use different layouts in each region.
+#[derive(Clone)]
+pub struct RestrictedMemory<M: Memory> {
+    page_range: core::ops::Range<u64>,
+    memory: M,
+}
+```
+
+```
+                    |<-          RestrictedMemory_0      ->|<-      RestrictedMemory_1  -> 
+RestrictedMemory:   | ---------- | ---------- | ---------- | ---------- | ---------- | ...
+
+                      page_0       page_1       page_2       page_3       page_4
+Memory:             | ---------- | ---------- | ---------- | ---------- | ---------- | ...
+```
+
+* It is simple. By specifying `page_range` in advance, the program knows which RestrictedMemory a page belongs to, and it also implements `Memory` trait.
+* The problem is that the size of RestrictedMemorys need to be determined in advance and only the last RestrictedMemory can grow dynamically.
+
+### VirtualMemory
+Another option is `VirtualMemory`.
+
+Its basic idea is to allocate memory pages to different `VirtualMemory` as needed:
+```
+                                page_0                    page_1
+VirtualMemory_1: |            | ---------- |            | ---------- |            |            | ...
+
+                   page_0                    page_1                    page_2       page_3
+VirtualMemory_0: | ---------- |            | ---------- |            | ---------- | ---------- | ...
+
+                   page_0       page_1       page_2       page_3       page_4       page_5
+Memory:          | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ...
+
+```
+
+So we need a Manager to record the page of Memory belongs to which VirtualMemory:
+```rs
+/// Manger is used to manage VirtualMemory. The specific function is to mark which wasm page in
+/// memory belongs to which data, for example, the 0th page belongs to Balance, the 1st page belongs to History, etc.
+pub struct Manager<M: Memory>(StableBTreeMap<M, Vec<u8>, Vec<u8>>);
+
+/// Pack fragmented memory composed of different pages into contiguous memory.
+///
+/// index stand for different data structures.
+/// In the same canister, different data structures should use different indexes.
+#[derive(Clone)]
+pub struct VirtualMemory<M1: Memory, M2: Memory + Clone> {
+    memory: M1,
+    pub page_range: Rc<RefCell<Manager<M2>>>,
+    index: u8,
+}
+```
+
+* The `memory` is used to store data, the `page_range` is used to store the page index in `memory` belongs to which VirtualMemory `index`, `index` is used to distinguish different `VirtualMemory`.

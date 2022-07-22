@@ -20,8 +20,8 @@ impl<M: Memory + Clone> Manager<M> {
 
 /// Pack fragmented memory composed of different pages into contiguous memory.
 ///
-/// index stand for different data structures, in the same canister,
-/// different data structures should use different indexes.
+/// index stand for different data structures.
+/// In the same canister, different data structures should use different indexes.
 #[derive(Clone)]
 pub struct VirtualMemory<M1: Memory, M2: Memory + Clone> {
     memory: M1,
@@ -154,6 +154,5 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VirtualMemory<M1, M2> {
             self.memory.write(page + offset_position as u64, slice);
             offset_position = 0;
         }
-
     }
 }
