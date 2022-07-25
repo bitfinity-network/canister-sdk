@@ -32,17 +32,27 @@ mod test {
         //
         // manager_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //      StableBTreeMap<vec![0, 0, 0, 0], vec![]>
-        //                          ↕   \   /                                             \
-        //   virtual_memory index is 0; data_memory page 0 belongs to virtual_memory;
-        //                                                                                  \
-        //      StableBTreeMap<vec![0, 0, 0, 1], vec![]>
-        //                          ↕   \   /                                           manager_memory usable page 0
-        //   virtual_memory index is 0; data_memory page 1 belongs to virtual_memory;
-        // ...                                                                              /
-        //      StableBTreeMap<vec![0, 0, 0, 9], vec![]>
-        //                          ↕   \   /                                             /
-        //   virtual_memory index is 0; data_memory page 9 belongs to virtual_memory;
+        //      StableBTreeMap<vec![0, 0, 0, 0, 0, 0, 0, 0], vec![]>
+        //                          ↕   \   /    \      /                                    \
+        //                          A     B          C
+        //  A means virtual_memory index(flag) is 0; B means virtual_memory's page index 0;   \
+        //  C means data_memory page index 0;
+        //  A & B & C means virtual_memory 0's page 0 is data_memory page 0;                   \
+        //
+        //      StableBTreeMap<vec![0, 0, 0, 1, 0, 0, 0, 1], vec![]>                            \
+        //                          ↕   \   /    \      /
+        //                          A     B          C                                        manager_memory usable page 0
+        //  A means virtual_memory index(flag) is 0; B means virtual_memory's page index 1;
+        //  C means data_memory page index 1;                                                   /
+        //  A & B & C means virtual_memory 0's page 1 is data_memory page 1;
+        //                                                                                     /
+        // ...
+        //      StableBTreeMap<vec![0, 0, 0, 9, 0, 0, 0, 9], vec![]>                          /
+        //                          ↕   \   /    \      /
+        //                          A     B          C                                       /
+        //  A means virtual_memory index(flag) is 0; B means virtual_memory's page index 9;
+        //  C means data_memory page index 9;                                               /
+        //  A & B & C means virtual_memory 0's page 9 is data_memory page 9;
         // ...
         // ------------------------------------------------------------------------- <- Address 65536
         //                                                                              manager_memory potential pages
@@ -457,22 +467,51 @@ mod test {
         assert_eq!(virtual_memory_1.grow(1), 1);
 
         //[([0, 0, 0, 0, 0, 0, 0, 0], []), ([0, 0, 0, 1, 0, 0, 0, 2], []), ([1, 0, 0, 0, 0, 0, 0, 1], []), ([1, 0, 0, 1, 0, 0, 0, 3], [])]
-        println!(
-            "{:?}",
+        assert_eq!(
             StableBTreeMap::<_, Vec<u8>, Vec<u8>>::load(Rc::clone(&manager_memory))
                 .iter()
-                .collect::<Vec<_>>()
+                .map(|(i, _)| i)
+                .collect::<Vec<_>>(),
+            vec![
+                vec![0, 0, 0, 0, 0, 0, 0, 0],
+                vec![0, 0, 0, 1, 0, 0, 0, 2],
+                vec![1, 0, 0, 0, 0, 0, 0, 1],
+                vec![1, 0, 0, 1, 0, 0, 0, 3]
+            ]
         );
 
         assert_eq!(virtual_memory_0.size(), 2);
         assert_eq!(virtual_memory_1.size(), 2);
 
         virtual_memory_0.forget();
-        println!(
-            "{:?}",
+
+        assert_eq!(
             StableBTreeMap::<_, Vec<u8>, Vec<u8>>::load(Rc::clone(&manager_memory))
                 .iter()
-                .collect::<Vec<_>>()
+                .map(|(i, _)| i)
+                .collect::<Vec<_>>(),
+            vec![
+                vec![1, 0, 0, 0, 0, 0, 0, 1],
+                vec![1, 0, 0, 1, 0, 0, 0, 3],
+                vec![255, 0, 0, 0, 0, 0, 0, 0],
+                vec![255, 0, 0, 1, 0, 0, 0, 2]
+            ]
+        );
+
+        assert_eq!(virtual_memory_1.grow(3), 2);
+        // [([1, 0, 0, 0, 0, 0, 0, 1], []), ([1, 0, 0, 1, 0, 0, 0, 3], []), ([255, 0, 0, 0, 0, 0, 0, 0], []), ([255, 0, 0, 1, 0, 0, 0, 2], [])]
+        assert_eq!(
+            StableBTreeMap::<_, Vec<u8>, Vec<u8>>::load(Rc::clone(&manager_memory))
+                .iter()
+                .map(|(i, _)| i)
+                .collect::<Vec<_>>(),
+            vec![
+                vec![1, 0, 0, 0, 0, 0, 0, 1],
+                vec![1, 0, 0, 1, 0, 0, 0, 3],
+                vec![1, 0, 0, 2, 0, 0, 0, 0],
+                vec![1, 0, 0, 3, 0, 0, 0, 2],
+                vec![1, 0, 0, 4, 0, 0, 0, 4],
+            ]
         );
     }
 
@@ -484,7 +523,7 @@ mod test {
         let virtual_memory = VirtualMemory::init(data_memory, manager_memory, 0);
 
         let mut dst = [1; WASM_PAGE_SIZE as usize];
-        virtual_memory.write(0, &mut dst);
+        virtual_memory.read(0, &mut dst);
     }
 
     #[test]

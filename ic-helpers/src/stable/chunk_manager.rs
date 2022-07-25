@@ -1,5 +1,3 @@
-use ic_canister::storage;
-
 use crate::stable::{Memory, StableBTreeMap};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -93,7 +91,6 @@ impl<M1: Memory, M2: Memory + Clone> VirtualMemory<M1, M2> {
     }
 
     fn decode(&self, bytes: [u8; 8]) -> (u32, u32) {
-        assert!(bytes[0] == self.index);
         let mut index: [u8; 4] = bytes[0..4].try_into().expect("slice to array error");
         index[0] = 0;
         let key: [u8; 4] = bytes[4..8].try_into().expect("slice to array error");
@@ -128,45 +125,40 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VirtualMemory<M1, M2> {
     fn grow(&self, pages: u64) -> i64 {
         let size = self.size() as u32;
 
-        let free_page_amount = self
+        let free_pages = self
             .page_range
             .borrow()
             .0
             .range(vec![u8::MAX], None)
             .take(pages as usize)
-            .count() as u64;
+            .map(|(i, _)| i)
+            .collect::<Vec<_>>();
 
+        let free_page_amount = free_pages.len() as u64;
         let result = self.memory.grow(pages - free_page_amount);
         if result == -1 {
             return -1;
         }
 
-        self.page_range
-            .borrow()
-            .0
-            .range(vec![u8::MAX], None)
-            .take(pages as usize)
-            .enumerate()
-            .for_each(|(i, (key, _))| {
-                let storage = &mut self.page_range.borrow_mut().0;
-                storage.remove(&key);
+        let storage = &mut self.page_range.borrow_mut().0;
 
-                let page_index = key
-                    .try_into()
-                    .expect("failed to convert Vec<u8> to [u8;4] in page_byte_offsets");
-                let page_index = self.decode(page_index).1;
-                storage
-                    .insert(self.encode(size + i as u32, page_index), vec![])
-                    .expect("insert pages to manager err");
-            });
+        free_pages.into_iter().enumerate().for_each(|(i, key)| {
+            storage.remove(&key);
+
+            let page_index = key
+                .try_into()
+                .expect("failed to convert Vec<u8> to [u8;4] in page_byte_offsets");
+            let page_index = self.decode(page_index).1;
+            storage
+                .insert(self.encode(size + i as u32, page_index), vec![])
+                .expect("insert pages to manager err");
+        });
 
         let begin = result as u32; // max pages's amount is 131072(8G) - 4915200(300G)
         let end = begin + (pages - free_page_amount) as u32;
 
         (begin..end).enumerate().for_each(|(i, key)| {
-            self.page_range
-                .borrow_mut()
-                .0
+            storage
                 .insert(
                     self.encode(size + free_page_amount as u32 + i as u32, key),
                     vec![],
