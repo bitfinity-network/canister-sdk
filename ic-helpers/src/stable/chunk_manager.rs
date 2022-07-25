@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 const WASM_PAGE_SIZE: u64 = 65536;
 
-/// Manger is used to manage VirtualMemory. The specific function is to mark which wasm page in
+/// Manger is used to manage VirtualMemory. The specific function i&s to mark which wasm page in
 /// memory belongs to which data, for example, the 0th page belongs to Balance, the 1st page belongs to History, etc.
 pub struct Manager<M: Memory>(StableBTreeMap<M, Vec<u8>, Vec<u8>>);
 
@@ -178,7 +178,8 @@ impl<M1: Memory, M2: Memory + Clone> Memory for VirtualMemory<M1, M2> {
 
         let mut start = 0;
         for page in base_pages {
-            let slice = &mut dst[start..];
+            let end = (start + (WASM_PAGE_SIZE - offset_position) as usize).min(dst.len());
+            let slice = &mut dst[start..end];
             start += (WASM_PAGE_SIZE - offset_position) as usize;
             self.memory.read(page + offset_position as u64, slice);
             offset_position = 0;

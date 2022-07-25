@@ -474,6 +474,13 @@ mod test {
                 vec![1, 0, 0, 4, 0, 0, 0, 4],
             ]
         );
+
+        let src_1 = [1; 3 * WASM_PAGE_SIZE as usize];
+        virtual_memory_1.write(1, &src_1);
+        let mut dst_1 = [0; 3 * WASM_PAGE_SIZE as usize];
+        virtual_memory_1.read(1, &mut dst_1);
+
+        assert_eq!(src_1, dst_1);
     }
 
     #[test]
