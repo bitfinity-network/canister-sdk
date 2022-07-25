@@ -37,14 +37,14 @@ mod test {
         //                          A     B          C
         //  A means virtual_memory index(flag) is 0; B means virtual_memory's page index 0;   \
         //  C means data_memory page index 0;
-        //  A & B & C means virtual_memory 0's page 0 is data_memory page 0;                   \
+        //  A & B & C means data_memory page 0 is allocated to virtual_memory's page 0;        \
         //
         //      StableBTreeMap<vec![0, 0, 0, 1, 0, 0, 0, 1], vec![]>                            \
         //                          ↕   \   /    \      /
         //                          A     B          C                                        manager_memory usable page 0
         //  A means virtual_memory index(flag) is 0; B means virtual_memory's page index 1;
         //  C means data_memory page index 1;                                                   /
-        //  A & B & C means virtual_memory 0's page 1 is data_memory page 1;
+        //  A & B & C means data_memory page 1 is allocated to virtual_memory's page 1;
         //                                                                                     /
         // ...
         //      StableBTreeMap<vec![0, 0, 0, 9, 0, 0, 0, 9], vec![]>                          /
@@ -52,7 +52,7 @@ mod test {
         //                          A     B          C                                       /
         //  A means virtual_memory index(flag) is 0; B means virtual_memory's page index 9;
         //  C means data_memory page index 9;                                               /
-        //  A & B & C means virtual_memory 0's page 9 is data_memory page 9;
+        //  A & B & C data_memory page 9 is allocated to virtual_memory's page 0;
         // ...
         // ------------------------------------------------------------------------- <- Address 65536
         //                                                                              manager_memory potential pages
@@ -96,37 +96,65 @@ mod test {
         //
         // manager_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //      StableBTreeMap<vec![0, 0, 0, 0], vec![]>
-        //                          ↕   \   /                                             \
-        //   virtual_memory index is 0; data_memory page 0 belongs to virtual_memory_0;
-        // ...                                                                             \
-        //      StableBTreeMap<vec![0, 0, 0, 4], vec![]>
-        //                          ↕   \   /                                               \
-        //   virtual_memory index is 0; data_memory page 4 belongs to virtual_memory_0;
+        //      StableBTreeMap<vec![0, 0, 0, 0, 0, 0, 0, 0], vec![]>                                     manager_memory usable page 0
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_0 index(flag) is 0; B means virtual_memory_0's page index 0;
+        //  C means data_memory page index 0;
+        //  A & B & C means data_memory page 0 is allocated to virtual_memory_0's page 0;
         //
-        //      StableBTreeMap<vec![0, 0, 0, 11], vec![]>                                    \
-        //                          ↕   \   /
-        //   virtual_memory index is 0; data_memory page 11 belongs to virtual_memory_0;      \
         // ...
-        //      StableBTreeMap<vec![0, 0, 0, 17], vec![]>                                      \
-        //                          ↕   \   /
-        //   virtual_memory index is 0; data_memory page 17 belongs to virtual_memory_0;
-        //                                                                                 manager_memory usable page 0
-        //      StableBTreeMap<vec![1, 0, 0, 5], vec![]>
-        //                          ↕   \   /
-        //   virtual_memory index is 1; data_memory page 5 belongs to virtual_memory_1;         /
-        // ...
-        //      StableBTreeMap<vec![1, 0, 0, 10], vec![]>                                      /
-        //                          ↕   \   /
-        //   virtual_memory index is 1; data_memory page 10 belongs to virtual_memory_1;      /
+        //      StableBTreeMap<vec![0, 0, 0, 4, 0, 0, 0, 4], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_0 index(flag) is 0; B means virtual_memory_0's page index 4;
+        //  C means data_memory page index 4;
+        //  A & B & C means data_memory page 4 is allocated to virtual_memory_0's page 4;
         //
-        //      StableBTreeMap<vec![1, 0, 0, 18], vec![]>
-        //                          ↕   \   /                                                /
-        //   virtual_memory index is 1; data_memory page 18 belongs to virtual_memory_1;
-        // ...                                                                              /
-        //      StableBTreeMap<vec![1, 0, 0, 25], vec![]>
-        //                          ↕   \   /                                              /
-        //   virtual_memory index is 1; data_memory page 15 belongs to virtual_memory_1;
+        //      StableBTreeMap<vec![0, 0, 0, 5, 0, 0, 0, 11], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_0 index(flag) is 0; B means virtual_memory_0's page index 5;
+        //  C means data_memory page index 11;
+        //  A & B & C means data_memory page 11 is allocated to virtual_memory_0's page 5;
+        //
+        // ...
+        //      StableBTreeMap<vec![0, 0, 0, 11, 0, 0, 0, 17], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_0 index(flag) is 0; B means virtual_memory_0's page index 11;
+        //  C means data_memory page index 17;
+        //  A & B & C means data_memory page 17 is allocated to virtual_memory_0's page 11;
+        //
+        //      StableBTreeMap<vec![1, 0, 0, 0, 0, 0, 0, 5], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_1 index(flag) is 1; B means virtual_memory_1's page index 0;
+        //  C means data_memory page index 5;
+        //  A & B & C means data_memory page 5 is allocated to virtual_memory_1's page 0;
+        //
+        // ...
+        //      StableBTreeMap<vec![1, 0, 0, 5, 0, 0, 0, 10], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_1 index(flag) is 1; B means virtual_memory_1's page index 5;
+        //  C means data_memory page index 10;
+        //  A & B & C means data_memory page 10 is allocated to virtual_memory_1's page 5;
+        //
+        //      StableBTreeMap<vec![1, 0, 0, 6, 0, 0, 0, 18], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_1 index(flag) is 1; B means virtual_memory_1's page index 6;
+        //  C means data_memory page index 18;
+        //  A & B & C means data_memory page 18 is allocated to virtual_memory_1's page 6;
+        //
+        // ...
+        //      StableBTreeMap<vec![1, 0, 0, 13, 0, 0, 0, 25], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_1 index(flag) is 1; B means virtual_memory_1's page index 13;
+        //  C means data_memory page index 25;
+        //  A & B & C means data_memory page 25 is allocated to virtual_memory_1's page 13;
         // ...
         // ------------------------------------------------------------------------- <- Address 65536
         //                                                                              manager_memory potential pages
@@ -164,26 +192,6 @@ mod test {
         assert_eq!(virtual_memory.grow(1), 0);
         let src = [1; 1 + WASM_PAGE_SIZE as usize];
         virtual_memory.write(0, &src);
-
-        // The layout should look like this:
-        //
-        // manager_memory:
-        // ------------------------------------------------------------------------- <- Address 0
-        //      StableBTreeMap<vec![0, 0, 0, 0], vec![]>                                manager_memory usable page 0
-        //                          ↕   \   /
-        //   virtual_memory index is 0; data_memory page 0 belongs to virtual_memory;
-        // ...
-        // ------------------------------------------------------------------------- <- Address 65536
-        //                                                                              manager_memory potential pages
-        //
-        //
-        // data_memory:
-        // ------------------------------------------------------------------------- <- Address 0
-        //      vec![0; WASM_PAGE_SIZE as usize]                                        data_memory usable page 0
-        //                                                                              virtual_memory usable page 0
-        //
-        // ------------------------------------------------------------------------- <- Address 65536 -> belongs to potential pages, virtual_memory try to write to it, panic.
-        //
     }
 
     #[test]
@@ -194,24 +202,11 @@ mod test {
         let virtual_memory = VirtualMemory::init(data_memory, manager_memory, 0);
 
         let result = virtual_memory.grow(2);
+
+        // The data_memory's capacity is only 1 page, but virtual_memory try to grow 2 pages. Panic and state changes will be rolled back.
         assert_eq!(result, 0, "grow failed, which return {}", result);
         let src = [1; 1 + WASM_PAGE_SIZE as usize];
         virtual_memory.write(0, &src);
-
-        // The layout should look like this:
-        //
-        // manager_memory:
-        // ------------------------------------------------------------------------- <- Address 0
-        //                                                                              manager_memory potential pages;
-        //
-        //
-        // data_memory:
-        // ------------------------------------------------------------------------- <- Address 0
-        //                                                                              data_memory only 1 potential page;
-        //
-        // ------------------------------------------------------------------------- <- Address 65536
-        //
-        // The data_memory's capacity is only 1 page, but virtual_memory try to grow 2 pages. Panic and state changes will be rolled back.
     }
 
     #[test]
@@ -233,6 +228,7 @@ mod test {
         virtual_memory_0.read(0, &mut dst_0);
         assert_eq!(src_0, dst_0);
 
+        // Because virtual_memory_0 and virtual_memory_1 use the same virtual_memory index 0, they will all have the same memory pages.
         let src_1 = [2; WASM_PAGE_SIZE as usize];
         let mut dst_1 = [0; WASM_PAGE_SIZE as usize];
         virtual_memory_1.read(0, &mut dst_1);
@@ -241,29 +237,6 @@ mod test {
         virtual_memory_1.write(0, &src_1);
         virtual_memory_1.read(0, &mut dst_1);
         assert_eq!(dst_1, src_1);
-
-        // The layout should look like this:
-        //
-        // manager_memory:
-        // ------------------------------------------------------------------------- <- Address 0
-        //      StableBTreeMap<vec![0, 0, 0, 0], vec![]>                                manager_memory usable page 0
-        //                          ↕   \   /
-        //   virtual_memory index is 0; data_memory page 0 belongs to virtual_memory_0 & virtual_memory_1;
-        // ...
-        // ------------------------------------------------------------------------- <- Address 65536
-        //                                                                              manager_memory potential pages
-        //
-        //
-        // data_memory:
-        // ------------------------------------------------------------------------- <- Address 0
-        //      vec![2; WASM_PAGE_SIZE as usize]                                        data_memory usable page 0
-        //                                                                              virtual_memory_0 usable page 0
-        //                                                                              virtual_memory_1 usable page 0
-        //
-        // ------------------------------------------------------------------------- <- Address 65536
-        //                                                                              data_memory potential pages;
-        //
-        // Because virtual_memory_0 and virtual_memory_1 use the same virtual_memory index 0, they will all have the same memory pages.
     }
 
     #[test]
@@ -278,43 +251,6 @@ mod test {
         virtual_memory.write(0, &src);
         virtual_memory.read(0, &mut dst);
         assert_eq!(src, dst);
-
-        // The layout should look like this:
-        //
-        // manager_memory:
-        // ------------------------------------------------------------------------- <- Address 0
-        //      StableBTreeMap<vec![0, 0, 0, 0], vec![]>
-        //                          ↕   \   /                                             \
-        //   virtual_memory index is 0; data_memory page 0 belongs to virtual_memory;
-        //                                                                                  \
-        //      StableBTreeMap<vec![0, 0, 0, 1], vec![]>
-        //                          ↕   \   /                                           manager_memory usable page 0
-        //   virtual_memory index is 0; data_memory page 1 belongs to virtual_memory;
-        //                                                                                  /
-        //      StableBTreeMap<vec![0, 0, 0, 2], vec![]>
-        //                          ↕   \   /                                             /
-        //   virtual_memory index is 0; data_memory page 2 belongs to virtual_memory;
-        // ...
-        // ------------------------------------------------------------------------- <- Address 65536
-        //                                                                              manager_memory potential pages
-        //
-        //
-        // data_memory:
-        // ------------------------------------------------------------------------- <- Address 0
-        //      vec![1; WASM_PAGE_SIZE as usize]                                        data_memory usable page 0
-        //                                                                              virtual_memory usable page 0
-        //
-        // ------------------------------------------------------------------------- <- Address 65536
-        //      vec![1; WASM_PAGE_SIZE as usize]                                        data_memory usable page 1
-        //                                                                              virtual_memory usable page 1
-        //
-        // ------------------------------------------------------------------------- <- Address 65536 * 2
-        //      vec![1]                                                                 data_memory usable page 2
-        //      vec![0; WASM_PAGE_SIZE as usize - 1 ]                                   virtual_memory usable page 2
-        //
-        // ------------------------------------------------------------------------- <- Address 65536 * 3
-        //                                                                              data_memory potential pages;
-        //
     }
 
     #[test]
@@ -367,41 +303,68 @@ mod test {
         //
         // manager_memory:
         // ------------------------------------------------------------------------- <- Address 0
-        //      StableBTreeMap<vec![0, 0, 0, 0], vec![]>
-        //                          ↕   \   /                                             \
-        //   virtual_memory index is 0; data_memory page 0 belongs to virtual_memory_0;
-        //                                                                                 \
-        //      StableBTreeMap<vec![0, 0, 0, 3], vec![]>
-        //                          ↕   \   /                                               \
-        //   virtual_memory index is 0; data_memory page 3 belongs to virtual_memory_0;
+        //      StableBTreeMap<vec![0, 0, 0, 0, 0, 0, 0, 0], vec![]>                                     manager_memory usable page 0
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_0 index(flag) is 0; B means virtual_memory_0's page index 0;
+        //  C means data_memory page index 0;
+        //  A & B & C means data_memory page 0 is allocated to virtual_memory_0's page 0;
         //
-        //      StableBTreeMap<vec![0, 0, 0, 6], vec![]>                                     \
-        //                          ↕   \   /
-        //   virtual_memory index is 0; data_memory page 6 belongs to virtual_memory_0;       \
+        //      StableBTreeMap<vec![0, 0, 0, 1, 0, 0, 0, 3], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_0 index(flag) is 0; B means virtual_memory_0's page index 1;
+        //  C means data_memory page index 3;
+        //  A & B & C means data_memory page 3 is allocated to virtual_memory_0's page 1;
         //
-        //      StableBTreeMap<vec![1, 0, 0, 1], vec![]>                                       \
-        //                          ↕   \   /
-        //   virtual_memory index is 1; data_memory page 1 belongs to virtual_memory_1;
-        //                                                                                   manager_memory usable page 0
-        //      StableBTreeMap<vec![1, 0, 0, 4], vec![]>
-        //                          ↕   \   /
-        //   virtual_memory index is 1; data_memory page 4 belongs to virtual_memory_1;        /
+        //      StableBTreeMap<vec![0, 0, 0, 2, 0, 0, 0, 6], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_0 index(flag) is 0; B means virtual_memory_0's page index 2;
+        //  C means data_memory page index 6;
+        //  A & B & C means data_memory page 6 is allocated to virtual_memory_0's page 2;
         //
-        //      StableBTreeMap<vec![1, 0, 0, 7], vec![]>                                      /
-        //                          ↕   \   /
-        //   virtual_memory index is 1; data_memory page 7 belongs to virtual_memory_1;      /
+        //      StableBTreeMap<vec![1, 0, 0, 0, 0, 0, 0, 1], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_1 index(flag) is 1; B means virtual_memory_1's page index 0;
+        //  C means data_memory page index 1;
+        //  A & B & C means data_memory page 1 is allocated to virtual_memory_1's page 0;
         //
-        //      StableBTreeMap<vec![2, 0, 0, 2], vec![]>
-        //                          ↕   \   /                                               /
-        //   virtual_memory index is 2; data_memory page 2 belongs to virtual_memory_2;
-        //                                                                                 /
-        //      StableBTreeMap<vec![2, 0, 0, 5], vec![]>
-        //                          ↕   \   /                                             /
-        //   virtual_memory index is 2; data_memory page 5 belongs to virtual_memory_2;
+        //      StableBTreeMap<vec![1, 0, 0, 1, 0, 0, 0, 4], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_1 index(flag) is 1; B means virtual_memory_1's page index 1;
+        //  C means data_memory page index 4;
+        //  A & B & C means data_memory page 4 is allocated to virtual_memory_1's page 1;
         //
-        //      StableBTreeMap<vec![2, 0, 0, 8], vec![]>                                 /
-        //                          ↕   \   /
-        //   virtual_memory index is 2; data_memory page 8 belongs to virtual_memory_2;
+        //      StableBTreeMap<vec![1, 0, 0, 2, 0, 0, 0, 7], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_1 index(flag) is 1; B means virtual_memory_1's page index 2;
+        //  C means data_memory page index 7;
+        //  A & B & C means data_memory page 7 is allocated to virtual_memory_1's page 2;
+        //
+        //      StableBTreeMap<vec![2, 0, 0, 0, 0, 0, 0, 2], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_2 index(flag) is 2; B means virtual_memory_2's page index 0;
+        //  C means data_memory page index 2;
+        //  A & B & C means data_memory page 2 is allocated to virtual_memory_2's page 0;
+        //
+        //      StableBTreeMap<vec![2, 0, 0, 1, 0, 0, 0, 5], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_2 index(flag) is 2; B means virtual_memory_2's page index 1;
+        //  C means data_memory page index 5;
+        //  A & B & C means data_memory page 5 is allocated to virtual_memory_2's page 1;
+        //
+        //      StableBTreeMap<vec![2, 0, 0, 2, 0, 0, 0, 8], vec![]>
+        //                          ↕   \   /    \      /
+        //                          A     B          C
+        //  A means virtual_memory_2 index(flag) is 2; B means virtual_memory_2's page index 2;
+        //  C means data_memory page index 8;
+        //  A & B & C means data_memory page 8 is allocated to virtual_memory_2's page 2;
         // ...
         // ------------------------------------------------------------------------- <- Address 65536
         //                                                                              manager_memory potential pages
@@ -466,7 +429,6 @@ mod test {
         assert_eq!(virtual_memory_0.grow(1), 1);
         assert_eq!(virtual_memory_1.grow(1), 1);
 
-        //[([0, 0, 0, 0, 0, 0, 0, 0], []), ([0, 0, 0, 1, 0, 0, 0, 2], []), ([1, 0, 0, 0, 0, 0, 0, 1], []), ([1, 0, 0, 1, 0, 0, 0, 3], [])]
         assert_eq!(
             StableBTreeMap::<_, Vec<u8>, Vec<u8>>::load(Rc::clone(&manager_memory))
                 .iter()
@@ -499,7 +461,6 @@ mod test {
         );
 
         assert_eq!(virtual_memory_1.grow(3), 2);
-        // [([1, 0, 0, 0, 0, 0, 0, 1], []), ([1, 0, 0, 1, 0, 0, 0, 3], []), ([255, 0, 0, 0, 0, 0, 0, 0], []), ([255, 0, 0, 1, 0, 0, 0, 2], [])]
         assert_eq!(
             StableBTreeMap::<_, Vec<u8>, Vec<u8>>::load(Rc::clone(&manager_memory))
                 .iter()
