@@ -8,8 +8,8 @@ default = []
 agent = ["ic-agent", "garcon"]
 
 [dependencies]
-ledger-canister = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18_18-31"}
-ic-base-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18_18-31"}
+ledger-canister = {git = "https://github.com/dfinity/ic", branch = "rc--2022-07-22_18-32"}
+ic-base-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-07-22_18-32"}
 async-trait = "0.1"
 hex = "0.4"
 ic-cdk = "0.5"
@@ -21,7 +21,7 @@ serde_json = "1.0"
 sha2 = "0.9"
 serde_bytes = "0.11.2"
 serde_cbor = "0.11.2"
-ic-ic00-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18_18-31"}
+ic-ic00-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-07-22_18-32"}
 thiserror = "1.0"
 ic-canister = { path = "../ic-canister/ic-canister", package = "ic-canister" }
 ic-canister-macros = { path = "../ic-canister/ic-canister-macros", package = "ic-canister-macros" }
@@ -36,6 +36,9 @@ crypto-bigint = { version = "0.4", features = ["serde"] }
 num-bigint = "0.4"
 subtle = "2"
 binread = "2.2"
+
+ic-icrc1 = {git = "https://github.com/dfinity/ic", branch = "rc--2022-07-22_18-32"}
+ic-icrc1-ledger = {git = "https://github.com/dfinity/ic", branch = "rc--2022-07-22_18-32"}
 
 # This dependency is not used direcly, but we must enable `custom` feature for it to compile for wasm32 target.
 [target.'cfg(target = "wasm32-unknown-unknown")'.dependencies]
