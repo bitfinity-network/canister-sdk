@@ -24,7 +24,7 @@
    * More capacity for state, 4G vs 8G, and possibly more in the future.
    * Reduce the risk when canister upgrade, such as serializing the state of the entire state in wasm heap memory, which will also cause the wasm heap memory to have only 2G of effective space, and another 2G needs to be reserved for the serialized bytes.
 * What are the disadvantages?
-  * Stable memory currently has only a few low-level interfaces, and it is troublesome to build on them. Fortunately, there is currently a StableBTreeMap that can be used.
+  * Stable memory currently has only a few low-level interfaces, and it is troublesome to build on them. There is no std, no HashMap. Fortunately, there is currently a StableBTreeMap that can be used.
   * Compared with operating directly in wasm heap memory, stable memory is a system call, which reduces performance. However, I think it has something to do with the specific scenario, if it is a large block of data writing and reading, the speed of stable memory and wasm heap is almost [the same](https://github.com/aewc/balance/tree/bench#readme).
   * Will take up [additional storage space](https://github.com/aewc/balance/tree/size#readme) to manage the stable memory.
 * Why not develop a generic dynamic allocator for stable memory？
@@ -51,7 +51,7 @@
     This system call traps if dst+size exceeds the size of the WebAssembly memory or offset+size exceeds the size of the stable memory.
      This system call is experimental. It may be changed or removed in the future. Canisters using it may stop working.  
 
-Basically, all operations on stable memory can only be done through these four methods.
+Basically, all operations on stable memory can only be done through these four low-level api, and it is raw and provides few safe mechanism. It is necessary to ensure that the data will not be overwritten or damaged in the logic of the canister.
 
 ## Memory trait
 Memory trait from [stable-structures](https://github.com/dfinity/ic/blob/8d7d9b44ee/rs/stable-structures/src/lib.rs#L25) in ic:

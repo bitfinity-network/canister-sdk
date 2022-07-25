@@ -440,6 +440,43 @@ mod test {
     }
 
     #[test]
+    fn deallocate_memory() {
+        let manager_memory = StableMemory::default();
+        let data_memory = StableMemory::default();
+
+        let virtual_memory_0 =
+            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 0);
+        let virtual_memory_1 =
+            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 1);
+
+        assert_eq!(virtual_memory_0.grow(1), 0);
+        virtual_memory_1.page_range.borrow_mut().reload();
+        assert_eq!(virtual_memory_1.grow(1), 0);
+
+        assert_eq!(virtual_memory_0.grow(1), 1);
+        assert_eq!(virtual_memory_1.grow(1), 1);
+
+        //[([0, 0, 0, 0, 0, 0, 0, 0], []), ([0, 0, 0, 1, 0, 0, 0, 2], []), ([1, 0, 0, 0, 0, 0, 0, 1], []), ([1, 0, 0, 1, 0, 0, 0, 3], [])]
+        println!(
+            "{:?}",
+            StableBTreeMap::<_, Vec<u8>, Vec<u8>>::load(Rc::clone(&manager_memory))
+                .iter()
+                .collect::<Vec<_>>()
+        );
+
+        assert_eq!(virtual_memory_0.size(), 2);
+        assert_eq!(virtual_memory_1.size(), 2);
+
+        virtual_memory_0.forget();
+        println!(
+            "{:?}",
+            StableBTreeMap::<_, Vec<u8>, Vec<u8>>::load(Rc::clone(&manager_memory))
+                .iter()
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
     #[should_panic(expected = "out of bounds")]
     fn read_outside_of_memory_range() {
         let manager_memory = StableMemory::default();
