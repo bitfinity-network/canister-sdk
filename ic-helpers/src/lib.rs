@@ -27,5 +27,3 @@ pub use types::*;
 pub mod tokens;
 
 pub mod candid_header;
-
-pub mod stable;

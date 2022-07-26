@@ -1,6 +1,6 @@
 use stable_structures::{self, Memory, StableBTreeMap};
 
-pub mod chunk_manager;
+pub mod virtual_memory;
 
 pub mod export {
     pub use stable_structures;
@@ -13,10 +13,9 @@ pub type StableMemory = stable_structures::VectorMemory;
 
 #[cfg(test)]
 mod test {
-    use super::{chunk_manager::VirtualMemory, export::stable_structures::RestrictedMemory, *};
+    use virtual_memory::WASM_PAGE_SIZE;
+    use super::{virtual_memory::VirtualMemory, export::stable_structures::RestrictedMemory, *};
     use std::rc::Rc;
-
-    const WASM_PAGE_SIZE: u64 = 65536;
 
     #[test]
     fn single_entry_grow_size() {

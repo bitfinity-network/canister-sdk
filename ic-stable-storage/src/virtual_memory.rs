@@ -1,8 +1,8 @@
-use crate::stable::{Memory, StableBTreeMap};
+use crate::{Memory, StableBTreeMap};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-const WASM_PAGE_SIZE: u64 = 65536;
+pub(crate) const WASM_PAGE_SIZE: u64 = 65536;
 
 /// Manger is used to manage VirtualMemory. The specific function i&s to mark which wasm page in
 /// memory belongs to which data, for example, the 0th page belongs to Balance, the 1st page belongs to History, etc.
