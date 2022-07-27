@@ -102,7 +102,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         let res = self
             .factory_state()
             .borrow_mut()
-            .authorize_owner()?
+            .check_is_owner()?
             .set_canister_wasm(wasm, state_header);
         res
     }
@@ -178,7 +178,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
 
                 let upgrader = state_rc
                     .borrow_mut()
-                    .authorize_owner_internal(caller)?
+                    .check_is_owner_internal(caller)?
                     .upgrade(canister, &state_lock)?;
 
                 let upgrade_result = match upgrader.await {
@@ -191,7 +191,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
 
             {
                 let mut state = state_rc.borrow_mut();
-                let mut state = state.authorize_owner_internal(caller)?;
+                let mut state = state.check_is_owner_internal(caller)?;
                 for (canister, upgrade_result) in results.iter() {
                     if matches!(upgrade_result, UpgradeResult::Upgraded) {
                         state
@@ -209,7 +209,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     fn reset_update_lock(&self) -> Result<(), FactoryError> {
         self.factory_state()
             .borrow_mut()
-            .authorize_owner()?
+            .check_is_owner()?
             .release_update_lock();
         Ok(())
     }
@@ -244,7 +244,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     fn set_icp_fee(&self, e8s: u64) -> Result<(), FactoryError> {
         self.factory_state()
             .borrow_mut()
-            .authorize_owner()?
+            .check_is_owner()?
             .set_icp_fee(e8s)
     }
 
@@ -260,7 +260,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     fn set_icp_to(&self, to: Principal) -> Result<(), FactoryError> {
         self.factory_state()
             .borrow_mut()
-            .authorize_owner()?
+            .check_is_owner()?
             .set_fee_to(to)
     }
 
@@ -305,7 +305,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     fn set_controller(&self, controller: Principal) -> Result<(), FactoryError> {
         self.factory_state()
             .borrow_mut()
-            .authorize_owner()?
+            .check_is_owner()?
             .set_controller(controller)
     }
 
@@ -348,13 +348,13 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
 
             self.factory_state()
                 .borrow_mut()
-                .authorize_owner_internal(caller)?
+                .check_is_owner_internal(caller)?
                 .drop_canister(canister_id, &state_lock)
                 .await?;
 
             self.factory_state()
                 .borrow_mut()
-                .authorize_owner_internal(caller)?
+                .check_is_owner_internal(caller)?
                 .register_dropped(canister_id, &state_lock)
         })
     }
