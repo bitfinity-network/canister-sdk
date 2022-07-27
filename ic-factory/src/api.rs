@@ -12,6 +12,12 @@ use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 
 pub trait FactoryCanister: Canister + Sized + PreUpdate {
+    // IMPORTANT NOTE: This should be overwritten when implementing
+    // `FactoryCanister` trait because `FactoryState::get()` returns
+    // a trait-local stable state for the factory, meaning that the
+    // default definitions of the `FactoryCanister` will use `ic-factory`
+    // state, instead of the state of the factory canister, that
+    // implements this trait.
     fn factory_state(&self) -> Rc<RefCell<FactoryState>> {
         FactoryState::get()
     }
