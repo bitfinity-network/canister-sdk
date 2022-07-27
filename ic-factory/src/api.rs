@@ -93,26 +93,40 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
             )])));
         }
 
-        self.factory_state()
+        let res = self
+            .factory_state()
             .borrow_mut()
             .authorize_owner()?
-            .set_canister_wasm(wasm, state_header)
+            .set_canister_wasm(wasm, state_header);
+        res
     }
 
+    #[allow(unused_variables)]
     fn create_canister<'a, T: ArgumentEncoder + 'a>(
         &'a self,
         init_args: T,
         controller: Option<Principal>,
+        caller: Option<Principal>,
     ) -> AsyncReturn<'a, Result<Principal, FactoryError>> {
         Box::pin(async move {
             let state_lock = self.factory_state().borrow_mut().lock()?;
 
-            let caller = ic_canister::ic_kit::ic::caller();
-            let cycles = self
-                .factory_state()
-                .borrow()
-                .consume_provided_cycles_or_icp(caller)
-                .await?;
+            let cycles = {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    let caller = caller.unwrap_or_else(ic_kit::ic::caller);
+
+                    self.factory_state()
+                        .borrow()
+                        .consume_provided_cycles_or_icp(caller)
+                        .await?
+                }
+
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    0
+                }
+            };
 
             let principal = self
                 .factory_state()
@@ -158,7 +172,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
 
                 let upgrader = state_rc
                     .borrow_mut()
-                    .authorize_owner()?
+                    .authorize_owner_internal(caller)?
                     .upgrade(canister, &state_lock)?;
 
                 let upgrade_result = match upgrader.await {
@@ -171,7 +185,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
 
             {
                 let mut state = state_rc.borrow_mut();
-                let mut state = state.authorize_owner()?;
+                let mut state = state.authorize_owner_internal(caller)?;
                 for (canister, upgrade_result) in results.iter() {
                     if matches!(upgrade_result, UpgradeResult::Upgraded) {
                         state
@@ -317,19 +331,24 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         ic_canister::generate_idl!()
     }
 
-    fn drop_canister(&self, canister_id: Principal) -> AsyncReturn<Result<(), FactoryError>> {
+    fn drop_canister(
+        &self,
+        canister_id: Principal,
+        caller: Option<Principal>,
+    ) -> AsyncReturn<Result<(), FactoryError>> {
         Box::pin(async move {
             let state_lock = self.factory_state().borrow_mut().lock()?;
+            let caller = caller.unwrap_or_else(ic_kit::ic::caller);
 
             self.factory_state()
                 .borrow_mut()
-                .authorize_owner()?
+                .authorize_owner_internal(caller)?
                 .drop_canister(canister_id, &state_lock)
                 .await?;
 
             self.factory_state()
                 .borrow_mut()
-                .authorize_owner()?
+                .authorize_owner_internal(caller)?
                 .register_dropped(canister_id, &state_lock)
         })
     }
