@@ -21,7 +21,7 @@ type CanisterHash = Vec<u8>;
 #[derive(Debug, Default, CandidType, Deserialize, IcStorage)]
 pub struct FactoryState {
     /// Immutable configuration of the factory.
-    configuration: FactoryConfiguration,
+    pub configuration: FactoryConfiguration,
     /// Module that will be used for upgrading canisters on factory owns.
     upgrading_module: Option<CanisterModule>,
     /// Canisters that were created by the factory.
@@ -101,6 +101,19 @@ impl FactoryState {
     /// Returns `FactoryError::AccessDenied` if the caller is not the factory controller.
     pub fn authorize_owner(&mut self) -> Result<Authorized<Owner>, FactoryError> {
         let caller = ic_canister::ic_kit::ic::caller();
+        self.authorize_owner_internal(caller)
+    }
+
+    /// This is needed to deal with ic pecularity, where we cannot call `ic_cdk::caller()`
+    /// twice in the same endpiont, hence we need to store it as a separate variable and
+    /// pass it around.
+    ///
+    /// More on that:
+    /// https://forum.dfinity.org/t/canister-violated-contract-ic0-msg-caller-size-cannot-be-executed-in-reply-callback-mode/7890/4
+    pub fn authorize_owner_internal(
+        &mut self,
+        caller: Principal,
+    ) -> Result<Authorized<Owner>, FactoryError> {
         if caller == self.configuration.controller {
             Ok(Authorized::<Owner<'_>> {
                 auth: Owner { factory: self },
@@ -410,10 +423,10 @@ fn get_canister_hash(wasm: &[u8]) -> CanisterHash {
 
 #[derive(Debug, CandidType, Deserialize)]
 pub struct FactoryConfiguration {
-    ledger_principal: Principal,
-    icp_fee: u64,
-    icp_to: Principal,
-    controller: Principal,
+    pub ledger_principal: Principal,
+    pub icp_fee: u64,
+    pub icp_to: Principal,
+    pub controller: Principal,
 }
 
 impl FactoryConfiguration {
@@ -480,8 +493,9 @@ async fn consume_provided_icp(
     icp_to: Principal,
     icp_fee: u64,
 ) -> Result<(), FactoryError> {
+    let id = ic_kit::ic::id();
     let balance = ledger
-        .get_balance(ic_kit::ic::id(), Some((&PrincipalId(caller)).into()))
+        .get_balance(id, Some((&PrincipalId(caller)).into()))
         .await
         .map_err(FactoryError::LedgerError)?;
 
