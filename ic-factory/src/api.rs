@@ -18,6 +18,8 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     // default definitions of the `FactoryCanister` will use `ic-factory`
     // state, instead of the state of the factory canister, that
     // implements this trait.
+    // TODO: remove default implementation since the user may forget
+    // to overwrite this method
     fn factory_state(&self) -> Rc<RefCell<FactoryState>> {
         FactoryState::get()
     }

@@ -8,10 +8,7 @@ use crate::error::{AuctionError, Result};
 use crate::{AuctionInfo, AuctionState, BiddingInfo};
 
 pub trait Auction: Canister + Sized {
-    fn auction_state(&self) -> Rc<RefCell<AuctionState>> {
-        use ic_storage::IcStorage;
-        AuctionState::get()
-    }
+    fn auction_state(&self) -> Rc<RefCell<AuctionState>>;
 
     fn canister_pre_update(&self, method_name: &str, _method_type: ic_canister::MethodType) {
         if method_name == "run_auction" {
