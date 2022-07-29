@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "ic-factory",
+  "ic-auction",
   "ic-helpers",
   "ic-storage",
   "ic-storage/ic-storage-derive",
