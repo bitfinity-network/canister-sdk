@@ -19,13 +19,13 @@ pub fn inspect_message(method: &str, caller: Principal) -> Result<AcceptReason, 
             {
                 Ok(AcceptReason::Valid)
             } else {
-                Err("Auction is not due yet or auction run method is called not by owner or bidder. Rejecting.")
+                Err("auction is not due yet or auction run method is called not by owner or bidder. Rejecting.")
             }
         }
         "bidCycles" => {
             // We reject this message, because a call with cycles cannot be made through ingress,
             // only from the wallet canister.
-            Err("Call with cycles cannot be made through ingress environment.")
+            Err("call with cycles cannot be made through ingress environment.")
         }
         _ => Ok(AcceprReason::NotAuctionMethod),
     }

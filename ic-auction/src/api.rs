@@ -15,10 +15,8 @@ pub trait Auction: Canister + Sized {
             if !self.auction_state().borrow().bidding_state.is_auction_due() {
                 ic_cdk::println!("Too early to begin auction");
             }
-        } else {
-            if let Err(auction_error) = self.run_auction() {
-                ic_cdk::println!("Auction error: {auction_error:#?}");
-            }
+        } else if let Err(auction_error) = self.run_auction() {
+            ic_cdk::println!("Auction error: {auction_error:#?}");
         }
     }
 
@@ -53,7 +51,6 @@ pub trait Auction: Canister + Sized {
         auction_state.borrow_mut().reset_bidding_state();
 
         if let Ok(result) = result.clone() {
-            println!("result ok");
             auction_state.borrow_mut().history.push(result);
         }
 
@@ -122,7 +119,6 @@ pub trait Auction: Canister + Sized {
     #[update(trait = true)]
     fn set_auction_period(&self, interval: Interval) -> Result<()> {
         let caller = ic_canister::ic_kit::ic::caller();
-        println!("caller in: {}", caller);
         self.auction_state()
             .borrow_mut()
             .authorize_owner()?

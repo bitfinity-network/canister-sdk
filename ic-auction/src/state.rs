@@ -14,9 +14,9 @@ use crate::{
 // to add cycles rather then to decrease them. 1M is chosen as one ingress call costs 590K cycles.
 pub const MIN_BIDDING_AMOUNT: Cycles = 1_000_000;
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // Bidding state
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 #[derive(CandidType, Debug, Clone, Deserialize)]
 pub struct BiddingState {
@@ -53,9 +53,9 @@ impl Default for BiddingState {
     }
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // Auction state
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 #[derive(CandidType, Deserialize, IcStorage, Debug)]
 pub struct AuctionState {
@@ -103,10 +103,9 @@ impl AuctionState {
     pub fn reset_bidding_state(&mut self) {
         self.bidding_state = BiddingState {
             fee_ratio: self.get_fee_ratio(),
-            cycles_since_auction: 0,
-            last_auction: ic::time(),
-            bids: HashMap::new(),
             auction_period: self.bidding_state.auction_period,
+            last_auction: ic::time(),
+            ..Default::default()
         };
     }
 
@@ -189,18 +188,3 @@ impl<'a> Authorized<Controller<'a>> {
         self.auth.state.controller = controller;
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use test_case::test_case;
-
-//     // #[test_case(0, 0, 0.0)]
-//     // #[test_case(0, 1000, 0.0)]
-//     // #[test_case(1000, 0, 1.0)]
-//     // #[test_case(1000, 1000, 1.0)]
-//     // #[test_case(1000, 10_000, 0.5)]
-//     // #[test_case(1000, 1_000_000, 0.125)]
-//     // fn fee_ratio_tests(min_cycles: u64, current_cycles: u64, ratio: f64) {
-//     //     assert_eq!(get_fee_ratio(min_cycles, current_cycles), ratio);
-//     // }
-// }
