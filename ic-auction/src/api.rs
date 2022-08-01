@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{update, Canister};
+use ic_canister::{generate_exports, update, Canister};
 use ic_cdk::export::candid::Principal;
 use ic_helpers::metrics::Interval;
 
@@ -8,7 +8,11 @@ use crate::error::{AuctionError, Result};
 use crate::{AuctionInfo, AuctionState, BiddingInfo};
 
 pub trait Auction: Canister + Sized {
-    fn auction_state(&self) -> Rc<RefCell<AuctionState>>;
+    // TODO [CPROD-1056]: Remove default implementation as the
+    // user may forget to overwrite it
+    fn auction_state(&self) -> Rc<RefCell<AuctionState>> {
+        panic!("auction_state is unimplemented")
+    }
 
     fn canister_pre_update(&self, method_name: &str, _method_type: ic_canister::MethodType) {
         if method_name == "run_auction" {
@@ -20,7 +24,11 @@ pub trait Auction: Canister + Sized {
         }
     }
 
-    fn disburse_rewards(&self) -> Result<AuctionInfo>;
+    // TODO [CPROD-1056]: Remove default implementation as the
+    // user may forget to overwrite it
+    fn disburse_rewards(&self) -> Result<AuctionInfo> {
+        panic!("disburse_rewards is unimplemented")
+    }
 
     /// Starts the cycle auction.
     ///
@@ -118,7 +126,6 @@ pub trait Auction: Canister + Sized {
     /// Only the owner is allowed to call this method.
     #[update(trait = true)]
     fn set_auction_period(&self, interval: Interval) -> Result<()> {
-        let caller = ic_canister::ic_kit::ic::caller();
         self.auction_state()
             .borrow_mut()
             .authorize_owner()?
@@ -133,3 +140,5 @@ pub trait Auction: Canister + Sized {
         ic_canister::generate_idl!()
     }
 }
+
+generate_exports!(Auction);
