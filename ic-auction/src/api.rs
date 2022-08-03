@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{generate_exports, update, Canister};
+use ic_canister::{generate_exports, state_getter, update, Canister};
 use ic_cdk::export::candid::Principal;
 use ic_helpers::metrics::Interval;
 
@@ -8,11 +8,8 @@ use crate::error::{AuctionError, Result};
 use crate::{AuctionInfo, AuctionState, BiddingInfo};
 
 pub trait Auction: Canister + Sized {
-    // TODO [CPROD-1056]: Remove default implementation as the
-    // user may forget to overwrite it
-    fn auction_state(&self) -> Rc<RefCell<AuctionState>> {
-        panic!("auction_state is unimplemented")
-    }
+    #[state_getter]
+    fn auction_state(&self) -> Rc<RefCell<AuctionState>>;
 
     fn canister_pre_update(&self, method_name: &str, _method_type: ic_canister::MethodType) {
         if method_name == "run_auction" {
