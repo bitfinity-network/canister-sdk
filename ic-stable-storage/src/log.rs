@@ -1,16 +1,20 @@
 use std::marker::PhantomData;
 use std::rc::Rc;
 
-use candid::de::IDLDeserialize;
-use candid::ser::IDLBuilder;
 use candid::{CandidType, Deserialize};
 
 use super::error::Result;
-use super::{Memory, StableBTreeMap, StableMemory, VirtualMemory};
+use super::{
+    from_bytes, to_byte_vec, Memory, RestrictedMemory, StableBTreeMap, StableMemory, VirtualMemory,
+};
 
-type Mem<const INDEX: u8> = Rc<VirtualMemory<StableMemory, INDEX>>;
+type Mem<const INDEX: u8> = VirtualMemory<Rc<RestrictedMemory<StableMemory>>, INDEX>;
+
+const MAX_KEY_SIZE: u32 = 1024 * 1024;
+const MAX_VALUE_SIZE: u32 = 0;
 
 /// An append only log.
+/// Inserting the same value twice will simply replace the inner value.
 /// ```
 /// use ic_stable_storage::StableLog;
 /// let log = StableLog::<u64, 0>::from(vec![1, 2, 3]);
@@ -30,11 +34,12 @@ impl<T, const INDEX: u8> Default for StableLog<T, INDEX> {
 }
 
 impl<T, const INDEX: u8> StableLog<T, INDEX> {
-    /// Create a new instance of a [`Log`].
+    /// Create a new instance of a [`StableLog`].
     pub fn new() -> Self {
-        let memory = StableMemory::default();
-        let virt_memory = Rc::new(VirtualMemory::init(memory));
-        let inner = StableBTreeMap::init(virt_memory, 255, 0);
+        let inner = crate::MEM.with(|memory| {
+            let virt_memory = VirtualMemory::<_, INDEX>::init(memory.clone());
+            StableBTreeMap::init(virt_memory, MAX_KEY_SIZE, MAX_VALUE_SIZE)
+        });
 
         Self {
             _p: PhantomData,
@@ -64,9 +69,7 @@ where
 {
     /// Push a new value to the end of the log.
     pub fn push(&mut self, val: T) -> Result<()> {
-        let mut serializer = IDLBuilder::new();
-        serializer.arg(&val)?;
-        let bytes = serializer.serialize_to_vec()?;
+        let bytes = to_byte_vec(&val)?;
         self.inner.insert(bytes, vec![])?;
         Ok(())
     }
@@ -79,10 +82,8 @@ where
     /// ```
     pub fn pop_front(&mut self) -> Option<T> {
         let (entry, _) = self.inner.iter().next()?;
-        let _ = self.inner.remove(&entry)?;
-        let mut de = IDLDeserialize::new(&entry).ok()?;
-        let res = de.get_value().ok()?;
-        Some(res)
+        self.inner.remove(&entry)?;
+        from_bytes(&entry).ok()
     }
 
     /// Remove the last entry in the `Log`
@@ -93,25 +94,20 @@ where
     /// ```
     pub fn pop_back(&mut self) -> Option<T> {
         let (entry, _) = self.inner.iter().last()?;
-        let _ = self.inner.remove(&entry)?;
-        let mut de = IDLDeserialize::new(&entry).ok()?;
-        let res = de.get_value().ok()?;
-        Some(res)
+        self.inner.remove(&entry)?;
+        from_bytes(&entry).ok()
     }
 
     /// Convert the [`Log<T>`] into a `Vec<T>`.
     /// This would load and deserialize every value in the `Log` which could be an expensive
-    /// operation if there are a lot of values in the `Log`.
+    /// operation if there are a lot of values.
     /// ```
     /// # use ic_stable_storage::StableLog;
     /// let mut log = StableLog::<u64, 0>::from(vec![1, 2]);
     /// assert_eq!(log.to_vec(), vec![1, 2]);
     /// ```
     pub fn to_vec(self) -> Vec<T> {
-        self.inner
-            .iter()
-            .filter_map(|(k, _)| IDLDeserialize::new(&k).ok()?.get_value().ok())
-            .collect()
+        self.into_iter().collect()
     }
 }
 
@@ -138,9 +134,7 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        self.inner
-            .next()
-            .and_then(|(k, _)| IDLDeserialize::new(&k).ok()?.get_value().ok())
+        self.inner.next().and_then(|(k, _)| from_bytes(&k).ok())
     }
 }
 
@@ -188,9 +182,9 @@ mod test {
 
     #[test]
     fn pop_back_not_empty() {
-        let mut log = StableLog::<u64, 0>::from(vec![1, 2]);
-        assert_eq!(log.pop_back(), Some(2));
-        assert_eq!(log.len(), 1);
+        let mut log = StableLog::<u64, 0>::from(vec![1, 2, 3]);
+        assert_eq!(log.pop_back(), Some(3));
+        assert_eq!(log.len(), 2);
     }
 
     #[test]
@@ -206,5 +200,27 @@ mod test {
         assert_eq!(iter.next(), Some(1));
         assert_eq!(iter.next(), Some(2));
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn multiple_logs() {
+        let log_1 = StableLog::<u64, 0>::from(vec![1, 2]);
+        let log_2 = StableLog::<u64, 1>::from(vec![2, 3]);
+
+        let mut iter = log_1.into_iter();
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), None);
+
+        let mut iter = log_2.into_iter();
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn insert_same_twice() {
+        let log = StableLog::<u64, 0>::from(vec![1, 1]);
+        assert_eq!(log.len(), 1);
     }
 }

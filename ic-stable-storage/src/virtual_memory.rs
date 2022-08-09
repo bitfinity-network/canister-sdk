@@ -10,11 +10,19 @@ pub struct VirtualMemory<M1: Memory, const INDEX: u8> {
     pages: Pages,
 }
 
+impl<M: Memory + Clone, const INDEX: u8> Clone for VirtualMemory<M, INDEX> {
+    fn clone(&self) -> Self {
+        Self {
+            memory: self.memory.clone(),
+            pages: self.pages,
+        }
+    }
+}
+
 impl<M1: Memory, const INDEX: u8> VirtualMemory<M1, INDEX> {
     const ASSERT_VALID: () = assert!(INDEX != u8::MAX);
     pub fn init(memory: M1) -> Self {
-        // Note:
-        // This block ensures that u8::MAX is never used at compile time.
+        // NOTE: This ensures that u8::MAX is never used at compile time.
         #[allow(clippy::let_unit_value)]
         {
             let _ = Self::ASSERT_VALID;

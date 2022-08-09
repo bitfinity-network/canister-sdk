@@ -1,27 +1,72 @@
-pub(crate) use stable_structures::btreemap::{InsertError, Iter};
-use stable_structures::{self, Memory, StableBTreeMap};
+use std::rc::Rc;
+
+use candid::de::IDLDeserialize;
+use candid::ser::IDLBuilder;
+use candid::{CandidType, Deserialize};
+use error::Result;
+use stable_structures::{self, Memory, RestrictedMemory, StableBTreeMap};
 
 mod error;
 mod log;
+mod map;
 mod pages;
 mod virtual_memory;
 
 pub(crate) use pages::Pages;
+pub(crate) use stable_structures::btreemap::{InsertError, Iter};
 
 pub use log::StableLog;
+pub use map::StableMap;
 pub use virtual_memory::VirtualMemory;
 
-pub mod export {
-    pub use stable_structures;
-}
-
+// -----------------------------------------------------------------------------
+//     - Stable memory -
+//     This is `Ic0StableMemory` on the IC, and
+//     `Rc<RefCell<Vec<u8>>>` locally .
+// -----------------------------------------------------------------------------
 pub type StableMemory = stable_structures::DefaultMemoryImpl;
 
 pub(crate) const WASM_PAGE_SIZE: u64 = 65536;
 
+// -----------------------------------------------------------------------------
+//     - Memory ranges -
+// -----------------------------------------------------------------------------
+// The range reserved for pages
+pub(crate) const RESERVED_PAGE_MEM: std::ops::Range<u64> = 0..118;
+// The remaining pages are reserved for data
+pub(crate) const DATA_MEM: std::ops::Range<u64> = RESERVED_PAGE_MEM.end..131072;
+
+// -----------------------------------------------------------------------------
+//     - Data memory -
+//     Memory reserved for all the different collections.
+//     * Log, Map etc.
+// -----------------------------------------------------------------------------
+thread_local! {
+    pub(crate) static MEM: Rc<RestrictedMemory<StableMemory>> = Rc::new(RestrictedMemory::new(StableMemory::default(), DATA_MEM));
+}
+
+pub(crate) fn to_byte_vec<T>(val: &T) -> Result<Vec<u8>>
+where
+    for<'de> T: CandidType + Deserialize<'de>,
+{
+    let mut serializer = IDLBuilder::new();
+    serializer.arg(&val)?;
+    let bytes = serializer.serialize_to_vec()?;
+    Ok(bytes)
+}
+
+pub(crate) fn from_bytes<T>(bytes: &[u8]) -> Result<T>
+where
+    for<'de> T: CandidType + Deserialize<'de>,
+{
+    let mut de = IDLDeserialize::new(bytes)?;
+    let res = de.get_value()?;
+    Ok(res)
+}
+
 #[cfg(test)]
 mod test {
-    use super::{export::stable_structures::RestrictedMemory, VirtualMemory, *};
+    use super::*;
     use std::rc::Rc;
 
     #[test]
@@ -84,11 +129,9 @@ mod test {
         assert_eq!(virtual_memory_1.size(), 0);
 
         assert_eq!(virtual_memory_0.grow(5), 0);
-        // virtual_memory_1.pages.borrow_mut().reload();
         assert_eq!(virtual_memory_1.grow(6), 0);
 
         assert_eq!(virtual_memory_0.grow(7), 5);
-        // virtual_memory_1.pages.borrow_mut().reload();
         assert_eq!(virtual_memory_1.grow(8), 6);
 
         assert_eq!(virtual_memory_0.size(), 12);
@@ -217,7 +260,6 @@ mod test {
         let virtual_memory_1 = VirtualMemory::<_, 0>::init(Rc::clone(&data_memory));
 
         assert_eq!(virtual_memory_0.grow(1), 0);
-        // virtual_memory_1.pages.borrow_mut().reload();
 
         let src_0 = [1; WASM_PAGE_SIZE as usize];
         let mut dst_0 = [0; WASM_PAGE_SIZE as usize];
@@ -258,9 +300,7 @@ mod test {
         let virtual_memory_2 = VirtualMemory::<_, 2>::init(Rc::clone(&data_memory));
 
         assert_eq!(virtual_memory_0.grow(1), 0);
-        // virtual_memory_1.pages.borrow_mut().reload();
         assert_eq!(virtual_memory_1.grow(1), 0);
-        // virtual_memory_2.pages.borrow_mut().reload();
         assert_eq!(virtual_memory_2.grow(1), 0);
 
         assert_eq!(virtual_memory_0.grow(1), 1);

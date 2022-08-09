@@ -1,6 +1,7 @@
-use super::StableMemory;
-use crate::StableBTreeMap;
 use std::cell::RefCell;
+
+use super::{RestrictedMemory, StableMemory, RESERVED_PAGE_MEM};
+use crate::StableBTreeMap;
 
 const MAX_PAGE_MEM_KEY_SIZE: u32 = 8;
 const MAX_PAGE_MEM_VALUE_SIZE: u32 = 0;
@@ -8,19 +9,16 @@ const FREE: u8 = u8::MAX;
 
 thread_local! {
     // `StableMemory` is either:
-    // A) `Rc<RefCell<Vec<u8>>>`
-    // B) `Ic0StableMemory` (which is `Copy + Clone`)
-    // static PAGES: RefCell<Option<PageMemory>> = RefCell::new(None);
     static PAGES: RefCell<PageMemory> = RefCell::new(
         StableBTreeMap::init(
-            StableMemory::default(),
+            RestrictedMemory::new(StableMemory::default(), RESERVED_PAGE_MEM),
             MAX_PAGE_MEM_KEY_SIZE,
             MAX_PAGE_MEM_VALUE_SIZE
-        )
+        ),
     );
 }
 
-type PageMemory = StableBTreeMap<StableMemory, Vec<u8>, Vec<u8>>;
+type PageMemory = StableBTreeMap<RestrictedMemory<StableMemory>, Vec<u8>, Vec<u8>>;
 
 #[cfg(test)]
 fn memory_dump() -> Vec<Vec<u8>> {
@@ -30,6 +28,7 @@ fn memory_dump() -> Vec<Vec<u8>> {
 /// `Pages` is used to manage `VirtualMemory`.
 /// Memory pages belonging to a particular index is tracked via `Pages`.
 /// This makes it possible to have two collections of the same type with different indices.
+#[derive(Debug, Copy, Clone)]
 pub(super) struct Pages(u8);
 
 impl Pages {
