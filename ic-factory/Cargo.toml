@@ -11,7 +11,6 @@ no_api = []
 [dependencies]
 ledger-canister = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18_18-31"}
 ic-base-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18_18-31"}
-async-trait = "0.1"
 hex = "0.4"
 ic-cdk = "0.5"
 candid = "=0.7.14" # Because there is a build issue with ic_types::principal::PrincipalError 

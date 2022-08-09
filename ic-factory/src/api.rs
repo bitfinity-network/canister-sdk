@@ -7,7 +7,6 @@ use ic_cdk::export::candid::utils::ArgumentEncoder;
 use ic_helpers::candid_header::{validate_header, CandidHeader, TypeCheckResult};
 use ic_helpers::management;
 use ic_storage::stable::Versioned;
-use ic_storage::IcStorage;
 use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 
@@ -18,8 +17,11 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     // default definitions of the `FactoryCanister` will use `ic-factory`
     // state, instead of the state of the factory canister, that
     // implements this trait.
+    // TODO [CPROD-1056]: remove default implementation since the user may forget
+    // to overwrite this method
+    #[deprecated = "Default implementation of `factory_state` is deprecated. Please overwrite it."]
     fn factory_state(&self) -> Rc<RefCell<FactoryState>> {
-        FactoryState::get()
+        panic!("factory_state is not implemented")
     }
 
     /// Returns the checksum of a wasm module in hex representation.
