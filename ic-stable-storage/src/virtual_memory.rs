@@ -13,7 +13,12 @@ pub struct VirtualMemory<M1: Memory, const INDEX: u8> {
 impl<M1: Memory, const INDEX: u8> VirtualMemory<M1, INDEX> {
     const ASSERT_VALID: () = assert!(INDEX != u8::MAX);
     pub fn init(memory: M1) -> Self {
-        let _ = Self::ASSERT_VALID;
+        // Note:
+        // This block ensures that u8::MAX is never used at compile time.
+        #[allow(clippy::let_unit_value)]
+        {
+            let _ = Self::ASSERT_VALID;
+        }
 
         Self {
             memory,
@@ -104,7 +109,8 @@ impl<M1: Memory, const INDEX: u8> Memory for VirtualMemory<M1, INDEX> {
             .enumerate()
             .map(|(i, key)| self.encode(size + i as u32, key));
 
-        self.pages.insert_pages(pages)
+        self.pages
+            .insert_pages(pages)
             .expect("failed to insert pages");
 
         size as i64

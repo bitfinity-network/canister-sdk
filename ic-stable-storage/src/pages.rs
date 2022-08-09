@@ -1,6 +1,6 @@
-use std::cell::RefCell;
-use crate::StableBTreeMap;
 use super::StableMemory;
+use crate::StableBTreeMap;
+use std::cell::RefCell;
 
 const MAX_PAGE_MEM_KEY_SIZE: u32 = 8;
 const MAX_PAGE_MEM_VALUE_SIZE: u32 = 0;
@@ -103,7 +103,10 @@ impl Pages {
         })
     }
 
-    pub(super) fn insert_pages(&self, mut new_pages: impl Iterator<Item = Vec<u8>>) -> Result<(), crate::InsertError> {
+    pub(super) fn insert_pages(
+        &self,
+        mut new_pages: impl Iterator<Item = Vec<u8>>,
+    ) -> Result<(), crate::InsertError> {
         PAGES.with(|pages| {
             let mut pages = pages.borrow_mut();
             new_pages.try_for_each(|page| pages.insert(page, vec![]).map(|_| ()))
@@ -113,10 +116,10 @@ impl Pages {
 
 #[cfg(test)]
 mod test {
-    use std::rc::Rc;
+    use super::*;
     use crate::Memory;
     use crate::VirtualMemory;
-    use super::*;
+    use std::rc::Rc;
 
     #[test]
     fn deallocate_memory() {
