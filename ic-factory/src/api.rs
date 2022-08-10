@@ -1,7 +1,8 @@
 use super::{error::FactoryError, FactoryState};
 use candid::{CandidType, Nat, Principal};
 use ic_canister::{
-    generate_exports, query, update, virtual_canister_call, AsyncReturn, Canister, PreUpdate,
+    generate_exports, query, state_getter, update, virtual_canister_call, AsyncReturn, Canister,
+    PreUpdate,
 };
 use ic_cdk::export::candid::utils::ArgumentEncoder;
 use ic_helpers::candid_header::{validate_header, CandidHeader, TypeCheckResult};
@@ -11,18 +12,8 @@ use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 
 pub trait FactoryCanister: Canister + Sized + PreUpdate {
-    // IMPORTANT NOTE: This should be overwritten when implementing
-    // `FactoryCanister` trait because `FactoryState::get()` returns
-    // a trait-local stable state for the factory, meaning that the
-    // default definitions of the `FactoryCanister` will use `ic-factory`
-    // state, instead of the state of the factory canister, that
-    // implements this trait.
-    // TODO [CPROD-1056]: remove default implementation since the user may forget
-    // to overwrite this method
-    #[deprecated = "Default implementation of `factory_state` is deprecated. Please overwrite it."]
-    fn factory_state(&self) -> Rc<RefCell<FactoryState>> {
-        panic!("factory_state is not implemented")
-    }
+    #[state_getter]
+    fn factory_state(&self) -> Rc<RefCell<FactoryState>>;
 
     /// Returns the checksum of a wasm module in hex representation.
     #[query(trait = true)]
