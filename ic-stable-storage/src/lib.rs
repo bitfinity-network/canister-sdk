@@ -1,27 +1,84 @@
-use stable_structures::{self, Memory, StableBTreeMap};
+use std::rc::Rc;
 
-pub mod virtual_memory;
+use candid::de::IDLDeserialize;
+use candid::ser::IDLBuilder;
+use candid::{CandidType, Deserialize};
+use error::Result;
+use stable_structures::{self, Memory, RestrictedMemory, StableBTreeMap};
 
-pub mod export {
-    pub use stable_structures;
+mod error;
+mod log;
+mod map;
+mod pages;
+mod virtual_memory;
+
+pub(crate) use pages::Pages;
+pub(crate) use stable_structures::btreemap::{InsertError, Iter};
+
+pub use log::StableLog;
+pub use map::StableMap;
+pub use virtual_memory::VirtualMemory;
+
+// -----------------------------------------------------------------------------
+//     - Stable memory -
+//     This is `Ic0StableMemory` on the IC, and
+//     `Rc<RefCell<Vec<u8>>>` locally .
+// -----------------------------------------------------------------------------
+pub type StableMemory = stable_structures::DefaultMemoryImpl;
+
+pub(crate) const WASM_PAGE_SIZE: u64 = 65536;
+
+// Pad bytes for serialization and type information.
+// Creating a struct with 30 fields where each field was a `[u64; 32]`,
+// had an aditional size of 221 bytes. Padding with 250 bytes should be fine 
+// for most.
+pub(crate) const PADDING: u32 = 250;
+
+// -----------------------------------------------------------------------------
+//     - Memory ranges -
+// -----------------------------------------------------------------------------
+// The range reserved for pages
+pub(crate) const RESERVED_PAGE_MEM: std::ops::Range<u64> = 0..118;
+// The remaining pages are reserved for data
+pub(crate) const DATA_MEM: std::ops::Range<u64> = RESERVED_PAGE_MEM.end..131072;
+
+// -----------------------------------------------------------------------------
+//     - Data memory -
+//     Memory reserved for all the different collections.
+//     * Log, Map etc.
+// -----------------------------------------------------------------------------
+thread_local! {
+    pub(crate) static MEM: Rc<RestrictedMemory<StableMemory>> = Rc::new(RestrictedMemory::new(StableMemory::default(), DATA_MEM));
 }
 
-#[cfg(target_arch = "wasm32")]
-pub type StableMemory = stable_structures::Ic0StableMemory;
-#[cfg(not(target_arch = "wasm32"))]
-pub type StableMemory = stable_structures::VectorMemory;
+pub(crate) fn to_byte_vec<T>(val: &T) -> Result<Vec<u8>>
+where
+    for<'de> T: CandidType + Deserialize<'de>,
+{
+    let mut serializer = IDLBuilder::new();
+    serializer.arg(&val)?;
+    let bytes = serializer.serialize_to_vec()?;
+    Ok(bytes)
+}
+
+pub(crate) fn from_bytes<T>(bytes: &[u8]) -> Result<T>
+where
+    for<'de> T: CandidType + Deserialize<'de>,
+{
+    let mut de = IDLDeserialize::new(bytes)?;
+    let res = de.get_value()?;
+    Ok(res)
+}
 
 #[cfg(test)]
 mod test {
-    use virtual_memory::WASM_PAGE_SIZE;
-    use super::{virtual_memory::VirtualMemory, export::stable_structures::RestrictedMemory, *};
+    use super::*;
     use std::rc::Rc;
 
     #[test]
     fn single_entry_grow_size() {
-        let manager_memory = StableMemory::default();
         let data_memory = StableMemory::default();
-        let virtual_memory = VirtualMemory::init(data_memory, manager_memory, 0);
+        let virtual_memory = VirtualMemory::<_, 0>::init(data_memory);
 
         assert_eq!(virtual_memory.size(), 0);
         assert_eq!(virtual_memory.grow(10), 0);
@@ -69,23 +126,18 @@ mod test {
 
     #[test]
     fn multiple_entry_grow_size() {
-        let manager_memory = StableMemory::default();
         let data_memory = StableMemory::default();
 
-        let virtual_memory_0 =
-            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 0);
-        let virtual_memory_1 =
-            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 1);
+        let virtual_memory_0 = VirtualMemory::<_, 0>::init(Rc::clone(&data_memory));
+        let virtual_memory_1 = VirtualMemory::<_, 1>::init(Rc::clone(&data_memory));
 
         assert_eq!(virtual_memory_0.size(), 0);
         assert_eq!(virtual_memory_1.size(), 0);
 
         assert_eq!(virtual_memory_0.grow(5), 0);
-        virtual_memory_1.page_range.borrow_mut().reload();
         assert_eq!(virtual_memory_1.grow(6), 0);
 
         assert_eq!(virtual_memory_0.grow(7), 5);
-        virtual_memory_1.page_range.borrow_mut().reload();
         assert_eq!(virtual_memory_1.grow(8), 6);
 
         assert_eq!(virtual_memory_0.size(), 12);
@@ -184,9 +236,8 @@ mod test {
     #[test]
     #[should_panic(expected = "out of bounds")]
     fn write_without_enough_space() {
-        let manager_memory = StableMemory::default();
         let data_memory = StableMemory::default();
-        let virtual_memory = VirtualMemory::init(data_memory, manager_memory, 0);
+        let virtual_memory = VirtualMemory::<_, 0>::init(data_memory);
 
         assert_eq!(virtual_memory.grow(1), 0);
         let src = [1; 1 + WASM_PAGE_SIZE as usize];
@@ -196,9 +247,8 @@ mod test {
     #[test]
     #[should_panic(expected = "grow failed, which return -1")]
     fn write_without_grow_further() {
-        let manager_memory = StableMemory::default();
         let data_memory = RestrictedMemory::new(StableMemory::default(), 0..1);
-        let virtual_memory = VirtualMemory::init(data_memory, manager_memory, 0);
+        let virtual_memory = VirtualMemory::<_, 0>::init(data_memory);
 
         let result = virtual_memory.grow(2);
 
@@ -210,16 +260,12 @@ mod test {
 
     #[test]
     fn write_multiple_data_to_same_page() {
-        let manager_memory = StableMemory::default();
         let data_memory = StableMemory::default();
 
-        let virtual_memory_0 =
-            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 0);
-        let virtual_memory_1 =
-            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 0);
+        let virtual_memory_0 = VirtualMemory::<_, 0>::init(Rc::clone(&data_memory));
+        let virtual_memory_1 = VirtualMemory::<_, 0>::init(Rc::clone(&data_memory));
 
         assert_eq!(virtual_memory_0.grow(1), 0);
-        virtual_memory_1.page_range.borrow_mut().reload();
 
         let src_0 = [1; WASM_PAGE_SIZE as usize];
         let mut dst_0 = [0; WASM_PAGE_SIZE as usize];
@@ -240,9 +286,8 @@ mod test {
 
     #[test]
     fn write_single_entry_spanning_multiple_pages() {
-        let manager_memory = StableMemory::default();
         let data_memory = StableMemory::default();
-        let virtual_memory = VirtualMemory::init(data_memory, manager_memory, 0);
+        let virtual_memory = VirtualMemory::<_, 0>::init(data_memory);
 
         assert_eq!(virtual_memory.grow(3), 0);
         let src = [1; 1 + 2 * WASM_PAGE_SIZE as usize];
@@ -254,20 +299,14 @@ mod test {
 
     #[test]
     fn write_multiple_entries_spanning_multiple_pages() {
-        let manager_memory = StableMemory::default();
         let data_memory = StableMemory::default();
 
-        let virtual_memory_0 =
-            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 0);
-        let virtual_memory_1 =
-            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 1);
-        let virtual_memory_2 =
-            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 2);
+        let virtual_memory_0 = VirtualMemory::<_, 0>::init(Rc::clone(&data_memory));
+        let virtual_memory_1 = VirtualMemory::<_, 1>::init(Rc::clone(&data_memory));
+        let virtual_memory_2 = VirtualMemory::<_, 2>::init(Rc::clone(&data_memory));
 
         assert_eq!(virtual_memory_0.grow(1), 0);
-        virtual_memory_1.page_range.borrow_mut().reload();
         assert_eq!(virtual_memory_1.grow(1), 0);
-        virtual_memory_2.page_range.borrow_mut().reload();
         assert_eq!(virtual_memory_2.grow(1), 0);
 
         assert_eq!(virtual_memory_0.grow(1), 1);
@@ -412,82 +451,10 @@ mod test {
     }
 
     #[test]
-    fn deallocate_memory() {
-        let manager_memory = StableMemory::default();
-        let data_memory = StableMemory::default();
-
-        let virtual_memory_0 =
-            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 0);
-        let virtual_memory_1 =
-            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 1);
-
-        assert_eq!(virtual_memory_0.grow(1), 0);
-        virtual_memory_1.page_range.borrow_mut().reload();
-        assert_eq!(virtual_memory_1.grow(1), 0);
-
-        assert_eq!(virtual_memory_0.grow(1), 1);
-        assert_eq!(virtual_memory_1.grow(1), 1);
-
-        assert_eq!(
-            StableBTreeMap::<_, Vec<u8>, Vec<u8>>::load(Rc::clone(&manager_memory))
-                .iter()
-                .map(|(i, _)| i)
-                .collect::<Vec<_>>(),
-            vec![
-                vec![0, 0, 0, 0, 0, 0, 0, 0],
-                vec![0, 0, 0, 1, 0, 0, 0, 2],
-                vec![1, 0, 0, 0, 0, 0, 0, 1],
-                vec![1, 0, 0, 1, 0, 0, 0, 3]
-            ]
-        );
-
-        assert_eq!(virtual_memory_0.size(), 2);
-        assert_eq!(virtual_memory_1.size(), 2);
-
-        virtual_memory_0.forget();
-
-        assert_eq!(
-            StableBTreeMap::<_, Vec<u8>, Vec<u8>>::load(Rc::clone(&manager_memory))
-                .iter()
-                .map(|(i, _)| i)
-                .collect::<Vec<_>>(),
-            vec![
-                vec![1, 0, 0, 0, 0, 0, 0, 1],
-                vec![1, 0, 0, 1, 0, 0, 0, 3],
-                vec![255, 0, 0, 0, 0, 0, 0, 0],
-                vec![255, 0, 0, 1, 0, 0, 0, 2]
-            ]
-        );
-
-        assert_eq!(virtual_memory_1.grow(3), 2);
-        assert_eq!(
-            StableBTreeMap::<_, Vec<u8>, Vec<u8>>::load(Rc::clone(&manager_memory))
-                .iter()
-                .map(|(i, _)| i)
-                .collect::<Vec<_>>(),
-            vec![
-                vec![1, 0, 0, 0, 0, 0, 0, 1],
-                vec![1, 0, 0, 1, 0, 0, 0, 3],
-                vec![1, 0, 0, 2, 0, 0, 0, 0],
-                vec![1, 0, 0, 3, 0, 0, 0, 2],
-                vec![1, 0, 0, 4, 0, 0, 0, 4],
-            ]
-        );
-
-        let src_1 = [1; 3 * WASM_PAGE_SIZE as usize];
-        virtual_memory_1.write(1, &src_1);
-        let mut dst_1 = [0; 3 * WASM_PAGE_SIZE as usize];
-        virtual_memory_1.read(1, &mut dst_1);
-
-        assert_eq!(src_1, dst_1);
-    }
-
-    #[test]
     #[should_panic(expected = "out of bounds")]
     fn read_outside_of_memory_range() {
-        let manager_memory = StableMemory::default();
         let data_memory = StableMemory::default();
-        let virtual_memory = VirtualMemory::init(data_memory, manager_memory, 0);
+        let virtual_memory = VirtualMemory::<_, 0>::init(data_memory);
 
         let mut dst = [1; WASM_PAGE_SIZE as usize];
         virtual_memory.read(0, &mut dst);
@@ -495,9 +462,8 @@ mod test {
 
     #[test]
     fn read_single_entry_across_multiple_pages() {
-        let manager_memory = StableMemory::default();
         let data_memory = StableMemory::default();
-        let virtual_memory = VirtualMemory::init(data_memory, manager_memory, 0);
+        let virtual_memory = VirtualMemory::<_, 0>::init(data_memory);
 
         assert_eq!(virtual_memory.grow(3), 0);
         let src = [1; 3 * WASM_PAGE_SIZE as usize];
@@ -510,15 +476,11 @@ mod test {
 
     #[test]
     fn read_multiple_entries_across_multiple_pages() {
-        let manager_memory = StableMemory::default();
         let data_memory = StableMemory::default();
-        let virtual_memory_0 =
-            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 0);
-        let virtual_memory_1 =
-            VirtualMemory::init(Rc::clone(&data_memory), Rc::clone(&manager_memory), 1);
+        let virtual_memory_0 = VirtualMemory::<_, 0>::init(Rc::clone(&data_memory));
+        let virtual_memory_1 = VirtualMemory::<_, 1>::init(Rc::clone(&data_memory));
 
         assert_eq!(virtual_memory_0.grow(1), 0);
-        virtual_memory_1.page_range.borrow_mut().reload();
         assert_eq!(virtual_memory_1.grow(1), 0);
 
         assert_eq!(virtual_memory_0.grow(1), 1);
