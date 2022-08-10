@@ -19,7 +19,7 @@ pub fn inspect_message(method: &str, caller: Principal) -> Result<AcceptReason, 
             {
                 Ok(AcceptReason::Valid)
             } else {
-                Err("auction is not due yet or auction run method is called not by owner or bidder. Rejecting.")
+                Err("auction is not due yet or auction run method is called not by owner or bidder, rejecting.")
             }
         }
         "bidCycles" => {

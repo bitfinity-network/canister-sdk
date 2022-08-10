@@ -4,8 +4,10 @@ use ic_canister::{generate_exports, state_getter, update, Canister};
 use ic_cdk::export::candid::Principal;
 use ic_helpers::metrics::Interval;
 
-use crate::error::{AuctionError, Result};
-use crate::{AuctionInfo, AuctionState, BiddingInfo};
+use crate::{
+    error::{AuctionError, Result},
+    state::{AuctionInfo, AuctionState, BiddingInfo},
+};
 
 pub trait Auction: Canister + Sized {
     #[state_getter]
