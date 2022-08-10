@@ -1,3 +1,4 @@
+use std::mem::size_of;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::rc::Rc;
@@ -5,12 +6,9 @@ use std::rc::Rc;
 use candid::{CandidType, Deserialize};
 
 use super::error::Result;
-use super::{from_bytes, Memory, RestrictedMemory, StableBTreeMap, StableMemory, VirtualMemory};
+use super::{from_bytes, Memory, RestrictedMemory, StableBTreeMap, StableMemory, VirtualMemory, PADDING};
 
 type Mem<const INDEX: u8> = VirtualMemory<Rc<RestrictedMemory<StableMemory>>, INDEX>;
-
-const MAX_KEY_SIZE: u32 = 1024 * 1024;
-const MAX_VALUE_SIZE: u32 = 1024 * 1024;
 
 /// An append only log.
 /// Inserting the same value twice will simply replace the inner value.
@@ -35,11 +33,14 @@ impl<K, V, const INDEX: u8> Default for StableMap<K, V, INDEX> {
 }
 
 impl<K, V, const INDEX: u8> StableMap<K, V, INDEX> {
+    const MAX_KEY_SIZE: u32 = size_of::<K>() as u32 + PADDING;
+    const MAX_VALUE_SIZE: u32 = size_of::<V>() as u32 + PADDING;
+
     /// Create a new instance of a [`StableMap`].
     pub fn new() -> Self {
         let inner = crate::MEM.with(|memory| {
             let virt_memory = VirtualMemory::<_, INDEX>::init(memory.clone());
-            StableBTreeMap::init(virt_memory, MAX_KEY_SIZE, MAX_VALUE_SIZE)
+            StableBTreeMap::init(virt_memory, Self::MAX_KEY_SIZE, Self::MAX_VALUE_SIZE)
         });
 
         Self {
@@ -68,8 +69,8 @@ impl<K, V, const INDEX: u8> StableMap<K, V, INDEX> {
 
 impl<K, V, const INDEX: u8> StableMap<K, V, INDEX>
 where
-    for<'de> K: CandidType + Deserialize<'de> + Eq + std::hash::Hash,
-    for<'de> V: CandidType + Deserialize<'de>,
+    for<'de> K: CandidType + Deserialize<'de> + Eq + std::hash::Hash + Copy,
+    for<'de> V: CandidType + Deserialize<'de> + Copy,
 {
     /// Insert a new key/value pair.
     pub fn insert(&mut self, key: K, val: V) -> Result<()> {
@@ -77,6 +78,12 @@ where
         let val_bytes = super::to_byte_vec(&val)?;
         self.inner.insert(key_bytes, val_bytes)?;
         Ok(())
+    }
+
+    /// Get a value out of stable storage
+    pub fn get(&mut self, key: &K) -> Option<V> {
+        let key_bytes = super::to_byte_vec(key).ok()?;
+        self.inner.get(&key_bytes).and_then(|val| from_bytes(&val).ok())
     }
 
     /// Remove a value from the map
@@ -106,8 +113,8 @@ where
 // -----------------------------------------------------------------------------
 impl<K, V, const INDEX: u8> From<HashMap<K, V>> for StableMap<K, V, INDEX>
 where
-    for<'de> K: CandidType + Deserialize<'de> + Eq + std::hash::Hash,
-    for<'de> V: CandidType + Deserialize<'de>,
+    for<'de> K: CandidType + Deserialize<'de> + Eq + std::hash::Hash + Copy,
+    for<'de> V: CandidType + Deserialize<'de> + Copy,
 {
     fn from(hm: HashMap<K, V>) -> Self {
         let mut map = StableMap::new();
@@ -172,6 +179,17 @@ mod test {
 
         let expected = HashMap::from([(1, 3), (2, 4)]);
         assert_eq!(map.to_hash_map(), expected);
+    }
+
+    #[test]
+    fn write_over_existing() {
+        let mut map = StableMap::<u64, u32, 0>::new();
+
+        let _ = map.insert(1, 3);
+        assert_eq!(map.get(&1), Some(3));
+
+        let _ = map.insert(1, 5);
+        assert_eq!(map.get(&1), Some(5));
     }
 
     #[test]

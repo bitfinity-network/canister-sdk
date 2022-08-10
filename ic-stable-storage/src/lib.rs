@@ -28,6 +28,9 @@ pub type StableMemory = stable_structures::DefaultMemoryImpl;
 
 pub(crate) const WASM_PAGE_SIZE: u64 = 65536;
 
+// Pad bytes for serialization and type information.
+pub(crate) const PADDING: u32 = 100;
+
 // -----------------------------------------------------------------------------
 //     - Memory ranges -
 // -----------------------------------------------------------------------------

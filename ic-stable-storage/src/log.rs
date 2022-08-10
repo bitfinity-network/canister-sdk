@@ -1,17 +1,15 @@
 use std::marker::PhantomData;
+use std::mem::size_of;
 use std::rc::Rc;
 
 use candid::{CandidType, Deserialize};
 
 use super::error::Result;
 use super::{
-    from_bytes, to_byte_vec, Memory, RestrictedMemory, StableBTreeMap, StableMemory, VirtualMemory,
+    from_bytes, to_byte_vec, Memory, RestrictedMemory, StableBTreeMap, StableMemory, VirtualMemory, PADDING
 };
 
 type Mem<const INDEX: u8> = VirtualMemory<Rc<RestrictedMemory<StableMemory>>, INDEX>;
-
-const MAX_KEY_SIZE: u32 = 1024 * 1024;
-const MAX_VALUE_SIZE: u32 = 0;
 
 /// An append only log.
 /// Inserting the same value twice will simply replace the inner value.
@@ -34,11 +32,14 @@ impl<T, const INDEX: u8> Default for StableLog<T, INDEX> {
 }
 
 impl<T, const INDEX: u8> StableLog<T, INDEX> {
+    const MAX_KEY_SIZE: u32 = size_of::<T>() as u32 + PADDING;
+    const MAX_VALUE_SIZE: u32 = 0;
+
     /// Create a new instance of a [`StableLog`].
     pub fn new() -> Self {
         let inner = crate::MEM.with(|memory| {
             let virt_memory = VirtualMemory::<_, INDEX>::init(memory.clone());
-            StableBTreeMap::init(virt_memory, MAX_KEY_SIZE, MAX_VALUE_SIZE)
+            StableBTreeMap::init(virt_memory, Self::MAX_KEY_SIZE, Self::MAX_VALUE_SIZE)
         });
 
         Self {
@@ -65,7 +66,7 @@ impl<T, const INDEX: u8> StableLog<T, INDEX> {
 
 impl<T, const INDEX: u8> StableLog<T, INDEX>
 where
-    for<'de> T: CandidType + Deserialize<'de>,
+    for<'de> T: CandidType + Deserialize<'de> + Copy,
 {
     /// Push a new value to the end of the log.
     pub fn push(&mut self, val: T) -> Result<()> {
@@ -113,7 +114,7 @@ where
 
 impl<T, const INDEX: u8> From<Vec<T>> for StableLog<T, INDEX>
 where
-    for<'de> T: CandidType + Deserialize<'de>,
+    for<'de> T: CandidType + Deserialize<'de> + Copy,
 {
     fn from(v: Vec<T>) -> Self {
         let mut log = StableLog::new();
