@@ -99,9 +99,9 @@ impl FactoryState {
     /// # Errors
     ///
     /// Returns `FactoryError::AccessDenied` if the caller is not the factory controller.
-    pub fn authorize_owner(&mut self) -> Result<Authorized<Owner>, FactoryError> {
+    pub fn check_is_owner(&mut self) -> Result<Authorized<Owner>, FactoryError> {
         let caller = ic_canister::ic_kit::ic::caller();
-        self.authorize_owner_internal(caller)
+        self.check_is_owner_internal(caller)
     }
 
     /// This is needed to deal with ic pecularity, where we cannot call `ic_cdk::caller()`
@@ -110,7 +110,7 @@ impl FactoryState {
     ///
     /// More on that:
     /// https://forum.dfinity.org/t/canister-violated-contract-ic0-msg-caller-size-cannot-be-executed-in-reply-callback-mode/7890/4
-    pub fn authorize_owner_internal(
+    pub fn check_is_owner_internal(
         &mut self,
         caller: Principal,
     ) -> Result<Authorized<Owner>, FactoryError> {
