@@ -83,26 +83,16 @@ pub fn virtual_canister_notify(input: TokenStream) -> TokenStream {
 ///
 /// Only one method in a canister can be marked as `#[init]`. This method must not have a return value.
 ///
-/// This macro also registers the method for generating IDL (candid) definition with [`generate_idl()`]
+/// This macro also registers the method for generating IDL (candid) definition with [`generate_idl`]
 /// function. Thus, there's no need to mark it with `candid::candid_method` macro.
 #[proc_macro_attribute]
 pub fn init(attr: TokenStream, item: TokenStream) -> TokenStream {
     api::api_method("init", attr, item, true, true)
 }
 
-/// Marks the function as a state getter to be able to derive it via [`generate_exports!`] macro.
-///
-/// Only one function can be marked as a state getter and it has to have specific argument and
-/// return type and it must not have a default implementation as it must be overwritten by the
-/// struct implementer.
-#[proc_macro_attribute]
-pub fn state_getter(attr: TokenStream, item: TokenStream) -> TokenStream {
-    api::state_getter(attr, item)
-}
-
 /// Marks the canister method as an API query method.
 ///
-/// This macro also registers the method for generating IDL (candid) definition with [`generate_idl()`]
+/// This macro also registers the method for generating IDL (candid) definition with [`generate_idl`]
 /// function. Thus, there's no need to mark it with `candid::candid_method` macro.
 #[proc_macro_attribute]
 pub fn query(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -111,7 +101,7 @@ pub fn query(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Marks the canister method as an API update method.
 ///
-/// This macro also registers the method for generating IDL (candid) definition with [`generate_idl()`]
+/// This macro also registers the method for generating IDL (candid) definition with [`generate_idl`]
 /// function. Thus, there's no need to mark it with `candid::candid_method` macro.
 #[proc_macro_attribute]
 pub fn update(attr: TokenStream, item: TokenStream) -> TokenStream {

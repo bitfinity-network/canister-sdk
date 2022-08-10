@@ -6,7 +6,7 @@ use ic_storage::IcStorage;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use canister_a::{CanisterA, CanisterAImpl, StateA};
+use canister_a::{CanisterA, CanisterAImpl};
 
 use ic_canister::{init, update, Canister};
 
@@ -104,11 +104,7 @@ impl CanisterB {
     }
 }
 
-impl CanisterA for CanisterB {
-    fn state(&self) -> Rc<RefCell<StateA>> {
-        StateA::get()
-    }
-}
+impl CanisterA for CanisterB {}
 
 #[cfg(test)]
 mod tests {

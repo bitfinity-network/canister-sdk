@@ -196,15 +196,6 @@
 //! a buffer, that we'll generate methods for and export to wasm via [generate_exports]
 //! macro. This is done on the previous example for `TokenFactory`.
 //!
-//! ### Each trait canister must have only one function marked as `#[state_getter]`.
-//!
-//! There's a pecularity with default implementation of the state getter via `State::get()` call.
-//! Under the hood it creates a lazy static storage that is only crate-local, meaning that
-//! the default implementation of the trait canister will work with its own storage, instead of
-//! the struct that implements this trait. Hence, the user has to overwrite this getter with its
-//! own `State::get()` call. The `#[state_getter]` macro is used to mark the function as the
-//! state getter that will be later used in [`generate_exports!`] macro.
-//!
 //! ### Each trait method must be marked with `#[update/query(trait = true)]` macro.
 //!
 //! This is to allow for [generate_exports!] to actually collect all of the methods to

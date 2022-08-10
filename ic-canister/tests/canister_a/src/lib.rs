@@ -3,7 +3,7 @@ use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{generate_exports, query, state_getter, update, Canister};
+use ic_canister::{generate_exports, query, update, Canister};
 
 #[derive(Default, CandidType, Deserialize, IcStorage)]
 pub struct StateA {
@@ -19,8 +19,9 @@ impl Versioned for StateA {
 }
 
 pub trait CanisterA: Canister {
-    #[state_getter]
-    fn state(&self) -> Rc<RefCell<StateA>>;
+    fn state(&self) -> Rc<RefCell<StateA>> {
+        StateA::get()
+    }
 
     #[query(trait = true)]
     fn get_counter(&self) -> u32 {

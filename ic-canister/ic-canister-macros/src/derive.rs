@@ -278,7 +278,7 @@ fn is_state_attr(attribute: &Attribute) -> bool {
     attribute.path.is_ident("state")
 }
 
-pub fn get_state_type(input_type: &Type) -> &Type {
+fn get_state_type(input_type: &Type) -> &Type {
     let ref_cell = extract_generic("Rc", input_type, input_type);
     extract_generic("RefCell", ref_cell, input_type)
 }

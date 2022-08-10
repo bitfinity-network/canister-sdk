@@ -10,7 +10,7 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
     parse_macro_input, Error, FnArg, Ident, ImplItemMethod, Pat, PatIdent, PatTuple, ReturnType,
-    Signature, Token, Type, TypeTuple, VisPublic, Visibility, Item, Stmt,
+    Signature, Token, Type, TypeTuple, VisPublic, Visibility,
 };
 
 #[derive(Default, Deserialize, Debug)]
@@ -257,101 +257,6 @@ pub(crate) fn api_method(
     TokenStream::from(expanded)
 }
 
-#[derive(Debug)]
-pub struct StateGetter {
-    pub method_name: String,
-    pub state_type: String,
-}
-
-lazy_static! {
-    pub static ref STATE_GETTER: Mutex<Option<StateGetter>> = Mutex::new(None);
-}
-
-pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(item as ImplItemMethod);
-    let method_name = input.sig.ident.to_string();
-
-    // Check arguments of the getter
-
-    let arg = input.sig.inputs.last();
-    match arg {
-        Some(FnArg::Receiver(_)) => {}
-        _ => {
-            return syn::Error::new(
-                input.span(),
-                "State getter must only have `self` as argument",
-            )
-            .to_compile_error()
-            .into();
-        }
-    }
-
-    // Check return type of the getter 
-
-    let return_type = match &input.sig.output {
-        ReturnType::Default => panic!("No return type for state getter is specified"),
-        ReturnType::Type(_, t) => crate::derive::get_state_type(&*t),
-    };
-
-    let path = match return_type {
-        Type::Path(path) => path,
-        ty => return syn::Error::new(
-            input.span(), format!("Invalid return type for state getter: {:#?}", ty)
-        ).to_compile_error().into(),
-    };
-
-    let segment = path
-        .path
-        .segments
-        .iter()
-        .last();
-
-    if segment.is_none() {
-        return syn::Error::new(input.span(), format!(
-            "Unexpected return type for state getter: {:#?}",
-            return_type
-        ))
-        .to_compile_error()
-        .into() 
-    }
-
-    let state_type = segment.expect("already checked").ident.to_string();
-
-    // Check that the body of the getter is empty 
-
-    let body = &input.block.stmts;
-
-    match &body[..] {
-        [Stmt::Item(Item::Verbatim(ts))] if ts.to_string() == ";" => {}
-        _ => {
-            return syn::Error::new(
-                input.span(),
-                "State getter must only be defined inside struct implementation and not in trait definition",
-            )
-            .to_compile_error()
-            .into();
-        }
-    }
-
-    // Replace state getter 
-
-    let old_getter = STATE_GETTER.lock().unwrap().replace(StateGetter {
-        method_name,
-        state_type,
-    });
-
-    if let Some(old_getter) = old_getter {
-        return syn::Error::new(
-            input.span(),
-            format!("Multiple state getters defined. Previous: {}", old_getter.method_name),
-        )
-        .to_compile_error()
-        .into();
-    }
-
-    TokenStream::from(quote! { #input })
-}
-
 #[derive(Clone)]
 enum ReturnVariant {
     Default,
@@ -432,7 +337,6 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
             (quote! {}, quote! {})
         };
 
-        
         let await_call = if is_async { quote! {.await}} else {quote! {}};
         let await_call_if_result_is_async = if is_return_type_async { quote! {.await} } else {quote! {}};
         let reply_call = match return_type {
@@ -457,16 +361,6 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         }
     });
 
-    let StateGetter { method_name, state_type } 
-        = STATE_GETTER
-            .lock()
-            .unwrap()
-            .take()
-            .expect("State getter should be defined as a part of trait api via #[state_getter] macro attribute");
-
-    let state_type = Ident::new(&state_type, Span::call_site());
-    let method_name = Ident::new(&method_name, Span::call_site());
-
     let expanded = quote! {
         #[derive(::std::clone::Clone, ::std::fmt::Debug, ::ic_canister::Canister)]
         #[allow(non_camel_case_types)]
@@ -475,12 +369,7 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
             principal: ::ic_cdk::export::Principal,
         }
 
-        impl #trait_name for #struct_name {
-            fn #method_name(&self) -> Rc<RefCell<#state_type>> {
-                use ::ic_storage::IcStorage;
-                #state_type::get()
-            }
-        }
+        impl #trait_name for #struct_name {}
 
         impl ::ic_canister::PreUpdate for #struct_name {}
 
