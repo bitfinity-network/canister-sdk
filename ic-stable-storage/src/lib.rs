@@ -29,7 +29,10 @@ pub type StableMemory = stable_structures::DefaultMemoryImpl;
 pub(crate) const WASM_PAGE_SIZE: u64 = 65536;
 
 // Pad bytes for serialization and type information.
-pub(crate) const PADDING: u32 = 100;
+// Creating a struct with 30 fields where each field was a `[u64; 32]`,
+// had an aditional size of 221 bytes. Padding with 250 bytes should be fine 
+// for most.
+pub(crate) const PADDING: u32 = 250;
 
 // -----------------------------------------------------------------------------
 //     - Memory ranges -
