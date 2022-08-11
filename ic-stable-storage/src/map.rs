@@ -10,7 +10,6 @@ use super::{from_bytes, Memory, RestrictedMemory, StableBTreeMap, StableMemory, 
 
 type Mem<const INDEX: u8> = VirtualMemory<Rc<RestrictedMemory<StableMemory>>, INDEX>;
 
-/// An append only log.
 /// Inserting the same value twice will simply replace the inner value.
 /// ```
 /// # use std::collections::HashMap;

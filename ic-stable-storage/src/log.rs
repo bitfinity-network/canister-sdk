@@ -11,7 +11,6 @@ use super::{
 
 type Mem<const INDEX: u8> = VirtualMemory<Rc<RestrictedMemory<StableMemory>>, INDEX>;
 
-/// An append only log.
 /// Inserting the same value twice will simply replace the inner value.
 /// ```
 /// use ic_stable_storage::StableLog;
