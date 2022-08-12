@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::cell::RefCell;
 
 use super::{RestrictedMemory, StableMemory, RESERVED_PAGE_MEM};
@@ -16,6 +17,8 @@ thread_local! {
             MAX_PAGE_MEM_VALUE_SIZE
         ),
     );
+
+    static INSTANCES: RefCell<HashSet<u8>> = RefCell::new(HashSet::new());
 }
 
 type PageMemory = StableBTreeMap<RestrictedMemory<StableMemory>, Vec<u8>, Vec<u8>>;
@@ -33,6 +36,13 @@ pub(super) struct Pages(u8);
 
 impl Pages {
     pub(super) fn new(index: u8) -> Self {
+        INSTANCES.with(|instances| {
+            let mut instances = instances.borrow_mut();
+            if instances.contains(&index) {
+                panic!("there is already an instance with the index: {index}");
+            }
+            instances.insert(index);
+        });
         Self(index)
     }
 
