@@ -1,12 +1,13 @@
-use std::mem::size_of;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::marker::PhantomData;
+use std::mem::size_of;
 use std::rc::Rc;
 
 use candid::{CandidType, Deserialize};
 
 use super::error::Result;
-use super::{from_bytes, Memory, RestrictedMemory, StableBTreeMap, StableMemory, VirtualMemory, PADDING};
+use super::{from_bytes, Memory, RestrictedMemory, StableBTreeMap, StableMemory, VirtualMemory};
 
 type Mem<const INDEX: u8> = VirtualMemory<Rc<RestrictedMemory<StableMemory>>, INDEX>;
 
@@ -14,8 +15,8 @@ type Mem<const INDEX: u8> = VirtualMemory<Rc<RestrictedMemory<StableMemory>>, IN
 /// ```
 /// # use std::collections::HashMap;
 /// use ic_stable_storage::StableMap;
-/// let hm = HashMap::from([(1u64, 2u8), (3, 4)]);
-/// let map = StableMap::<u64, u8, 0>::from(hm);
+/// let hm = HashMap::try_from([(1u64, 2u8), (3, 4)]).unwrap();
+/// let map = StableMap::<u64, u8, 0>::try_from(hm).unwrap();
 /// for (key, val) in &map {
 /// // ...
 /// }
@@ -25,35 +26,16 @@ pub struct StableMap<K, V, const INDEX: u8> {
     inner: StableBTreeMap<Mem<INDEX>, Vec<u8>, Vec<u8>>,
 }
 
-impl<K, V, const INDEX: u8> Default for StableMap<K, V, INDEX> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<K, V, const INDEX: u8> StableMap<K, V, INDEX> {
-    const MAX_KEY_SIZE: u32 = size_of::<K>() as u32 + PADDING;
-    const MAX_VALUE_SIZE: u32 = size_of::<V>() as u32 + PADDING;
-
-    /// Create a new instance of a [`StableMap`].
-    pub fn new() -> Self {
-        let inner = crate::MEM.with(|memory| {
-            let virt_memory = VirtualMemory::<_, INDEX>::init(memory.clone());
-            StableBTreeMap::init(virt_memory, Self::MAX_KEY_SIZE, Self::MAX_VALUE_SIZE)
-        });
-
-        Self {
-            _p: PhantomData,
-            inner,
-        }
-    }
+    const MAX_KEY_SIZE: u32 = size_of::<K>() as u32;
+    const MAX_VALUE_SIZE: u32 = size_of::<V>() as u32;
 
     /// Total count of values.
     /// ```
     /// # use std::collections::HashMap;
     /// # use ic_stable_storage::StableMap;
-    /// let hm = HashMap::from([(1u64, 2u64), (3, 4)]);
-    /// let mut map = StableMap::<u64, u64, 0>::from(hm);
+    /// let hm = HashMap::try_from([(1u64, 2u64), (3, 4)]).unwrap();
+    /// let mut map = StableMap::<u64, u64, 0>::try_from(hm).unwrap();
     /// assert_eq!(map.len(), 2);
     /// ```
     pub fn len(&self) -> u64 {
@@ -71,6 +53,27 @@ where
     for<'de> K: CandidType + Deserialize<'de> + Eq + std::hash::Hash + Copy,
     for<'de> V: CandidType + Deserialize<'de> + Copy,
 {
+    /// Create a new instance of a [`StableMap`].
+    pub fn new() -> Result<Self> {
+        let key_padding = super::calculate_padding::<K>()?;
+        let value_padding = super::calculate_padding::<V>()?;
+        let inner = crate::MEM.with(|memory| {
+            let virt_memory = VirtualMemory::<_, INDEX>::init(memory.clone());
+            StableBTreeMap::init(
+                virt_memory,
+                Self::MAX_KEY_SIZE + key_padding,
+                Self::MAX_VALUE_SIZE + value_padding,
+            )
+        });
+
+        let inst = Self {
+            _p: PhantomData,
+            inner,
+        };
+
+        Ok(inst)
+    }
+
     /// Insert a new key/value pair.
     pub fn insert(&mut self, key: K, val: V) -> Result<()> {
         let key_bytes = super::to_byte_vec(&key)?;
@@ -82,7 +85,9 @@ where
     /// Get a value out of stable storage
     pub fn get(&mut self, key: &K) -> Option<V> {
         let key_bytes = super::to_byte_vec(key).ok()?;
-        self.inner.get(&key_bytes).and_then(|val| from_bytes(&val).ok())
+        self.inner
+            .get(&key_bytes)
+            .and_then(|val| from_bytes(&val).ok())
     }
 
     /// Remove a value from the map
@@ -98,8 +103,8 @@ where
     /// ```
     /// # use std::collections::HashMap;
     /// # use ic_stable_storage::StableMap;
-    /// let hm = HashMap::from([(1, 1), (2, 2)]);
-    /// let mut map = StableMap::<u64, u16, 0>::from(hm.clone());
+    /// let hm = HashMap::try_from([(1, 1), (2, 2)]).unwrap();
+    /// let mut map = StableMap::<u64, u16, 0>::try_from(hm.clone()).unwrap();
     /// assert_eq!(map.to_hash_map(), hm);
     /// ```
     pub fn to_hash_map(self) -> HashMap<K, V> {
@@ -110,15 +115,17 @@ where
 // -----------------------------------------------------------------------------
 //     - From hashmap -
 // -----------------------------------------------------------------------------
-impl<K, V, const INDEX: u8> From<HashMap<K, V>> for StableMap<K, V, INDEX>
+impl<K, V, const INDEX: u8> TryFrom<HashMap<K, V>> for StableMap<K, V, INDEX>
 where
     for<'de> K: CandidType + Deserialize<'de> + Eq + std::hash::Hash + Copy,
     for<'de> V: CandidType + Deserialize<'de> + Copy,
 {
-    fn from(hm: HashMap<K, V>) -> Self {
-        let mut map = StableMap::new();
+    type Error = crate::error::Error;
+
+    fn try_from(hm: HashMap<K, V>) -> Result<Self> {
+        let mut map = StableMap::new()?;
         let _ = hm.into_iter().try_for_each(|(k, v)| map.insert(k, v));
-        map
+        Ok(map)
     }
 }
 
@@ -172,7 +179,7 @@ mod test {
 
     #[test]
     fn insert() {
-        let mut map = StableMap::<u64, u32, 0>::new();
+        let mut map = StableMap::<u64, u32, 0>::new().unwrap();
         let _ = map.insert(1, 3);
         let _ = map.insert(2, 4);
 
@@ -182,7 +189,7 @@ mod test {
 
     #[test]
     fn write_over_existing() {
-        let mut map = StableMap::<u64, u32, 0>::new();
+        let mut map = StableMap::<u64, u32, 0>::new().unwrap();
 
         let _ = map.insert(1, 3);
         assert_eq!(map.get(&1), Some(3));
@@ -194,21 +201,21 @@ mod test {
     #[test]
     fn remove() {
         let hm = HashMap::from([(1, 2), (3, 4), (5, 6)]);
-        let mut map = StableMap::<u64, u32, 0>::from(hm);
+        let mut map = StableMap::<u64, u32, 0>::try_from(hm).unwrap();
         assert_eq!(map.remove(&3), Some(4));
         assert_eq!(map.len(), 2);
     }
 
     #[test]
     fn remove_from_empty() {
-        let mut map = StableMap::<u64, u32, 0>::new();
+        let mut map = StableMap::<u64, u32, 0>::new().unwrap();
         assert_eq!(map.remove(&3), None);
     }
 
     #[test]
     fn iterator() {
         let hm = HashMap::from([(1, 2), (3, 4)]);
-        let map = StableMap::<u64, u8, 0>::from(hm);
+        let map = StableMap::<u64, u8, 0>::try_from(hm).unwrap();
         let mut iter = map.into_iter();
         assert_eq!(iter.next(), Some((1, 2)));
         assert_eq!(iter.next(), Some((3, 4)));
@@ -217,8 +224,8 @@ mod test {
 
     #[test]
     fn multiple_maps() {
-        let map_1 = StableMap::<u64, u8, 0>::from(HashMap::from([(1, 2)]));
-        let map_2 = StableMap::<u64, u16, 1>::from(HashMap::from([(2, 3)]));
+        let map_1 = StableMap::<u64, u8, 0>::try_from(HashMap::from([(1, 2)])).unwrap();
+        let map_2 = StableMap::<u64, u16, 1>::try_from(HashMap::from([(2, 3)])).unwrap();
 
         let mut iter = map_1.into_iter();
         assert_eq!(iter.next(), Some((1, 2)));
