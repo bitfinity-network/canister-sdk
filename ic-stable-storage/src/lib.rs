@@ -9,6 +9,7 @@ use stable_structures::{self, Memory, RestrictedMemory, StableBTreeMap};
 mod error;
 mod log;
 mod map;
+mod multimap;
 mod pages;
 mod virtual_memory;
 
@@ -17,6 +18,7 @@ pub(crate) use stable_structures::btreemap::{InsertError, Iter};
 
 pub use log::StableLog;
 pub use map::StableMap;
+pub use multimap::StableMultimap;
 pub use virtual_memory::VirtualMemory;
 
 // -----------------------------------------------------------------------------
@@ -25,6 +27,8 @@ pub use virtual_memory::VirtualMemory;
 //     `Rc<RefCell<Vec<u8>>>` locally .
 // -----------------------------------------------------------------------------
 pub type StableMemory = stable_structures::DefaultMemoryImpl;
+
+pub(crate) type Mem<const INDEX: u8> = VirtualMemory<Rc<RestrictedMemory<StableMemory>>, INDEX>;
 
 pub(crate) const WASM_PAGE_SIZE: u64 = 65536;
 
@@ -57,10 +61,10 @@ where
 {
     const MAGIC_BYTES_LEN: u32 = b"DIDL".len() as u32;
 
-    let mut ts = candid::ser::TypeSerialize::new();
-    ts.push_type(&T::ty())?;
-    ts.serialize()?;
-    let padding = ts.get_result().len() as u32 + MAGIC_BYTES_LEN;
+    let mut type_ser = candid::ser::TypeSerialize::new();
+    type_ser.push_type(&T::ty())?;
+    type_ser.serialize()?;
+    let padding = type_ser.get_result().len() as u32 + MAGIC_BYTES_LEN;
     Ok(padding)
 }
 

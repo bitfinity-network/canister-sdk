@@ -1,16 +1,11 @@
 use std::convert::TryFrom;
 use std::marker::PhantomData;
 use std::mem::size_of;
-use std::rc::Rc;
 
 use candid::{CandidType, Deserialize};
 
 use super::error::Result;
-use super::{
-    from_bytes, to_byte_vec, Memory, RestrictedMemory, StableBTreeMap, StableMemory, VirtualMemory,
-};
-
-type Mem<const INDEX: u8> = VirtualMemory<Rc<RestrictedMemory<StableMemory>>, INDEX>;
+use super::{from_bytes, to_byte_vec, Mem, Memory, StableBTreeMap, VirtualMemory};
 
 /// Inserting the same value twice will simply replace the inner value.
 /// ```

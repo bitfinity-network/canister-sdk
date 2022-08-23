@@ -1,15 +1,11 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::marker::PhantomData;
-use std::mem::size_of;
-use std::rc::Rc;
 
 use candid::{CandidType, Deserialize};
 
 use super::error::Result;
-use super::{from_bytes, Memory, RestrictedMemory, StableBTreeMap, StableMemory, VirtualMemory};
-
-type Mem<const INDEX: u8> = VirtualMemory<Rc<RestrictedMemory<StableMemory>>, INDEX>;
+use super::{from_bytes, Mem, Memory, StableBTreeMap, VirtualMemory};
 
 /// Inserting the same value twice will simply replace the inner value.
 /// ```
@@ -27,9 +23,6 @@ pub struct StableMap<K, V, const INDEX: u8> {
 }
 
 impl<K, V, const INDEX: u8> StableMap<K, V, INDEX> {
-    const MAX_KEY_SIZE: u32 = size_of::<K>() as u32;
-    const MAX_VALUE_SIZE: u32 = size_of::<V>() as u32;
-
     /// Total count of values.
     /// ```
     /// # use std::collections::HashMap;
@@ -50,19 +43,21 @@ impl<K, V, const INDEX: u8> StableMap<K, V, INDEX> {
 
 impl<K, V, const INDEX: u8> StableMap<K, V, INDEX>
 where
-    for<'de> K: CandidType + Deserialize<'de> + Eq + std::hash::Hash + Copy,
-    for<'de> V: CandidType + Deserialize<'de> + Copy,
+    for<'de> K: CandidType + Deserialize<'de> + Eq + std::hash::Hash + Copy + Default,
+    for<'de> V: CandidType + Deserialize<'de> + Copy + Default,
 {
     /// Create a new instance of a [`StableMap`].
     pub fn new() -> Result<Self> {
         let key_padding = super::calculate_padding::<K>()?;
+        let key_size = super::to_byte_vec(&K::default())?.len() as u32;
         let value_padding = super::calculate_padding::<V>()?;
+        let value_size = super::to_byte_vec(&V::default())?.len() as u32;
         let inner = crate::MEM.with(|memory| {
             let virt_memory = VirtualMemory::<_, INDEX>::init(memory.clone());
             StableBTreeMap::init(
                 virt_memory,
-                Self::MAX_KEY_SIZE + key_padding,
-                Self::MAX_VALUE_SIZE + value_padding,
+                key_size + key_padding,
+                value_size + value_padding,
             )
         });
 
@@ -117,8 +112,8 @@ where
 // -----------------------------------------------------------------------------
 impl<K, V, const INDEX: u8> TryFrom<HashMap<K, V>> for StableMap<K, V, INDEX>
 where
-    for<'de> K: CandidType + Deserialize<'de> + Eq + std::hash::Hash + Copy,
-    for<'de> V: CandidType + Deserialize<'de> + Copy,
+    for<'de> K: CandidType + Deserialize<'de> + Eq + std::hash::Hash + Copy + Default,
+    for<'de> V: CandidType + Deserialize<'de> + Copy + Default,
 {
     type Error = crate::error::Error;
 
@@ -179,11 +174,11 @@ mod test {
 
     #[test]
     fn insert() {
-        let mut map = StableMap::<u64, u32, 0>::new().unwrap();
-        let _ = map.insert(1, 3);
-        let _ = map.insert(2, 4);
+        let mut map = StableMap::<u64, _, 0>::new().unwrap();
+        let _ = map.insert(1, [0u8; 32]);
+        let _ = map.insert(2, [1u8; 32]);
 
-        let expected = HashMap::from([(1, 3), (2, 4)]);
+        let expected = HashMap::from([(1, [0u8; 32]), (2, [1u8; 32])]);
         assert_eq!(map.to_hash_map(), expected);
     }
 
