@@ -21,7 +21,7 @@ pub const MAGIC: &[u8] = b"DIDL";
 ///
 /// This header can be used to transfer information about the type between canisters or to verify
 /// that the type used by a canister is what the consumr expects.
-#[derive(Debug, CandidType, Deserialize)]
+#[derive(Debug, CandidType, Deserialize, Clone, PartialEq)]
 pub struct CandidHeader {
     /// Version of the state as defined by the `Versioned` trait.
     pub version: u32,
@@ -85,7 +85,7 @@ pub fn validate_header<T: CandidType + Versioned>(remote_header: &CandidHeader) 
     }
 }
 
-fn get_historic_header<T: Versioned + CandidType>(version: u32) -> Option<Vec<u8>> {
+pub fn get_historic_header<T: Versioned + CandidType>(version: u32) -> Option<Vec<u8>> {
     if T::version() == 0 {
         None
     } else if T::version() == version {
