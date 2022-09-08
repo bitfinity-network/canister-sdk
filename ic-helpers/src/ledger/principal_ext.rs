@@ -47,6 +47,7 @@ impl LedgerPrincipalExt for Principal {
         from_subaccount: Option<Subaccount>,
         to_subaccount: Option<Subaccount>,
     ) -> Result<u64, String> {
+
         if amount < DEFAULT_TRANSFER_FEE.get_e8s() {
             return Err(format!(
                 "cannot transfer tokens: amount '{}' is less then the fee '{}'",

@@ -1,5 +1,6 @@
 use crate::core::{create_canister, drop_canister, upgrade_canister};
 use crate::error::FactoryError;
+use crate::top_up;
 use crate::update_lock::UpdateLock;
 use ic_cdk::api::call::CallResult;
 use ic_cdk::export::candid::utils::ArgumentEncoder;
@@ -468,14 +469,14 @@ async fn consume_provided_cycles_or_icp(
     controller: Principal,
 ) -> Result<u64, FactoryError> {
     if ic_kit::ic::msg_cycles_available() > 0 {
-        consume_message_cycles()
-    } else {
-        if caller != controller {
-            consume_provided_icp(caller, ledger, icp_to, icp_fee).await?;
-        }
-
-        Ok(MIN_CANISTER_CYCLES)
+        return consume_message_cycles();
     }
+    if caller != controller {
+        // If the caller is not the controller, we require the caller to provide cycles.
+        return consume_provided_icp(caller, ledger, icp_to, icp_fee).await;
+    }
+
+    Ok(MIN_CANISTER_CYCLES)
 }
 
 fn consume_message_cycles() -> Result<u64, FactoryError> {
@@ -490,9 +491,9 @@ fn consume_message_cycles() -> Result<u64, FactoryError> {
 async fn consume_provided_icp(
     caller: Principal,
     ledger: Principal,
-    icp_to: Principal,
+    _icp_to: Principal,
     icp_fee: u64,
-) -> Result<(), FactoryError> {
+) -> Result<u64, FactoryError> {
     let id = ic_kit::ic::id();
     let balance = ledger
         .get_balance(id, Some((&PrincipalId(caller)).into()))
@@ -506,12 +507,15 @@ async fn consume_provided_icp(
         ));
     }
 
-    consume_icp(caller, icp_fee, icp_to, ledger).await?;
-
-    Ok(())
+    top_up(icp_fee, ledger, caller).await
 }
 
-async fn consume_icp(
+async fn top_up(amount: u64, ledger: Principal, caller: Principal) -> Result<u64, FactoryError> {
+    let cycles = top_up::send_dfx_notify(amount, ledger, caller).await?;
+    Ok(cycles)
+}
+
+async fn _consume_icp(
     from: Principal,
     amount: u64,
     icp_to: Principal,
