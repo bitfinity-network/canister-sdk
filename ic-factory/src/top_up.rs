@@ -6,8 +6,7 @@ use cycles_minting_canister::{
 use ic_base_types::{CanisterId, PrincipalId};
 use ic_canister::virtual_canister_call;
 use ledger_canister::{
-    AccountIdentifier, CyclesResponse, NotifyCanisterArgs, SendArgs, Subaccount, Tokens,
-    DEFAULT_TRANSFER_FEE,
+    AccountIdentifier, CyclesResponse, NotifyCanisterArgs, SendArgs, Tokens, DEFAULT_TRANSFER_FEE,
 };
 
 use crate::error::FactoryError;
@@ -49,6 +48,7 @@ pub async fn send_dfx_notify(
     let canister_minting_principal =
         Principal::from_text(CYCLE_MINTING_CANISTER).expect("const conversion");
 
+    //  Twice the FEE because of `send_dfx` and `notify_dfx`
     let amount = if amount < (2 * DEFAULT_TRANSFER_FEE.get_e8s()) {
         Err(FactoryError::GenericError(format!(
             "cannot transfer tokens: amount '{}' is less then the fee '{}'",

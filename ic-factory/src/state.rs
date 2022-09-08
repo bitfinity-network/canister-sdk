@@ -473,7 +473,7 @@ async fn consume_provided_cycles_or_icp(
     }
     if caller != controller {
         // If the caller is not the controller, we require the caller to provide cycles.
-        return consume_provided_icp(caller, ledger, icp_to, icp_fee).await;
+        return top_up_cycles(caller, ledger, icp_to, icp_fee).await;
     }
 
     Ok(MIN_CANISTER_CYCLES)
@@ -488,7 +488,7 @@ fn consume_message_cycles() -> Result<u64, FactoryError> {
     Ok(ic_kit::ic::msg_cycles_accept(amount))
 }
 
-async fn consume_provided_icp(
+async fn top_up_cycles(
     caller: Principal,
     ledger: Principal,
     _icp_to: Principal,
