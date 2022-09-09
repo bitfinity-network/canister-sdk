@@ -473,7 +473,13 @@ async fn consume_provided_cycles_or_icp(
     }
     if caller != controller {
         // If the caller is not the controller, we require the caller to provide cycles.
-        return top_up_cycles(caller, ledger, icp_to, icp_fee).await;
+
+        let cycles = top_up_cycles(caller, ledger, icp_to, icp_fee).await?;
+
+        if cycles < MIN_CANISTER_CYCLES {
+            return Err(FactoryError::NotEnoughCycles(cycles, MIN_CANISTER_CYCLES));
+        };
+        return Ok(cycles);
     }
 
     Ok(MIN_CANISTER_CYCLES)
@@ -503,10 +509,7 @@ async fn top_up_cycles(
     const TOTAL_FEE: u64 = DEFAULT_TRANSFER_FEE.get_e8s() * 2;
 
     if balance < icp_fee + TOTAL_FEE {
-        return Err(FactoryError::NotEnoughIcp(
-            balance,
-            icp_fee + TOTAL_FEE,
-        ));
+        return Err(FactoryError::NotEnoughIcp(balance, icp_fee + TOTAL_FEE));
     }
 
     let cycles = top_up::send_dfx_notify(icp_fee, ledger, caller).await?;
