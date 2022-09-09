@@ -500,36 +500,16 @@ async fn top_up_cycles(
         .await
         .map_err(FactoryError::LedgerError)?;
 
-    if balance < icp_fee + DEFAULT_TRANSFER_FEE.get_e8s() {
+    const TOTAL_FEE: u64 = DEFAULT_TRANSFER_FEE.get_e8s() * 2;
+
+    if balance < icp_fee + TOTAL_FEE {
         return Err(FactoryError::NotEnoughIcp(
             balance,
-            icp_fee + DEFAULT_TRANSFER_FEE.get_e8s(),
+            icp_fee + TOTAL_FEE,
         ));
     }
 
-    top_up(icp_fee, ledger, caller).await
-}
+    let cycles = top_up::send_dfx_notify(icp_fee, ledger, caller).await?;
 
-async fn top_up(amount: u64, ledger: Principal, caller: Principal) -> Result<u64, FactoryError> {
-    let cycles = top_up::send_dfx_notify(amount, ledger, caller).await?;
     Ok(cycles)
-}
-
-async fn _consume_icp(
-    from: Principal,
-    amount: u64,
-    icp_to: Principal,
-    ledger: Principal,
-) -> Result<(), FactoryError> {
-    LedgerPrincipalExt::transfer(
-        &ledger,
-        icp_to,
-        amount,
-        Some((&PrincipalId(from)).into()),
-        None,
-    )
-    .await
-    .map_err(FactoryError::LedgerError)?;
-
-    Ok(())
 }

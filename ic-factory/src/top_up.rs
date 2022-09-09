@@ -47,17 +47,6 @@ pub async fn send_dfx_notify(
     let canister_minting_principal =
         Principal::from_text(CYCLE_MINTING_CANISTER).expect("const conversion");
 
-    //  Twice the FEE because of `send_dfx` and `notify_dfx`
-    let amount = if amount < (2 * DEFAULT_TRANSFER_FEE.get_e8s()) {
-        Err(FactoryError::GenericError(format!(
-            "cannot transfer tokens: amount '{}' is less then the fee '{}'",
-            amount,
-            2 * DEFAULT_TRANSFER_FEE.get_e8s()
-        )))?
-    } else {
-        Tokens::from_e8s(amount - (DEFAULT_TRANSFER_FEE.get_e8s()))
-    };
-
     let canister_id = ic_canister::ic_kit::ic::id();
     let to = AccountIdentifier::new(
         canister_minting_principal.into(),
@@ -66,7 +55,7 @@ pub async fn send_dfx_notify(
 
     let args = SendArgs {
         memo: MEMO_TOP_UP_CANISTER,
-        amount,
+        amount: Tokens::from_e8s(amount),
         fee: DEFAULT_TRANSFER_FEE,
         from_subaccount: Some((&PrincipalId::from(caller)).into()),
         to,
@@ -79,7 +68,7 @@ pub async fn send_dfx_notify(
 
     notify_dfx(block_height, ledger, canister_minting_principal, caller).await?;
 
-    let cycles = tokens_to_cycles(amount).await?;
+    let cycles = tokens_to_cycles(Tokens::from_e8s(amount)).await?;
 
     Ok(cycles)
 }
