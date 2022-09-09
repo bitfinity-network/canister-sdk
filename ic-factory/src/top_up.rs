@@ -39,7 +39,6 @@ async fn tokens_to_cycles(amount: Tokens) -> Result<u64, FactoryError> {
     Ok(cycles - 2_000_000_000)
 }
 
-// Send DFX
 pub async fn send_dfx_notify(
     amount: u64,
     ledger: Principal,
@@ -106,7 +105,7 @@ async fn notify_dfx(
     let mut result: Option<CyclesResponse> = None;
 
     for _ in 0..MAX_RETRY {
-        match virtual_canister_call!(ledger, "notify_dfx", (args.clone(),), CyclesResponse).await {
+        match virtual_canister_call!(ledger, "notify_dfx", (&args,), CyclesResponse).await {
             Ok(cycles) => {
                 result = Some(cycles);
                 break;
