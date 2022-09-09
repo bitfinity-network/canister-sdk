@@ -15,14 +15,15 @@ const CYCLE_MINTING_CANISTER: &str = "rrkah-fqaaa-aaaaa-aaaaq-cai";
 
 async fn get_conversion_rate() -> Result<IcpXdrConversionRateCertifiedResponse, FactoryError> {
     let principal = Principal::from_text(CYCLE_MINTING_CANISTER).expect("const conversion");
-    let rate = ic_cdk::call::<_, (IcpXdrConversionRateCertifiedResponse,)>(
+
+    let rate = virtual_canister_call!(
         principal,
         "get_icp_xdr_conversion_rate",
-        ((),),
+        (),
+        IcpXdrConversionRateCertifiedResponse
     )
     .await
-    .map_err(|e| FactoryError::GenericError(e.1))?
-    .0;
+    .map_err(|e| FactoryError::GenericError(e.1))?;
 
     Ok(rate)
 }
@@ -39,11 +40,7 @@ async fn tokens_to_cycles(amount: Tokens) -> Result<u64, FactoryError> {
     Ok(cycles - 2_000_000_000)
 }
 
-pub async fn send_dfx_notify(
-    amount: u64,
-    ledger: Principal,
-    caller: Principal,
-) -> Result<u64, FactoryError> {
+pub async fn send_dfx_notify(amount: u64, ledger: Principal) -> Result<u64, FactoryError> {
     let canister_minting_principal =
         Principal::from_text(CYCLE_MINTING_CANISTER).expect("const conversion");
 
@@ -57,7 +54,7 @@ pub async fn send_dfx_notify(
         memo: MEMO_TOP_UP_CANISTER,
         amount: Tokens::from_e8s(amount),
         fee: DEFAULT_TRANSFER_FEE,
-        from_subaccount: Some((&PrincipalId::from(caller)).into()),
+        from_subaccount: None,
         to,
         created_at_time: None,
     };
@@ -66,7 +63,7 @@ pub async fn send_dfx_notify(
         .await
         .map_err(|e| FactoryError::LedgerError(e.1))?;
 
-    notify_dfx(block_height, ledger, canister_minting_principal, caller).await?;
+    notify_dfx(block_height, ledger, canister_minting_principal).await?;
 
     let cycles = tokens_to_cycles(Tokens::from_e8s(amount)).await?;
 
@@ -77,7 +74,6 @@ async fn notify_dfx(
     block_height: u64,
     ledger: Principal,
     minting_canister: Principal,
-    caller: Principal,
 ) -> Result<(), FactoryError> {
     const MAX_RETRY: u64 = 5;
 
@@ -86,7 +82,7 @@ async fn notify_dfx(
     let args = NotifyCanisterArgs {
         block_height,
         max_fee: DEFAULT_TRANSFER_FEE,
-        from_subaccount: Some((&PrincipalId::from(caller)).into()),
+        from_subaccount: None,
         to_canister,
         to_subaccount: Some((&PrincipalId::from(ic_canister::ic_kit::ic::id())).into()),
     };
