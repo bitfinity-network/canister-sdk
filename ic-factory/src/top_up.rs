@@ -11,7 +11,7 @@ use ledger_canister::{
 
 use crate::error::FactoryError;
 
-const CYCLE_MINTING_CANISTER: &str = "rrkah-fqaaa-aaaaa-aaaaq-cai";
+const CYCLE_MINTING_CANISTER: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
 
 async fn get_conversion_rate() -> Result<IcpXdrConversionRateCertifiedResponse, FactoryError> {
     let principal = Principal::from_text(CYCLE_MINTING_CANISTER).expect("const conversion");
