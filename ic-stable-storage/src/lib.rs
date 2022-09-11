@@ -9,6 +9,7 @@ use stable_structures::{self, Memory, RestrictedMemory, StableBTreeMap};
 mod error;
 mod log;
 mod map;
+mod multimap;
 mod pages;
 mod virtual_memory;
 
@@ -17,6 +18,7 @@ pub(crate) use stable_structures::btreemap::{InsertError, Iter};
 
 pub use log::StableLog;
 pub use map::StableMap;
+pub use multimap::StableMultimap;
 pub use virtual_memory::VirtualMemory;
 
 // -----------------------------------------------------------------------------
@@ -26,13 +28,9 @@ pub use virtual_memory::VirtualMemory;
 // -----------------------------------------------------------------------------
 pub type StableMemory = stable_structures::DefaultMemoryImpl;
 
-pub(crate) const WASM_PAGE_SIZE: u64 = 65536;
+pub(crate) type Mem<const INDEX: u8> = VirtualMemory<Rc<RestrictedMemory<StableMemory>>, INDEX>;
 
-// Pad bytes for serialization and type information.
-// Creating a struct with 30 fields where each field was a `[u64; 32]`,
-// had an aditional size of 221 bytes. Padding with 250 bytes should be fine 
-// for most.
-pub(crate) const PADDING: u32 = 250;
+pub(crate) const WASM_PAGE_SIZE: u64 = 65536;
 
 // -----------------------------------------------------------------------------
 //     - Memory ranges -
@@ -49,6 +47,25 @@ pub(crate) const DATA_MEM: std::ops::Range<u64> = RESERVED_PAGE_MEM.end..131072;
 // -----------------------------------------------------------------------------
 thread_local! {
     pub(crate) static MEM: Rc<RestrictedMemory<StableMemory>> = Rc::new(RestrictedMemory::new(StableMemory::default(), DATA_MEM));
+}
+
+// -----------------------------------------------------------------------------
+//     - Calculate padding -
+//     Calculate the number of bytes that is needed to fit the candid header.
+//     This is used to calculate the size of each value written to the
+//     storage types, such as `StableLog` or `StableMap`.
+// -----------------------------------------------------------------------------
+pub(crate) fn calculate_padding<T>() -> Result<u32>
+where
+    for<'de> T: CandidType + Deserialize<'de>,
+{
+    const MAGIC_BYTES_LEN: u32 = b"DIDL".len() as u32;
+
+    let mut type_ser = candid::ser::TypeSerialize::new();
+    type_ser.push_type(&T::ty())?;
+    type_ser.serialize()?;
+    let padding = type_ser.get_result().len() as u32 + MAGIC_BYTES_LEN;
+    Ok(padding)
 }
 
 pub(crate) fn to_byte_vec<T>(val: &T) -> Result<Vec<u8>>
@@ -256,32 +273,6 @@ mod test {
         assert_eq!(result, 0, "grow failed, which return {}", result);
         let src = [1; 1 + WASM_PAGE_SIZE as usize];
         virtual_memory.write(0, &src);
-    }
-
-    #[test]
-    fn write_multiple_data_to_same_page() {
-        let data_memory = StableMemory::default();
-
-        let virtual_memory_0 = VirtualMemory::<_, 0>::init(Rc::clone(&data_memory));
-        let virtual_memory_1 = VirtualMemory::<_, 0>::init(Rc::clone(&data_memory));
-
-        assert_eq!(virtual_memory_0.grow(1), 0);
-
-        let src_0 = [1; WASM_PAGE_SIZE as usize];
-        let mut dst_0 = [0; WASM_PAGE_SIZE as usize];
-        virtual_memory_0.write(0, &src_0);
-        virtual_memory_0.read(0, &mut dst_0);
-        assert_eq!(src_0, dst_0);
-
-        // Because virtual_memory_0 and virtual_memory_1 use the same virtual_memory index 0, they will all have the same memory pages.
-        let src_1 = [2; WASM_PAGE_SIZE as usize];
-        let mut dst_1 = [0; WASM_PAGE_SIZE as usize];
-        virtual_memory_1.read(0, &mut dst_1);
-        assert_eq!(dst_1, src_0);
-
-        virtual_memory_1.write(0, &src_1);
-        virtual_memory_1.read(0, &mut dst_1);
-        assert_eq!(dst_1, src_1);
     }
 
     #[test]
