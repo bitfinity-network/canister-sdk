@@ -530,10 +530,10 @@ async fn transfer_and_top_up(
     )
     .await?;
 
-    // Tops up the Factory canister with cycles. We only require amount equal to `MIN_CANISTER_CYCLES * 2` and send the rest to `icp_to`.
-    // TODO: FIGURE OUT THE AMOUNT REQUIRED TO TOP UP THE CANISTER.
-    // SEND IT WITH THE ITS FEE
-    let cycles = top_up::send_dfx_notify(icp_fee, ledger).await?;
+    // Tops up the Factory canister with cycles. We only require amount equal to `MIN_CANISTER_CYCLES * 2` + Necessary FEES and send the rest to `icp_to`.
+    let amount = 36_500_000;
+
+    let cycles = top_up::send_dfx_notify(amount, ledger).await?;
 
     send_remaining_fee(icp_to, ledger).await?;
 
