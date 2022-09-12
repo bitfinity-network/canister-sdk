@@ -76,9 +76,7 @@ where
         k.extend(to_byte_vec(k2).ok()?);
 
         let bytes = self.inner.get(&k);
-        let res = from_bytes(&bytes?).ok();
-
-        res
+        from_bytes(&bytes?).ok()
     }
 
     /// Remove a specific value and return it
@@ -93,9 +91,7 @@ where
         k.extend(to_byte_vec(k2).ok()?);
 
         let bytes = self.inner.remove(&k);
-        let res = from_bytes(&bytes?).ok();
-
-        res
+        from_bytes(&bytes?).ok()
     }
 
     /// Remove all values for the partial key
@@ -115,7 +111,7 @@ where
 
         let keys = self
             .inner
-            .range(k.clone(), None)
+            .range(k, None)
             .map(|(k1k2, _)| k1k2)
             .collect::<Vec<_>>();
 
@@ -271,7 +267,7 @@ mod test {
         let k1 = [1u8, 2];
         let k2 = [11u8, 12, 13];
         let val = [3u8, 0, 0, 0, 0, 3];
-        mm.insert(k1, k2, val);
+        mm.insert(k1, k2, val).unwrap();
 
         let ret = mm.get(&k1, &k2).unwrap();
 

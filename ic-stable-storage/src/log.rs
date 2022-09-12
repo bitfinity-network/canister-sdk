@@ -159,8 +159,8 @@ mod test {
     #[test]
     fn push() {
         let mut log = StableLog::<u64, 0>::new().unwrap();
-        let _ = log.push(1).unwrap();
-        let _ = log.push(2).unwrap();
+        log.push(1).unwrap();
+        log.push(2).unwrap();
 
         let expected = vec![1, 2];
         assert_eq!(log.to_vec(), expected);
