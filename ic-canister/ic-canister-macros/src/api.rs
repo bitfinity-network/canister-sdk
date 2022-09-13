@@ -289,7 +289,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
     // Check return type of the getter
     let return_type = match &input.sig.output {
         ReturnType::Default => panic!("No return type for state getter is specified"),
-        ReturnType::Type(_, t) => crate::derive::get_state_type(&*t),
+        ReturnType::Type(_, t) => crate::derive::get_state_type(t),
     };
 
     let path = match return_type {
@@ -383,7 +383,7 @@ impl Parse for GenerateExportsInput {
         let trait_name = input.parse::<Ident>()?;
         let (struct_name, struct_vis) = if input.is_empty() {
             (
-                Ident::new(&format!("__{}_Ident", trait_name.to_string()), input.span()),
+                Ident::new(&format!("__{}_Ident", trait_name), input.span()),
                 Visibility::Inherited,
             )
         } else {
