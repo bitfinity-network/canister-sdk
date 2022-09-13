@@ -611,7 +611,7 @@ pub(crate) fn generate_idl() -> TokenStream {
                 let mut rets = Vec::new();
                 #(#rets)*
                 let func = Function { args, rets, modes: #modes };
-                if !cfg!(feature = "no_api") || (#name != "burn" && #name != "mint") {
+                if !cfg!(feature = "no_api") {
                     service.push((#name.to_string(), Type::Func(func)));
                 }
             }
@@ -647,6 +647,7 @@ pub(crate) fn generate_idl() -> TokenStream {
 
     TokenStream::from(res)
 }
+
 
 fn generate_arg(name: proc_macro2::TokenStream, ty: &str) -> proc_macro2::TokenStream {
     let ty = syn::parse_str::<Type>(ty).unwrap();
