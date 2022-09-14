@@ -348,7 +348,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         return syn::Error::new(
             input.span(),
             format!(
-                "Multiple state getters defined. Previous: {}",
+                "multiple state getters defined. Previous: {}",
                 old_getter.method_name
             ),
         )
