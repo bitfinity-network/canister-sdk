@@ -298,7 +298,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         ty => {
             return syn::Error::new(
                 input.span(),
-                format!("Invalid return type for state getter: {:#?}", ty),
+                format!("invalid return type for state getter: {:#?}", ty),
             )
             .to_compile_error()
             .into()
