@@ -289,7 +289,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
     // Check return type of the getter
 
     let return_type = match &input.sig.output {
-        ReturnType::Default => panic!("No return type for state getter is specified"),
+        ReturnType::Default => panic!("no return type for state getter is specified"),
         ReturnType::Type(_, t) => crate::derive::get_state_type(t),
     };
 
