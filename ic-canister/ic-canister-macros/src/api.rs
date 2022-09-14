@@ -9,8 +9,8 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input, Error, FnArg, Ident, ImplItemMethod, Pat, PatIdent, PatTuple, ReturnType,
-    Signature, Token, Type, TypeTuple, VisPublic, Visibility, Item, Stmt,
+    parse_macro_input, Error, FnArg, Ident, ImplItemMethod, Item, Pat, PatIdent, PatTuple,
+    ReturnType, Signature, Stmt, Token, Type, TypeTuple, VisPublic, Visibility,
 };
 
 #[derive(Default, Deserialize, Debug)]
@@ -286,38 +286,42 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
     }
 
-    // Check return type of the getter 
+    // Check return type of the getter
 
     let return_type = match &input.sig.output {
         ReturnType::Default => panic!("No return type for state getter is specified"),
-        ReturnType::Type(_, t) => crate::derive::get_state_type(&*t),
+        ReturnType::Type(_, t) => crate::derive::get_state_type(t),
     };
 
     let path = match return_type {
         Type::Path(path) => path,
-        ty => return syn::Error::new(
-            input.span(), format!("Invalid return type for state getter: {:#?}", ty)
-        ).to_compile_error().into(),
+        ty => {
+            return syn::Error::new(
+                input.span(),
+                format!("Invalid return type for state getter: {:#?}", ty),
+            )
+            .to_compile_error()
+            .into()
+        }
     };
 
-    let segment = path
-        .path
-        .segments
-        .iter()
-        .last();
+    let segment = path.path.segments.iter().last();
 
     if segment.is_none() {
-        return syn::Error::new(input.span(), format!(
-            "Unexpected return type for state getter: {:#?}",
-            return_type
-        ))
+        return syn::Error::new(
+            input.span(),
+            format!(
+                "Unexpected return type for state getter: {:#?}",
+                return_type
+            ),
+        )
         .to_compile_error()
-        .into() 
+        .into();
     }
 
     let state_type = segment.expect("already checked").ident.to_string();
 
-    // Check that the body of the getter is empty 
+    // Check that the body of the getter is empty
 
     let body = &input.block.stmts;
 
@@ -333,7 +337,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
     }
 
-    // Replace state getter 
+    // Replace state getter
 
     let old_getter = STATE_GETTER.lock().unwrap().replace(StateGetter {
         method_name,
@@ -343,7 +347,10 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
     if let Some(old_getter) = old_getter {
         return syn::Error::new(
             input.span(),
-            format!("Multiple state getters defined. Previous: {}", old_getter.method_name),
+            format!(
+                "Multiple state getters defined. Previous: {}",
+                old_getter.method_name
+            ),
         )
         .to_compile_error()
         .into();
@@ -384,7 +391,7 @@ impl Parse for GenerateExportsInput {
         let trait_name = input.parse::<Ident>()?;
         let (struct_name, struct_vis) = if input.is_empty() {
             (
-                Ident::new(&format!("__{}_Ident", trait_name.to_string()), input.span()),
+                Ident::new(&format!("__{}_Ident", trait_name), input.span()),
                 Visibility::Inherited,
             )
         } else {
@@ -432,7 +439,6 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
             (quote! {}, quote! {})
         };
 
-        
         let await_call = if is_async { quote! {.await}} else {quote! {}};
         let await_call_if_result_is_async = if is_return_type_async { quote! {.await} } else {quote! {}};
         let reply_call = match return_type {
@@ -457,12 +463,12 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         }
     });
 
-    let StateGetter { method_name, state_type } 
-        = STATE_GETTER
-            .lock()
-            .unwrap()
-            .take()
-            .expect("State getter should be defined as a part of trait api via #[state_getter] macro attribute");
+    let StateGetter {
+        method_name,
+        state_type,
+    } = STATE_GETTER.lock().unwrap().take().expect(
+        "State getter should be defined as a part of trait api via #[state_getter] macro attribute",
+    );
 
     let state_type = Ident::new(&state_type, Span::call_site());
     let method_name = Ident::new(&method_name, Span::call_site());

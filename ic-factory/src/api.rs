@@ -26,6 +26,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// otherwise, cycles balances of `principal` is returned.
     /// If `principal` does not exists, `None` is returned.
     #[update(trait = true)]
+    #[allow(clippy::needless_lifetimes)]
     fn get_cycles<'a>(&'a self, principal: Option<Principal>) -> AsyncReturn<Option<Nat>> {
         let fut = async move {
             if let Some(principal) = principal {
