@@ -443,9 +443,8 @@ pub fn der_encode_pub_key(pk: &Pubkey) -> Vec<u8> {
     let pubkey_bytes_uncompress = pubkey.serialize();
     let der_encoded_public_key: pkcs8::Document = SubjectPublicKeyInfo {
         algorithm: AlgorithmIdentifier {
-            oid: ObjectIdentifier::new("1.2.840.10045.2.1")
-                .expect("never fails as it is Secp256 oid"),
-            parameters: Some((&ObjectIdentifier::new("1.3.132.0.10").expect("never fails")).into()),
+            oid: ObjectIdentifier::new_unwrap("1.2.840.10045.2.1"),
+            parameters: Some((&ObjectIdentifier::new_unwrap("1.3.132.0.10")).into()),
         },
         subject_public_key: &pubkey_bytes_uncompress,
     }
