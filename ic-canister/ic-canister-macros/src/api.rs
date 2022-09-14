@@ -275,7 +275,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
     // Check return type of the getter
 
     let return_type = match &input.sig.output {
-        ReturnType::Default => panic!("No return type for state getter is specified"),
+        ReturnType::Default => panic!("no return type for state getter is specified"),
         ReturnType::Type(_, t) => crate::derive::get_state_type(t),
     };
 
@@ -284,7 +284,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         ty => {
             return syn::Error::new(
                 input.span(),
-                format!("Invalid return type for state getter: {:#?}", ty),
+                format!("invalid return type for state getter: {:#?}", ty),
             )
             .to_compile_error()
             .into()
@@ -297,7 +297,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         return syn::Error::new(
             input.span(),
             format!(
-                "Unexpected return type for state getter: {:#?}",
+                "unexpected return type for state getter: {:#?}",
                 return_type
             ),
         )
@@ -334,7 +334,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         return syn::Error::new(
             input.span(),
             format!(
-                "Multiple state getters defined. Previous: {}",
+                "multiple state getters defined. Previous: {}",
                 old_getter.method_name
             ),
         )
