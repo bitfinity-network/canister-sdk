@@ -102,19 +102,11 @@ pub(crate) fn api_method(
     let mut args_destr = Punctuated::new();
     let mut has_self = false;
 
-    let mut self_lifetime = quote! {};
-
     for arg in args {
         let (arg_type, arg_pat) = match arg {
             FnArg::Receiver(r) => {
                 has_self = true;
-                match &r.reference {
-                    Some((_, Some(lt))) => {
-                        self_lifetime = quote! {#lt};
-                        continue;
-                    }
-                    _ => continue,
-                }
+                continue;
             }
             FnArg::Typed(t) => (&t.ty, t.pat.as_ref()),
         };
@@ -146,12 +138,6 @@ pub(crate) fn api_method(
         .to_compile_error()
         .into();
     }
-
-    let return_lifetime = if parameters.is_trait || input.sig.asyncness.is_none() {
-        quote! { #self_lifetime }
-    } else {
-        quote! { '_ }
-    };
 
     if !has_self {
         return TokenStream::from(
@@ -238,7 +224,7 @@ pub(crate) fn api_method(
 
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(dead_code)]
-        #orig_vis fn #internal_method<#self_lifetime>(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_cdk::api::call::CallResult<#inner_return_type>> + #return_lifetime>> {
+        #orig_vis fn #internal_method(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_cdk::api::call::CallResult<#inner_return_type>> + '_>> {
             // todo: trap handler
             let result = self. #method(#args_destr);
             Box::pin(async move { Ok(result #await_call) })
@@ -247,7 +233,7 @@ pub(crate) fn api_method(
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(unused_mut)]
         #[allow(unused_must_use)]
-        #orig_vis fn #internal_method_notify<#self_lifetime>(#args) -> ::std::result::Result<(), ::ic_cdk::api::call::RejectionCode> {
+        #orig_vis fn #internal_method_notify(#args) -> ::std::result::Result<(), ::ic_cdk::api::call::RejectionCode> {
             // todo: trap handler
             self. #method(#args_destr);
             Ok(())
