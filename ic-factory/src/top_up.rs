@@ -1,17 +1,34 @@
 use candid::Principal;
 use cycles_minting_canister::{
-    IcpXdrConversionRateCertifiedResponse, TokensToCycles, DEFAULT_CYCLES_PER_XDR,
-    MEMO_TOP_UP_CANISTER,
+    IcpXdrConversionRateCertifiedResponse, NotifyError, NotifyTopUp, TokensToCycles,
+    DEFAULT_CYCLES_PER_XDR, MEMO_TOP_UP_CANISTER,
 };
 use ic_base_types::{CanisterId, PrincipalId};
 use ic_canister::virtual_canister_call;
 use ledger_canister::{
     AccountIdentifier, CyclesResponse, NotifyCanisterArgs, SendArgs, Tokens, DEFAULT_TRANSFER_FEE,
+    TOKEN_SUBDIVIDABLE_BY,
 };
+use num_traits::ToPrimitive;
 
 use crate::error::FactoryError;
 
 const CYCLE_MINTING_CANISTER: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
+
+/// This function calculates the amount required for minting cycles for a canister.
+pub async fn calculate_amount(cycles: u64) -> Result<u64, FactoryError> {
+    let rate = get_conversion_rate().await?.data;
+
+    // Convert cycles to XDRs
+    // 1 XDR = 10^12 cycles
+    let xdr = cycles as f64 / DEFAULT_CYCLES_PER_XDR as f64;
+
+    let one_icp = rate.xdr_permyriad_per_icp as f64 / 10_000.0;
+
+    let icp = xdr / one_icp;
+
+    Ok((icp * 100_000_000.0).to_u64().expect(""))
+}
 
 async fn get_conversion_rate() -> Result<IcpXdrConversionRateCertifiedResponse, FactoryError> {
     let principal = Principal::from_text(CYCLE_MINTING_CANISTER).expect("const conversion");
@@ -35,7 +52,7 @@ async fn tokens_to_cycles(amount: Tokens) -> Result<u64, FactoryError> {
         cycles_per_xdr: DEFAULT_CYCLES_PER_XDR.into(),
     };
 
-    let cycles: u64 = cycles.to_cycles(amount).into();
+    let cycles: u64 = u128::from(cycles.to_cycles(amount)) as u64;
     // Actual cycles to be transferred is cycles -  fee(2_000_000_000)
     Ok(cycles - 2_000_000_000)
 }
@@ -63,50 +80,35 @@ pub async fn send_dfx_notify(amount: u64, ledger: Principal) -> Result<u64, Fact
         .await
         .map_err(|e| FactoryError::LedgerError(e.1))?;
 
-    notify_dfx(block_height, ledger, canister_minting_principal).await?;
+    notify_top_up(block_height, canister_minting_principal).await?;
 
     let cycles = tokens_to_cycles(Tokens::from_e8s(amount)).await?;
 
     Ok(cycles)
 }
 
-async fn notify_dfx(
+async fn notify_top_up(
     block_height: u64,
-    ledger: Principal,
+
     minting_canister: Principal,
-) -> Result<(), FactoryError> {
-    const MAX_RETRY: u64 = 5;
+) -> Result<u128, FactoryError> {
+    let to_canister =
+        CanisterId::new(ic_canister::ic_kit::ic::id().into()).expect("const conversion");
 
-    let to_canister = CanisterId::new(minting_canister.into()).expect("const conversion");
-
-    let args = NotifyCanisterArgs {
-        block_height,
-        max_fee: DEFAULT_TRANSFER_FEE,
-        from_subaccount: None,
-        to_canister,
-        to_subaccount: Some((&PrincipalId::from(ic_canister::ic_kit::ic::id())).into()),
+    let notify_details = NotifyTopUp {
+        block_index: block_height,
+        canister_id: to_canister,
     };
 
-    let mut result: Option<CyclesResponse> = None;
+    let cycles = virtual_canister_call!(
+        minting_canister,
+        "notify_top_up",
+        (notify_details,),
+        Result<u128, NotifyError>
+    )
+    .await
+    .map_err(|e| FactoryError::GenericError(e.1))?
+    .map_err(|e| FactoryError::GenericError(e.to_string()))?;
 
-    for _ in 0..MAX_RETRY {
-        match virtual_canister_call!(ledger, "notify_dfx", (&args,), CyclesResponse).await {
-            Ok(cycles) => {
-                result = Some(cycles);
-                break;
-            }
-            Err(_) => continue,
-        }
-    }
-
-    if let Some(cycles) = result {
-        match cycles {
-            CyclesResponse::ToppedUp(_) => Ok(()),
-            _ => Err(FactoryError::GenericError(
-                "cycles response error".to_string(),
-            )),
-        }
-    } else {
-        Err(FactoryError::LedgerError("notify_dfx failed".to_string()))
-    }
+    Ok(cycles)
 }

@@ -458,9 +458,9 @@ impl Default for FactoryConfiguration {
     }
 }
 
-// The canister creation fee is 10^12 cycles, so we require the provided amount to be a little larger.
-// According to IC docs, 10^12 cycles should always cost 1 SDR, with is ~$1.
-const MIN_CANISTER_CYCLES: u64 = 10u64.pow(12);
+// The canister creation fee is 10^12 cycles, so we require the provided amount to be a little larger for the operation for the cansiter.
+// According to IC docs, 10^12 cycles should always cost 1 XDR, with is ~$1.
+const MIN_CANISTER_CYCLES: u64 = 10u64.pow(12) * 5;
 
 async fn consume_provided_cycles_or_icp(
     caller: Principal,
@@ -474,7 +474,6 @@ async fn consume_provided_cycles_or_icp(
     }
     if caller != controller {
         // If the caller is not the controller, we require the caller to provide cycles.
-
         let cycles = transfer_and_top_up(icp_fee, ledger, caller, icp_to).await?;
 
         if cycles < MIN_CANISTER_CYCLES {
@@ -513,9 +512,17 @@ async fn transfer_and_top_up(
 
     // The TOTAL_FEE is 4 times, because of the different transfers :-
     // 1. Transfer from caller to factory
-    // 2. Top up factory (`send_dfx` and `notify_dfx` calls)
+    // 2. Top up factory (`send_dfx` call)
     // 3. Transfer remaining ICP from factory to `icp_to` Principal
-    const TOTAL_FEE: u64 = DEFAULT_TRANSFER_FEE.get_e8s() * 4;
+    const TOTAL_FEE: u64 = DEFAULT_TRANSFER_FEE.get_e8s() * 3;
+
+    // Tops up the Factory canister with cycles. We only require amount equal to `MIN_CANISTER_CYCLES` + Necessary FEES and send the rest to `icp_to`.
+    let amount = top_up::calculate_amount(MIN_CANISTER_CYCLES).await?;
+
+    assert!(
+        amount > icp_fee,
+        "The amount should be greater than the ICP fee"
+    );
 
     if balance < icp_fee + TOTAL_FEE {
         return Err(FactoryError::NotEnoughIcp(balance, icp_fee));
@@ -530,15 +537,11 @@ async fn transfer_and_top_up(
     )
     .await?;
 
-    // Tops up the Factory canister with cycles. We only require amount equal to `MIN_CANISTER_CYCLES * 2` + Necessary FEES and send the rest to `icp_to`.
-    let amount = 36_500_000;
-
     let cycles = top_up::send_dfx_notify(amount, ledger).await?;
 
     send_remaining_fee(icp_to, ledger).await?;
 
-    // We created 2T cycles, we need only 1T cycles for the canister creation.
-    Ok(cycles / 2)
+    Ok(cycles)
 }
 
 /// Send the remainder fee to the `icp_to` Principal, after topping up the `Factory` canister with cycles
