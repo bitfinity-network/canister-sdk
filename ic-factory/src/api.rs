@@ -100,6 +100,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     }
 
     #[allow(unused_variables)]
+    #[allow(clippy::await_holding_refcell_ref)]
     fn create_canister<'a, T: ArgumentEncoder + 'a>(
         &'a self,
         init_args: T,
@@ -329,6 +330,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         ic_canister::generate_idl!()
     }
 
+    #[allow(clippy::await_holding_refcell_ref)]
     fn drop_canister(
         &self,
         canister_id: Principal,
