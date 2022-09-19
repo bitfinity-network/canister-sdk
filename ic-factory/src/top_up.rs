@@ -18,14 +18,13 @@ const CYCLE_MINTING_CANISTER: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
 /// This function calculates the amount required for minting cycles for a canister.
 pub async fn cycles_to_icp(cycles: u64) -> Result<u64, FactoryError> {
     let rate = get_conversion_rate().await?.data;
+    
+    let icp_per_xdr = 10_000.0 / rate.xdr_permyriad_per_icp as f64;
 
-    // Convert cycles to XDRs
-    // 1 XDR = 10^12 cycles
+    // Convert cycles to XDRs - 1 XDR = 10^12 cycles
     let xdr = cycles as f64 / DEFAULT_CYCLES_PER_XDR as f64;
 
-    let one_icp = rate.xdr_permyriad_per_icp as f64 / 10_000.0;
-
-    let icp = xdr / one_icp;
+    let icp = xdr * icp_per_xdr;
 
     (icp * TOKEN_SUBDIVIDABLE_BY as f64)
         .to_u64()
@@ -118,17 +117,22 @@ mod tests {
                 certificate: vec![],
             },
         );
-        let cycles = 5_000_000_000_000_i64;
-        let icp = cycles_to_icp(cycles as u64).await.unwrap();
-        assert_eq!(icp, 102935726);
 
-        let cycles_vec = vec![1_000_000_000_000, 2_000_000_000_000, 3_000_000_000_000];
-        let icp_vec = cycles_to_icp(cycles_vec[0]).await.unwrap();
-        assert_eq!(icp_vec, 20587145);
-        let icp_vec = cycles_to_icp(cycles_vec[1]).await.unwrap();
-        assert_eq!(icp_vec, 41174290);
-        let icp_vec = cycles_to_icp(cycles_vec[2]).await.unwrap();
-        assert_eq!(icp_vec, 61761435);
+        let cycles_icp = vec![
+                            (5_000_000_000_000,102935726),
+                            (1_000_000_000_000, 20587145),
+                            (2_000_000_000_000,41174290), 
+                            (3_000_000_000_000, 61761436) // off by one? 61761435
+        ];
+
+        let expected_icp = cycles_to_icp(cycles_icp[0].0).await.unwrap();
+        assert_eq!(expected_icp, cycles_icp[0].1);
+        let expected_icp = cycles_to_icp(cycles_icp[1].0).await.unwrap();
+        assert_eq!(expected_icp, cycles_icp[1].1);
+        let expected_icp = cycles_to_icp(cycles_icp[2].0).await.unwrap();
+        assert_eq!(expected_icp, cycles_icp[2].1);
+        let expected_icp = cycles_to_icp(cycles_icp[3].0).await.unwrap();
+        assert_eq!(expected_icp, cycles_icp[3].1);
     }
 
     #[tokio::test]

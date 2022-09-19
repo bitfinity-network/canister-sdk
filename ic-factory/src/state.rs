@@ -485,7 +485,7 @@ async fn consume_provided_icp(
 /// and then we top up the Factory canister with the cycles.
 /// We send the remaining ICP to the `icp_to` Principal.
 async fn transfer_and_top_up(
-    _icp_fee: u64,
+    icp_fee: u64,
     ledger: Principal,
     caller: Principal,
     icp_to: Principal,
@@ -496,14 +496,16 @@ async fn transfer_and_top_up(
         .await
         .map_err(FactoryError::LedgerError)?;
 
-    let cycles_fee = top_up::cycles_to_icp(MIN_CANISTER_CYCLES).await?;
-
-    let transfer_amount = cycles_fee + DEFAULT_TRANSFER_FEE.get_e8s();
-
-    let remainder = balance - transfer_amount;
+    // defensive programming, maximum of twice the icp_fee 
+    let top_up_fee = top_up::cycles_to_icp(MIN_CANISTER_CYCLES).await?
+                    .min(icp_fee);
+    
+    if balance - top_up_fee - icp_fee  < 0 {
+        Err(FactoryError::NotEnoughIcp(balance, top_up_fee + icp_fee))?;
+    }
 
     let block_height = top_up::transfer_icp_to_cmc(
-        transfer_amount,
+        top_up_fee,
         ledger,
         Subaccount::from(&PrincipalId(caller)),
     )
@@ -512,27 +514,19 @@ async fn transfer_and_top_up(
     let cycles = top_up::mint_cycles_to_factory(block_height).await?;
 
     // Send the remaining ICP to the `icp_to` Principal
-    send_remaining_fee(caller, icp_to, ledger, remainder).await?;
+    send_remaining_fee_to(caller, icp_to, ledger, icp_fee).await?;
 
     Ok(cycles as u64)
 }
 
 /// Send the remainder fee to the `icp_to` Principal, after topping up the `Factory` canister with cycles
-async fn send_remaining_fee(
+async fn send_remaining_fee_to(
     caller: Principal,
     icp_to: Principal,
     ledger: Principal,
     amount: u64,
 ) -> Result<(), FactoryError> {
     let id = ic_kit::ic::id();
-    let balance = ledger
-        .get_balance(id, Some((&PrincipalId(caller)).into()))
-        .await
-        .map_err(FactoryError::LedgerError)?;
-
-    if balance < amount + DEFAULT_TRANSFER_FEE.get_e8s() {
-        return Err(FactoryError::NotEnoughIcp(balance, amount));
-    }
 
     let args = TransferArgs {
         memo: Default::default(),
