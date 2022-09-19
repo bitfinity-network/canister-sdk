@@ -93,12 +93,10 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
             )])));
         }
 
-        let res = self
-            .factory_state()
+        self.factory_state()
             .borrow_mut()
             .check_is_owner()?
-            .set_canister_wasm(wasm, state_header);
-        res
+            .set_canister_wasm(wasm, state_header)
     }
 
     #[allow(unused_variables)]

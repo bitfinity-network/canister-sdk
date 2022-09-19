@@ -510,7 +510,7 @@ async fn transfer_and_top_up(
         .await
         .map_err(FactoryError::LedgerError)?;
 
-    // The TOTAL_FEE is 4 times, because of the different transfers :-
+    // The TOTAL_FEE is 3 times, because of the different transfers :-
     // 1. Transfer from caller to factory
     // 2. Top up factory (`send_dfx` call)
     // 3. Transfer remaining ICP from factory to `icp_to` Principal
@@ -528,44 +528,43 @@ async fn transfer_and_top_up(
         return Err(FactoryError::NotEnoughIcp(balance, icp_fee));
     }
 
-    // Transfer the fee to the Factory ID
-    transfer(
-        ledger,
+    LedgerPrincipalExt::transfer(
+        &ledger,
+        id,
         icp_fee + TOTAL_FEE,
         Some((&PrincipalId(caller)).into()),
-        id,
+        None,
     )
-    .await?;
+    .await
+    .map_err(FactoryError::LedgerError)?;
 
-    let cycles = top_up::send_dfx_notify(amount, ledger).await?;
+    let cycles = top_up::send_dfx_notify(amount + DEFAULT_TRANSFER_FEE.get_e8s(), ledger).await?;
 
-    send_remaining_fee(icp_to, ledger).await?;
+    // Send the remaining ICP to the `icp_to` Principal
+    let remaining_icp = icp_fee - amount - TOTAL_FEE;
+    send_remaining_fee(icp_to, ledger, remaining_icp).await?;
 
     Ok(cycles)
 }
 
 /// Send the remainder fee to the `icp_to` Principal, after topping up the `Factory` canister with cycles
-async fn send_remaining_fee(icp_to: Principal, ledger: Principal) -> Result<(), FactoryError> {
+async fn send_remaining_fee(
+    icp_to: Principal,
+    ledger: Principal,
+    amount: u64,
+) -> Result<(), FactoryError> {
     let id = ic_kit::ic::id();
     let balance = ledger
         .get_balance(id, None)
         .await
         .map_err(FactoryError::LedgerError)?;
 
-    transfer(ledger, balance, None, icp_to).await?;
+    if balance < amount + DEFAULT_TRANSFER_FEE.get_e8s() {
+        return Err(FactoryError::NotEnoughIcp(balance, amount));
+    }
 
-    Ok(())
-}
-
-async fn transfer(
-    ledger: Principal,
-    amount: u64,
-    subaccount: Option<Subaccount>,
-    to: Principal,
-) -> Result<(), FactoryError> {
-    LedgerPrincipalExt::transfer(&ledger, to, amount, subaccount, None)
+    LedgerPrincipalExt::transfer(&ledger, icp_to, amount, None, None)
         .await
         .map_err(FactoryError::LedgerError)?;
-
     Ok(())
 }
