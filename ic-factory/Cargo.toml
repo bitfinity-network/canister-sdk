@@ -38,3 +38,6 @@ binread = "2.2"
 # This dependency is not used direcly, but we must enable `custom` feature for it to compile for wasm32 target.
 [target.'cfg(target = "wasm32-unknown-unknown")'.dependencies]
 getrandom = { version = "0.2.6", features = ["custom"]}
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["rt", "macros"] }
