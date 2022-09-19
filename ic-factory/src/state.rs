@@ -469,9 +469,6 @@ async fn consume_provided_cycles_or_icp(
     icp_fee: u64,
     controller: Principal,
 ) -> Result<u64, FactoryError> {
-    if ic_kit::ic::msg_cycles_available() > 0 {
-        return consume_message_cycles();
-    }
     if caller != controller {
         // If the caller is not the controller, we require the caller to provide cycles.
         let cycles = transfer_and_top_up(icp_fee, ledger, caller, icp_to).await?;

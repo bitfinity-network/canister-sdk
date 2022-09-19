@@ -14,6 +14,7 @@ use crate::error::FactoryError;
 
 const CYCLE_MINTING_CANISTER: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
 
+type BlockHeight = u64; 
 /// This function calculates the amount required for minting cycles for a canister.
 pub async fn calculate_amount(cycles: u64) -> Result<u64, FactoryError> {
     let rate = get_conversion_rate().await?.data;
@@ -46,7 +47,8 @@ async fn get_conversion_rate() -> Result<IcpXdrConversionRateCertifiedResponse, 
     Ok(rate)
 }
 
-pub async fn send_dfx_notify(amount: u64, ledger: Principal) -> Result<u64, FactoryError> {
+// todo: call this transfer_icp_to_cmc
+pub async fn transfer_icp_to_cmc(amount: u64, ledger: Principal) -> Result<BlockHeight, FactoryError> {
     let canister_minting_principal =
         Principal::from_text(CYCLE_MINTING_CANISTER).expect("const conversion");
 
@@ -65,17 +67,15 @@ pub async fn send_dfx_notify(amount: u64, ledger: Principal) -> Result<u64, Fact
         created_at_time: None,
     };
 
-    let block_height = virtual_canister_call!(ledger, "send_dfx", (args,), u64)
+    virtual_canister_call!(ledger, "send_dfx", (args,), u64)
         .await
-        .map_err(|e| FactoryError::LedgerError(e.1))?;
+        .map_err(|e| FactoryError::LedgerError(e.1))
 
-    let cycles = notify_top_up(block_height, canister_minting_principal).await?;
-
-    Ok(cycles as u64)
 }
 
-async fn notify_top_up(
-    block_height: u64,
+// todo: call this mint_cycles
+async fn mint_cycles_to_factory(
+    block_height: BlockHeight,
     minting_canister: Principal,
 ) -> Result<u128, FactoryError> {
     let to_canister =
@@ -98,3 +98,6 @@ async fn notify_top_up(
 
     Ok(cycles)
 }
+
+
+todo!("need some unit tests on get_conversion_rate, calculate_amount. Use virtual responder to mock the conversion rate from the management canister.")
