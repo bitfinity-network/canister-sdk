@@ -462,7 +462,7 @@ impl Default for FactoryConfiguration {
 // According to IC docs, 10^12 cycles should always cost 1 XDR, with is ~$1.
 const MIN_CANISTER_CYCLES: u64 = 10u64.pow(12) * 5;
 
-async fn consume_provided_cycles_or_icp(
+async fn consume_provided_icp(
     caller: Principal,
     ledger: Principal,
     icp_to: Principal,
@@ -471,12 +471,7 @@ async fn consume_provided_cycles_or_icp(
 ) -> Result<u64, FactoryError> {
     if caller != controller {
         // If the caller is not the controller, we require the caller to provide cycles.
-        let cycles = transfer_and_top_up(icp_fee, ledger, caller, icp_to).await?;
-
-        if cycles < MIN_CANISTER_CYCLES {
-            return Err(FactoryError::NotEnoughCycles(cycles, MIN_CANISTER_CYCLES));
-        };
-        return Ok(cycles);
+        transfer_and_top_up_cycles(icp_fee, ledger, caller, icp_to).await
     }
 
     Ok(MIN_CANISTER_CYCLES)
@@ -511,35 +506,22 @@ async fn transfer_and_top_up(
     // 1. Transfer from caller to factory
     // 2. Top up factory (`send_dfx` call)
     // 3. Transfer remaining ICP from factory to `icp_to` Principal
-    const TOTAL_FEE: u64 = DEFAULT_TRANSFER_FEE.get_e8s() * 3;
+    //const TOTAL_FEE: u64 = DEFAULT_TRANSFER_FEE.get_e8s() * 3;
 
     // Tops up the Factory canister with cycles. We only require amount equal to `MIN_CANISTER_CYCLES` + Necessary FEES and send the rest to `icp_to`.
-    let amount = top_up::calculate_amount(MIN_CANISTER_CYCLES).await?;
+    let cycles_fee = top_up::cycles_to_icp(MIN_CANISTER_CYCLES).await?;
+    let transfer_amount = cycles_fee + DEFAULT_TRANSFER_FEE;
+    let remainder = balance - transfer_amount;
 
-    assert!(
-        amount > icp_fee,
-        "The amount should be greater than the ICP fee"
-    );
-
-    if balance < icp_fee + TOTAL_FEE {
+    if remainder < 0  {
         return Err(FactoryError::NotEnoughIcp(balance, icp_fee));
     }
 
-    LedgerPrincipalExt::transfer(
-        &ledger,
-        id,
-        icp_fee + TOTAL_FEE,
-        Some((&PrincipalId(caller)).into()),
-        None,
-    )
-    .await
-    .map_err(FactoryError::LedgerError)?;
-
-    let cycles = top_up::send_dfx_notify(amount + DEFAULT_TRANSFER_FEE.get_e8s(), ledger).await?;
+    let block_height = top_up::transfer_icp_to_cmc((cycles_fee + DEFAULT_TRANSFER_FEE).get_e8s(), ledger).await?;
+    let cycles = top_up::mint_cycles();
 
     // Send the remaining ICP to the `icp_to` Principal
-    let remaining_icp = icp_fee - amount - TOTAL_FEE;
-    send_remaining_fee(icp_to, ledger, remaining_icp).await?;
+    send_remaining_fee(icp_to, ledger, remainder).await?;
 
     Ok(cycles)
 }
@@ -560,6 +542,7 @@ async fn send_remaining_fee(
         return Err(FactoryError::NotEnoughIcp(balance, amount));
     }
 
+    //use canister call here. 
     LedgerPrincipalExt::transfer(&ledger, icp_to, amount, None, None)
         .await
         .map_err(FactoryError::LedgerError)?;

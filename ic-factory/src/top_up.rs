@@ -16,7 +16,7 @@ const CYCLE_MINTING_CANISTER: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
 
 type BlockHeight = u64; 
 /// This function calculates the amount required for minting cycles for a canister.
-pub async fn calculate_amount(cycles: u64) -> Result<u64, FactoryError> {
+pub async fn cycles_to_icp(cycles: u64) -> Result<u64, FactoryError> {
     let rate = get_conversion_rate().await?.data;
 
     // Convert cycles to XDRs
