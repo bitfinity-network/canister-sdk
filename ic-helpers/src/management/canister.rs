@@ -13,9 +13,7 @@ use ic_base_types::CanisterId;
 use ic_canister::virtual_canister_call;
 use ic_cdk::api::call::RejectionCode;
 use ic_ic00_types::{ECDSAPublicKeyResponse, SignWithECDSAReply};
-use k256::elliptic_curve::AlgorithmParameters;
-use k256::pkcs8::{PublicKeyDocument, SubjectPublicKeyInfo};
-use k256::Secp256k1;
+use k256::pkcs8::{self, AlgorithmIdentifier, ObjectIdentifier, SubjectPublicKeyInfo};
 use libsecp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
@@ -443,13 +441,15 @@ pub struct CallSignature {
 pub fn der_encode_pub_key(pk: &Pubkey) -> Vec<u8> {
     let pubkey = PublicKey::parse_slice(pk.as_bytes(), None).expect("not a valid public key");
     let pubkey_bytes_uncompress = pubkey.serialize();
-    let der_encoded_public_key: PublicKeyDocument = SubjectPublicKeyInfo {
-        algorithm: Secp256k1::algorithm_identifier(),
+    let der_encoded_public_key: pkcs8::Document = SubjectPublicKeyInfo {
+        algorithm: AlgorithmIdentifier {
+            oid: ObjectIdentifier::new_unwrap("1.2.840.10045.2.1"),
+            parameters: Some((&ObjectIdentifier::new_unwrap("1.3.132.0.10")).into()),
+        },
         subject_public_key: &pubkey_bytes_uncompress,
     }
     .try_into()
     .expect("not a valid PublicKeyDocument");
-
     der_encoded_public_key.as_ref().into()
 }
 

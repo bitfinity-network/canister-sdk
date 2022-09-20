@@ -8,8 +8,9 @@ default = []
 agent = ["ic-agent", "garcon"]
 
 [dependencies]
-ledger-canister = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18_18-31"}
-ic-base-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18_18-31"}
+ledger-canister = {git = "https://github.com/dfinity/ic", branch = "rc--2022-09-11_18-31"}
+ic-ledger-core = {git = "https://github.com/dfinity/ic", branch = "rc--2022-09-11_18-31"}
+ic-base-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-09-11_18-31"}
 async-trait = "0.1"
 hex = "0.4"
 ic-cdk = "0.5"
@@ -21,17 +22,17 @@ serde_json = "1.0"
 sha2 = "0.9"
 serde_bytes = "0.11.2"
 serde_cbor = "0.11.2"
-ic-ic00-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-05-18_18-31"}
-stable-structures = { git = "https://github.com/dfinity/ic" }
+ic-ic00-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-09-11_18-31"}
+stable-structures = { git = "https://github.com/dfinity/ic", branch = "rc--2022-09-11_18-31" }
 thiserror = "1.0"
 ic-canister = { path = "../ic-canister/ic-canister", package = "ic-canister" }
 ic-canister-macros = { path = "../ic-canister/ic-canister-macros", package = "ic-canister-macros" }
 ic-storage = { path = "../ic-storage" }
 leb128 = "0.2.5"
-ic-agent = { version = "0.16", optional = true }
+ic-agent = { version = "0.20", optional = true }
 garcon = { version = "0.2", optional = true}
 libsecp256k1 = { version = "0.7", optional = false}
-k256 = { version = "0.10" }
+k256 = { version = "0.11" }
 auto_ops = "0.3"
 crypto-bigint = { version = "0.4", features = ["serde"] }
 num-bigint = "0.4"

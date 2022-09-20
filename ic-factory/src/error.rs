@@ -38,4 +38,7 @@ pub enum FactoryError {
 
     #[error("failed to create canister: {0}")]
     CanisterCreateFailed(String),
+
+    #[error("factory error: {0}")]
+    GenericError(String),
 }

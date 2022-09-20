@@ -16,8 +16,10 @@ impl Standard {
             Self::Erc20 => "erc20",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Self {
+impl From<&str> for Standard {
+    fn from(s: &str) -> Self {
         match s {
             "ledger" => Self::Ledger,
             "erc20" => Self::Erc20,
