@@ -501,7 +501,7 @@ async fn transfer_and_top_up(
         .await?
         .min(icp_fee);
 
-    if balance - top_up_fee - icp_fee < 0 {
+    if balance < top_up_fee + icp_fee {
         Err(FactoryError::NotEnoughIcp(balance, top_up_fee + icp_fee))?;
     }
 
