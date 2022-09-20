@@ -104,7 +104,7 @@ pub(crate) fn api_method(
 
     for arg in args {
         let (arg_type, arg_pat) = match arg {
-            FnArg::Receiver(r) => {
+            FnArg::Receiver(_) => {
                 has_self = true;
                 continue;
             }
