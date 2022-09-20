@@ -496,20 +496,18 @@ async fn transfer_and_top_up(
         .await
         .map_err(FactoryError::LedgerError)?;
 
-    // defensive programming, maximum of twice the icp_fee 
-    let top_up_fee = top_up::cycles_to_icp(MIN_CANISTER_CYCLES).await?
-                    .min(icp_fee);
-    
-    if balance - top_up_fee - icp_fee  < 0 {
+    // defensive programming, maximum of twice the icp_fee
+    let top_up_fee = top_up::cycles_to_icp(MIN_CANISTER_CYCLES)
+        .await?
+        .min(icp_fee);
+
+    if balance - top_up_fee - icp_fee < 0 {
         Err(FactoryError::NotEnoughIcp(balance, top_up_fee + icp_fee))?;
     }
 
-    let block_height = top_up::transfer_icp_to_cmc(
-        top_up_fee,
-        ledger,
-        Subaccount::from(&PrincipalId(caller)),
-    )
-    .await?;
+    let block_height =
+        top_up::transfer_icp_to_cmc(top_up_fee, ledger, Subaccount::from(&PrincipalId(caller)))
+            .await?;
 
     let cycles = top_up::mint_cycles_to_factory(block_height).await?;
 
@@ -526,13 +524,11 @@ async fn send_remaining_fee_to(
     ledger: Principal,
     amount: u64,
 ) -> Result<(), FactoryError> {
-    let id = ic_kit::ic::id();
-
     let args = TransferArgs {
         memo: Default::default(),
         amount: Tokens::from_e8s(amount - DEFAULT_TRANSFER_FEE.get_e8s()),
         fee: DEFAULT_TRANSFER_FEE,
-        from_subaccount: None,
+        from_subaccount: Some(Subaccount::from(&PrincipalId(caller))),
         to: AccountIdentifier::new(PrincipalId(icp_to), None).to_address(),
         created_at_time: None,
     };

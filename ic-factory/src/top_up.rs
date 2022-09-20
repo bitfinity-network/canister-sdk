@@ -18,7 +18,7 @@ const CYCLE_MINTING_CANISTER: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
 /// This function calculates the amount required for minting cycles for a canister.
 pub async fn cycles_to_icp(cycles: u64) -> Result<u64, FactoryError> {
     let rate = get_conversion_rate().await?.data;
-    
+
     let icp_per_xdr = 10_000.0 / rate.xdr_permyriad_per_icp as f64;
 
     // Convert cycles to XDRs - 1 XDR = 10^12 cycles
@@ -101,8 +101,6 @@ mod tests {
     use cycles_minting_canister::IcpXdrConversionRate;
     use ic_canister::{ic_kit::MockContext, register_virtual_responder};
 
-    fn register_responder() {}
-
     #[tokio::test]
     async fn test_calculate_amount() {
         register_virtual_responder(
@@ -119,10 +117,10 @@ mod tests {
         );
 
         let cycles_icp = vec![
-                            (5_000_000_000_000,102935726),
-                            (1_000_000_000_000, 20587145),
-                            (2_000_000_000_000,41174290), 
-                            (3_000_000_000_000, 61761436) // off by one? 61761435
+            (5_000_000_000_000, 102935726),
+            (1_000_000_000_000, 20587145),
+            (2_000_000_000_000, 41174290),
+            (3_000_000_000_000, 61761436), // off by one? 61761435
         ];
 
         let expected_icp = cycles_to_icp(cycles_icp[0].0).await.unwrap();
