@@ -292,19 +292,20 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
 
     let segment = path.path.segments.iter().last();
 
-    if segment.is_none() {
-        return syn::Error::new(
-            input.span(),
-            format!(
-                "unexpected return type for state getter: {:#?}",
-                return_type
-            ),
-        )
-        .to_compile_error()
-        .into();
-    }
-
-    let state_type = segment.expect("already checked").ident.to_string();
+    let state_type = match segment {
+        Some(segment) => segment.ident.to_string(),
+        None => {
+            return syn::Error::new(
+                input.span(),
+                format!(
+                    "unexpected return type for state getter: {:#?}",
+                    return_type
+                ),
+            )
+            .to_compile_error()
+            .into()
+        }
+    };
 
     // Check that the body of the getter is empty
 
