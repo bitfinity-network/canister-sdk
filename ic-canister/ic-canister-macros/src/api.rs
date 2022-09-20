@@ -273,7 +273,6 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
     }
 
     // Check return type of the getter
-
     let return_type = match &input.sig.output {
         ReturnType::Default => panic!("no return type for state getter is specified"),
         ReturnType::Type(_, t) => crate::derive::get_state_type(t),
@@ -604,7 +603,9 @@ pub(crate) fn generate_idl() -> TokenStream {
                 let mut rets = Vec::new();
                 #(#rets)*
                 let func = Function { args, rets, modes: #modes };
-                service.push((#name.to_string(), Type::Func(func)));
+                if !cfg!(feature = "no_api") {
+                    service.push((#name.to_string(), Type::Func(func)));
+                }
             }
         }
     });
