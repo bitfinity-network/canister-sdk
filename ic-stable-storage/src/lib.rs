@@ -4,7 +4,7 @@ use candid::de::IDLDeserialize;
 use candid::ser::IDLBuilder;
 use candid::{CandidType, Deserialize};
 use error::Result;
-use stable_structures::{self, Memory, RestrictedMemory, StableBTreeMap};
+use ic_exports::stable_structures::{self, Memory, RestrictedMemory, StableBTreeMap};
 
 mod error;
 mod log;
@@ -13,8 +13,8 @@ mod multimap;
 mod pages;
 mod virtual_memory;
 
+pub(crate) use ic_exports::stable_structures::btreemap::{InsertError, Iter};
 pub(crate) use pages::Pages;
-pub(crate) use stable_structures::btreemap::{InsertError, Iter};
 
 pub use log::StableLog;
 pub use map::StableMap;
