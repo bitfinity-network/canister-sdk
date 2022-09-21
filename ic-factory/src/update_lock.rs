@@ -1,5 +1,5 @@
 use crate::error::FactoryError;
-use ic_cdk::export::candid::{CandidType, Deserialize};
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize};
 use std::cell::RefCell;
 use std::rc::Rc;
 

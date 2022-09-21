@@ -2,13 +2,18 @@ use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 
 use auto_ops::impl_op_ex;
-use candid::types::{Serializer, Type, TypeId};
-use candid::{CandidType, Deserialize};
 use crypto_bigint::{CheckedAdd, CheckedMul, CheckedSub, NonZero, U256};
+use ic_exports::ic_cdk::export::candid::{
+    self,
+    types::{Serializer, Type, TypeId},
+    CandidType, Deserialize,
+};
 use num_bigint::BigUint;
 use num_traits::{FromPrimitive, ToPrimitive};
-use serde::de::{Error, Unexpected};
-use serde::{Deserializer, Serialize};
+use serde::{
+    de::{Error, Unexpected},
+    Deserializer, Serialize,
+};
 
 /// Token amount limited by the value of u128::MAX (2^128 - 1).
 ///

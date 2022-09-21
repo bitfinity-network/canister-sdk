@@ -319,7 +319,7 @@
 //! # use std::cell::RefCell;
 //! # use std::rc::Rc;
 //! #
-//! # ic_canister::ic_kit::MockContext::new().inject();
+//! # ic_exports::ic_kit::MockContext::new().inject();
 //! #
 //! # #[derive(Default, IcStorage, CandidType, Deserialize)]
 //! # struct MyCanisterState {
@@ -379,7 +379,7 @@
 //! # use std::cell::RefCell;
 //! # use std::rc::Rc;
 //! #
-//! # ic_canister::ic_kit::MockContext::new().inject();
+//! # ic_exports::ic_kit::MockContext::new().inject();
 //! #
 //! # #[derive(Default, IcStorage, CandidType, Deserialize)]
 //! # struct MyCanisterState {
@@ -489,18 +489,18 @@
 //! to use its types and method declarations, and to be able to test their logic together, but
 //! we don't want the second canister's API to be exported together with the first one's.
 //!
-//! To enable this, a canister crate can declare a `no_api` feature flag. If this flag is enabled,
+//! To enable this, a canister crate can declare a `export_api` feature flag. If this flag is enabled,
 //! no API methods of the dependency canister will be exported.
 //!
 //! ```ignore
 //! // child canister
 //! [features]
 //! default = []
-//! no_api = []
+//! export_api = []
 //!
 //! // parent canister
 //! [dependency]
-//! child_canister = {version = "1.0", features = ["no_api"]}
+//! child_canister = {version = "1.0", features = ["export_api"]}
 //! ```
 //!
 //! Note though, that the Cargo features are additive during same compilation process. It means, that
@@ -512,23 +512,18 @@
 //!
 //! You can generate IDL (Candid) definition for your canister using [generate_idl] macro and then compile it via `candid::bindings::candid::compile()`.
 
-use ic_cdk::api::call::{CallResult, RejectionCode};
-use ic_cdk::export::candid::utils::ArgumentDecoder;
-use ic_cdk::export::candid::{CandidType, Deserialize};
-use ic_cdk::export::Principal;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
-use std::rc::Rc;
+use ic_exports::ic_cdk::{
+    api::call::{CallResult, RejectionCode},
+    export::{
+        candid::{self, utils::ArgumentDecoder, CandidType, Deserialize},
+        Principal,
+    },
+};
+use std::{cell::RefCell, collections::HashMap, future::Future, pin::Pin, rc::Rc};
 
 pub use ic_canister_macros::*;
 
-pub use ic_kit;
-
 pub mod idl;
-pub mod storage;
-
 pub use idl::*;
 
 pub enum MethodType {
@@ -650,14 +645,14 @@ where
     for<'b> U: CandidType + Deserialize<'b>,
 {
     let inner_closure = move |args: Vec<u8>| {
-        let deserialized_args = ic_cdk::export::candid::decode_args::<T>(&args).map_err(|e| {
+        let deserialized_args = candid::decode_args::<T>(&args).map_err(|e| {
             (
                 RejectionCode::Unknown,
                 format!("Failed to decode args: {:?}", e),
             )
         })?;
         let result = closure(deserialized_args);
-        ic_cdk::export::candid::encode_args((result,)).map_err(|e| {
+        candid::encode_args((result,)).map_err(|e| {
             (
                 RejectionCode::Unknown,
                 format!("failed to encode return value: {:?}", e),

@@ -1,6 +1,6 @@
-use candid::{CandidType, Deserialize, Principal};
-use ic_storage::stable::Versioned;
-use ic_storage::IcStorage;
+use ic_canister::PreUpdate;
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_storage::{stable::Versioned, IcStorage};
 use std::{cell::RefCell, rc::Rc};
 
 use ic_canister::{generate_exports, query, state_getter, update, Canister};
@@ -34,12 +34,12 @@ pub trait CanisterA: Canister {
 
     #[query(trait = true)]
     fn caller(&self) -> Principal {
-        ic_canister::ic_kit::ic::caller()
+        ic_exports::ic_kit::ic::caller()
     }
 
     #[query(trait = true)]
     fn id(&self) -> Principal {
-        ic_canister::ic_kit::ic::id()
+        ic_exports::ic_kit::ic::id()
     }
 }
 
@@ -48,8 +48,8 @@ generate_exports!(CanisterA, CanisterAImpl);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ic_canister::ic_kit::MockContext;
     use ic_canister::{canister_call, Canister};
+    use ic_exports::ic_kit::MockContext;
 
     #[test]
     fn independent_states() {
@@ -85,8 +85,8 @@ mod tests {
 
     #[tokio::test]
     async fn execution_context_with_canister_call() {
-        let id = ic_canister::ic_kit::mock_principals::alice();
-        let caller = ic_canister::ic_kit::mock_principals::bob();
+        let id = ic_exports::ic_kit::mock_principals::alice();
+        let caller = ic_exports::ic_kit::mock_principals::bob();
 
         MockContext::new().with_id(id).with_caller(caller).inject();
 
@@ -102,7 +102,7 @@ mod tests {
             "wrong canister id"
         );
 
-        assert_eq!(ic_canister::ic_kit::ic::id(), id);
-        assert_eq!(ic_canister::ic_kit::ic::caller(), caller);
+        assert_eq!(ic_exports::ic_kit::ic::id(), id);
+        assert_eq!(ic_exports::ic_kit::ic::caller(), caller);
     }
 }

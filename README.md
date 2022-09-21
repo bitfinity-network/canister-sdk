@@ -109,7 +109,7 @@ impl OtherCanisterTrait for MyCanister {
 
 If you use `ic-cdk` to create your canister's `API`s, you cannot simply use a canister as a rust dependency for another
 canister, because all the `API`s of the dependency will also be included into the dependent canister. If you create
-a canister using `canister-sdk`, just add a `no_api` feature to your canister. When this feature is enabled on a
+a canister using `canister-sdk`, just add a `export_api` feature to your canister. When this feature is enabled on a
 dependency, the API of the dependency will not be exported white the rest of logic and types can be used in you crate.
 
 ## ic-factory

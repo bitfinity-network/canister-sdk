@@ -1,4 +1,4 @@
-use candid::{CandidType, Deserialize, Principal};
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_helpers::metrics::Metrics;
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
@@ -51,7 +51,8 @@ impl PreUpdate for CanisterC {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ic_canister::{canister_call, ic_kit::MockContext};
+    use ic_canister::{canister_call};
+    use ic_exports::ic_kit::MockContext;
 
     #[tokio::test]
     async fn get_metrics() {

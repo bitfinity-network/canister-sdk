@@ -1,15 +1,20 @@
-use crate::core::{create_canister, drop_canister, upgrade_canister};
-use crate::error::FactoryError;
-use crate::update_lock::UpdateLock;
-use ic_cdk::api::call::CallResult;
-use ic_cdk::export::candid::utils::ArgumentEncoder;
-use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use crate::{
+    core::{create_canister, drop_canister, upgrade_canister},
+    error::FactoryError,
+    update_lock::UpdateLock,
+};
+use ic_exports::{
+    ic_base_types::PrincipalId,
+    ic_cdk::{
+        api::call::CallResult,
+        export::candid::{utils::ArgumentEncoder, CandidType, Deserialize, Principal},
+    },
+    ic_kit::ic,
+    ledger_canister::DEFAULT_TRANSFER_FEE,
+};
 use ic_helpers::candid_header::CandidHeader;
-use ic_helpers::ledger::{LedgerPrincipalExt, PrincipalId, DEFAULT_TRANSFER_FEE};
-use ic_storage::stable::Versioned;
-use ic_storage::IcStorage;
-use std::collections::HashMap;
-use std::future::Future;
+use ic_storage::{stable::Versioned, IcStorage};
+use std::{collections::HashMap, future::Future};
 use v1::{Factory, FactoryStateV1};
 
 pub mod v1;
@@ -100,7 +105,7 @@ impl FactoryState {
     ///
     /// Returns `FactoryError::AccessDenied` if the caller is not the factory controller.
     pub fn check_is_owner(&mut self) -> Result<Authorized<Owner>, FactoryError> {
-        let caller = ic_canister::ic_kit::ic::caller();
+        let caller = ic_exports::ic_kit::ic::caller();
         self.check_is_owner_internal(caller)
     }
 
@@ -172,7 +177,7 @@ impl FactoryState {
     ///
     /// If the given lock is not the factory's lock. This should never happen if the factory code
     /// is written correctly.
-    pub(crate) fn create_canister<A: ArgumentEncoder>(
+    pub(crate) fn create_canister<A: ArgumentEncoder + Send>(
         &self,
         init_args: A,
         cycles: u64,
@@ -186,7 +191,7 @@ impl FactoryState {
             wasm,
             init_args,
             cycles,
-            controller.map(|p| vec![ic_canister::ic_kit::ic::id(), p]),
+            controller.map(|p| vec![ic_exports::ic_kit::ic::id(), p]),
         ))
     }
 
@@ -467,7 +472,7 @@ async fn consume_provided_cycles_or_icp(
     icp_fee: u64,
     controller: Principal,
 ) -> Result<u64, FactoryError> {
-    if ic_kit::ic::msg_cycles_available() > 0 {
+    if ic::msg_cycles_available() > 0 {
         consume_message_cycles()
     } else {
         if caller != controller {
@@ -479,12 +484,12 @@ async fn consume_provided_cycles_or_icp(
 }
 
 fn consume_message_cycles() -> Result<u64, FactoryError> {
-    let amount = ic_kit::ic::msg_cycles_available();
+    let amount = ic::msg_cycles_available();
     if amount < MIN_CANISTER_CYCLES {
         return Err(FactoryError::NotEnoughCycles(amount, MIN_CANISTER_CYCLES));
     }
 
-    Ok(ic_kit::ic::msg_cycles_accept(amount))
+    Ok(ic::msg_cycles_accept(amount))
 }
 
 async fn consume_provided_icp(
@@ -493,7 +498,8 @@ async fn consume_provided_icp(
     icp_to: Principal,
     icp_fee: u64,
 ) -> Result<(), FactoryError> {
-    let id = ic_kit::ic::id();
+    use ic_helpers::principal::ledger::LedgerPrincipalExt;
+    let id = ic::id();
     let balance = ledger
         .get_balance(id, Some((&PrincipalId(caller)).into()))
         .await
@@ -517,15 +523,11 @@ async fn consume_icp(
     icp_to: Principal,
     ledger: Principal,
 ) -> Result<(), FactoryError> {
-    LedgerPrincipalExt::transfer(
-        &ledger,
-        icp_to,
-        amount,
-        Some((&PrincipalId(from)).into()),
-        None,
-    )
-    .await
-    .map_err(FactoryError::LedgerError)?;
+    use ic_helpers::principal::ledger::LedgerPrincipalExt;
+    ledger
+        .transfer(icp_to, amount, Some((&PrincipalId(from)).into()), None)
+        .await
+        .map_err(FactoryError::LedgerError)?;
 
     Ok(())
 }

@@ -1,4 +1,4 @@
-use candid::{CandidType, Deserialize, Principal};
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_canister::{
     canister_call, canister_notify, virtual_canister_call, virtual_canister_notify, PreUpdate,
 };
@@ -90,7 +90,7 @@ impl CanisterB {
         let canister_a = CanisterAImpl::from_principal(self.state.borrow().canister_a);
         let canister_a_id = canister_call!(canister_a.id(), Principal).await.unwrap();
 
-        (ic_canister::ic_kit::ic::id(), canister_a_id)
+        (ic_exports::ic_kit::ic::id(), canister_a_id)
     }
 
     #[update]
@@ -100,7 +100,7 @@ impl CanisterB {
             .await
             .unwrap();
 
-        (ic_canister::ic_kit::ic::caller(), canister_a_caller)
+        (ic_exports::ic_kit::ic::caller(), canister_a_caller)
     }
 }
 
@@ -113,8 +113,8 @@ impl CanisterA for CanisterB {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ic_canister::ic_kit::mock_principals::alice;
-    use ic_canister::ic_kit::MockContext;
+    use ic_exports::ic_kit::mock_principals::alice;
+    use ic_exports::ic_kit::MockContext;
 
     fn get_canister_b(canister_a: Principal) -> CanisterB {
         let canister = CanisterB::init_instance();
@@ -147,8 +147,8 @@ mod tests {
 
     #[tokio::test]
     async fn inter_canister_context() {
-        let id = ic_canister::ic_kit::mock_principals::alice();
-        let caller = ic_canister::ic_kit::mock_principals::bob();
+        let id = ic_exports::ic_kit::mock_principals::alice();
+        let caller = ic_exports::ic_kit::mock_principals::bob();
         MockContext::new().with_id(id).with_caller(caller).inject();
 
         let canister_a = CanisterAImpl::init_instance();

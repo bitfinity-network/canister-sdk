@@ -9,8 +9,8 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input, Error, FnArg, Ident, ImplItemMethod, Pat, PatIdent, PatTuple, ReturnType,
-    Signature, Token, Type, TypeTuple, VisPublic, Visibility, Item, Stmt,
+    parse_macro_input, Error, FnArg, Ident, ImplItemMethod, Item, Pat, PatIdent, PatTuple,
+    ReturnType, Signature, Stmt, Token, Type, TypeTuple, VisPublic, Visibility,
 };
 
 #[derive(Default, Deserialize, Debug)]
@@ -84,10 +84,10 @@ pub(crate) fn api_method(
         quote! {}
     } else {
         match return_type {
-            ReturnType::Default => quote! {::ic_cdk::api::call::reply(())},
+            ReturnType::Default => quote! {::ic_exports::ic_cdk::api::call::reply(())},
             ReturnType::Type(_, t) => match t.as_ref() {
-                Type::Tuple(_) => quote! {::ic_cdk::api::call::reply(result)},
-                _ => quote! {::ic_cdk::api::call::reply((result,))},
+                Type::Tuple(_) => quote! {::ic_exports::ic_cdk::api::call::reply(result)},
+                _ => quote! {::ic_exports::ic_cdk::api::call::reply((result,))},
             },
         }
     };
@@ -102,19 +102,11 @@ pub(crate) fn api_method(
     let mut args_destr = Punctuated::new();
     let mut has_self = false;
 
-    let mut self_lifetime = quote! {};
-
     for arg in args {
         let (arg_type, arg_pat) = match arg {
-            FnArg::Receiver(r) => {
+            FnArg::Receiver(_) => {
                 has_self = true;
-                match &r.reference {
-                    Some((_, Some(lt))) => {
-                        self_lifetime = quote! {#lt};
-                        continue;
-                    }
-                    _ => continue,
-                }
+                continue;
             }
             FnArg::Typed(t) => (&t.ty, t.pat.as_ref()),
         };
@@ -146,12 +138,6 @@ pub(crate) fn api_method(
         .to_compile_error()
         .into();
     }
-
-    let return_lifetime = if parameters.is_trait || input.sig.asyncness.is_none() {
-        quote! { #self_lifetime }
-    } else {
-        quote! { '_ }
-    };
 
     if !has_self {
         return TokenStream::from(
@@ -210,17 +196,17 @@ pub(crate) fn api_method(
     } else {
         let args_destr_tuple = if with_args {
             quote! {
-                let #args_destr_tuple: #arg_type = ::ic_cdk::api::call::arg_data();
+                let #args_destr_tuple: #arg_type = ::ic_exports::ic_cdk::api::call::arg_data();
             }
         } else {
             quote! {}
         };
         quote! {
-            #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
+            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
             #[export_name = #export_name]
             fn #internal_method() {
-                ::ic_cdk::setup();
-                ::ic_cdk::spawn(async {
+                ::ic_exports::ic_cdk::setup();
+                ::ic_exports::ic_cdk::spawn(async {
                     #args_destr_tuple
                     let mut instance = Self::init_instance();
                     let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
@@ -238,7 +224,7 @@ pub(crate) fn api_method(
 
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(dead_code)]
-        #orig_vis fn #internal_method<#self_lifetime>(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_cdk::api::call::CallResult<#inner_return_type>> + #return_lifetime>> {
+        #orig_vis fn #internal_method(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_exports::ic_cdk::api::call::CallResult<#inner_return_type>> + '_>> {
             // todo: trap handler
             let result = self. #method(#args_destr);
             Box::pin(async move { Ok(result #await_call) })
@@ -247,7 +233,7 @@ pub(crate) fn api_method(
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(unused_mut)]
         #[allow(unused_must_use)]
-        #orig_vis fn #internal_method_notify<#self_lifetime>(#args) -> ::std::result::Result<(), ::ic_cdk::api::call::RejectionCode> {
+        #orig_vis fn #internal_method_notify(#args) -> ::std::result::Result<(), ::ic_exports::ic_cdk::api::call::RejectionCode> {
             // todo: trap handler
             self. #method(#args_destr);
             Ok(())
@@ -286,38 +272,42 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
     }
 
-    // Check return type of the getter 
+    // Check return type of the getter
 
     let return_type = match &input.sig.output {
-        ReturnType::Default => panic!("No return type for state getter is specified"),
-        ReturnType::Type(_, t) => crate::derive::get_state_type(&*t),
+        ReturnType::Default => panic!("no return type for state getter is specified"),
+        ReturnType::Type(_, t) => crate::derive::get_state_type(t),
     };
 
     let path = match return_type {
         Type::Path(path) => path,
-        ty => return syn::Error::new(
-            input.span(), format!("Invalid return type for state getter: {:#?}", ty)
-        ).to_compile_error().into(),
+        ty => {
+            return syn::Error::new(
+                input.span(),
+                format!("invalid return type for state getter: {:#?}", ty),
+            )
+            .to_compile_error()
+            .into()
+        }
     };
 
-    let segment = path
-        .path
-        .segments
-        .iter()
-        .last();
+    let segment = path.path.segments.iter().last();
 
     if segment.is_none() {
-        return syn::Error::new(input.span(), format!(
-            "Unexpected return type for state getter: {:#?}",
-            return_type
-        ))
+        return syn::Error::new(
+            input.span(),
+            format!(
+                "unexpected return type for state getter: {:#?}",
+                return_type
+            ),
+        )
         .to_compile_error()
-        .into() 
+        .into();
     }
 
     let state_type = segment.expect("already checked").ident.to_string();
 
-    // Check that the body of the getter is empty 
+    // Check that the body of the getter is empty
 
     let body = &input.block.stmts;
 
@@ -333,7 +323,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
     }
 
-    // Replace state getter 
+    // Replace state getter
 
     let old_getter = STATE_GETTER.lock().unwrap().replace(StateGetter {
         method_name,
@@ -343,7 +333,10 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
     if let Some(old_getter) = old_getter {
         return syn::Error::new(
             input.span(),
-            format!("Multiple state getters defined. Previous: {}", old_getter.method_name),
+            format!(
+                "multiple state getters defined. Previous: {}",
+                old_getter.method_name
+            ),
         )
         .to_compile_error()
         .into();
@@ -384,7 +377,7 @@ impl Parse for GenerateExportsInput {
         let trait_name = input.parse::<Ident>()?;
         let (struct_name, struct_vis) = if input.is_empty() {
             (
-                Ident::new(&format!("__{}_Ident", trait_name.to_string()), input.span()),
+                Ident::new(&format!("__{}_Ident", trait_name), input.span()),
                 Visibility::Inherited,
             )
         } else {
@@ -425,28 +418,27 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         let (args_destr_tuple, args_destr) = if arg_count > 1 {
             let args: Vec<Ident> = (1..arg_count).map(|x| Ident::new(&format!("__arg_{x}"), Span::call_site())).collect();
             (
-                quote! { let ( #(#args),* , ) = ::ic_cdk::api::call::arg_data(); },
+                quote! { let ( #(#args),* , ) = ::ic_exports::ic_cdk::api::call::arg_data(); },
                 quote! { #(#args),* }
             )
         } else {
             (quote! {}, quote! {})
         };
 
-        
         let await_call = if is_async { quote! {.await}} else {quote! {}};
         let await_call_if_result_is_async = if is_return_type_async { quote! {.await} } else {quote! {}};
         let reply_call = match return_type {
-            ReturnVariant::Default => quote! { ::ic_cdk::api::call::reply(()); },
-            ReturnVariant::Type => quote! {::ic_cdk::api::call::reply((result,)); },
-            ReturnVariant::Tuple => quote! { ::ic_cdk::api::call::reply(result); },
+            ReturnVariant::Default => quote! { ::ic_exports::ic_cdk::api::call::reply(()); },
+            ReturnVariant::Type => quote! {::ic_exports::ic_cdk::api::call::reply((result,)); },
+            ReturnVariant::Tuple => quote! { ::ic_exports::ic_cdk::api::call::reply(result); },
         };
 
         quote! {
-            #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
+            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
             #[export_name = #export_name]
             fn #internal_method() {
-                ::ic_cdk::setup();
-                ::ic_cdk::spawn(async {
+                ::ic_exports::ic_cdk::setup();
+                ::ic_exports::ic_cdk::spawn(async {
                     #args_destr_tuple
                     let mut instance = #struct_name ::init_instance();
                     let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
@@ -457,39 +449,39 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         }
     });
 
-    let StateGetter { method_name, state_type } 
-        = STATE_GETTER
-            .lock()
-            .unwrap()
-            .take()
-            .expect("State getter should be defined as a part of trait api via #[state_getter] macro attribute");
+    let StateGetter {
+        method_name,
+        state_type,
+    } = STATE_GETTER.lock().unwrap().take().expect(
+        "State getter should be defined as a part of trait api via #[state_getter] macro attribute",
+    );
 
     let state_type = Ident::new(&state_type, Span::call_site());
     let method_name = Ident::new(&method_name, Span::call_site());
 
     let expanded = quote! {
-        #[derive(::std::clone::Clone, ::std::fmt::Debug, ::ic_canister::Canister)]
+        #[derive(::std::clone::Clone, ::std::fmt::Debug, Canister)]
         #[allow(non_camel_case_types)]
         #struct_vis struct #struct_name {
             #[id]
-            principal: ::ic_cdk::export::Principal,
+            principal: ::ic_exports::ic_cdk::export::Principal,
         }
 
         impl #trait_name for #struct_name {
             fn #method_name(&self) -> Rc<RefCell<#state_type>> {
-                use ::ic_storage::IcStorage;
+                use ic_storage::IcStorage;
                 #state_type::get()
             }
         }
 
-        impl ::ic_canister::PreUpdate for #struct_name {}
+        impl PreUpdate for #struct_name {}
 
         #(#methods)*
     };
     expanded.into()
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Method {
     args: Vec<String>,
     rets: Vec<String>,
@@ -569,7 +561,7 @@ fn store_candid_definitions(modes: &str, sig: &Signature) -> Result<(), syn::Err
 }
 
 pub(crate) fn generate_idl() -> TokenStream {
-    let candid = quote! { ::ic_cdk::export::candid };
+    let candid = quote! { ::ic_exports::ic_cdk::export::candid };
 
     // Init
     let init = INIT.lock().unwrap().as_mut().map(|args| {
@@ -587,6 +579,7 @@ pub(crate) fn generate_idl() -> TokenStream {
     });
 
     let mut methods = METHODS.lock().unwrap();
+    dbg!(methods.clone());
     let gen_tys = methods.iter().map(|(name, Method { args, rets, modes })| {
         let args = args
             .iter()
@@ -612,7 +605,9 @@ pub(crate) fn generate_idl() -> TokenStream {
                 let mut rets = Vec::new();
                 #(#rets)*
                 let func = Function { args, rets, modes: #modes };
-                service.push((#name.to_string(), Type::Func(func)));
+                if cfg!(feature = "export_api") {
+                    service.push((#name.to_string(), Type::Func(func)));
+                }
             }
         }
     });
@@ -640,7 +635,7 @@ pub(crate) fn generate_idl() -> TokenStream {
         {
             #service
             #actor
-            ::ic_canister::Idl::new(env, actor)
+            Idl::new(env, actor)
         }
     };
 

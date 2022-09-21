@@ -9,7 +9,7 @@ use syn::{
 pub fn derive_canister(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    let trait_stream = TokenStream::from(quote! {::ic_canister::Canister});
+    let trait_stream = TokenStream::from(quote! {Canister});
     let trait_name = parse_macro_input::parse::<Path>(trait_stream)
         .expect("static value parsing always succeeds");
 
@@ -77,7 +77,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
         for (field_name, field_type, is_stable) in state_fields {
             state_fields_wasm
-                .push(quote! {#field_name : <#field_type as ::ic_storage::IcStorage>::get()});
+                .push(quote! {#field_name : <#field_type as ic_storage::IcStorage>::get()});
 
             if is_stable {
                 match stable_field {
@@ -129,32 +129,32 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
         impl #trait_name for #name {
             #[cfg(target_arch = "wasm32")]
             fn init_instance() -> Self {
-                let principal = ::ic_cdk::api::id();
+                let principal = ::ic_exports::ic_cdk::api::id();
                 Self { #principal_field : principal #state_fields_wasm #default_fields }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             fn init_instance() -> Self {
-                let principal = ::ic_cdk::export::Principal::from_slice(&__next_id());
+                let principal = ::ic_exports::ic_cdk::export::Principal::from_slice(&__next_id());
                 Self::from_principal(principal)
             }
 
             #[cfg(target_arch = "wasm32")]
-            fn from_principal(principal: ::ic_cdk::export::Principal) -> Self {
+            fn from_principal(principal: ::ic_exports::ic_cdk::export::Principal) -> Self {
                 Self { #principal_field: principal #state_fields_wasm #default_fields }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            fn from_principal(principal: ::ic_cdk::export::Principal) -> Self {
-                let curr_id = ::ic_canister::ic_kit::ic::id();
+            fn from_principal(principal: ::ic_exports::ic_cdk::export::Principal) -> Self {
+                let curr_id = ::ic_exports::ic_kit::ic::id();
 
                 // We set the id in the mock context to be the one of new canister to initialize
                 // the state of that canister in local storage
-                ::ic_canister::ic_kit::inject::get_context().update_id(principal);
+                ::ic_exports::ic_kit::inject::get_context().update_id(principal);
                 let instance = Self { #principal_field: principal #state_fields_wasm #default_fields };
 
                 // And then we reset the id to what it was
-                ::ic_canister::ic_kit::inject::get_context().update_id(curr_id);
+                ::ic_exports::ic_kit::inject::get_context().update_id(curr_id);
                 instance
             }
 
@@ -189,20 +189,20 @@ fn expand_upgrade_methods(
     quote! {
         impl #struct_name {
             fn __pre_upgrade_inst(&self) {
-                use ::ic_storage::IcStorage;
+                use ic_storage::IcStorage;
 
                 #state_get
 
-                ::ic_storage::stable::write(#state_borrow).unwrap();
+                ic_storage::stable::write(#state_borrow).unwrap();
             }
 
             fn __post_upgrade_inst(&self) {
-                use ::ic_storage::IcStorage;
-                use ::ic_storage::stable::Versioned;
+                use ic_storage::IcStorage;
+                use ic_storage::stable::Versioned;
 
-                let #name = match ::ic_storage::stable::read::<#field_type>() {
+                let #name = match ic_storage::stable::read::<#field_type>() {
                     Ok(val) => val,
-                    Err(e) => ::ic_cdk::trap(&format!("failed to upgrade: {}", e)),
+                    Err(e) => ::ic_exports::ic_cdk::trap(&format!("failed to upgrade: {}", e)),
                 };
 
                 #field_assignment
@@ -220,14 +220,14 @@ fn expand_upgrade_methods(
                 instance.__pre_upgrade_inst();
             }
 
-            #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
+            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
             #[export_name = "canister_pre_upgrade"]
             fn __pre_upgrade() {
                 let instance = Self::init_instance();
                 instance.__pre_upgrade_inst();
             }
 
-            #[cfg(all(target_arch = "wasm32", not(feature = "no_api")))]
+            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
             #[export_name = "canister_post_upgrade"]
             fn __post_upgrade() {
                 let instance = Self::init_instance();

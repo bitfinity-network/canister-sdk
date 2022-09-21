@@ -1,7 +1,7 @@
-use ic_cdk::export::candid::{CandidType, Deserialize};
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize};
 use thiserror::Error;
 
-#[derive(Error, CandidType, Debug, Clone, Deserialize, PartialEq)]
+#[derive(Error, CandidType, Debug, Clone, Deserialize, PartialEq, Eq)]
 pub enum AuctionError {
     #[error("provided cycles in the `bid_cycles` call is less then the minimum allowed amount")]
     BiddingTooSmall,

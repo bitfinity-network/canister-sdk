@@ -1,5 +1,6 @@
-use candid::{CandidType, Deserialize};
-use ic_canister::{query, storage::IcStorage, Canister};
+use ic_canister::{query, Canister};
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize};
+use ic_storage::IcStorage;
 
 #[cfg(target_arch = "wasm32")]
 const WASM_PAGE_SIZE: u64 = 65536;
@@ -26,11 +27,11 @@ pub trait Metrics: Canister {
         let metrics = MetricsStorage::get();
         let mut metrics = metrics.borrow_mut();
         metrics.metrics.insert(MetricsData {
-            cycles: ic_canister::ic_kit::ic::balance(),
+            cycles: ic_exports::ic_kit::ic::balance(),
             stable_memory_size: {
                 #[cfg(target_arch = "wasm32")]
                 {
-                    ic_cdk::api::stable::stable64_size()
+                    ic_exports::ic_cdk::api::stable::stable64_size()
                 }
                 #[cfg(not(target_arch = "wasm32"))]
                 {
@@ -95,7 +96,7 @@ impl<T: IcStorage> MetricsMap<T> {
     }
 
     pub fn insert(&mut self, new_metric: T) -> Option<T> {
-        let current_ts = ic_kit::ic::time();
+        let current_ts = ic_exports::ic_kit::ic::time();
         let last_ts = self
             .map
             .iter()
