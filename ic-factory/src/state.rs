@@ -272,8 +272,9 @@ impl FactoryState {
         let icp_to = self.icp_to();
         let icp_fee = self.icp_fee();
         let controller = self.controller();
+        let cmc = self.configuration.cmc;
 
-        consume_provided_icp(caller, ledger, icp_to, icp_fee, controller)
+        consume_provided_icp(caller, ledger, icp_to, icp_fee, controller, cmc)
     }
 }
 
@@ -432,6 +433,7 @@ pub struct FactoryConfiguration {
     pub icp_fee: u64,
     pub icp_to: Principal,
     pub controller: Principal,
+    pub cmc: Principal,
 }
 
 impl FactoryConfiguration {
@@ -440,12 +442,14 @@ impl FactoryConfiguration {
         icp_fee: u64,
         icp_to: Principal,
         controller: Principal,
+        cmc: Principal,
     ) -> Self {
         Self {
             ledger_principal,
             icp_fee,
             icp_to,
             controller,
+            cmc,
         }
     }
 }
@@ -457,6 +461,7 @@ impl Default for FactoryConfiguration {
             icp_fee: DEFAULT_ICP_FEE,
             icp_to: Principal::anonymous(),
             controller: Principal::anonymous(),
+            cmc: Principal::anonymous(),
         }
     }
 }
@@ -471,10 +476,11 @@ async fn consume_provided_icp(
     icp_to: Principal,
     icp_fee: u64,
     controller: Principal,
+    cmc: Principal,
 ) -> Result<u64, FactoryError> {
     if caller != controller {
         // If the caller is not the controller, we require the caller to provide cycles.
-        return transfer_and_top_up(icp_fee, ledger, caller, icp_to).await;
+        return transfer_and_top_up(icp_fee, ledger, caller, icp_to, cmc).await;
     }
 
     Ok(MIN_CANISTER_CYCLES)
@@ -489,6 +495,7 @@ async fn transfer_and_top_up(
     ledger: Principal,
     caller: Principal,
     icp_to: Principal,
+    cmc: Principal,
 ) -> Result<u64, FactoryError> {
     let id = ic_kit::ic::id();
     let balance = ledger
@@ -497,7 +504,7 @@ async fn transfer_and_top_up(
         .map_err(FactoryError::LedgerError)?;
 
     // defensive programming, maximum of twice the icp_fee
-    let top_up_fee = top_up::cycles_to_icp(MIN_CANISTER_CYCLES)
+    let top_up_fee = top_up::cycles_to_icp(MIN_CANISTER_CYCLES, cmc)
         .await?
         .min(icp_fee);
 
@@ -505,11 +512,15 @@ async fn transfer_and_top_up(
         Err(FactoryError::NotEnoughIcp(balance, top_up_fee + icp_fee))?;
     }
 
-    let block_height =
-        top_up::transfer_icp_to_cmc(top_up_fee, ledger, Subaccount::from(&PrincipalId(caller)))
-            .await?;
+    let block_height = top_up::transfer_icp_to_cmc(
+        top_up_fee,
+        ledger,
+        Subaccount::from(&PrincipalId(caller)),
+        cmc,
+    )
+    .await?;
 
-    let cycles = top_up::mint_cycles_to_factory(block_height).await?;
+    let cycles = top_up::mint_cycles_to_factory(block_height, cmc).await?;
 
     // Send the remaining ICP to the `icp_to` Principal
     send_remaining_fee_to(caller, icp_to, ledger, icp_fee).await?;
