@@ -470,6 +470,14 @@ impl Default for FactoryConfiguration {
 // According to IC docs, 10^12 cycles should always cost 1 XDR, with is ~$1.
 const MIN_CANISTER_CYCLES: u64 = 10u64.pow(12) * 5;
 
+fn consume_message_cycles() -> Result<u64, FactoryError> {
+    let amount = ic_kit::ic::msg_cycles_available();
+    if amount < MIN_CANISTER_CYCLES {
+        return Err(FactoryError::NotEnoughCycles(amount, MIN_CANISTER_CYCLES));
+    }
+
+    Ok(ic_kit::ic::msg_cycles_accept(amount))
+}
 async fn consume_provided_icp(
     caller: Principal,
     ledger: Principal,
@@ -480,10 +488,10 @@ async fn consume_provided_icp(
 ) -> Result<u64, FactoryError> {
     if caller != controller {
         // If the caller is not the controller, we require the caller to provide cycles.
-        return transfer_and_top_up(icp_fee, ledger, caller, icp_to, cmc).await;
+        transfer_and_top_up(icp_fee, ledger, caller, icp_to, cmc).await
+    } else {
+        consume_message_cycles()
     }
-
-    Ok(MIN_CANISTER_CYCLES)
 }
 
 /// Transfers the ICP from the caller to the factory canister.
