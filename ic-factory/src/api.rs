@@ -26,8 +26,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// otherwise, cycles balances of `principal` is returned.
     /// If `principal` does not exists, `None` is returned.
     #[update(trait = true)]
-    #[allow(clippy::needless_lifetimes)]
-    fn get_cycles<'a>(&'a self, principal: Option<Principal>) -> AsyncReturn<Option<Nat>> {
+    fn get_cycles(&self, principal: Option<Principal>) -> AsyncReturn<Option<Nat>> {
         let fut = async move {
             if let Some(principal) = principal {
                 management::Canister::from(principal)
@@ -260,7 +259,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Returns the ICPs transferred to the factory by the caller. This method returns all
     /// not used ICP minus transaction fee.
     #[update(trait = true)]
-    fn refund_icp<'a>(&'a self) -> AsyncReturn<'a, Result<u64, FactoryError>> {
+    fn refund_icp(&self) -> AsyncReturn<Result<u64, FactoryError>> {
         use ic_helpers::ledger::{
             LedgerPrincipalExt, PrincipalId, Subaccount, DEFAULT_TRANSFER_FEE,
         };

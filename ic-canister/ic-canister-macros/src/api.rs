@@ -102,19 +102,11 @@ pub(crate) fn api_method(
     let mut args_destr = Punctuated::new();
     let mut has_self = false;
 
-    let mut self_lifetime = quote! {};
-
     for arg in args {
         let (arg_type, arg_pat) = match arg {
-            FnArg::Receiver(r) => {
+            FnArg::Receiver(_) => {
                 has_self = true;
-                match &r.reference {
-                    Some((_, Some(lt))) => {
-                        self_lifetime = quote! {#lt};
-                        continue;
-                    }
-                    _ => continue,
-                }
+                continue;
             }
             FnArg::Typed(t) => (&t.ty, t.pat.as_ref()),
         };
@@ -146,12 +138,6 @@ pub(crate) fn api_method(
         .to_compile_error()
         .into();
     }
-
-    let return_lifetime = if parameters.is_trait || input.sig.asyncness.is_none() {
-        quote! { #self_lifetime }
-    } else {
-        quote! { '_ }
-    };
 
     if !has_self {
         return TokenStream::from(
@@ -238,7 +224,7 @@ pub(crate) fn api_method(
 
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(dead_code)]
-        #orig_vis fn #internal_method<#self_lifetime>(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_cdk::api::call::CallResult<#inner_return_type>> + #return_lifetime>> {
+        #orig_vis fn #internal_method(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_cdk::api::call::CallResult<#inner_return_type>> + '_>> {
             // todo: trap handler
             let result = self. #method(#args_destr);
             Box::pin(async move { Ok(result #await_call) })
@@ -247,7 +233,7 @@ pub(crate) fn api_method(
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(unused_mut)]
         #[allow(unused_must_use)]
-        #orig_vis fn #internal_method_notify<#self_lifetime>(#args) -> ::std::result::Result<(), ::ic_cdk::api::call::RejectionCode> {
+        #orig_vis fn #internal_method_notify(#args) -> ::std::result::Result<(), ::ic_cdk::api::call::RejectionCode> {
             // todo: trap handler
             self. #method(#args_destr);
             Ok(())
@@ -288,7 +274,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
 
     // Check return type of the getter
     let return_type = match &input.sig.output {
-        ReturnType::Default => panic!("No return type for state getter is specified"),
+        ReturnType::Default => panic!("no return type for state getter is specified"),
         ReturnType::Type(_, t) => crate::derive::get_state_type(t),
     };
 
@@ -297,7 +283,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         ty => {
             return syn::Error::new(
                 input.span(),
-                format!("Invalid return type for state getter: {:#?}", ty),
+                format!("invalid return type for state getter: {:#?}", ty),
             )
             .to_compile_error()
             .into()
@@ -306,19 +292,20 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
 
     let segment = path.path.segments.iter().last();
 
-    if segment.is_none() {
-        return syn::Error::new(
-            input.span(),
-            format!(
-                "Unexpected return type for state getter: {:#?}",
-                return_type
-            ),
-        )
-        .to_compile_error()
-        .into();
-    }
-
-    let state_type = segment.expect("already checked").ident.to_string();
+    let state_type = match segment {
+        Some(segment) => segment.ident.to_string(),
+        None => {
+            return syn::Error::new(
+                input.span(),
+                format!(
+                    "unexpected return type for state getter: {:#?}",
+                    return_type
+                ),
+            )
+            .to_compile_error()
+            .into()
+        }
+    };
 
     // Check that the body of the getter is empty
 
@@ -347,7 +334,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         return syn::Error::new(
             input.span(),
             format!(
-                "Multiple state getters defined. Previous: {}",
+                "multiple state getters defined. Previous: {}",
                 old_getter.method_name
             ),
         )
@@ -653,7 +640,6 @@ pub(crate) fn generate_idl() -> TokenStream {
 
     TokenStream::from(res)
 }
-
 
 fn generate_arg(name: proc_macro2::TokenStream, ty: &str) -> proc_macro2::TokenStream {
     let ty = syn::parse_str::<Type>(ty).unwrap();
