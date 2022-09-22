@@ -9,7 +9,7 @@ pub struct MetricsStorage {
     pub metrics: MetricsMap<MetricsData>,
 }
 
-#[derive(CandidType, Deserialize, IcStorage, Default, Clone, Debug)]
+#[derive(CandidType, Deserialize, IcStorage, Default, Clone, Debug, PartialEq)]
 pub struct MetricsData {
     pub cycles: u64,
     pub stable_memory_size: u64,
