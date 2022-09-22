@@ -480,10 +480,10 @@ async fn consume_provided_icp(
     Ok(MIN_CANISTER_CYCLES)
 }
 
-/// Transfers the ICP from the caller to the factory canister.
-///  We transfer the minimum amount of ICP required to cover the canister creation fee,
-/// and then we top up the Factory canister with the cycles.
-/// We send the remaining ICP to the `icp_to` Principal.
+/// Converts the `MIN_CANISTER_CYCLES` to ICP tokens, and the caller send
+/// the tokens to the cycles-minting-canister, the factory canister
+/// is topped up with cycles and the the icp_fee is sent to the
+/// `icp_to` principal.
 async fn transfer_and_top_up(
     icp_fee: u64,
     ledger: Principal,
