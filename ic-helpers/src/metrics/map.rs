@@ -88,13 +88,15 @@ impl Interval {
 #[derive(Clone, CandidType, Deserialize, Debug)]
 pub struct MetricsMap<T: IcStorage> {
     interval: Interval,
+    history_length_nanos: u64,
     pub map: std::collections::BTreeMap<u64, T>,
 }
 
 impl<T: IcStorage> MetricsMap<T> {
-    pub fn new(interval: Interval) -> Self {
+    pub fn new(interval: Interval, history_length_nanos: u64) -> Self {
         Self {
             interval,
+            history_length_nanos,
             map: std::collections::BTreeMap::new(),
         }
     }
@@ -104,6 +106,7 @@ impl<T: IcStorage> MetricsMap<T> {
     }
 
     pub fn insert(&mut self, new_metric: T) -> Option<T> {
+        self.trim();
         let current_ts = ic_kit::ic::time();
         let last_ts = self
             .map
@@ -118,10 +121,16 @@ impl<T: IcStorage> MetricsMap<T> {
         };
         self.map.insert(new_ts, new_metric)
     }
+
+    fn trim(&mut self) {
+        let current_ts = ic_kit::ic::time();
+        let oldest_to_keep = current_ts.saturating_sub(self.history_length_nanos);
+        self.map.retain(|&ts, _| ts >= oldest_to_keep);
+    }
 }
 
 impl<T: IcStorage> std::default::Default for MetricsMap<T> {
     fn default() -> Self {
-        Self::new(Interval::PerHour)
+        Self::new(Interval::PerHour, Interval::PerDay.nanos() * 365)
     }
 }

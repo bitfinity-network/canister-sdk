@@ -3,7 +3,6 @@ members = [
   "ic-factory",
   "ic-auction",
   "ic-helpers",
-  "ic-stable-storage",
   "ic-storage",
   "ic-storage/ic-storage-derive",
   "ic-canister/ic-canister",
