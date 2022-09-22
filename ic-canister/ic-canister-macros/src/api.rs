@@ -579,7 +579,6 @@ pub(crate) fn generate_idl() -> TokenStream {
     });
 
     let mut methods = METHODS.lock().unwrap();
-    dbg!(methods.clone());
     let gen_tys = methods.iter().map(|(name, Method { args, rets, modes })| {
         let args = args
             .iter()
