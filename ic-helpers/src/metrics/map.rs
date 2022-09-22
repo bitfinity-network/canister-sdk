@@ -18,6 +18,11 @@ pub struct MetricsData {
 
 pub trait Metrics: Canister {
     #[query(trait = true)]
+    fn get_curr_metrics(&self) -> MetricsData {
+        curr_values()
+    }
+
+    #[query(trait = true)]
     fn get_metrics(&self) -> MetricsStorage {
         MetricsStorage::get().borrow().clone()
     }
@@ -25,33 +30,37 @@ pub trait Metrics: Canister {
     fn update_metrics(&self) {
         let metrics = MetricsStorage::get();
         let mut metrics = metrics.borrow_mut();
-        metrics.metrics.insert(MetricsData {
-            cycles: ic_canister::ic_kit::ic::balance(),
-            stable_memory_size: {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    ic_cdk::api::stable::stable64_size()
-                }
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    0
-                }
-            },
-            heap_memory_size: {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    (core::arch::wasm32::memory_size(0) as u64) * WASM_PAGE_SIZE
-                }
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    0
-                }
-            },
-        });
+        metrics.metrics.insert(curr_values());
     }
 
     fn set_interval(interval: Interval) {
         MetricsStorage::get().borrow_mut().metrics.interval = interval;
+    }
+}
+
+fn curr_values() -> MetricsData {
+    MetricsData {
+        cycles: ic_canister::ic_kit::ic::balance(),
+        stable_memory_size: {
+            #[cfg(target_arch = "wasm32")]
+            {
+                ic_cdk::api::stable::stable64_size()
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                0
+            }
+        },
+        heap_memory_size: {
+            #[cfg(target_arch = "wasm32")]
+            {
+                (core::arch::wasm32::memory_size(0) as u64) * WASM_PAGE_SIZE
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                0
+            }
+        },
     }
 }
 
