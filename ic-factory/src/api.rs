@@ -1,15 +1,21 @@
 use super::{error::FactoryError, FactoryState};
-use candid::{CandidType, Nat, Principal};
+#[cfg(not(target_family = "wasm"))]
+use ic_canister::call_virtual_responder;
 use ic_canister::{
-    generate_exports, query, state_getter, update, virtual_canister_call, AsyncReturn, Canister,
-    PreUpdate,
+    generate_exports, generate_idl, query, state_getter, update, virtual_canister_call,
+    AsyncReturn, Canister, Idl, PreUpdate,
 };
-use ic_cdk::export::candid::utils::ArgumentEncoder;
-use ic_helpers::candid_header::{validate_header, CandidHeader, TypeCheckResult};
-use ic_helpers::management;
+use ic_exports::{
+    candid::{CandidType, Nat, Principal},
+    ic_base_types::PrincipalId,
+    ic_cdk::export::candid::utils::ArgumentEncoder,
+};
+use ic_helpers::{
+    candid_header::{validate_header, CandidHeader, TypeCheckResult},
+    management::ManagementPrincipalExt,
+};
 use ic_storage::stable::Versioned;
-use std::collections::HashMap;
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub trait FactoryCanister: Canister + Sized + PreUpdate {
     #[state_getter]
@@ -29,13 +35,9 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     fn get_cycles(&self, principal: Option<Principal>) -> AsyncReturn<Option<Nat>> {
         let fut = async move {
             if let Some(principal) = principal {
-                management::Canister::from(principal)
-                    .status()
-                    .await
-                    .map(|status| status.cycles)
-                    .ok()
+                principal.status().await.map(|status| status.cycles).ok()
             } else {
-                Some(ic_cdk::api::canister_balance().into())
+                Some(ic_exports::ic_cdk::api::canister_balance().into())
             }
         };
         Box::pin(fut)
@@ -46,7 +48,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Returns the actual amount of accepted cycles.
     #[update(trait = true)]
     fn top_up(&self) -> u64 {
-        management::Canister::accept_cycles()
+        <Principal as ManagementPrincipalExt>::accept_cycles()
     }
 
     fn check_all_states<T: CandidType + Versioned>(
@@ -101,7 +103,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     }
 
     #[allow(unused_variables)]
-    fn create_canister<'a, T: ArgumentEncoder + 'a>(
+    fn create_canister<'a, T: ArgumentEncoder + Send + 'a>(
         &'a self,
         init_args: T,
         controller: Option<Principal>,
@@ -113,7 +115,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
             let cycles = {
                 #[cfg(target_arch = "wasm32")]
                 {
-                    let caller = caller.unwrap_or_else(ic_kit::ic::caller);
+                    let caller = caller.unwrap_or_else(ic_exports::ic_kit::ic::caller);
 
                     self.factory_state()
                         .borrow()
@@ -150,7 +152,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
             let state_rc = self.factory_state();
             let state_lock = state_rc.borrow_mut().lock()?;
 
-            let caller = ic_canister::ic_kit::ic::caller();
+            let caller = ic_exports::ic_kit::ic::caller();
 
             let state_checks = self.check_all_states::<T>().await;
             if state_checks
@@ -261,16 +263,15 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// not used ICP minus transaction fee.
     #[update(trait = true)]
     fn refund_icp(&self) -> AsyncReturn<Result<u64, FactoryError>> {
-        use ic_helpers::ledger::{
-            LedgerPrincipalExt, PrincipalId, Subaccount, DEFAULT_TRANSFER_FEE,
-        };
+        use ic_exports::ledger_canister::{Subaccount, DEFAULT_TRANSFER_FEE};
+        use ic_helpers::ledger::LedgerPrincipalExt;
 
         let ledger = self.factory_state().borrow().ledger_principal();
         Box::pin(async move {
-            let caller = ic_kit::ic::caller();
+            let caller = ic_exports::ic_kit::ic::caller();
             let balance = ledger
                 .get_balance(
-                    ic_kit::ic::id(),
+                    ic_exports::ic_kit::ic::id(),
                     Some(Subaccount::from(&PrincipalId(caller))),
                 )
                 .await
@@ -281,15 +282,15 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
                 return Ok(0);
             }
 
-            LedgerPrincipalExt::transfer(
-                &ledger,
-                caller,
-                balance,
-                Some(Subaccount::from(&PrincipalId(caller))),
-                None,
-            )
-            .await
-            .map_err(FactoryError::LedgerError)
+            ledger
+                .transfer(
+                    caller,
+                    balance,
+                    Some(Subaccount::from(&PrincipalId(caller))),
+                    None,
+                )
+                .await
+                .map_err(FactoryError::LedgerError)
         })
     }
 
@@ -311,10 +312,13 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Returns the AccountIdentifier for the caller subaccount in the factory account.
     #[query(trait = true)]
     fn get_ledger_account_id(&self) -> String {
-        use ic_helpers::ledger::{AccountIdentifier, PrincipalId, Subaccount};
+        use ic_exports::{
+            ic_kit::ic,
+            ledger_canister::{AccountIdentifier, Subaccount},
+        };
 
-        let factory_id = ic_kit::ic::id();
-        let caller = ic_kit::ic::caller();
+        let factory_id = ic::id();
+        let caller = ic::caller();
         let account = AccountIdentifier::new(
             PrincipalId(factory_id),
             Some(Subaccount::from(&PrincipalId(caller))),
@@ -326,8 +330,8 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     // Important: This function *must* be defined to be the
     // last one in the trait because it depends on the order
     // of expansion of update/query(trait = true) methods.
-    fn get_idl() -> ic_canister::Idl {
-        ic_canister::generate_idl!()
+    fn get_idl() -> Idl {
+        generate_idl!()
     }
 
     fn drop_canister(
@@ -337,7 +341,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     ) -> AsyncReturn<Result<(), FactoryError>> {
         Box::pin(async move {
             let state_lock = self.factory_state().borrow_mut().lock()?;
-            let caller = caller.unwrap_or_else(ic_kit::ic::caller);
+            let caller = caller.unwrap_or_else(ic_exports::ic_kit::ic::caller);
 
             self.factory_state()
                 .borrow_mut()

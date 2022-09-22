@@ -1,4 +1,4 @@
-use ic_cdk::export::candid::{CandidType, Deserialize};
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize};
 use thiserror::Error;
 
 #[derive(Error, CandidType, Debug, Clone, Deserialize, PartialEq, Eq)]

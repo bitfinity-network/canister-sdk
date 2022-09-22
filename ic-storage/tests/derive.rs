@@ -1,4 +1,4 @@
-use ic_canister::ic_kit::MockContext;
+use ic_exports::ic_kit::MockContext;
 use ic_storage::{generic_derive, IcStorage};
 
 #[derive(IcStorage, Default)]

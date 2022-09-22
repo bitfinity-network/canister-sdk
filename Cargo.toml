@@ -1,7 +1,9 @@
 [workspace]
 members = [
+  "ic-exports",
   "ic-factory",
   "ic-auction",
+  "ic-metrics",
   "ic-helpers",
   "ic-stable-storage",
   "ic-storage",
@@ -13,3 +15,23 @@ members = [
   "ic-canister/tests/canister_c",
 ]
 
+[package]
+edition = "2021"
+name = "canister-sdk"
+version = "0.3.12"
+
+[features]
+default = []
+factory_api = ["ic-factory?/export_api"]
+auction_api = ["ic-auction?/export_api"]
+auction = ["dep:ic-auction"]
+factory = ["dep:ic-factory"]
+
+[dependencies]
+ic-exports = { path = "./ic-exports" }
+ic-auction = { path = "./ic-auction", optional = true }
+ic-factory = { path = "./ic-factory", optional = true }
+ic-canister = { path = "./ic-canister/ic-canister" }
+ic-storage = { path = "./ic-storage" }
+ic-helpers = { path = "./ic-helpers" }
+ic-metrics = { path = "./ic-metrics" }
