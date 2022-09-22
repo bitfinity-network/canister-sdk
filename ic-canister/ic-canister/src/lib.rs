@@ -489,7 +489,7 @@
 //! to use its types and method declarations, and to be able to test their logic together, but
 //! we don't want the second canister's API to be exported together with the first one's.
 //!
-//! To enable this, a canister crate can declare a `export_api` feature flag. If this flag is enabled,
+//! To enable this, a canister crate can declare a `export_api` feature flag. If this flag is disabled,
 //! no API methods of the dependency canister will be exported.
 //!
 //! ```ignore
