@@ -22,8 +22,8 @@ version = "0.3.12"
 
 [features]
 default = []
-factory_api = ["ic-factory?/export_api"]
-auction_api = ["ic-auction?/export_api"]
+factory_api = ["ic-factory?/export_api", "factory"]
+auction_api = ["ic-auction?/export_api", "auction"]
 auction = ["dep:ic-auction"]
 factory = ["dep:ic-factory"]
 
