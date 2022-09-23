@@ -6,8 +6,8 @@ use cycles_minting_canister::{
 use ic_base_types::{CanisterId, PrincipalId};
 use ic_canister::virtual_canister_call;
 use ledger_canister::{
-    AccountIdentifier, BlockHeight, Subaccount, Tokens, TransferArgs, DEFAULT_TRANSFER_FEE,
-    TOKEN_SUBDIVIDABLE_BY,
+    AccountIdentifier, BlockHeight, Subaccount, Tokens, TransferArgs, TransferError,
+    DEFAULT_TRANSFER_FEE, TOKEN_SUBDIVIDABLE_BY,
 };
 
 use crate::error::FactoryError;
@@ -68,9 +68,10 @@ pub(crate) async fn transfer_icp_to_cmc(
         created_at_time: None,
     };
 
-    virtual_canister_call!(ledger, "transfer", (args,), u64)
+    virtual_canister_call!(ledger, "transfer", (args,), Result<BlockHeight, TransferError>)
         .await
-        .map_err(|e| FactoryError::LedgerError(e.1))
+        .map_err(|e| FactoryError::LedgerError(e.1))?
+        .map_err(|e| FactoryError::LedgerError(format!("{:?}", e)))
 }
 
 pub(crate) async fn mint_cycles_to_factory(
@@ -92,7 +93,7 @@ pub(crate) async fn mint_cycles_to_factory(
     )
     .await
     .map_err(|e| FactoryError::GenericError(e.1))?
-    .map_err(|e| FactoryError::GenericError(e.to_string()))
+    .map_err(|e| FactoryError::GenericError(format!("{:?}", e)))
 }
 
 #[cfg(test)]
