@@ -9,33 +9,39 @@ use ledger_canister::{
     AccountIdentifier, BlockHeight, SendArgs, Subaccount, Tokens, DEFAULT_TRANSFER_FEE,
     TOKEN_SUBDIVIDABLE_BY,
 };
-use num_traits::ToPrimitive;
 
 use crate::error::FactoryError;
 
-const CYCLE_MINTING_CANISTER: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
+/// This Principal is a slice equivalent to `rkp4c-7iaaa-aaaaa-aaaca-cai`.
+const CYCLES_MINTING_CANISTER: Principal = Principal::from_slice(&[0, 0, 0, 0, 0, 0, 0, 4, 1, 1]);
 
-/// This function calculates the amount required for minting cycles for a canister.
-pub async fn cycles_to_icp(cycles: u64) -> Result<u64, FactoryError> {
+/// Calculates amount of ICP that can be converted to the given amount of cycles
+pub async fn icp_amount_from_cycles(cycles: u64) -> Result<u64, FactoryError> {
     let rate = get_conversion_rate().await?.data;
 
-    let icp_per_xdr = 10_000.0 / rate.xdr_permyriad_per_icp as f64;
+    if rate.xdr_permyriad_per_icp == 0 {
+        return Err(FactoryError::GenericError(
+            "XDR permyriad per ICP is 0".to_string(),
+        ));
+    }
 
+    Ok(calculate_icp(cycles, rate.xdr_permyriad_per_icp))
+}
+
+fn calculate_icp(cycles: u64, xdr_permyriad_per_icp: u64) -> u64 {
     // Convert cycles to XDRs - 1 XDR = 10^12 cycles
-    let xdr = cycles as f64 / DEFAULT_CYCLES_PER_XDR as f64;
+    let xdr = cycles / DEFAULT_CYCLES_PER_XDR as u64;
+
+    let icp_per_xdr = 10_000 / xdr_permyriad_per_icp;
 
     let icp = xdr * icp_per_xdr;
 
-    (icp * TOKEN_SUBDIVIDABLE_BY as f64)
-        .to_u64()
-        .ok_or_else(|| FactoryError::GenericError("Failed to convert cycles to ICP".to_string()))
+    icp * TOKEN_SUBDIVIDABLE_BY
 }
 
 async fn get_conversion_rate() -> Result<IcpXdrConversionRateCertifiedResponse, FactoryError> {
-    let principal = Principal::from_text(CYCLE_MINTING_CANISTER).expect("const conversion");
-
     virtual_canister_call!(
-        principal,
+        CYCLES_MINTING_CANISTER,
         "get_icp_xdr_conversion_rate",
         (),
         IcpXdrConversionRateCertifiedResponse
@@ -49,25 +55,22 @@ pub(crate) async fn transfer_icp_to_cmc(
     ledger: Principal,
     caller_subaccount: Subaccount,
 ) -> Result<BlockHeight, FactoryError> {
-    let canister_minting_principal =
-        Principal::from_text(CYCLE_MINTING_CANISTER).expect("const conversion");
-
     let canister_id = ic_canister::ic_kit::ic::id();
     let to = AccountIdentifier::new(
-        canister_minting_principal.into(),
+        CYCLES_MINTING_CANISTER.into(),
         Some((&PrincipalId::from(canister_id)).into()),
     );
 
     let args = SendArgs {
         memo: MEMO_TOP_UP_CANISTER,
-        amount: Tokens::from_e8s(amount),
+        amount: Tokens::from_e8s(amount - DEFAULT_TRANSFER_FEE.get_e8s()),
         fee: DEFAULT_TRANSFER_FEE,
         from_subaccount: Some(caller_subaccount),
         to,
         created_at_time: None,
     };
 
-    virtual_canister_call!(ledger, "send_dfx", (args,), u64)
+    virtual_canister_call!(ledger, "transfer", (args,), u64)
         .await
         .map_err(|e| FactoryError::LedgerError(e.1))
 }
@@ -75,7 +78,6 @@ pub(crate) async fn transfer_icp_to_cmc(
 pub(crate) async fn mint_cycles_to_factory(
     block_height: BlockHeight,
 ) -> Result<u128, FactoryError> {
-    let minting_canister = Principal::from_text(CYCLE_MINTING_CANISTER).expect("const conversion");
     let to_canister =
         CanisterId::new(ic_canister::ic_kit::ic::id().into()).expect("const conversion");
 
@@ -85,7 +87,7 @@ pub(crate) async fn mint_cycles_to_factory(
     };
 
     virtual_canister_call!(
-        minting_canister,
+        CYCLES_MINTING_CANISTER,
         "notify_top_up",
         (notify_details,),
         Result<u128, NotifyError>
@@ -104,7 +106,7 @@ mod tests {
     #[tokio::test]
     async fn test_calculate_amount() {
         register_virtual_responder(
-            Principal::from_text(CYCLE_MINTING_CANISTER).unwrap(),
+            CYCLES_MINTING_CANISTER,
             "get_icp_xdr_conversion_rate",
             |()| IcpXdrConversionRateCertifiedResponse {
                 data: IcpXdrConversionRate {
@@ -120,27 +122,25 @@ mod tests {
             (5_000_000_000_000, 102935726),
             (1_000_000_000_000, 20587145),
             (2_000_000_000_000, 41174290),
-            (3_000_000_000_000, 61761436), // off by one? 61761435
+            (3_000_000_000_000, 61761436),
         ];
 
-        let expected_icp = cycles_to_icp(cycles_icp[0].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(cycles_icp[0].0).await.unwrap();
         assert_eq!(expected_icp, cycles_icp[0].1);
-        let expected_icp = cycles_to_icp(cycles_icp[1].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(cycles_icp[1].0).await.unwrap();
         assert_eq!(expected_icp, cycles_icp[1].1);
-        let expected_icp = cycles_to_icp(cycles_icp[2].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(cycles_icp[2].0).await.unwrap();
         assert_eq!(expected_icp, cycles_icp[2].1);
-        let expected_icp = cycles_to_icp(cycles_icp[3].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(cycles_icp[3].0).await.unwrap();
         assert_eq!(expected_icp, cycles_icp[3].1);
     }
 
     #[tokio::test]
     async fn test_mint_cycles() {
         MockContext::new().inject();
-        register_virtual_responder(
-            Principal::from_text(CYCLE_MINTING_CANISTER).unwrap(),
-            "notify_top_up",
-            |()| Ok::<u128, NotifyError>(1_000_000_000_000),
-        );
+        register_virtual_responder(CYCLES_MINTING_CANISTER, "notify_top_up", |()| {
+            Ok::<u128, NotifyError>(1_000_000_000_000)
+        });
         let block_height = 100;
         let cycles = mint_cycles_to_factory(block_height).await.unwrap();
         assert_eq!(cycles, 1_000_000_000_000);

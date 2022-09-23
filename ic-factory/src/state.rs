@@ -461,9 +461,9 @@ impl Default for FactoryConfiguration {
     }
 }
 
-// The canister creation fee is 10^12 cycles, so we require the provided amount to be a little larger for the operation for the cansiter.
+// The canister creation fee is 10^11 cycles, so we require the provided amount to be a little larger for the operation for the cansiter.
 // According to IC docs, 10^12 cycles should always cost 1 XDR, with is ~$1.
-const MIN_CANISTER_CYCLES: u64 = 10u64.pow(12) * 5;
+const INITIAL_CANISTER_CYCLES: u64 = 10u64.pow(12) * 5;
 
 async fn consume_provided_icp(
     caller: Principal,
@@ -477,10 +477,10 @@ async fn consume_provided_icp(
         return transfer_and_top_up(icp_fee, ledger, caller, icp_to).await;
     }
 
-    Ok(MIN_CANISTER_CYCLES)
+    Ok(INITIAL_CANISTER_CYCLES)
 }
 
-/// Converts the `MIN_CANISTER_CYCLES` to ICP tokens, and the caller send
+/// Converts the `INITIAL_CANISTER_CYCLES` to ICP tokens, and the caller send
 /// the tokens to the cycles-minting-canister, the factory canister
 /// is topped up with cycles and the the icp_fee is sent to the
 /// `icp_to` principal.
@@ -495,14 +495,17 @@ async fn transfer_and_top_up(
         .get_balance(id, Some((&PrincipalId(caller)).into()))
         .await
         .map_err(FactoryError::LedgerError)?;
+    if balance < icp_fee {
+        Err(FactoryError::NotEnoughIcp(balance, icp_fee))?;
+    }
 
-    // defensive programming, maximum of twice the icp_fee
-    let top_up_fee = top_up::cycles_to_icp(MIN_CANISTER_CYCLES)
-        .await?
-        .min(icp_fee);
+    let top_up_fee = top_up::icp_amount_from_cycles(INITIAL_CANISTER_CYCLES).await?;
 
-    if balance < top_up_fee + icp_fee {
-        Err(FactoryError::NotEnoughIcp(balance, top_up_fee + icp_fee))?;
+    if top_up_fee > icp_fee {
+        Err(FactoryError::GenericError(format!(
+            "The fee {} required to create {} cycles is greater than the ICP FEE {}",
+            top_up_fee, INITIAL_CANISTER_CYCLES, icp_fee
+        )))?;
     }
 
     let block_height =
@@ -512,7 +515,7 @@ async fn transfer_and_top_up(
     let cycles = top_up::mint_cycles_to_factory(block_height).await?;
 
     // Send the remaining ICP to the `icp_to` Principal
-    send_remaining_fee_to(caller, icp_to, ledger, icp_fee).await?;
+    send_remaining_fee_to(caller, icp_to, ledger, icp_fee - top_up_fee).await?;
 
     Ok(cycles as u64)
 }
