@@ -6,7 +6,7 @@ use cycles_minting_canister::{
 use ic_base_types::{CanisterId, PrincipalId};
 use ic_canister::virtual_canister_call;
 use ledger_canister::{
-    AccountIdentifier, BlockHeight, SendArgs, Subaccount, Tokens, DEFAULT_TRANSFER_FEE,
+    AccountIdentifier, BlockHeight, Subaccount, Tokens, TransferArgs, DEFAULT_TRANSFER_FEE,
     TOKEN_SUBDIVIDABLE_BY,
 };
 
@@ -56,9 +56,10 @@ pub(crate) async fn transfer_icp_to_cmc(
     let to = AccountIdentifier::new(
         CYCLES_MINTING_CANISTER.into(),
         Some((&PrincipalId::from(canister_id)).into()),
-    );
+    )
+    .to_address();
 
-    let args = SendArgs {
+    let args = TransferArgs {
         memo: MEMO_TOP_UP_CANISTER,
         amount: Tokens::from_e8s(amount - DEFAULT_TRANSFER_FEE.get_e8s()),
         fee: DEFAULT_TRANSFER_FEE,
