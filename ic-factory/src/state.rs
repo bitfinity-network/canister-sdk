@@ -19,7 +19,7 @@ use v1::{Factory, FactoryStateV1};
 
 pub mod v1;
 
-pub const DEFAULT_ICP_FEE: u64 = 10u64.pow(8);
+pub const DEFAULT_ICP_FEE: u64 = 10u64.pow(8) * 2;
 
 type CanisterHash = Vec<u8>;
 
