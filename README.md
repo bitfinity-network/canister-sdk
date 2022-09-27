@@ -3,23 +3,23 @@
 SDK for writing and testing canisters for the Internet Computer in Rust. This repo includes a few crates that help to
 simplify the tricky aspects of IC canisters development:
 
-* [simplifying and testing of inter-canister communications](#inter-canister-calls-and-testing)
-* [allowing dependencies between canisters](#dependencies-between-canisters)
-* [canisters composition](#canister-traits-and-composition) (combining APIs from different crates into a single canister)
-* [in-memory state management](#in-memory-storage)
-* [versioning of the state for canister upgrades](#versioned-state)
-* [collect canister metrics and define your own](#ic-metrics)
+- [simplifying and testing of inter-canister communications](#inter-canister-calls-and-testing)
+- [allowing dependencies between canisters](#dependencies-between-canisters)
+- [canisters composition](#canister-traits-and-composition) (combining APIs from different crates into a single canister)
+- [in-memory state management](#in-memory-storage)
+- [versioning of the state for canister upgrades](#versioned-state)
+- [collect canister metrics and define your own](#ic-metrics)
 
 This project builds on top of `ic-cdk` and `ic-kit` crates. It is not intended to replace them, but adds some types and
 macros to simplify things that are not dealt with by those crates.
 
 # Crates
 
-## canister-sdk 
+## canister-sdk
 
-A wrapper crate among all of the canisters in this repository with all of the necessary re-exports. It some features for exporting factory and auction traits as well as their APIs. 
+A wrapper crate among all of the canisters in this repository with all of the necessary re-exports. It some features for exporting factory and auction traits as well as their APIs.
 
-Note: Currently we require each canister to have its own `export_api` feature that will export the wasm definitions of the canister (and hide them if this canister is used as a dependency). This is not the case with trait canisters as rust features are additive even in transitive dependencies we're forced to introduce different `export_api` features for different traits in this repo (`auction_api` and `factory_api` respectively). The best approach will be to use `canister_sdk` dependency with dependent features that will trigger the neccessary APIs transitively, e.g. 
+Note: Currently we require each canister to have its own `export_api` feature that will export the wasm definitions of the canister (and hide them if this canister is used as a dependency). This is not the case with trait canisters as rust features are additive even in transitive dependencies we're forced to introduce different `export_api` features for different traits in this repo (`auction_api` and `factory_api` respectively). The best approach will be to use `canister_sdk` dependency with dependent features that will trigger the necessary APIs transitively, e.g.
 
 ```yaml
 [package]
@@ -36,9 +36,9 @@ auction = ["canister-sdk/auction"]
 canister-sdk = { git = "https://github.com/infinity-swap/canister-sdk", package = "canister-sdk" }
 ```
 
-## ic-exports 
+## ic-exports
 
-All of the ic dependencies re-exported in one crate that simplifes their updating process.
+All of the ic dependencies re-exported in one crate that simplifies their updating process.
 
 ## ic-canister
 
@@ -84,7 +84,7 @@ impl MyOtherCanister {
         let my_canister = MyCanister::from_principal(id);
         canister_call!(my_canister.add(1), ()).await.unwrap();
         let updated_value = canister_call!(my_canister.get_counter(), u64).await.unwrap();
-        
+
         updated_value
     }
 }
@@ -97,22 +97,20 @@ Now, if you want to test the `increment_get` method of you canister, all you nee
 async fn test_increment_get() {
     let my_canister = MyCanister::init_instance();
     let my_other_canister = MyOtherCanister::init_instance();
-    
+
     assert_eq!(my_other_canister.increment_get(my_canister.principal()), 1);
     assert_eq!(my_other_canister.increment_get(my_canister.principal()), 2);
-    
+
 }
 ```
 
 Even though the canisters use statics internally to store the canister state, the tests can initialize multiple instances of
 canisters with `init_instance` method, and each one of them will have a separate state.
 
-
-
 ### Canister traits and composition
 
 It is also possible to write a trait to store some part of the canister API that can be reused in different canisters. This also allows to compose a canister from different
-traits just by implementing the needed traits for your canister struct:
+traits just by implementing the needed traits for your canister Struct:
 
 ```rust
 impl Factory for MyCanister {
@@ -135,11 +133,11 @@ canister, because all the API's of that dependency will not be included into the
 
 ## ic-factory
 
-The "generic" trait API for the factory canisters. The `Factory` canister trait can be used to sinmplify writing factory logic for the canisters you implement. It also provides a convenient way to upgrade all the canisters that the factory is set to be controller of.
+The "generic" trait API for the factory canisters. The `Factory` canister trait can be used to simplify writing factory logic for the canisters you implement. It also provides a convenient way to upgrade all the canisters that the factory is set to be controller of.
 
 ## ic-helpers
 
-Some helpers and wrappers over principals we use on day-to-day basis for ledger and management canister calls. 
+Some helpers and wrappers over principals we use on day-to-day basis for ledger and management canister calls.
 
 ## ic-storage
 
@@ -185,10 +183,10 @@ When using `Canister` deriving macro, the fields that are marked with `#[state]`
 canister upgrades. This is done using `Versioned` trait. This means that at this moment you can have only one `#[state]` in a canister. If the state type is changed, the new state must have the previous state type as its `Versioned::Previous` type. The `Canister` deriving macro takes care of generating the `pre_upgrade` and `post_upgrade` functions and updating the state to the new type when needed.
 
 If a canister needs to have a state that is not preserved during the upgrade process (like caches or some other
-temporary data), `#[state(stable_store = false)]` can be used in addition to the `#[state]` field. Any number of 
+temporary data), `#[state(stable_store = false)]` can be used in addition to the `#[state]` field. Any number of
 non-stable state fields can be added to a canister.
 
 ## ic-metrics
 
-Metrics trait that the canister can implement to store a history of necessary metrics (stored in [MetricsData](https://github.com/infinity-swap/canister-sdk/blob/f835312e13b567ca2cb1d75cc3a1647da5d41204/ic-metrics/src/map.rs#L14-L18)) for the canister that also 
+Metrics trait that the canister can implement to store a history of necessary metrics (stored in [MetricsData](https://github.com/infinity-swap/canister-sdk/blob/f835312e13b567ca2cb1d75cc3a1647da5d41204/ic-metrics/src/map.rs#L14-L18)) for the canister that also
 allows to overwrite the `update_metrics` call to store custom metrics for a canister. For an example you can refer to the [tests](https://github.com/infinity-swap/canister-sdk/blob/main/ic-canister/tests/canister_c/src/lib.rs#L43-L49).
