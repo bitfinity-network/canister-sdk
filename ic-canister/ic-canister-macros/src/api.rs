@@ -204,7 +204,7 @@ pub(crate) fn api_method(
         quote! {
             #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
             #[export_name = #export_name]
-            fn #internal_method() {
+            #orig_vis fn #internal_method() {
                 ::ic_exports::ic_cdk::setup();
                 ::ic_exports::ic_cdk::spawn(async {
                     #args_destr_tuple
