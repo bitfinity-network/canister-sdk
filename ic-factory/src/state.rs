@@ -1,18 +1,22 @@
 use crate::{
     core::{create_canister, drop_canister, upgrade_canister},
     error::FactoryError,
+    top_up,
     update_lock::UpdateLock,
 };
+use ic_canister::{call_virtual_responder, virtual_canister_call};
 use ic_exports::{
     ic_base_types::PrincipalId,
     ic_cdk::{
         api::call::CallResult,
         export::candid::{utils::ArgumentEncoder, CandidType, Deserialize, Principal},
     },
-    ic_kit::ic,
-    ledger_canister::DEFAULT_TRANSFER_FEE,
+    ledger_canister::{
+        AccountIdentifier, BlockHeight, Subaccount, Tokens, TransferArgs, TransferError,
+        DEFAULT_TRANSFER_FEE,
+    },
 };
-use ic_helpers::candid_header::CandidHeader;
+use ic_helpers::{candid_header::CandidHeader, ledger::LedgerPrincipalExt};
 use ic_storage::{stable::Versioned, IcStorage};
 use std::{collections::HashMap, future::Future};
 use v1::{Factory, FactoryStateV1};

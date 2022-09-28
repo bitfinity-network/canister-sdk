@@ -36,7 +36,7 @@ impl Canister {
         canister
             .install_code(InstallCodeMode::Install, wasm_module, arg)
             .await?;
-        Ok(Self(canister.into(), version))
+        Ok(Self(canister, version))
     }
 
     /// Upgrades the canister.

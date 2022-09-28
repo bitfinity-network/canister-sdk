@@ -1,13 +1,16 @@
 use candid::Principal;
-use cycles_minting_canister::{
-    IcpXdrConversionRateCertifiedResponse, NotifyError, NotifyTopUp, DEFAULT_CYCLES_PER_XDR,
-    MEMO_TOP_UP_CANISTER,
-};
-use ic_base_types::{CanisterId, PrincipalId};
-use ic_canister::virtual_canister_call;
-use ledger_canister::{
-    AccountIdentifier, BlockHeight, Subaccount, Tokens, TransferArgs, TransferError,
-    DEFAULT_TRANSFER_FEE, TOKEN_SUBDIVIDABLE_BY,
+
+use ic_canister::{call_virtual_responder, virtual_canister_call};
+use ic_exports::{
+    cycles_minting_canister::{
+        IcpXdrConversionRateCertifiedResponse, NotifyError, NotifyTopUp, DEFAULT_CYCLES_PER_XDR,
+        MEMO_TOP_UP_CANISTER,
+    },
+    ic_base_types::{CanisterId, PrincipalId},
+    ledger_canister::{
+        AccountIdentifier, BlockHeight, Subaccount, Tokens, TransferArgs, DEFAULT_TRANSFER_FEE,
+        TOKEN_SUBDIVIDABLE_BY,
+    },
 };
 
 use crate::error::FactoryError;
@@ -52,7 +55,7 @@ pub(crate) async fn transfer_icp_to_cmc(
     ledger: Principal,
     caller_subaccount: Subaccount,
 ) -> Result<BlockHeight, FactoryError> {
-    let canister_id = ic_canister::ic_kit::ic::id();
+    let canister_id = ic_exports::ic_cdk::id();
     let to = AccountIdentifier::new(
         CYCLES_MINTING_CANISTER.into(),
         Some((&PrincipalId::from(canister_id)).into()),
@@ -68,7 +71,7 @@ pub(crate) async fn transfer_icp_to_cmc(
         created_at_time: None,
     };
 
-    virtual_canister_call!(ledger, "transfer", (args,), Result<BlockHeight, TransferError>)
+    virtual_canister_call!(ledger, "transfer", (args,), Result<BlockHeight, TransferArgs>)
         .await
         .map_err(|e| FactoryError::LedgerError(e.1))?
         .map_err(|e| FactoryError::LedgerError(format!("{:?}", e)))
@@ -78,7 +81,7 @@ pub(crate) async fn mint_cycles_to_factory(
     block_height: BlockHeight,
 ) -> Result<u128, FactoryError> {
     let to_canister =
-        CanisterId::new(ic_canister::ic_kit::ic::id().into()).expect("const conversion");
+        CanisterId::new(ic_exports::ic_kit::ic::id().into()).expect("const conversion");
 
     let notify_details = NotifyTopUp {
         block_index: block_height,
@@ -98,9 +101,10 @@ pub(crate) async fn mint_cycles_to_factory(
 
 #[cfg(test)]
 mod tests {
+    use ic_canister::register_virtual_responder;
+    use ic_exports::{cycles_minting_canister::IcpXdrConversionRate, ic_kit::MockContext};
+
     use super::*;
-    use cycles_minting_canister::IcpXdrConversionRate;
-    use ic_canister::{ic_kit::MockContext, register_virtual_responder};
 
     #[tokio::test]
     async fn test_calculate_amount() {
