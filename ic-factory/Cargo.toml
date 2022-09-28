@@ -9,7 +9,6 @@ export_api = []
 
 [dependencies]
 candid = "0.7"
-ic-kit = { git = "https://github.com/infinity-swap/ic-kit", tag = "v0.4.6" }
 hex = "0.4"
 sha2 = "0.9"
 serde = "1.0"

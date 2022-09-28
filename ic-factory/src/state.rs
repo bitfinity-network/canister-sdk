@@ -11,6 +11,7 @@ use ic_exports::{
         api::call::CallResult,
         export::candid::{utils::ArgumentEncoder, CandidType, Deserialize, Principal},
     },
+    ic_kit,
     ledger_canister::{
         AccountIdentifier, BlockHeight, Subaccount, Tokens, TransferArgs, TransferError,
         DEFAULT_TRANSFER_FEE,
@@ -484,7 +485,7 @@ async fn consume_provided_icp(
     Ok(INITIAL_CANISTER_CYCLES)
 }
 
-/// Converts the `INITIAL_CANISTER_CYCLES` to ICP tokens, and the caller send
+/// Converts the `INITIAL_CANISTER_CYCLES` to ICP tokens, and the caller sends
 /// the tokens to the cycles-minting-canister, the factory canister
 /// is topped up with cycles and the the icp_fee is sent to the
 /// `icp_to` principal.
