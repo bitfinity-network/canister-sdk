@@ -8,8 +8,8 @@ use ic_exports::{
     },
     ic_base_types::{CanisterId, PrincipalId},
     ledger_canister::{
-        AccountIdentifier, BlockHeight, Subaccount, Tokens, TransferArgs, DEFAULT_TRANSFER_FEE,
-        TOKEN_SUBDIVIDABLE_BY,
+        AccountIdentifier, BlockHeight, Subaccount, Tokens, TransferArgs, TransferError,
+        DEFAULT_TRANSFER_FEE, TOKEN_SUBDIVIDABLE_BY,
     },
 };
 
@@ -71,7 +71,7 @@ pub(crate) async fn transfer_icp_to_cmc(
         created_at_time: None,
     };
 
-    virtual_canister_call!(ledger, "transfer", (args,), Result<BlockHeight, TransferArgs>)
+    virtual_canister_call!(ledger, "transfer", (args,), Result<BlockHeight, TransferError>)
         .await
         .map_err(|e| FactoryError::LedgerError(e.1))?
         .map_err(|e| FactoryError::LedgerError(format!("{:?}", e)))
