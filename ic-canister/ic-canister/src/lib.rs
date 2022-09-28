@@ -32,10 +32,11 @@
 //!   Note, that when the canister is deployed in IC, the `Canister` instance is transient. It means
 //!   that all non-state fields will have default values at the beginning of each call.
 //!
-//! ```
+//! ```ignored
 //! use std::cell::RefCell;
 //! use std::rc::Rc;
-//! use ic_cdk::export::candid::{Principal, CandidType, Deserialize};
+//! use ic_exports::ic_cdk::export::candid::{Principal, CandidType, Deserialize};
+//! use ic_storage::stable::Versioned;
 //! use ic_canister::{Canister, PreUpdate};
 //! use ic_canister::storage::IcStorage;
 //!
@@ -44,7 +45,7 @@
 //!     counter: u64,
 //! }
 //!
-//! impl ic_storage::stable::Versioned for MyCanisterState {
+//! impl Versioned for MyCanisterState {
 //!     type Previous = ();
 //!
 //!     fn upgrade(():()) -> Self {
@@ -73,7 +74,7 @@
 //! The canister initialization method can be declared with [init] macro.
 //!
 //! ```
-//! use ic_cdk::export::Principal;
+//! use ic_exports::ic_cdk::export::Principal;
 //! use ic_canister::{Canister, PreUpdate, init};
 //!
 //! #[derive(Clone, Canister)]
@@ -101,7 +102,7 @@
 //!
 //! If there is only one `#[state]` field, `Canister` derive macro will generate `pre_upgrade` and
 //! `post_upgrade` methods automatically. These methods will serialize the state to the stable
-//! storage on `pre_upgrade` and then use `ic_storage::stable::Versioned` trait to upgrade the state
+//! storage on `pre_upgrade` and then use `canister_sdk::ic_storage::stable::Versioned` trait to upgrade the state
 //! in `post_upgrade`. This approach has some limitations:
 //!
 //! * The canister can contain only one `#[state]` field. If more then one state fields are needed,
@@ -121,7 +122,7 @@
 //! incorrect invocation of API methods, the macros do not allow the API methods to be public. All
 //! the arguments and output types must implement `CandidType` trait.
 //!
-//! ```
+//! ```ignore
 //! use candid::{Principal, CandidType, Deserialize};
 //! use ic_canister::{Canister, PreUpdate, query, update};
 //! use ic_canister::storage::IcStorage;
@@ -132,7 +133,7 @@
 //! struct MyCanisterState {
 //!     counter: u64,
 //! }
-//! # impl ic_storage::stable::Versioned for MyCanisterState {
+//! # impl Versioned for MyCanisterState {
 //! #     type Previous = ();
 //! #     fn upgrade(():()) -> Self {
 //! #         Self { counter: 0 }
@@ -257,7 +258,7 @@
 //! When another canister needs to call these API methods, the [canister_call]` macro can be used.
 //!
 //! ```ignore
-//! use ic_cdk::api::call::CallResult;
+//! use ic_exports::ic_cdk::api::call::CallResult;
 //!
 //! let my_canister = MyCanister::from_principal(canister_principal);
 //! canister_call!(my_canister.add(10), ()).await.unwrap();
@@ -271,8 +272,8 @@
 //! cannot be used. Instead, you can use [virtual_canister_call] macro.
 //!
 //! ```ignore
-//! use ic_cdk::api::call::CallResult;
-//! use ic_cdk::export::Principal;
+//! use ic_exports::ic_cdk::api::call::CallResult;
+//! use ic_exports::ic_cdk::export::Principal;
 //! use ic_canister::virtual_canister_call;
 //!
 //! let principal = Principal::from_text("qd4yy-7yaaa-aaaag-aacdq-cai").unwrap();
@@ -284,10 +285,10 @@
 //! When another canister needs to call these API methods with one-way messages, the [canister_notify]` macro can be used.
 //!
 //! ```ignore
-//! use ic_cdk::api::call::RejectionCode;
+//! use ic_exports::ic_cdk::api::call::RejectionCode;
 //!
 //! let my_canister = MyCanister::from_principal(canister_principal);
-//! let result: Result<(), ic_cdk::api::call::RejectionCode> = canister_notify!(my_canister.add(10), ());
+//! let result: Result<(), ic_exports::ic_cdk::api::call::RejectionCode> = canister_notify!(my_canister.add(10), ());
 //! ```
 //!
 //! ## Virtual canister notifications
@@ -297,11 +298,11 @@
 //! cannot be used. Instead, you can use [virtual_canister_notify] macro.
 //!
 //! ```ignore
-//! use ic_cdk::export::Principal;
+//! use ic_exports::ic_cdk::export::Principal;
 //! use ic_canister::virtual_canister_notify;
 //!
 //! let principal = Principal::from_text("qd4yy-7yaaa-aaaag-aacdq-cai").unwrap();
-//! let result: Result<(), ic_cdk::api::call::RejectionCode>= virtual_canister_notify!(principal, "remote_method_name", (arg1, arg2), ());
+//! let result: Result<(), ic_exports::ic_cdk::api::call::RejectionCode>= virtual_canister_notify!(principal, "remote_method_name", (arg1, arg2), ());
 //! ```
 //!
 //! # Testing canisters
@@ -312,7 +313,7 @@
 //!
 //! The states of every created instance will be separate.
 //!
-//! ```
+//! ```ignore
 //! # use candid::{Principal, CandidType, Deserialize};
 //! # use ic_canister::{Canister, PreUpdate, query, update};
 //! # use ic_canister::storage::IcStorage;
@@ -326,7 +327,7 @@
 //! #     counter: u64,
 //! # }
 //! #
-//! # impl ic_storage::stable::Versioned for MyCanisterState {
+//! # impl Versioned for MyCanisterState {
 //! #     type Previous = ();
 //! #     fn upgrade(():()) -> Self {
 //! #         Self { counter: 0 }
@@ -372,7 +373,7 @@
 //! [Canister::from_principal] method. In this case a new instance of a canister is created, but
 //! it shares the state with the first instance.
 //!
-//! ```
+//! ```ignore
 //! # use candid::{Principal, CandidType, Deserialize};
 //! # use ic_canister::{Canister, PreUpdate, query, update};
 //! # use ic_canister::storage::IcStorage;
@@ -386,7 +387,7 @@
 //! #     counter: u64,
 //! # }
 //! #
-//! # impl ic_storage::stable::Versioned for MyCanisterState {
+//! # impl Versioned for MyCanisterState {
 //! #     type Previous = ();
 //! #     fn upgrade(():()) -> Self {
 //! #         Self { counter: 0 }
@@ -435,8 +436,8 @@
 //! the second canister will call it.
 //!
 //! ```ignore
-//! use ic_cdk::api::call::CallResult;
-//! use ic_cdk::export::Principal;
+//! use ic_exports::ic_cdk::api::call::CallResult;
+//! use ic_exports::ic_cdk::export::Principal;
 //! use ic_canister::{Canister, update, canister_call};
 //!
 //! impl SecondCanister {
@@ -456,8 +457,8 @@
 //! that will respond to such a call.
 //!
 //! ```ignore
-//! use ic_cdk::api::call::CallResult;
-//! use ic_cdk::export::Principal;
+//! use ic_exports::ic_cdk::api::call::CallResult;
+//! use ic_exports::ic_cdk::export::Principal;
 //! use ic_canister::{Canister, register_virtual_responder, update, virtual_canister_call};
 //!
 //! impl SecondCanister {
