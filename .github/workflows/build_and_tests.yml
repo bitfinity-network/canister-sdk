@@ -6,6 +6,10 @@ on:
     paths-ignore:
       - README.md
 
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 name: Clippy, fmt and tests with coverage
 
 jobs:

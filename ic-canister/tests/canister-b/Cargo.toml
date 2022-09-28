@@ -6,6 +6,10 @@ edition = "2021"
 [lib]
 crate-type = ["lib", "cdylib"]
 
+[features]
+default = []
+export_api = []
+
 [dependencies]
 candid = "0.7"
 serde = "1.0"

@@ -1,23 +1,29 @@
 {
-  "canisters": {
-    "canister-a": {
-      "build": "bash scripts/build.sh",
-      "candid": "ic-canister/tests/canister-a/canister-a.did",
-      "wasm": "target/wasm32-unknown-unknown/release/canister-a-opt.wasm",
-      "type": "custom"
-    },
-    "canister-b": {
-      "build": "bash scripts/build.sh",
-      "candid": "ic-canister/tests/canister-b/canister-b.did",
-      "wasm": "target/wasm32-unknown-unknown/release/canister-b-opt.wasm",
-      "type": "custom"
-    }
-  },
-  "networks": {
-    "local": {
-      "bind": "127.0.0.1:8000",
-      "type": "ephemeral"
-    }
-  },
-  "version": 1
+      "canisters": {
+            "canister-a": {
+                  "build": "bash scripts/build.sh",
+                  "candid": "ic-canister/tests/canister_a/canister_a.did",
+                  "wasm": "target/wasm32-unknown-unknown/release/canister_a.wasm",
+                  "type": "custom"
+            },
+            "canister-b": {
+                  "build": "bash scripts/build.sh",
+                  "candid": "ic-canister/tests/canister_b/canister_b.did",
+                  "wasm": "target/wasm32-unknown-unknown/release/canister_b.wasm",
+                  "type": "custom"
+            },
+            "canister_c": {
+                  "build": "bash scripts/build.sh",
+                  "candid": "ic-canister/tests/canister_c/canister_c.did",
+                  "wasm": "target/wasm32-unknown-unknown/release/canister_c.wasm",
+                  "type": "custom"
+            }
+      },
+      "networks": {
+            "local": {
+                  "bind": "127.0.0.1:8000",
+                  "type": "ephemeral"
+            }
+      },
+      "version": 1
 }

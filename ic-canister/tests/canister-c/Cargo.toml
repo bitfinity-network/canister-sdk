@@ -8,18 +8,16 @@ crate-type = ["lib", "cdylib"]
 
 [features]
 default = []
-export-api = []
-
+export_api = []
 
 [dependencies]
 candid = "0.7"
 serde = "1.0"
 
-ic-exports = {path = "../../../ic-exports"}
-ic-storage = {path = "../../../ic-storage"}
-ic-canister = {path = "../../ic-canister"}
-ic-helpers = {path = "../../../ic-helpers"}
-ic-metrics = {path = "../../../ic-metrics"}
+ic-exports = { path = "../../../ic-exports" }
+ic-storage = { path = "../../../ic-storage" }
+ic-canister = { path = "../../ic-canister" }
+ic-metrics = { path = "../../../ic-metrics" }
 
 [dev-dependencies]
 tokio = {version = "1", features = ["rt", "macros"]}
