@@ -489,18 +489,18 @@
 //! to use its types and method declarations, and to be able to test their logic together, but
 //! we don't want the second canister's API to be exported together with the first one's.
 //!
-//! To enable this, a canister crate can declare a `export_api` feature flag. If this flag is disabled,
+//! To enable this, a canister crate can declare a `export-api` feature flag. If this flag is disabled,
 //! no API methods of the dependency canister will be exported.
 //!
 //! ```ignore
 //! // child canister
 //! [features]
 //! default = []
-//! export_api = []
+//! export-api = []
 //!
 //! // parent canister
 //! [dependency]
-//! child_canister = {version = "1.0", features = ["export_api"]}
+//! child_canister = {version = "1.0", features = ["export-api"]}
 //! ```
 //!
 //! Note though, that the Cargo features are additive during same compilation process. It means, that

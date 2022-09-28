@@ -43,6 +43,6 @@
 //! struct. If the user decides to collect metrics before the time interval was passed, then the metric gets
 //! overwritten.
 //!
-//! For the further example you can refer to the tests in the `canister_b` crate.
+//! For the further example you can refer to the tests in the `canister-b` crate.
 pub mod map;
 pub use map::*;

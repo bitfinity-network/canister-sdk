@@ -202,7 +202,7 @@ pub(crate) fn api_method(
             quote! {}
         };
         quote! {
-            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
+            #[cfg(all(target_arch = "wasm32", feature = "export-api"))]
             #[export_name = #export_name]
             fn #internal_method() {
                 ::ic_exports::ic_cdk::setup();
@@ -434,7 +434,7 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         };
 
         quote! {
-            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
+            #[cfg(all(target_arch = "wasm32", feature = "export-api"))]
             #[export_name = #export_name]
             fn #internal_method() {
                 ::ic_exports::ic_cdk::setup();
@@ -604,7 +604,7 @@ pub(crate) fn generate_idl() -> TokenStream {
                 let mut rets = Vec::new();
                 #(#rets)*
                 let func = Function { args, rets, modes: #modes };
-                if cfg!(feature = "export_api") {
+                if cfg!(feature = "export-api") {
                     service.push((#name.to_string(), Type::Func(func)));
                 }
             }

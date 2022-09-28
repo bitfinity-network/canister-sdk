@@ -1,15 +1,15 @@
 {
   "canisters": {
-    "canister_a": {
+    "canister-a": {
       "build": "bash scripts/build.sh",
-      "candid": "ic-canister/tests/canister_a/canister_a.did",
-      "wasm": "target/wasm32-unknown-unknown/release/canister_a-opt.wasm",
+      "candid": "ic-canister/tests/canister-a/canister-a.did",
+      "wasm": "target/wasm32-unknown-unknown/release/canister-a-opt.wasm",
       "type": "custom"
     },
-    "canister_b": {
+    "canister-b": {
       "build": "bash scripts/build.sh",
-      "candid": "ic-canister/tests/canister_b/canister_b.did",
-      "wasm": "target/wasm32-unknown-unknown/release/canister_b-opt.wasm",
+      "candid": "ic-canister/tests/canister-b/canister-b.did",
+      "wasm": "target/wasm32-unknown-unknown/release/canister-b-opt.wasm",
       "type": "custom"
     }
   },

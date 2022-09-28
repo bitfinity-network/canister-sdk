@@ -1,15 +1,10 @@
 [package]
-name = "canister_c"
+name = "canister-b"
 version = "0.2.0"
 edition = "2021"
 
 [lib]
 crate-type = ["lib", "cdylib"]
-
-[features]
-default = []
-export_api = []
-
 
 [dependencies]
 candid = "0.7"
@@ -19,6 +14,8 @@ ic-exports = {path = "../../../ic-exports"}
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
 ic-helpers = {path = "../../../ic-helpers"}
+canister-a = {path = "../canister-a", features = ["export-api"]}
+
 
 [dev-dependencies]
 tokio = {version = "1", features = ["rt", "macros"]}

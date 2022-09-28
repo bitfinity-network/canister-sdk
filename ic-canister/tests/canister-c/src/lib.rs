@@ -1,7 +1,6 @@
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_helpers::metrics::Metrics;
-use ic_storage::stable::Versioned;
-use ic_storage::IcStorage;
+use ic_metrics::Metrics;
+use ic_storage::{stable::Versioned, IcStorage};
 use std::{cell::RefCell, rc::Rc};
 
 use ic_canister::{update, Canister, MethodType, PreUpdate};
@@ -51,7 +50,7 @@ impl PreUpdate for CanisterC {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ic_canister::{canister_call};
+    use ic_canister::canister_call;
     use ic_exports::ic_kit::MockContext;
 
     #[tokio::test]

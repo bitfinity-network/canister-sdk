@@ -220,14 +220,14 @@ fn expand_upgrade_methods(
                 instance.__pre_upgrade_inst();
             }
 
-            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
+            #[cfg(all(target_arch = "wasm32", feature = "export-api"))]
             #[export_name = "canister_pre_upgrade"]
             fn __pre_upgrade() {
                 let instance = Self::init_instance();
                 instance.__pre_upgrade_inst();
             }
 
-            #[cfg(all(target_arch = "wasm32", feature = "export_api"))]
+            #[cfg(all(target_arch = "wasm32", feature = "export-api"))]
             #[export_name = "canister_post_upgrade"]
             fn __post_upgrade() {
                 let instance = Self::init_instance();
