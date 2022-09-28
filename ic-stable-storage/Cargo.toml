@@ -3,9 +3,7 @@ name = "ic-stable-storage"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+ic-exports = { path = "../ic-exports" }
 candid = "0.7"
-stable-structures = { git = "https://github.com/dfinity/ic", branch = "rc--2022-09-11_18-31" }
 thiserror = "1.0.32"

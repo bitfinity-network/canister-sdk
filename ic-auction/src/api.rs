@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{generate_exports, state_getter, update, Canister};
-use ic_cdk::export::candid::Principal;
-use ic_helpers::metrics::Interval;
+use ic_canister::{generate_exports, generate_idl, state_getter, update, Canister, Idl, PreUpdate};
+use ic_exports::ic_cdk::{self, export::candid::Principal};
+use ic_metrics::Interval;
 
 use crate::{
     error::{AuctionError, Result},
@@ -135,8 +135,8 @@ pub trait Auction: Canister + Sized {
     // Important: This function *must* be defined to be the
     // last one in the trait because it depends on the order
     // of expansion of update/query(trait = true) methods.
-    fn get_idl() -> ic_canister::Idl {
-        ic_canister::generate_idl!()
+    fn get_idl() -> Idl {
+        generate_idl!()
     }
 }
 

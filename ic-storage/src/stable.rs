@@ -124,11 +124,9 @@ use std::mem::size_of;
 use crate::testing::{stable_bytes, stable_read, stable_size, StableWriter};
 
 #[cfg(target_arch = "wasm32")]
-use ic_cdk::api::stable::{stable_bytes, stable_read, stable_size, StableWriter};
+use ic_exports::ic_cdk::api::stable::{stable_bytes, stable_read, stable_size, StableWriter};
 
-use candid::de::IDLDeserialize;
-use candid::ser::IDLBuilder;
-use candid::types::CandidType;
+use ic_exports::ic_cdk::export::candid::{de::IDLDeserialize, ser::IDLBuilder, types::CandidType};
 use serde::Deserialize;
 
 use crate::{Error, Result};
@@ -250,7 +248,7 @@ fn recursive_upgrade<T: Versioned>(version: u32, bytes: &[u8]) -> Result<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use candid::CandidType;
+    use ic_exports::ic_cdk::export::candid::CandidType;
 
     #[derive(Debug, CandidType, Deserialize)]
     struct Version1(u32);

@@ -1,0 +1,12 @@
+[package]
+name = "ic-metrics"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = "1.0"
+candid = "0.7"
+
+ic-exports = { path = "../ic-exports" }
+ic-canister = { path = "../ic-canister/ic-canister" }
+ic-storage = { path = "../ic-storage" }

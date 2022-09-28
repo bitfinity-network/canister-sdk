@@ -6,16 +6,20 @@ edition = "2021"
 [lib]
 crate-type = ["lib", "cdylib"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = []
+export_api = []
 
 [dependencies]
-ic-cdk = "0.5"
 candid = "0.7"
-canister_a = {path = "../canister_a", features = ["no_api"]}
+serde = "1.0"
+
+ic-exports = {path = "../../../ic-exports"}
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
 ic-helpers = {path = "../../../ic-helpers"}
-serde = "1.0"
+canister_a = {path = "../canister_a", features = ["export_api"]}
+
 
 [dev-dependencies]
 tokio = {version = "1", features = ["rt", "macros"]}

@@ -1,20 +1,20 @@
-use crate::core::{create_canister, drop_canister, upgrade_canister};
-use crate::error::FactoryError;
-use crate::top_up;
-use crate::update_lock::UpdateLock;
-use ic_canister::virtual_canister_call;
-use ic_cdk::api::call::CallResult;
-use ic_cdk::export::candid::utils::ArgumentEncoder;
-use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_helpers::candid_header::CandidHeader;
-use ic_helpers::ledger::{LedgerPrincipalExt, PrincipalId, DEFAULT_TRANSFER_FEE};
-use ic_storage::stable::Versioned;
-use ic_storage::IcStorage;
-use ledger_canister::{
-    AccountIdentifier, BlockHeight, Subaccount, Tokens, TransferArgs, TransferError,
+use crate::{
+    core::{create_canister, drop_canister, upgrade_canister},
+    error::FactoryError,
+    update_lock::UpdateLock,
 };
-use std::collections::HashMap;
-use std::future::Future;
+use ic_exports::{
+    ic_base_types::PrincipalId,
+    ic_cdk::{
+        api::call::CallResult,
+        export::candid::{utils::ArgumentEncoder, CandidType, Deserialize, Principal},
+    },
+    ic_kit::ic,
+    ledger_canister::DEFAULT_TRANSFER_FEE,
+};
+use ic_helpers::candid_header::CandidHeader;
+use ic_storage::{stable::Versioned, IcStorage};
+use std::{collections::HashMap, future::Future};
 use v1::{Factory, FactoryStateV1};
 
 pub mod v1;
@@ -105,7 +105,7 @@ impl FactoryState {
     ///
     /// Returns `FactoryError::AccessDenied` if the caller is not the factory controller.
     pub fn check_is_owner(&mut self) -> Result<Authorized<Owner>, FactoryError> {
-        let caller = ic_canister::ic_kit::ic::caller();
+        let caller = ic_exports::ic_kit::ic::caller();
         self.check_is_owner_internal(caller)
     }
 
@@ -177,7 +177,7 @@ impl FactoryState {
     ///
     /// If the given lock is not the factory's lock. This should never happen if the factory code
     /// is written correctly.
-    pub(crate) fn create_canister<A: ArgumentEncoder>(
+    pub(crate) fn create_canister<A: ArgumentEncoder + Send>(
         &self,
         init_args: A,
         cycles: u64,
@@ -191,7 +191,7 @@ impl FactoryState {
             wasm,
             init_args,
             cycles,
-            controller.map(|p| vec![ic_canister::ic_kit::ic::id(), p]),
+            controller.map(|p| vec![ic_exports::ic_kit::ic::id(), p]),
         ))
     }
 

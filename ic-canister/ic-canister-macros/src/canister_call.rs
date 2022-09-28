@@ -65,15 +65,15 @@ pub(crate) fn canister_call(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             async {
-                let __caller = ::ic_canister::ic_kit::ic::caller();
-                let __id = ::ic_canister::ic_kit::ic::id();
-                ::ic_canister::ic_kit::inject::get_context().update_caller(__id);
-                ::ic_canister::ic_kit::inject::get_context().update_id(#canister.principal());
+                let __caller = ::ic_exports::ic_kit::ic::caller();
+                let __id = ::ic_exports::ic_kit::ic::id();
+                ::ic_exports::ic_kit::inject::get_context().update_caller(__id);
+                ::ic_exports::ic_kit::inject::get_context().update_id(#canister.principal());
 
                 let result = #canister.#inner_method(#args).await;
 
-                ::ic_canister::ic_kit::inject::get_context().update_caller(__caller);
-                ::ic_canister::ic_kit::inject::get_context().update_id(__id);
+                ::ic_exports::ic_kit::inject::get_context().update_caller(__caller);
+                ::ic_exports::ic_kit::inject::get_context().update_id(__id);
                 result
             }
         }
@@ -102,15 +102,15 @@ pub(crate) fn canister_notify(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                let __caller = ::ic_canister::ic_kit::ic::caller();
-                let __id = ::ic_canister::ic_kit::ic::id();
-                ::ic_canister::ic_kit::inject::get_context().update_caller(__id);
-                ::ic_canister::ic_kit::inject::get_context().update_id(#canister.principal());
+                let __caller = ::ic_exports::ic_kit::ic::caller();
+                let __id = ::ic_exports::ic_kit::ic::id();
+                ::ic_exports::ic_kit::inject::get_context().update_caller(__id);
+                ::ic_exports::ic_kit::inject::get_context().update_id(#canister.principal());
 
                 let result = #canister.#inner_method(#args);
 
-                ::ic_canister::ic_kit::inject::get_context().update_caller(__caller);
-                ::ic_canister::ic_kit::inject::get_context().update_id(__id);
+                ::ic_exports::ic_kit::inject::get_context().update_caller(__caller);
+                ::ic_exports::ic_kit::inject::get_context().update_id(__id);
                 result            }
         }
     };
@@ -177,28 +177,28 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
 
     let (decode, tuple_index) = if is_tuple {
         (
-            quote! { ::ic_cdk::export::candid::decode_args::<#response_type>(&result) },
+            quote! { ::ic_exports::ic_cdk::export::candid::decode_args::<#response_type>(&result) },
             quote! {},
         )
     } else {
         (
-            quote! { ::ic_cdk::export::candid::decode_args::<(#response_type,)>(&result) },
+            quote! { ::ic_exports::ic_cdk::export::candid::decode_args::<(#response_type,)>(&result) },
             quote! {.0},
         )
     };
 
     let responder_call = quote! {
         async {
-            let encoded_args = match ::ic_cdk::export::candid::encode_args((#args)) {
+            let encoded_args = match ::ic_exports::ic_cdk::export::candid::encode_args((#args)) {
                 Ok(v) => v,
-                Err(e) => return Err((::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
+                Err(e) => return Err((::ic_exports::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
             };
 
-            let result = ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args)?;
+            let result = call_virtual_responder(#principal, #method_name, encoded_args)?;
 
             let result = match #decode {
                 Ok(v) => v #tuple_index,
-                Err(e) => return Err((::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to deserialize return value: {}", e))),
+                Err(e) => return Err((::ic_exports::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to deserialize return value: {}", e))),
             };
 
             Ok(result)
@@ -222,8 +222,6 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-//Ok::<(), ::ic_cdk::api::call::RejectionCode>(())
-
 pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as VirtualCanisterCall);
     let principal = &input.principal;
@@ -235,12 +233,12 @@ pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
 
     let responder_call = quote! {
         async {
-            let encoded_args = match ::ic_cdk::export::candid::encode_args((#args)) {
+            let encoded_args = match ::ic_exports::ic_cdk::export::candid::encode_args((#args)) {
                 Ok(v) => v,
-                Err(e) => return Err((::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
+                Err(e) => return Err((::ic_exports::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
             };
 
-            let result = ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args)?;
+            let result = call_virtual_responder(#principal, #method_name, encoded_args)?;
             Ok(())
         }
     };
@@ -276,11 +274,11 @@ fn get_cdk_call(
     if is_tuple {
         if let Some(cycles) = cycles {
             quote! {
-                ::ic_cdk::api::call::call_with_payment::<_, #response_type>(#principal, #method_name, (#args), #cycles)
+                ::ic_exports::ic_cdk::api::call::call_with_payment::<_, #response_type>(#principal, #method_name, (#args), #cycles)
             }
         } else {
             quote! {
-                ::ic_cdk::api::call::call::<_, #response_type>(#principal, #method_name, (#args))
+                ::ic_exports::ic_cdk::api::call::call::<_, #response_type>(#principal, #method_name, (#args))
             }
         }
     } else {
@@ -295,13 +293,13 @@ fn get_cdk_call(
         if let Some(cycles) = cycles {
             quote! {
                 async {
-                    ::ic_cdk::api::call::call_with_payment::<_, #tuple_response_type>(#principal, #method_name, (#args), #cycles).await.map(|x| x.0)
+                    ::ic_exports::ic_cdk::api::call::call_with_payment::<_, #tuple_response_type>(#principal, #method_name, (#args), #cycles).await.map(|x| x.0)
                 }
             }
         } else {
             quote! {
                 async {
-                    ::ic_cdk::api::call::call::<_, #tuple_response_type>(#principal, #method_name, (#args)).await.map(|x| x.0)
+                    ::ic_exports::ic_cdk::api::call::call::<_, #tuple_response_type>(#principal, #method_name, (#args)).await.map(|x| x.0)
                 }
             }
         }
@@ -317,12 +315,12 @@ fn get_cdk_notify(
     if let Some(cycles) = cycles {
         quote! {
 
-                ::ic_cdk::api::call::notify_with_payment128(#principal, #method_name, (#args), #cycles)
+                ::ic_exports::ic_cdk::api::call::notify_with_payment128(#principal, #method_name, (#args), #cycles)
 
         }
     } else {
         quote! {
-                ::ic_cdk::api::call::notify(#principal, #method_name, (#args))
+                ::ic_exports::ic_cdk::api::call::notify(#principal, #method_name, (#args))
 
         }
     }

@@ -1,9 +1,9 @@
 use super::checksum::Version;
-use candid::utils::ArgumentEncoder;
-use candid::{CandidType, Principal};
-use ic_cdk::api::call::CallResult;
-use ic_helpers::management::Canister as ManagementCanister;
-use ic_helpers::management::InstallCodeMode;
+use ic_exports::ic_cdk::{
+    api::call::CallResult,
+    export::candid::{utils::ArgumentEncoder, CandidType, Principal},
+};
+use ic_helpers::management::{InstallCodeMode, ManagementPrincipalExt};
 use serde::{Deserialize, Serialize};
 
 /// Represents information of a canister.
@@ -26,13 +26,13 @@ impl Canister {
     }
 
     /// Creates a new canister and installs `wasm_module` on it.
-    pub async fn create<A: ArgumentEncoder>(
+    pub async fn create<A: ArgumentEncoder + Send>(
         version: Version,
         wasm_module: Vec<u8>,
         arg: A,
         cycles: u64,
     ) -> CallResult<Self> {
-        let canister = ManagementCanister::create(None, cycles).await?;
+        let canister = <Principal as ManagementPrincipalExt>::create(None, cycles).await?;
         canister
             .install_code(InstallCodeMode::Install, wasm_module, arg)
             .await?;
@@ -41,7 +41,7 @@ impl Canister {
 
     /// Upgrades the canister.
     pub async fn upgrade(&mut self, version: Version, wasm_module: Vec<u8>) -> CallResult<()> {
-        ManagementCanister::from(self.0)
+        self.0
             .install_code(InstallCodeMode::Upgrade, wasm_module, ())
             .await?;
         self.1 = version;

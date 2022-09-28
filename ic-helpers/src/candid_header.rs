@@ -1,8 +1,7 @@
 //! This module provides types and functions that help get and verify the structure of a canister
 //! state.
 
-use candid::ser::TypeSerialize;
-use candid::{CandidType, Deserialize};
+use ic_exports::ic_cdk::export::candid::{self, ser::TypeSerialize, CandidType, Deserialize};
 use ic_storage::stable::Versioned;
 
 /// Magic prefix used to signify candid encoded binary.
@@ -137,7 +136,7 @@ fn get_type_definition(state_header: &[u8]) -> Result<candid::TypeEnv, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use candid::{Deserialize, Encode};
+    use ic_exports::ic_cdk::export::candid::{Deserialize, Encode};
 
     #[test]
     fn test_candid_header() {

@@ -1,8 +1,19 @@
-use candid::types::{internal::TypeContainer, Type};
+use std::fmt;
+
+use ic_exports::ic_cdk::export::candid::{
+    self,
+    types::{internal::TypeContainer, Type},
+};
 
 pub struct Idl {
     pub env: TypeContainer,
     pub actor: Type,
+}
+
+impl fmt::Display for Idl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Idl: {}", self.actor)
+    }
 }
 
 impl Idl {

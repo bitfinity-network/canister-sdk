@@ -1,8 +1,7 @@
 use super::FactoryConfiguration;
 use crate::types::{Canister, Checksum};
-use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_storage::stable::Versioned;
-use ic_storage::IcStorage;
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_storage::{stable::Versioned, IcStorage};
 use std::collections::HashMap;
 
 #[derive(CandidType, Deserialize, IcStorage, Default)]
