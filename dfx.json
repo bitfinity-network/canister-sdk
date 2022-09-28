@@ -12,10 +12,10 @@
                   "wasm": "target/wasm32-unknown-unknown/release/canister_b.wasm",
                   "type": "custom"
             },
-            "canister_c": {
+            "canister-c": {
                   "build": "bash scripts/build.sh",
-                  "candid": "ic-canister/tests/canister_c/canister_c.did",
-                  "wasm": "target/wasm32-unknown-unknown/release/canister_c.wasm",
+                  "candid": "ic-canister/tests/canister-c/canister-c.did",
+                  "wasm": "target/wasm32-unknown-unknown/release/canister-c.wasm",
                   "type": "custom"
             }
       },
