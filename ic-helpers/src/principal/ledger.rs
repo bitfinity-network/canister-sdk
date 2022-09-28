@@ -1,18 +1,26 @@
-use crate::ledger::{
-    AccountIdentifier, BinaryAccountBalanceArgs, BlockHeight, Subaccount, Tokens, TransferArgs,
-    TransferError, DEFAULT_TRANSFER_FEE,
-};
 use async_trait::async_trait;
-use ic_base_types::PrincipalId;
-use ic_cdk::export::candid::Principal;
+#[cfg(not(target_family = "wasm"))]
+use ic_canister::call_virtual_responder;
+use ic_canister::virtual_canister_call;
+use ic_exports::{
+    ic_base_types::PrincipalId,
+    ic_cdk::export::candid::Principal,
+    ledger_canister::{
+        AccountIdentifier, BinaryAccountBalanceArgs, BlockHeight, Subaccount, Tokens, TransferArgs,
+        TransferError, DEFAULT_TRANSFER_FEE,
+    },
+};
+
+use super::private::Sealed;
 
 #[async_trait]
-pub trait LedgerPrincipalExt {
+pub trait LedgerPrincipalExt: Sealed {
     async fn get_balance(
         &self,
         of: Principal,
         sub_account: Option<Subaccount>,
     ) -> Result<u64, String>;
+
     async fn transfer(
         &self,
         to: Principal,
@@ -33,11 +41,10 @@ impl LedgerPrincipalExt for Principal {
         let args = BinaryAccountBalanceArgs {
             account: account.to_address(),
         };
-        let result = ic_cdk::call::<_, (Tokens,)>(*self, "account_balance", (args,))
+        virtual_canister_call!(*self, "account_balance", (args,), Tokens)
             .await
-            .map_err(|e| e.1)?
-            .0;
-        Ok(result.get_e8s())
+            .map(|tokens| tokens.get_e8s())
+            .map_err(|e| e.1)
     }
 
     async fn transfer(
@@ -64,10 +71,9 @@ impl LedgerPrincipalExt for Principal {
             created_at_time: None,
         };
 
-        ic_cdk::call::<_, (Result<BlockHeight, TransferError>,)>(*self, "transfer", (args,))
+        virtual_canister_call!(*self, "transfer", (args,), Result<BlockHeight, TransferError>)
             .await
             .map_err(|e| e.1)?
-            .0
             .map_err(|e| format!("{e:?}"))
     }
 }

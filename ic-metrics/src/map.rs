@@ -1,5 +1,6 @@
-use candid::{CandidType, Deserialize};
-use ic_canister::{query, storage::IcStorage, Canister};
+use ic_canister::{query, Canister};
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize};
+use ic_storage::IcStorage;
 
 #[cfg(target_arch = "wasm32")]
 const WASM_PAGE_SIZE: u64 = 65536;
@@ -40,7 +41,7 @@ pub trait Metrics: Canister {
 
 fn curr_values() -> MetricsData {
     MetricsData {
-        cycles: ic_canister::ic_kit::ic::balance(),
+        cycles: ic_exports::ic_kit::ic::balance(),
         stable_memory_size: {
             #[cfg(target_arch = "wasm32")]
             {
@@ -107,7 +108,7 @@ impl<T: IcStorage> MetricsMap<T> {
 
     pub fn insert(&mut self, new_metric: T) -> Option<T> {
         self.trim();
-        let current_ts = ic_kit::ic::time();
+        let current_ts = ic_exports::ic_kit::ic::time();
         let last_ts = self
             .map
             .iter()
@@ -123,7 +124,7 @@ impl<T: IcStorage> MetricsMap<T> {
     }
 
     fn trim(&mut self) {
-        let current_ts = ic_kit::ic::time();
+        let current_ts = ic_exports::ic_kit::ic::time();
         let oldest_to_keep = current_ts.saturating_sub(self.history_length_nanos);
         self.map.retain(|&ts, _| ts >= oldest_to_keep);
     }

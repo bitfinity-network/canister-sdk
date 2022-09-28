@@ -1,10 +1,11 @@
 use crate::error::FactoryError;
-use candid::utils::ArgumentEncoder;
-use candid::Principal;
-use ic_cdk::api::call::CallResult;
-use ic_helpers::management::{Canister as ManagementCanister, CanisterSettings, InstallCodeMode};
+use ic_exports::ic_cdk::{
+    api::call::CallResult,
+    export::candid::{utils::ArgumentEncoder, Principal},
+};
+use ic_helpers::management::{CanisterSettings, InstallCodeMode, ManagementPrincipalExt};
 
-pub async fn create_canister<T: ArgumentEncoder>(
+pub async fn create_canister<T: ArgumentEncoder + Send>(
     wasm_module: Vec<u8>,
     init_args: T,
     cycles: u64,
@@ -15,7 +16,7 @@ pub async fn create_canister<T: ArgumentEncoder>(
         ..Default::default()
     };
 
-    let canister = ManagementCanister::create(Some(settings), cycles).await?;
+    let canister = <Principal as ManagementPrincipalExt>::create(Some(settings), cycles).await?;
     canister
         .install_code(InstallCodeMode::Install, wasm_module, init_args)
         .await?;
@@ -24,13 +25,12 @@ pub async fn create_canister<T: ArgumentEncoder>(
 }
 
 pub async fn upgrade_canister(canister_id: Principal, wasm_module: Vec<u8>) -> CallResult<()> {
-    ManagementCanister::from(canister_id)
+    canister_id
         .install_code(InstallCodeMode::Upgrade, wasm_module, ())
         .await
 }
 
 pub async fn drop_canister(canister: Principal) -> Result<(), FactoryError> {
-    let canister = ic_helpers::management::Canister::from(canister);
     canister
         .stop()
         .await

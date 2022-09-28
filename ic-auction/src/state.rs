@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use ic_canister::ic_kit::ic;
-use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_helpers::metrics::Interval;
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_exports::ic_kit::ic;
 use ic_helpers::tokens::Tokens128;
+use ic_metrics::Interval;
 use ic_storage::IcStorage;
 
 use crate::error::{AuctionError, Result};
@@ -126,7 +126,7 @@ impl AuctionState {
     }
 
     pub fn authorize_owner(&mut self) -> Result<Authorized<Controller>> {
-        let caller = ic_canister::ic_kit::ic::caller();
+        let caller = ic_exports::ic_kit::ic::caller();
         if caller == self.controller {
             Ok(Authorized::<Controller<'_>> {
                 auth: Controller { state: self },

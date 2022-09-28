@@ -6,13 +6,13 @@ edition = "2021"
 [lib]
 proc-macro = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 syn = "1.0"
 quote = "1.0"
 proc-macro2 = "1.0"
-ic-cdk = "0.5"
 lazy_static = "1"
 serde = "1.0"
 serde_tokenstream = "0.1"
+
+[package.metadata.cargo-udeps.ignore]
+ic-exports = { path = "../../ic-exports" }

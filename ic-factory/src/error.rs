@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_helpers::candid_header::TypeCheckResult;
 use thiserror::Error;
 

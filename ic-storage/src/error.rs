@@ -1,5 +1,6 @@
-use ic_cdk::api::stable::StableMemoryError;
+use ic_exports::ic_cdk::api::stable::StableMemoryError;
 use thiserror::Error;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Error)]
@@ -16,7 +17,7 @@ pub enum Error {
     AttemptedDowngrade,
 
     #[error("candid error: {0}")]
-    Candid(#[from] ic_cdk::export::candid::Error),
+    Candid(#[from] ic_exports::ic_cdk::export::candid::Error),
 
     #[error("existing version is newer")]
     ExistingVersionIsNewer,
