@@ -21,7 +21,7 @@ pub async fn create_canister<T: ArgumentEncoder + Send>(
         .install_code(InstallCodeMode::Install, wasm_module, init_args)
         .await?;
 
-    Ok(canister.into())
+    Ok(canister)
 }
 
 pub async fn upgrade_canister(canister_id: Principal, wasm_module: Vec<u8>) -> CallResult<()> {

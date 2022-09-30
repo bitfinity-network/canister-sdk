@@ -1,7 +1,8 @@
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_canister::{
-    canister_call, canister_notify, virtual_canister_call, virtual_canister_notify, PreUpdate,
+    call_virtual_responder, canister_call, canister_notify, virtual_canister_call,
+    virtual_canister_notify, PreUpdate,
 };
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_storage::IcStorage;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -134,12 +135,12 @@ mod tests {
 
         assert_eq!(canister_b.call_increment(5).await, 5);
         assert_eq!(canister_b.call_increment(15).await, 20);
-        assert_eq!(canister_b.notify_increment(20).await, true);
+        assert!(canister_b.notify_increment(20).await);
 
         ctx.update_id(canister_a.principal());
         assert_eq!(canister_a.__get_counter().await.unwrap(), 40);
 
-        assert_eq!(canister_b2.notify_increment(100).await, true);
+        assert!(canister_b2.notify_increment(100).await);
 
         ctx.update_id(canister_a2.principal());
         assert_eq!(canister_a2.__get_counter().await.unwrap(), 100);
