@@ -6,7 +6,7 @@ on:
     paths-ignore:
       - README.md
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
@@ -27,7 +27,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: -p ic-storage -- --check
+          args: -p canister-sdk -- --check
 
   clippy:
     name: Clippy
@@ -57,4 +57,4 @@ jobs:
 
       - name: Generate code coverage
         run: |
-          cargo +nightly tarpaulin --verbose --timeout 120 --out Xml -p ic-storage
+          cargo +nightly tarpaulin --verbose --timeout 120 --out Xml -p canister-sdk
