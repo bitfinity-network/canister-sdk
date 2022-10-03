@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 default = []
-export_api = []
+export-api = []
 
 [dependencies]
 candid = "0.7"

@@ -10,9 +10,9 @@ members = [
   "ic-storage/ic-storage-derive",
   "ic-canister/ic-canister",
   "ic-canister/ic-canister-macros",
-  "ic-canister/tests/canister_a",
-  "ic-canister/tests/canister_b",
-  "ic-canister/tests/canister_c",
+  "ic-canister/tests/canister-a",
+  "ic-canister/tests/canister-b",
+  "ic-canister/tests/canister-c",
 ]
 
 [package]
@@ -22,8 +22,8 @@ version = "0.3.12"
 
 [features]
 default = []
-factory_api = ["ic-factory?/export_api"]
-auction_api = ["ic-auction?/export_api"]
+factory-api = ["ic-factory?/export-api"]
+auction-api = ["ic-auction?/export-api"]
 auction = ["dep:ic-auction"]
 factory = ["dep:ic-factory"]
 

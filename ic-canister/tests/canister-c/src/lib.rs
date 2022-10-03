@@ -1,7 +1,6 @@
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_metrics::Metrics;
-use ic_storage::stable::Versioned;
-use ic_storage::IcStorage;
+use ic_storage::{stable::Versioned, IcStorage};
 use std::{cell::RefCell, rc::Rc};
 
 use ic_canister::{update, Canister, MethodType, PreUpdate};

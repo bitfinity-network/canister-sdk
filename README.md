@@ -189,4 +189,4 @@ non-stable state fields can be added to a canister.
 ## ic-metrics
 
 Metrics trait that the canister can implement to store a history of necessary metrics (stored in [MetricsData](https://github.com/infinity-swap/canister-sdk/blob/f835312e13b567ca2cb1d75cc3a1647da5d41204/ic-metrics/src/map.rs#L14-L18)) for the canister that also
-allows to overwrite the `update_metrics` call to store custom metrics for a canister. For an example you can refer to the [tests](https://github.com/infinity-swap/canister-sdk/blob/main/ic-canister/tests/canister_c/src/lib.rs#L43-L49).
+allows to overwrite the `update_metrics` call to store custom metrics for a canister. For an example you can refer to the [tests](https://github.com/infinity-swap/canister-sdk/blob/main/ic-canister/tests/canister-c/src/lib.rs#L43-L49).
