@@ -94,15 +94,14 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
             )])));
         }
 
-        let res = self
-            .factory_state()
+        self.factory_state()
             .borrow_mut()
             .check_is_owner()?
-            .set_canister_wasm(wasm, state_header);
-        res
+            .set_canister_wasm(wasm, state_header)
     }
 
     #[allow(unused_variables)]
+    #[allow(clippy::await_holding_refcell_ref)]
     fn create_canister<'a, T: ArgumentEncoder + Send + 'a>(
         &'a self,
         init_args: T,
@@ -334,6 +333,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         generate_idl!()
     }
 
+    #[allow(clippy::await_holding_refcell_ref)]
     fn drop_canister(
         &self,
         canister_id: Principal,

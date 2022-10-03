@@ -45,7 +45,7 @@ fn curr_values() -> MetricsData {
         stable_memory_size: {
             #[cfg(target_arch = "wasm32")]
             {
-                ic_cdk::api::stable::stable64_size()
+                ic_exports::ic_cdk::api::stable::stable64_size()
             }
             #[cfg(not(target_arch = "wasm32"))]
             {
