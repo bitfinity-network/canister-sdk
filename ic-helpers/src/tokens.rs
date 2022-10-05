@@ -174,7 +174,7 @@ impl Display for Tokens128 {
 ///
 /// The intended use of this struct is to return aggregated values of Tokens128. As such, it is
 /// usually not used as an input value in APIs, os it's serialized by Candid to `Nat`.
-#[derive(Default, Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Tokens256(pub U256);
 
 impl_op_ex!(+ |a: &Tokens256, b: &Tokens256| -> Option<Tokens256> {
@@ -358,6 +358,30 @@ impl<'de> Deserialize<'de> for Tokens256 {
     }
 }
 
+// Default U256 debug prints the number as a set of limbs, and to_string() uses hex formatting, which is inconvinient
+// for debugging. This implementation writes the inner number as decimal. It's not that fast but it shouldn't be
+// a problem since it's supposed to be used only for debugging.
+impl std::fmt::Debug for Tokens256 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut result = String::new();
+        let mut remainder = self.0;
+        while remainder != U256::ZERO {
+            let digit;
+            (remainder, digit) = remainder.div_rem(&U256::from(10u128)).unwrap();
+
+            result.insert_str(0, &digit.limbs()[0].0.to_string());
+        }
+
+        if result.is_empty() {
+            result.push('0');
+        }
+
+        f.debug_tuple("Tokens256")
+            .field(&format_args!("{result}"))
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -482,5 +506,20 @@ mod tests {
         let serialized = candid::Encode!(&tokens).unwrap();
         let deserialized = candid::Decode!(&serialized, Tokens256).unwrap();
         assert_eq!(deserialized, tokens);
+    }
+
+    #[test]
+    fn tokens256_debug() {
+        let num = Tokens256::from(100500);
+        assert_eq!(&format!("{num:?}"), "Tokens256(100500)");
+        let num = Tokens256::from(0);
+        assert_eq!(&format!("{num:?}"), "Tokens256(0)");
+        let num = (Tokens256::from(u128::MAX) + Tokens256::from(1)).unwrap();
+        assert_eq!(
+            &format!("{num:?}"),
+            "Tokens256(340282366920938463463374607431768211456)"
+        );
+        let num = Tokens256::MAX;
+        assert_eq!(&format!("{num:?}"), "Tokens256(115792089237316195423570985008687907853269984665640564039457584007913129639935)");
     }
 }
