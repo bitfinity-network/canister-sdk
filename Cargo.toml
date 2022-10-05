@@ -24,8 +24,10 @@ version = "0.3.12"
 default = []
 factory_api = ["ic-factory?/export_api"]
 auction_api = ["ic-auction?/export_api"]
+metrics_api = ["ic-metrics/export_api"]
 auction = ["dep:ic-auction"]
 factory = ["dep:ic-factory"]
+
 
 [dependencies]
 ic-exports = { path = "./ic-exports" }

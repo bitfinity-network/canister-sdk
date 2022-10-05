@@ -3,6 +3,10 @@ name = "ic-metrics"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+export_api = []
+
 [dependencies]
 serde = "1.0"
 candid = "0.7"
