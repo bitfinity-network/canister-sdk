@@ -1,7 +1,8 @@
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_canister::{
-    canister_call, canister_notify, virtual_canister_call, virtual_canister_notify, PreUpdate,
+    call_virtual_responder, canister_call, canister_notify, virtual_canister_call,
+    virtual_canister_notify, PreUpdate,
 };
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_storage::IcStorage;
 use std::cell::RefCell;
 use std::rc::Rc;
