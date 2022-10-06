@@ -1,5 +1,5 @@
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_metrics::Metrics;
+use ic_metrics::{Metrics, MetricsStorage};
 use ic_storage::{stable::Versioned, IcStorage};
 use std::{cell::RefCell, rc::Rc};
 
@@ -39,7 +39,11 @@ impl CanisterC {
     }
 }
 
-impl Metrics for CanisterC {}
+impl Metrics for CanisterC {
+    fn metrics(&self) -> Rc<RefCell<MetricsStorage>> {
+        MetricsStorage::get()
+    }
+}
 
 impl PreUpdate for CanisterC {
     fn pre_update(&self, _method_name: &str, _method_type: MethodType) {

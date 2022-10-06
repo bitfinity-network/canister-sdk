@@ -1,4 +1,7 @@
-use ic_canister::{query, Canister};
+use std::{cell::RefCell, rc::Rc};
+
+use candid::Principal;
+use ic_canister::{generate_exports, query, state_getter, Canister, PreUpdate};
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize};
 use ic_storage::IcStorage;
 
@@ -18,6 +21,9 @@ pub struct MetricsData {
 }
 
 pub trait Metrics: Canister {
+    #[state_getter]
+    fn metrics(&self) -> Rc<RefCell<MetricsStorage>>;
+
     #[query(trait = true)]
     fn get_curr_metrics(&self) -> MetricsData {
         curr_values()
@@ -135,3 +141,5 @@ impl<T: IcStorage> std::default::Default for MetricsMap<T> {
         Self::new(Interval::PerHour, Interval::PerDay.nanos() * 365)
     }
 }
+
+generate_exports!(Metrics);
