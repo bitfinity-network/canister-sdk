@@ -5,7 +5,7 @@ version = "0.3.12"
 
 [dependencies]
 async-trait = "0.1"
-candid = "0.7"
+candid = "0.8"
 num-traits = "0.2"
 serde = "1.0"
 serde_json = "1.0"

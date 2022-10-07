@@ -9,7 +9,7 @@ export-api = []
 
 [dependencies]
 serde = "1.0"
-candid = "0.7"
+candid = "0.8"
 
 ic-exports = { path = "../ic-exports" }
 ic-canister = { path = "../ic-canister/ic-canister" }

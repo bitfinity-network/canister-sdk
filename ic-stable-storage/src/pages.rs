@@ -1,5 +1,5 @@
-use std::collections::HashSet;
 use std::cell::RefCell;
+use std::collections::HashSet;
 
 use super::{RestrictedMemory, StableMemory, RESERVED_PAGE_MEM};
 use crate::StableBTreeMap;
