@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-#[cfg(not(target_family = "wasm"))]
 use ic_canister::virtual_canister_call;
 use ic_exports::{
     ic_base_types::PrincipalId,
