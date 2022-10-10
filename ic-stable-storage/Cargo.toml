@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 ic-exports = { path = "../ic-exports" }
-candid = "0.7"
+candid = "0.8"
 thiserror = "1.0.32"

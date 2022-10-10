@@ -4,7 +4,7 @@ version = "0.2.1"
 edition = "2021"
 
 [dependencies]
-candid = "0.7"
+candid = "0.8"
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 

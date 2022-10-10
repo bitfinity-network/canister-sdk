@@ -13,9 +13,9 @@ use ic_exports::{
     },
     ic_kit,
     ledger_canister::{
-        AccountIdentifier, BlockHeight, Subaccount, Tokens, TransferArgs, TransferError,
-        DEFAULT_TRANSFER_FEE,
+        AccountIdentifier, Subaccount, Tokens, TransferArgs, TransferError, DEFAULT_TRANSFER_FEE,
     },
+    BlockHeight,
 };
 use ic_helpers::{candid_header::CandidHeader, ledger::LedgerPrincipalExt};
 use ic_storage::{stable::Versioned, IcStorage};

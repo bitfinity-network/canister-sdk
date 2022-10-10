@@ -8,7 +8,7 @@ default = []
 export-api = []
 
 [dependencies]
-candid = "0.7"
+candid = "0.8"
 hex = "0.4"
 sha2 = "0.9"
 serde = "1.0"

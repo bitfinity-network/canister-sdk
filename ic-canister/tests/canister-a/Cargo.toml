@@ -11,7 +11,7 @@ default = []
 export-api = []
 
 [dependencies]
-candid = "0.7"
+candid = "0.8"
 serde = "1.0"
 
 ic-exports = {path = "../../../ic-exports"}
