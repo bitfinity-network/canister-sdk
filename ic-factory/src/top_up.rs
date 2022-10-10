@@ -1,6 +1,6 @@
 use candid::Principal;
 
-use ic_canister::{call_virtual_responder, virtual_canister_call};
+use ic_canister::virtual_canister_call;
 use ic_exports::{
     cycles_minting_canister::{
         IcpXdrConversionRateCertifiedResponse, NotifyError, NotifyTopUp, DEFAULT_CYCLES_PER_XDR,

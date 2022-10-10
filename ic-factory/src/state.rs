@@ -4,7 +4,7 @@ use crate::{
     top_up,
     update_lock::UpdateLock,
 };
-use ic_canister::{call_virtual_responder, virtual_canister_call};
+use ic_canister::virtual_canister_call;
 use ic_exports::{
     ic_base_types::PrincipalId,
     ic_cdk::{

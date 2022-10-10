@@ -1,6 +1,5 @@
 use super::{error::FactoryError, FactoryState};
 #[cfg(not(target_family = "wasm"))]
-use ic_canister::call_virtual_responder;
 use ic_canister::{
     generate_exports, generate_idl, query, state_getter, update, virtual_canister_call,
     AsyncReturn, Canister, Idl, PreUpdate,

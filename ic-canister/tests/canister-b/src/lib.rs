@@ -1,5 +1,5 @@
 use ic_canister::{
-    call_virtual_responder, canister_call, canister_notify, virtual_canister_call,
+    canister_call, canister_notify, virtual_canister_call,
     virtual_canister_notify, PreUpdate,
 };
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
