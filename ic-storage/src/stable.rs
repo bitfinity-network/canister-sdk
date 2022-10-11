@@ -28,7 +28,7 @@
 //! ### Creating a versioned struct
 //! ```
 //! use ic_storage::stable::Versioned;
-//! use ic_cdk::export::candid::CandidType;
+//! use candid::CandidType;
 //! use serde::Deserialize;
 //!
 //! #[derive(Debug, Deserialize, CandidType)]
@@ -65,7 +65,7 @@
 //!
 //! ```
 //! use ic_storage::stable::{Versioned, read};
-//! # use ic_cdk::export::candid::CandidType;
+//! # use candid::CandidType;
 //! # use serde::Deserialize;
 //!
 //! # #[derive(Debug, Deserialize, CandidType)]
@@ -99,7 +99,7 @@
 //!
 //! ```
 //! use ic_storage::stable::{Versioned, write};
-//! # use ic_cdk::export::candid::CandidType;
+//! # use candid::CandidType;
 //! # use serde::Deserialize;
 //!
 //! # #[derive(Debug, Deserialize, CandidType)]
@@ -248,7 +248,7 @@ fn recursive_upgrade<T: Versioned>(version: u32, bytes: &[u8]) -> Result<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ic_exports::ic_cdk::export::candid::CandidType;
+    use candid::CandidType;
 
     #[derive(Debug, CandidType, Deserialize)]
     struct Version1(u32);
