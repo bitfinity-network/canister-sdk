@@ -449,15 +449,19 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         }
     });
 
-    let StateGetter {
-        method_name,
-        state_type,
-    } = STATE_GETTER.lock().unwrap().take().expect(
-        "State getter should be defined as a part of trait api via #[state_getter] macro attribute",
-    );
+    let state_getter_impl = if let Some(state_getter) = STATE_GETTER.lock().unwrap().take() {
+        let state_type = Ident::new(&state_getter.state_type, Span::call_site());
+        let method_name = Ident::new(&state_getter.method_name, Span::call_site());
 
-    let state_type = Ident::new(&state_type, Span::call_site());
-    let method_name = Ident::new(&method_name, Span::call_site());
+        quote! {
+            fn #method_name(&self) -> Rc<RefCell<#state_type>> {
+                use ic_storage::IcStorage;
+                #state_type::get()
+            }
+        }
+    } else {
+        quote! {}
+    };
 
     let expanded = quote! {
         #[derive(::std::clone::Clone, ::std::fmt::Debug, Canister)]
@@ -468,10 +472,7 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         }
 
         impl #trait_name for #struct_name {
-            fn #method_name(&self) -> Rc<RefCell<#state_type>> {
-                use ic_storage::IcStorage;
-                #state_type::get()
-            }
+            #state_getter_impl
         }
 
         impl PreUpdate for #struct_name {}

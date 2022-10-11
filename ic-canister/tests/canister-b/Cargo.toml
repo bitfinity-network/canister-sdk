@@ -8,7 +8,7 @@ crate-type = ["lib", "cdylib"]
 
 [features]
 default = []
-export_api = []
+export-api = []
 
 [dependencies]
 candid = "0.8"

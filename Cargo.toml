@@ -13,6 +13,7 @@ members = [
   "ic-canister/tests/canister-a",
   "ic-canister/tests/canister-b",
   "ic-canister/tests/canister-c",
+  "ic-canister/tests/canister-d",
 ]
 
 [package]
