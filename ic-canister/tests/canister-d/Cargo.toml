@@ -1,6 +1,6 @@
 [package]
-name = "canister-c"
-version = "0.2.0"
+name = "canister-d"
+version = "0.1.0"
 edition = "2021"
 
 [lib]
@@ -14,10 +14,10 @@ export-api = []
 candid = "0.8"
 serde = "1.0"
 
-ic-exports = { path = "../../../ic-exports" }
-ic-storage = { path = "../../../ic-storage" }
-ic-canister = { path = "../../ic-canister" }
-ic-metrics = { path = "../../../ic-metrics" }
+ic-exports = {path = "../../../ic-exports"}
+ic-storage = {path = "../../../ic-storage"}
+ic-canister = {path = "../../ic-canister"}
+ic-helpers = {path = "../../../ic-helpers"}
 
 [dev-dependencies]
 tokio = {version = "1", features = ["rt", "macros"]}
