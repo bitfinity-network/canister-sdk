@@ -14,6 +14,7 @@ pub struct StableCell<T: Storable> {
 }
 
 impl<T: Storable> StableCell<T> {
+    /// Create new storage for values with `T` type.
     pub fn new(memory_id: MemoryId, default_value: T) -> Self {
         Self {
             data: HashMap::default(),
@@ -22,6 +23,7 @@ impl<T: Storable> StableCell<T> {
         }
     }
 
+    /// Returns reference to value stored in stable memory.
     pub fn get(&self) -> &T {
         let canister_id = ic::id();
         self.data
@@ -54,6 +56,7 @@ pub struct StableBTreeMap<K: Storable, V: Storable> {
 }
 
 impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
+    /// Create new instance of key-value storage.
     pub fn new(memory_id: MemoryId, max_key_size: u32, max_value_size: u32) -> Self {
         Self {
             data: HashMap::default(),
@@ -63,12 +66,14 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
         }
     }
 
+    /// Return value associated with `key` from stable memory.
     pub fn get(&self, key: &K) -> Option<V> {
         let canister_id = ic::id();
         let storage = self.data.get(&canister_id);
         storage.and_then(|m| m.get(key))
     }
 
+    /// Add or replace value associated with `key` in stable memory.
     pub fn insert(&mut self, key: K, value: V) -> Result<(), Error> {
         let canister_id = ic::id();
         self.data
@@ -81,11 +86,13 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
         Ok(())
     }
 
+    /// Remove value associated with `key` from stable memory.
     pub fn remove(&mut self, key: &K) -> Option<V> {
         let canister_id = ic::id();
         self.data.get_mut(&canister_id)?.remove(key)
     }
 
+    /// List all currently stored key-value pairs.
     pub fn list(&self, start: usize, limit: usize) -> Vec<(K, V)> {
         let canister_id = ic::id();
         let storage = self.data.get(&canister_id);
