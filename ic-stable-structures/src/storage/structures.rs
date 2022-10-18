@@ -4,7 +4,7 @@ use ic_exports::candid::Principal;
 use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::{btreemap, cell, memory_manager::MemoryId, Storable};
 
-use super::{error::StorageError, Memory};
+use super::{error::Error, Memory};
 
 /// Stores value in stable memory, providing `get()/set()` API.
 pub struct StableCell<T: Storable> {
@@ -31,7 +31,7 @@ impl<T: Storable> StableCell<T> {
     }
 
     /// Updates value in stable memory.
-    pub fn set(&mut self, value: T) -> Result<(), StorageError> {
+    pub fn set(&mut self, value: T) -> Result<(), Error> {
         let canister_id = ic::id();
         match self.data.entry(canister_id) {
             Entry::Occupied(mut entry) => {
@@ -69,7 +69,7 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
         storage.and_then(|m| m.get(key))
     }
 
-    pub fn insert(&mut self, key: K, value: V) -> Result<(), StorageError> {
+    pub fn insert(&mut self, key: K, value: V) -> Result<(), Error> {
         let canister_id = ic::id();
         self.data
             .entry(canister_id)
