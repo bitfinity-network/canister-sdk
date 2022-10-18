@@ -18,6 +18,7 @@ ic-exports = {path = "../../../ic-exports"}
 ic-storage = {path = "../../../ic-storage"}
 ic-canister = {path = "../../ic-canister"}
 ic-helpers = {path = "../../../ic-helpers"}
+ic-stable-structures = {path = "../../../ic-stable-structures"}
 
 [dev-dependencies]
 tokio = {version = "1", features = ["rt", "macros"]}
