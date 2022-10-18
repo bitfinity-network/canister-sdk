@@ -1,0 +1,8 @@
+[package]
+name = "ic-stable"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ic-exports = { path = "../ic-exports" }
+thiserror = "1.0.32"
