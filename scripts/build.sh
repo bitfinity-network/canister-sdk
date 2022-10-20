@@ -1,5 +1,10 @@
 set -e
 
+cargo run -p canister-a --features export-api > ic-canister/tests/canister-a/canister-a.did
+cargo run -p canister-b --features export-api > ic-canister/tests/canister-b/canister-b.did
+cargo run -p canister-c --features export-api > ic-canister/tests/canister-c/canister-c.did
+cargo run -p canister-d --features export-api > ic-canister/tests/canister-d/canister-d.did
+
 cargo build -p canister-a --lib --target wasm32-unknown-unknown --features export-api --release
 cargo build -p canister-b --lib --target wasm32-unknown-unknown --features export-api --release
 cargo build -p canister-c --lib --target wasm32-unknown-unknown --features export-api --release

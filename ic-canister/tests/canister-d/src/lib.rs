@@ -1,4 +1,4 @@
-use ic_canister::PreUpdate;
+use ic_canister::{PreUpdate, Idl, generate_idl};
 use ic_exports::ic_cdk::export::candid::Principal;
 use ic_stable_structures::{MemoryId, StableCell};
 use std::cell::RefCell;
@@ -8,7 +8,8 @@ use ic_canister::{generate_exports, query, update, Canister};
 const MEMORY_ID: MemoryId = MemoryId::new(0);
 
 thread_local! {
-    pub static COUNTER: RefCell<StableCell<u32>> = RefCell::new(StableCell::new(MEMORY_ID, 0));
+    pub static COUNTER: RefCell<StableCell<u32>> =
+        RefCell::new(StableCell::new(MEMORY_ID, 0).expect("failed to initialize stable cell"));
 }
 
 // Canister trait with no `state_getter` method.
@@ -37,9 +38,21 @@ pub trait CanisterD: Canister {
     fn id(&self) -> Principal {
         ic_exports::ic_kit::ic::id()
     }
+
+    // Important: This function *must* be defined to be the
+    // last one in the trait because it depends on the order
+    // of expansion of update/query(trait = true) methods.
+    fn get_idl() -> Idl {
+        generate_idl!()
+    }
 }
 
 generate_exports!(CanisterD, CanisterDImpl);
+
+pub fn idl() -> String {
+    let trait_idl = <CanisterDImpl as CanisterD>::get_idl();
+    candid::bindings::candid::compile(&trait_idl.env.env, &Some(trait_idl.actor))
+}
 
 #[cfg(test)]
 mod tests {

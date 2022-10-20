@@ -1,8 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 
-use ic_exports::candid::Principal;
-use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::DefaultMemoryImpl;
 
@@ -10,25 +7,14 @@ pub use structures::{StableBTreeMap, StableCell};
 
 use crate::{Memory, MemoryManager};
 
-pub mod structures;
-
-#[derive(Default)]
-struct Manager(HashMap<Principal, MemoryManager>);
-
-impl Manager {
-    pub fn get(&mut self, memory_id: MemoryId) -> Memory {
-        let canister_id = ic::id();
-        self.0
-            .entry(canister_id)
-            .or_insert_with(|| MemoryManager::init(DefaultMemoryImpl::default()))
-            .get(memory_id)
-    }
-}
+#[path = "storage_wasm/structures_wasm.rs"]
+mod structures;
 
 thread_local! {
     // The memory manager is used for simulating multiple memories. Given a `MemoryId` it can
     // return a memory that can be used by stable structures.
-    static MANAGER: RefCell<Manager> = RefCell::default();
+    static MANAGER: RefCell<MemoryManager> =
+        RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
 }
 
 // Return memory by `MemoryId`.

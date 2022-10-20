@@ -1,5 +1,5 @@
 use ic_canister::{
-    canister_call, canister_notify, virtual_canister_call, virtual_canister_notify, PreUpdate,
+    canister_call, canister_notify, virtual_canister_call, virtual_canister_notify, PreUpdate, generate_idl,
 };
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_storage::IcStorage;
@@ -108,6 +108,16 @@ impl CanisterA for CanisterB {
     fn state(&self) -> Rc<RefCell<StateA>> {
         StateA::get()
     }
+}
+
+pub fn idl() -> String {
+    use ic_canister::Idl;
+
+    let canister_b_idl = generate_idl!();
+    let mut canister_a_idl = <CanisterB as CanisterA>::get_idl();
+    canister_a_idl.merge(&canister_b_idl);
+
+    candid::bindings::candid::compile(&canister_a_idl.env.env, &Some(canister_a_idl.actor))
 }
 
 #[cfg(test)]

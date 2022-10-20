@@ -1,6 +1,20 @@
+#[cfg(not(target_arch = "wasm32"))]
 mod storage;
 
+#[cfg(target_arch = "wasm32")]
+#[path = "storage_wasm.rs"]
+mod storage;
+
+mod error;
+
+pub use error::Error;
 pub use ic_exports::stable_structures::{memory_manager::MemoryId, Storable};
-pub use storage::{
-    error::Error, get_memory_by_id, structures::StableBTreeMap, structures::StableCell, Memory,
+use ic_exports::stable_structures::{
+    memory_manager::{self, VirtualMemory},
+    DefaultMemoryImpl,
 };
+pub use storage::{get_memory_by_id, StableBTreeMap, StableCell};
+
+pub type Memory = VirtualMemory<DefaultMemoryImpl>;
+
+type MemoryManager = memory_manager::MemoryManager<DefaultMemoryImpl>;

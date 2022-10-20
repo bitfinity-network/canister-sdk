@@ -4,7 +4,7 @@ use ic_exports::candid::Principal;
 use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::{btreemap, cell, memory_manager::MemoryId, Storable};
 
-use super::{error::Error, Memory};
+use crate::{error::Error, Memory};
 
 /// Stores value in stable memory, providing `get()/set()` API.
 pub struct StableCell<T: Storable> {
@@ -15,12 +15,13 @@ pub struct StableCell<T: Storable> {
 
 impl<T: Storable> StableCell<T> {
     /// Create new storage for values with `T` type.
-    pub fn new(memory_id: MemoryId, default_value: T) -> Self {
-        Self {
+    pub fn new(memory_id: MemoryId, value: T) -> Result<Self, Error> {
+        // Method returns Result to be compatible with wasm implementation.
+        Ok(Self {
             data: HashMap::default(),
-            default_value,
+            default_value: value,
             memory_id,
-        }
+        })
     }
 
     /// Returns reference to value stored in stable memory.
