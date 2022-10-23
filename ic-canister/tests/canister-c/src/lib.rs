@@ -3,7 +3,7 @@ use ic_metrics::{Metrics, MetricsStorage};
 use ic_storage::{stable::Versioned, IcStorage};
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{update, Canister, MethodType, PreUpdate, generate_idl};
+use ic_canister::{generate_idl, update, Canister, MethodType, PreUpdate};
 
 #[derive(Default, CandidType, Deserialize, IcStorage)]
 pub struct State {

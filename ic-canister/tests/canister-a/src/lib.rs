@@ -1,4 +1,4 @@
-use ic_canister::{PreUpdate, Idl, generate_idl};
+use ic_canister::{generate_idl, Idl, PreUpdate};
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_storage::{stable::Versioned, IcStorage};
 use std::{cell::RefCell, rc::Rc};

@@ -1,5 +1,6 @@
 use ic_canister::{
-    canister_call, canister_notify, virtual_canister_call, virtual_canister_notify, PreUpdate, generate_idl,
+    canister_call, canister_notify, generate_idl, virtual_canister_call, virtual_canister_notify,
+    PreUpdate,
 };
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_storage::IcStorage;

@@ -1,4 +1,4 @@
-use ic_canister::{PreUpdate, Idl, generate_idl};
+use ic_canister::{generate_idl, Idl, PreUpdate};
 use ic_exports::ic_cdk::export::candid::Principal;
 use ic_stable_structures::{MemoryId, StableCell};
 use std::cell::RefCell;

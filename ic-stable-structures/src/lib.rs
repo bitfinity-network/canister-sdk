@@ -1,3 +1,5 @@
+mod multimap;
+
 #[cfg(not(target_arch = "wasm32"))]
 mod storage;
 
@@ -13,7 +15,8 @@ use ic_exports::stable_structures::{
     memory_manager::{self, VirtualMemory},
     DefaultMemoryImpl,
 };
-pub use storage::{get_memory_by_id, StableBTreeMap, StableCell};
+pub use multimap::{Iter, RangeIter};
+pub use storage::{get_memory_by_id, StableBTreeMap, StableCell, StableMultimap};
 
 pub type Memory = VirtualMemory<DefaultMemoryImpl>;
 

@@ -4,6 +4,7 @@ use ic_exports::candid::Principal;
 use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::{btreemap, cell, memory_manager::MemoryId, Storable};
 
+use crate::multimap::{self, Iter, RangeIter};
 use crate::{error::Error, Memory};
 
 /// Stores value in stable memory, providing `get()/set()` API.
@@ -54,29 +55,34 @@ pub struct StableBTreeMap<K: Storable, V: Storable> {
     memory_id: MemoryId,
     max_key_size: u32,
     max_value_size: u32,
+    empty: btreemap::BTreeMap<Memory, K, V>,
 }
 
 impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
     /// Create new instance of key-value storage.
     pub fn new(memory_id: MemoryId, max_key_size: u32, max_value_size: u32) -> Self {
+        let memory = crate::get_memory_by_id(memory_id);
+        let empty = btreemap::BTreeMap::init(memory, max_key_size, max_value_size);
+
         Self {
             data: HashMap::default(),
             memory_id,
             max_key_size,
             max_value_size,
+            empty,
         }
     }
 
     /// Return value associated with `key` from stable memory.
     pub fn get(&self, key: &K) -> Option<V> {
-        let canister_id = ic::id();
-        let storage = self.data.get(&canister_id);
-        storage.and_then(|m| m.get(key))
+        self.get_inner().get(key)
     }
 
     /// Add or replace value associated with `key` in stable memory.
     pub fn insert(&mut self, key: K, value: V) -> Result<(), Error> {
         let canister_id = ic::id();
+
+        // If map for `canister_id` is not initialized, initialize it.
         self.data
             .entry(canister_id)
             .or_insert_with(|| {
@@ -89,19 +95,129 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
 
     /// Remove value associated with `key` from stable memory.
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        let canister_id = ic::id();
-        self.data.get_mut(&canister_id)?.remove(key)
+        self.get_inner_mut().remove(key)
     }
 
     /// List all currently stored key-value pairs.
-    pub fn list(&self, start: usize, limit: usize) -> Vec<(K, V)> {
+    pub fn iter(&self) -> btreemap::Iter<'_, Memory, K, V> {
+        self.get_inner().iter()
+    }
+
+    fn get_inner(&self) -> &btreemap::BTreeMap<Memory, K, V> {
         let canister_id = ic::id();
-        let storage = self.data.get(&canister_id);
-        storage
-            .iter()
-            .flat_map(|s| s.iter())
-            .skip(start)
-            .take(limit)
-            .collect()
+        self.data.get(&canister_id).unwrap_or(&self.empty)
+    }
+
+    fn get_inner_mut(&mut self) -> &mut btreemap::BTreeMap<Memory, K, V> {
+        let canister_id = ic::id();
+        self.data.get_mut(&canister_id).unwrap_or(&mut self.empty)
+    }
+}
+
+pub struct StableMultimap<K1, K2, V>
+where
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
+{
+    maps: HashMap<Principal, multimap::StableMultimap<Memory, K1, K2, V>>,
+    memory_id: MemoryId,
+    max_first_key_size: u32,
+    max_second_key_size: u32,
+    max_value_size: u32,
+    empty: multimap::StableMultimap<Memory, K1, K2, V>,
+}
+
+impl<K1, K2, V> StableMultimap<K1, K2, V>
+where
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
+{
+    pub fn new(
+        memory_id: MemoryId,
+        max_first_key_size: u32,
+        max_second_key_size: u32,
+        max_value_size: u32,
+    ) -> Self {
+        let memory = crate::get_memory_by_id(memory_id);
+        let empty = multimap::StableMultimap::new(
+            memory,
+            max_first_key_size,
+            max_second_key_size,
+            max_value_size,
+        );
+
+        Self {
+            maps: HashMap::default(),
+            memory_id,
+            max_first_key_size,
+            max_second_key_size,
+            max_value_size,
+            empty,
+        }
+    }
+
+    /// Return value associated with `key` from stable memory.
+    pub fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
+        self.get_inner().get(first_key, second_key)
+    }
+
+    /// Add or replace value associated with `key` in stable memory.
+    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: V) -> Result<(), Error> {
+        let canister_id = ic::id();
+
+        // If map for `canister_id` is not initialized, initialize it.
+        let map = self.maps.entry(canister_id).or_insert_with(|| {
+            let memory = crate::get_memory_by_id(self.memory_id);
+            multimap::StableMultimap::new(
+                memory,
+                self.max_first_key_size,
+                self.max_second_key_size,
+                self.max_value_size,
+            )
+        });
+
+        map.insert(first_key, second_key, value)
+    }
+
+    /// Remove value associated with `key` from stable memory.
+    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>, Error> {
+        self.get_inner_mut().remove(first_key, second_key)
+    }
+
+    /// Remove all values for the partial key
+    pub fn remove_partial(&mut self, first_key: &K1) -> Result<(), Error> {
+        self.get_inner_mut().remove_partial(first_key)
+    }
+
+    /// Get a range of key value pairs based on the root key.
+    pub fn range(&self, first_key: &K1) -> Result<RangeIter<Memory, K2, V>, Error> {
+        self.get_inner().range(first_key)
+    }
+
+    /// Iterator over all items in map.
+    pub fn iter(&self) -> Iter<Memory, K1, K2, V> {
+        self.get_inner().iter()
+    }
+
+    /// Items count.
+    pub fn len(&self) -> usize {
+        self.get_inner().len()
+    }
+
+    /// Is map empty.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    fn get_inner(&self) -> &multimap::StableMultimap<Memory, K1, K2, V> {
+        let canister_id = ic::id();
+        self.maps.get(&canister_id).unwrap_or(&self.empty)
+    }
+
+    fn get_inner_mut(&mut self) -> &mut multimap::StableMultimap<Memory, K1, K2, V> {
+        let canister_id = ic::id();
+        self.maps.get_mut(&canister_id).unwrap_or(&mut self.empty)
     }
 }

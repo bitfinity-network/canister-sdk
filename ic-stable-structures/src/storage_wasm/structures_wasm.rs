@@ -1,7 +1,7 @@
 use ic_exports::stable_structures::{btreemap, cell, memory_manager::MemoryId, Storable};
 
-use crate::get_memory_by_id;
 use crate::{error::Error, Memory};
+use crate::{get_memory_by_id, multimap, Iter, RangeIter};
 
 /// Stores value in stable memory, providing `get()/set()` API.
 pub struct StableCell<T: Storable>(cell::Cell<T, Memory>);
@@ -58,5 +58,69 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
     /// List all currently stored key-value pairs.
     pub fn list(&self, start: usize, limit: usize) -> Vec<(K, V)> {
         self.0.iter().skip(start).take(limit).collect()
+    }
+}
+
+pub struct StableMultimap<K1, K2, V>(multimap::StableMultimap<Memory, K1, K2, V>);
+
+impl<K1, K2, V> StableMultimap<K1, K2, V>
+where
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
+{
+    pub fn new(
+        memory_id: MemoryId,
+        max_first_key_size: u32,
+        max_second_key_size: u32,
+        max_value_size: u32,
+    ) -> Self {
+        let memory = crate::get_memory_by_id(memory_id);
+        Self(multimap::StableMultimap::new(
+            memory,
+            max_first_key_size,
+            max_second_key_size,
+            max_value_size,
+        ))
+    }
+
+    /// Return value associated with `key` from stable memory.
+    pub fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
+        self.0.get(first_key, second_key)
+    }
+
+    /// Add or replace value associated with `key` in stable memory.
+    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: V) -> Result<(), Error> {
+        self.0.insert(first_key, second_key, value)
+    }
+
+    /// Remove value associated with `key` from stable memory.
+    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>, Error> {
+        self.0.remove(first_key, second_key)
+    }
+
+    /// Remove all values for the partial key
+    pub fn remove_partial(&mut self, first_key: &K1) -> Result<(), Error> {
+        self.0.remove_partial(first_key)
+    }
+
+    /// Get a range of key value pairs based on the root key.
+    pub fn range(&self, first_key: &K1) -> Result<RangeIter<Memory, K2, V>, Error> {
+        self.0.range(first_key)
+    }
+
+    /// Iterator over all items in map.
+    pub fn iter(&self) -> Iter<Memory, K1, K2, V> {
+        self.0.iter()
+    }
+
+    /// Items count.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Is map empty.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
