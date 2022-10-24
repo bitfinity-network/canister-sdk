@@ -55,9 +55,9 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
         self.0.remove(key)
     }
 
-    /// List all currently stored key-value pairs.
-    pub fn list(&self, start: usize, limit: usize) -> Vec<(K, V)> {
-        self.0.iter().skip(start).take(limit).collect()
+    /// Iterate over all currently stored key-value pairs.
+    pub fn iter(&self) -> btreemap::Iter<'_, Memory, K, V> {
+        self.0.iter()
     }
 }
 
