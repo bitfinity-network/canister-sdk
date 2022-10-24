@@ -87,7 +87,7 @@ The auction will distribute the accumulated fees in proportion to the user cycle
 ratio until the next auction.
 
 ```
-update run_uction() -> variant { Ok : AuctionInfo; Err: AuctionError }
+update run_auction() -> variant { Ok : AuctionInfo; Err: AuctionError }
 ```
 
 ### auction_info
@@ -95,7 +95,7 @@ update run_uction() -> variant { Ok : AuctionInfo; Err: AuctionError }
 Returns the information about previously held auction.
 
 ```
-update auction_info(auction_id: nat32) -> vairant { Ok : AuctionInfo; Err: AuctionError }
+update auction_info(auction_id: nat32) -> variant { Ok : AuctionInfo; Err: AuctionError }
 ```
 
 ### get_min_cycles
