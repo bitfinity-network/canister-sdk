@@ -9,7 +9,7 @@ mod storage;
 
 mod error;
 
-pub use error::Error;
+pub use error::{Error, Result};
 pub use ic_exports::stable_structures::{memory_manager::MemoryId, Storable};
 use ic_exports::stable_structures::{
     memory_manager::{self, VirtualMemory},

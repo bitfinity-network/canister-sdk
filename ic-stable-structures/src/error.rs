@@ -1,13 +1,15 @@
 use ic_exports::stable_structures::{btreemap, cell};
 use thiserror::Error;
 
+pub type Result<T> = std::result::Result<T, Error>;
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("stable memory can't grow anymore")]
     OutOfStableMemory,
     #[error("value bytes interpretation is too large for stable structure: {0}")]
     ValueTooLarge(u64),
-    #[error("memory manager and stable structure has incompatible types")]
+    #[error("memory manager and stable structure has incompatible versions")]
     IncompatibleVersions,
 }
 

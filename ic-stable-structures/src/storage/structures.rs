@@ -5,7 +5,7 @@ use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::{btreemap, cell, memory_manager::MemoryId, Storable};
 
 use crate::multimap::{self, Iter, RangeIter};
-use crate::{error::Error, Memory};
+use crate::{Result, Memory};
 
 /// Stores value in stable memory, providing `get()/set()` API.
 pub struct StableCell<T: Storable> {
@@ -16,7 +16,7 @@ pub struct StableCell<T: Storable> {
 
 impl<T: Storable> StableCell<T> {
     /// Create new storage for values with `T` type.
-    pub fn new(memory_id: MemoryId, value: T) -> Result<Self, Error> {
+    pub fn new(memory_id: MemoryId, value: T) -> Result<Self> {
         // Method returns Result to be compatible with wasm implementation.
         Ok(Self {
             data: HashMap::default(),
@@ -35,7 +35,7 @@ impl<T: Storable> StableCell<T> {
     }
 
     /// Updates value in stable memory.
-    pub fn set(&mut self, value: T) -> Result<(), Error> {
+    pub fn set(&mut self, value: T) -> Result<()> {
         let canister_id = ic::id();
         match self.data.entry(canister_id) {
             Entry::Occupied(mut entry) => {
@@ -79,7 +79,7 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
     }
 
     /// Add or replace value associated with `key` in stable memory.
-    pub fn insert(&mut self, key: K, value: V) -> Result<(), Error> {
+    pub fn insert(&mut self, key: K, value: V) -> Result<()> {
         let canister_id = ic::id();
 
         // If map for `canister_id` is not initialized, initialize it.
@@ -114,6 +114,8 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
     }
 }
 
+/// [`StableMultimap`] stores two keys against a single value, making it possible
+/// to fetch all values by the root key, or a single value by specifying both keys.
 pub struct StableMultimap<K1, K2, V>
 where
     K1: Storable,
@@ -134,6 +136,8 @@ where
     K2: Storable,
     V: Storable,
 {
+    /// Create a new instance of a `StableMultimap`.
+    /// All keys and values byte representations should be less then related `..._max_size` arguments.
     pub fn new(
         memory_id: MemoryId,
         max_first_key_size: u32,
@@ -158,13 +162,23 @@ where
         }
     }
 
-    /// Return value associated with `key` from stable memory.
+    /// Get a value for the given keys.
+    /// If byte representation length of any key exceeds max size, `None` will be returned.
     pub fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
         self.get_inner().get(first_key, second_key)
     }
 
-    /// Add or replace value associated with `key` in stable memory.
-    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: V) -> Result<(), Error> {
+    /// Insert a new value into the map.
+    /// Inserting a value with the same keys as an existing value
+    /// will result in the old value being overwritten.
+    /// 
+    /// # Errors
+    /// 
+    /// If byte representation length of any key or value exceeds max size, the `Error::ValueTooLarge`
+    /// will be returned.
+    /// 
+    /// If stable memory unable to grow, the `Error::OutOfStableMemory` will be returned.
+    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Result<()> {
         let canister_id = ic::id();
 
         // If map for `canister_id` is not initialized, initialize it.
@@ -181,18 +195,33 @@ where
         map.insert(first_key, second_key, value)
     }
 
-    /// Remove value associated with `key` from stable memory.
-    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>, Error> {
+    /// Remove a specific value and return it.
+    /// 
+    /// # Errors
+    /// 
+    /// If byte representation length of any key exceeds max size, the `Error::ValueTooLarge`
+    /// will be returned.
+    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>> {
         self.get_inner_mut().remove(first_key, second_key)
     }
 
     /// Remove all values for the partial key
-    pub fn remove_partial(&mut self, first_key: &K1) -> Result<(), Error> {
+    /// 
+    /// # Errors
+    /// 
+    /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
+    /// will be returned.
+    pub fn remove_partial(&mut self, first_key: &K1) -> Result<()> {
         self.get_inner_mut().remove_partial(first_key)
     }
 
     /// Get a range of key value pairs based on the root key.
-    pub fn range(&self, first_key: &K1) -> Result<RangeIter<Memory, K2, V>, Error> {
+    /// 
+    /// # Errors
+    /// 
+    /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
+    /// will be returned.
+    pub fn range(&self, first_key: &K1) -> Result<RangeIter<Memory, K2, V>> {
         self.get_inner().range(first_key)
     }
 

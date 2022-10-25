@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use ic_exports::stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 
-use crate::Error;
+use crate::{Error, Result};
 
 // Keys memory layout:
 //
@@ -21,23 +21,11 @@ use crate::Error;
 //
 // Bytes count of `k1 size` is calculated from the `first_key_max_size` (see `size_bytes_len()`). Usually,
 // keys are shorter then 256 bytes, so, size overhead will be just one byte per value.
-// Inner [`StableBTreeMap`] limits max suze by `u32::MAX`, so in worst case
+// Inner [`StableBTreeMap`] limits max size by `u32::MAX`, so in worst case
 // (for keys with max size greater then 65535), we will spend four bytes per value.
 
-/// [`StableMultimap`] stores two keys against a single value, making it possible
+/// `StableMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
-/// ```
-/// use ic_stable_storage::StableMultimap;
-/// let mut map = StableMultimap::<_, _, _, 0>::new().unwrap();
-/// // Same root key of 1
-/// map.insert(1, 1, 1);
-/// map.insert(1, 2, 2);
-/// // Different root key of 4
-/// map.insert(4, 2, 2);
-///
-/// assert_eq!(map.range(1).unwrap().count(), 2);
-/// assert_eq!(map.range(4).unwrap().count(), 1);
-/// ```
 pub struct StableMultimap<M: Memory + Clone, K1, K2, V> {
     _p: PhantomData<(K1, K2, V)>,
     inner: StableBTreeMap<M, Vec<u8>, Vec<u8>>,
@@ -52,9 +40,8 @@ where
     K2: Storable,
     V: Storable,
 {
-    /// Create a new instance of a [`StableMultimap`].
-    /// Note that all keys and values has to implement both [`Default`] and [`Copy`] as the keys
-    /// and value lenghts are calculated when the map is created.
+    /// Create a new instance of a `StableMultimap`.
+    /// All keys and values byte representations should be less then related `..._max_size` arguments.
     pub fn new(
         memory: M,
         first_key_max_size: u32,
@@ -78,14 +65,22 @@ where
     /// Insert a new value into the map.
     /// Inserting a value with the same keys as an existing value
     /// will result in the old value being overwritten.
-    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: V) -> Result<(), Error> {
+    ///
+    /// # Errors
+    ///
+    /// If byte representation length of any key or value exceeds max size, the `Error::ValueTooLarge`
+    /// will be returned.
+    ///
+    /// If stable memory unable to grow, the `Error::OutOfStableMemory` will be returned.
+    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Result<()> {
         let keys_bytes = self.both_keys_bytes(first_key, second_key)?;
         let value = value.to_bytes();
         self.inner.insert(keys_bytes, value.to_vec())?;
         Ok(())
     }
 
-    /// Get a value for the given keys
+    /// Get a value for the given keys.
+    /// If byte representation length of any key exceeds max size, `None` will be returned.
     pub fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
         let keys_bytes = self.both_keys_bytes(first_key, second_key).ok()?;
 
@@ -93,14 +88,13 @@ where
         Some(V::from_bytes(bytes))
     }
 
-    /// Remove a specific value and return it
-    /// ```
-    /// use ic_stable_storage::StableMultimap;
-    /// let mut map = StableMultimap::<_, _, _, 0>::new().unwrap();
-    /// map.insert(1, 2, 3);
-    /// assert_eq!(map.remove(&1, &2).unwrap(), 3);
-    /// ```
-    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>, Error> {
+    /// Remove a specific value and return it.
+    ///
+    /// # Errors
+    ///
+    /// If byte representation length of any key exceeds max size, the `Error::ValueTooLarge`
+    /// will be returned.
+    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>> {
         let keys_bytes = self.both_keys_bytes(first_key, second_key)?;
 
         let value = self.inner.remove(&keys_bytes).map(V::from_bytes);
@@ -108,18 +102,12 @@ where
     }
 
     /// Remove all values for the partial key
-    /// ```
-    /// use ic_stable_storage::StableMultimap;
-    /// let mut map = StableMultimap::<_, _, _, 0>::new().unwrap();
-    /// // Same root key of 1
-    /// map.insert(1, 2, 3);
-    /// map.insert(1, 3, 4);
-    /// // Separate root key, will not be removed.
-    /// map.insert(2, 2, 1);
-    /// map.remove_partial(&1).unwrap();
-    /// assert_eq!(map.len(), 1);
-    /// ```
-    pub fn remove_partial(&mut self, first_key: &K1) -> Result<(), Error> {
+    ///
+    /// # Errors
+    ///
+    /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
+    /// will be returned.
+    pub fn remove_partial(&mut self, first_key: &K1) -> Result<()> {
         let key_prefix = self.first_key_bytes(first_key)?;
 
         let keys = self
@@ -136,18 +124,12 @@ where
     }
 
     /// Get a range of key value pairs based on the root key.
-    /// ```
-    /// use ic_stable_storage::StableMultimap;
-    /// let mut map = StableMultimap::<_, _, _, 0>::new().unwrap();
-    /// // Same root key of 1
-    /// map.insert(1, 2, 3);
-    /// map.insert(1, 3, 4);
-    /// // Separate root key, will not be included
-    /// map.insert(2, 2, 1);
-    /// let iter = map.range(1).unwrap();
-    /// assert_eq!(iter.count(), 2);
-    /// ```
-    pub fn range(&self, first_key: &K1) -> Result<RangeIter<M, K2, V>, Error> {
+    ///
+    /// # Errors
+    ///
+    /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
+    /// will be returned.
+    pub fn range(&self, first_key: &K1) -> Result<RangeIter<M, K2, V>> {
         let key_prefix = self.first_key_bytes(first_key)?;
 
         let inner = self.inner.range(key_prefix, None);
@@ -156,28 +138,28 @@ where
         Ok(iter)
     }
 
-    /// Iterator over all items in map.
+    /// Iterator over all items in the map.
     pub fn iter(&self) -> Iter<M, K1, K2, V> {
         Iter::new(self.inner.iter(), self.first_key_max_size)
     }
 
-    /// Items count.
+    /// Item count.
     pub fn len(&self) -> usize {
         self.inner.len() as usize
     }
 
-    /// Is map empty.
+    /// Is the map empty.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    fn first_key_bytes(&self, first_key: &K1) -> Result<Vec<u8>, Error> {
+    fn first_key_bytes(&self, first_key: &K1) -> Result<Vec<u8>> {
         let mut buf = Vec::with_capacity(self.first_key_with_size_prefix_max_bytes_len());
         Self::push_bytes_with_size_prefix(first_key, self.first_key_max_size, &mut buf)?;
         Ok(buf)
     }
 
-    fn both_keys_bytes(&self, first_key: &K1, second_key: &K2) -> Result<Vec<u8>, Error> {
+    fn both_keys_bytes(&self, first_key: &K1, second_key: &K2) -> Result<Vec<u8>> {
         let mut buf = Vec::with_capacity(self.both_keys_with_size_prefix_max_bytes_len());
         Self::push_bytes_with_size_prefix(first_key, self.first_key_max_size, &mut buf)?;
         buf.extend_from_slice(&second_key.to_bytes());
@@ -196,7 +178,7 @@ where
         data: &impl Storable,
         max_bytes_len: u32,
         buf: &mut Vec<u8>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let data_bytes = data.to_bytes();
         let data_len = data_bytes.len();
 
@@ -217,11 +199,12 @@ where
 
 fn size_bytes_len(max_size: u32) -> usize {
     const U8_MAX: u32 = u8::MAX as u32;
+    const U8_END: u32 = U8_MAX + 1;
     const U16_MAX: u32 = u16::MAX as u32;
 
     match max_size {
         0..=U8_MAX => 1,
-        0..=U16_MAX => 2,
+        U8_END..=U16_MAX => 2,
         _ => 4,
     }
 }
@@ -276,10 +259,10 @@ where
     type Item = (K2, V);
 
     fn next(&mut self) -> Option<(K2, V)> {
-        self.inner.next().and_then(|(k1k2, v)| {
+        self.inner.next().map(|(k1k2, v)| {
             let k2 = self.second_key_from_both_keys_bytes(&k1k2);
             let val = V::from_bytes(v);
-            Some((k2, val))
+            (k2, val)
         })
     }
 }
@@ -365,7 +348,7 @@ mod test {
     struct Array<const N: usize>(pub [u8; N]);
 
     impl<const N: usize> Storable for Array<N> {
-        fn to_bytes(&self) -> Cow<[u8]> {
+        fn to_bytes(&self) -> Cow<'_, [u8]> {
             Cow::Owned(self.0.to_vec())
         }
 
@@ -381,12 +364,12 @@ mod test {
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
-        mm.insert(&k1, &k2, val).unwrap();
+        mm.insert(&k1, &k2, &val).unwrap();
 
         let k1 = Array([10u8, 20]);
         let k2 = Array([21u8, 22, 23]);
         let val = Array([123, 200u8, 200, 100, 100, 255]);
-        mm.insert(&k1, &k2, val).unwrap();
+        mm.insert(&k1, &k2, &val).unwrap();
 
         mm
     }
@@ -398,7 +381,7 @@ mod test {
             let k1 = Array([i; 1]);
             let k2 = Array([i * 10; 2]);
             let val = Array([i; 1]);
-            mm.insert(&k1, &k2, val).unwrap();
+            mm.insert(&k1, &k2, &val).unwrap();
         }
 
         assert_eq!(mm.len(), 10);
@@ -410,7 +393,7 @@ mod test {
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([3u8, 0, 0, 0, 0, 3]);
-        mm.insert(&k1, &k2, val).unwrap();
+        mm.insert(&k1, &k2, &val).unwrap();
 
         let ret = mm.get(&k1, &k2).unwrap();
 
@@ -451,11 +434,11 @@ mod test {
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
-        mm.insert(&k1, &k2, val).unwrap();
+        mm.insert(&k1, &k2, &val).unwrap();
 
         let k2 = Array([21u8, 22, 23]);
         let val = Array([123, 200u8, 200, 100, 100, 255]);
-        mm.insert(&k1, &k2, val).unwrap();
+        mm.insert(&k1, &k2, &val).unwrap();
 
         mm.remove_partial(&k1).unwrap();
         assert!(mm.is_empty());
