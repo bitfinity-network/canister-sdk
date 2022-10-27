@@ -1,7 +1,7 @@
 use ic_exports::stable_structures::{btreemap, cell, memory_manager::MemoryId, Storable};
 
-use crate::{Result, Memory};
 use crate::{get_memory_by_id, multimap, Iter, RangeIter};
+use crate::{Memory, Result};
 
 /// Stores value in stable memory, providing `get()/set()` API.
 pub struct StableCell<T: Storable>(cell::Cell<T, Memory>);
