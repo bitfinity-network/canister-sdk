@@ -1,4 +1,5 @@
+use canister_a::CanisterA;
+
 fn main() {
-    ic_exports::ic_cdk::export::candid::export_service!();
-    std::print!("{}", __export_service());
+    std::print!("{}", canister_a::CanisterAImpl::get_idl());
 }

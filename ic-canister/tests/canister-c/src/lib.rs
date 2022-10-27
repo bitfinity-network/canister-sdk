@@ -3,7 +3,7 @@ use ic_metrics::{Metrics, MetricsStorage};
 use ic_storage::{stable::Versioned, IcStorage};
 use std::{cell::RefCell, rc::Rc};
 
-use ic_canister::{update, Canister, MethodType, PreUpdate};
+use ic_canister::{generate_idl, update, Canister, MethodType, PreUpdate};
 
 #[derive(Default, CandidType, Deserialize, IcStorage)]
 pub struct State {
@@ -49,6 +49,13 @@ impl PreUpdate for CanisterC {
     fn pre_update(&self, _method_name: &str, _method_type: MethodType) {
         self.update_metrics();
     }
+}
+
+pub fn idl() -> String {
+    use ic_canister::Idl;
+
+    let canister_c_idl = generate_idl!();
+    candid::bindings::candid::compile(&canister_c_idl.env.env, &Some(canister_c_idl.actor))
 }
 
 #[cfg(test)]
