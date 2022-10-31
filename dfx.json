@@ -17,6 +17,12 @@
                   "candid": "ic-canister/tests/canister-c/canister-c.did",
                   "wasm": "target/wasm32-unknown-unknown/release/canister-c.wasm",
                   "type": "custom"
+            },
+            "canister-d": {
+                  "build": "bash scripts/build.sh",
+                  "candid": "ic-canister/tests/canister-d/canister-d.did",
+                  "wasm": "target/wasm32-unknown-unknown/release/canister-d.wasm",
+                  "type": "custom"
             }
       },
       "networks": {

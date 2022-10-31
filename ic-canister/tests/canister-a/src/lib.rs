@@ -1,4 +1,4 @@
-use ic_canister::PreUpdate;
+use ic_canister::{generate_idl, Idl, PreUpdate};
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_storage::{stable::Versioned, IcStorage};
 use std::{cell::RefCell, rc::Rc};
@@ -40,6 +40,13 @@ pub trait CanisterA: Canister {
     #[query(trait = true)]
     fn id(&self) -> Principal {
         ic_exports::ic_kit::ic::id()
+    }
+
+    // Important: This function *must* be defined to be the
+    // last one in the trait because it depends on the order
+    // of expansion of update/query(trait = true) methods.
+    fn get_idl() -> Idl {
+        generate_idl!()
     }
 }
 
