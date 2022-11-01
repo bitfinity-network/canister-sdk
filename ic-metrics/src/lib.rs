@@ -22,7 +22,7 @@
 //! detail that is used for storing metric snapshots. Under the hood this is a wrapper over
 //! a `BTreeMap` with the keys being timestamps over some specified time interval. The user
 //! should not be bothered about modifying the elements of that map, only setting up the logic
-//! for metric snapshot calculation. This is as simple as calling an `insert()` metod of the `MetricsMap`.
+//! for metric snapshot calculation. This is as simple as calling an `insert()` method of the `MetricsMap`.
 //!
 //! For example, to actually store and get metrics the user has to define two endpoints
 //!
