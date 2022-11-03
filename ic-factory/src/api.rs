@@ -1,4 +1,5 @@
 use super::{error::FactoryError, FactoryState};
+use candid::Deserialize;
 use ic_canister::{
     generate_exports, generate_idl, query, state_getter, update, virtual_canister_call,
     AsyncReturn, Canister, Idl, PreUpdate,
@@ -355,7 +356,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     }
 }
 
-#[derive(Debug, CandidType)]
+#[derive(Debug, Deserialize, CandidType)]
 pub enum UpgradeResult {
     Noop,
     Upgraded,
