@@ -520,7 +520,7 @@ use ic_exports::ic_cdk::{
         Principal,
     },
 };
-use std::{cell::RefCell, collections::HashMap, future::Future, pin::Pin, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, future::Future, pin::Pin, ptr, rc::Rc};
 
 pub use ic_canister_macros::*;
 
@@ -674,4 +674,30 @@ pub fn register_failing_virtual_responder(
     _register_virtual_responder(principal, method, move |_| {
         Err((RejectionCode::Unknown, error_message.clone()))
     });
+}
+
+/// Adds the given marker to the canister WASM file.
+///
+/// The marker will be preserved in the binary even if compiled with optimizations. However if the marker value is
+/// compiled at compile-time, it's not guaranteed that the resulting binary will contain the resulting value and not its
+/// parts. So the preferred way to use this function is:
+///
+/// ```
+/// mark_canister("my_canister_marker");
+///
+/// //or
+/// const CONST_MARKER: &str = "my_const_marker";
+/// mark_canister(CONST_MARKER);
+///
+/// //or
+/// static STATIC_MARKER: &str = "my_static_marker";
+/// mark_canister(STATIC_MARKER);
+/// ```
+pub fn mark_canister(marker: &'static str) {
+    let dummy = String::from(marker);
+    let _ = unsafe {
+        let ret = ptr::read_volatile(&dummy);
+        std::mem::forget(dummy);
+        ret
+    };
 }
