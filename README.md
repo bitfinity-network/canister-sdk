@@ -51,6 +51,8 @@ use `canister-sdk` dependency with dependent features that will trigger the nece
   canister-sdk = { git = "https://github.com/infinity-swap/canister-sdk", package = "canister-sdk" }
 ```
 
+There's an example crate on how to use the `export-api` feature in the [canister-e](./ic-canister/tests/canister-e/) directory. This crate shows how to use the `export-api` features to export the methods in the canister and how to generate the idl for the canister with the methods included.
+
 ## ic-exports
 
 The `ic-exports` crate re-exports commonly used `ic` dependencies. This means that you can use the `ic-exports` crate to
@@ -299,4 +301,4 @@ This crate is optional and can be used by adding the feature `auction` to your `
 ```
 
 Note: When you're using the `canister-sdk` with these crates, make sure to include `export-api` feature as well, and
-when building the canister, make sure to include the `--export-api` flag.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+when building the canister, make sure to include the `--export-api` flag.
