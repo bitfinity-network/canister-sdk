@@ -14,6 +14,7 @@ members = [
     "ic-canister/tests/canister-b",
     "ic-canister/tests/canister-c",
     "ic-canister/tests/canister-d",
+    "ic-canister/tests/canister-e",
 ]
 
 [package]
