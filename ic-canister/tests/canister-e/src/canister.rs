@@ -6,7 +6,7 @@
 //!
 //! ```toml
 //! [features]
-//! default = [""]
+//! default = []
 //! export-api = []
 //! ```
 //!
