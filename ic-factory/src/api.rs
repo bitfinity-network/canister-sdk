@@ -23,7 +23,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Returns the checksum of a wasm module in hex representation.
     #[query(trait = true)]
     fn get_checksum(&self) -> Result<String, FactoryError> {
-        Ok(hex::encode(&self.factory_state().borrow().module()?.hash()))
+        Ok(hex::encode(self.factory_state().borrow().module()?.hash()))
     }
 
     /// Returns the cycles balances.

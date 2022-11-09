@@ -1,0 +1,23 @@
+[package]
+name = "canister-e"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+export-api = []
+
+
+[dependencies]
+candid = "0.8"
+serde = "1.0"
+
+ic-exports = { path = "../../../ic-exports" }
+ic-storage = { path = "../../../ic-storage" }
+ic-canister = { path = "../../ic-canister" }
+ic-metrics = { path = "../../../ic-metrics" }
+
+[dev-dependencies]
+tokio = {version = "1", features = ["rt", "macros"]}
