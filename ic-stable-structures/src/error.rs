@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{btreemap, cell};
+use ic_exports::stable_structures::{btreemap, cell, log};
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -36,5 +36,12 @@ impl From<btreemap::InsertError> for Error {
             btreemap::InsertError::KeyTooLarge { given, .. } => Self::ValueTooLarge(given as _),
             btreemap::InsertError::ValueTooLarge { given, .. } => Self::ValueTooLarge(given as _),
         }
+    }
+}
+
+impl From<log::InitError> for Error {
+    fn from(_: log::InitError) -> Self {
+        // All `log::InitError` variants is versioning errors.
+        Self::IncompatibleVersions
     }
 }

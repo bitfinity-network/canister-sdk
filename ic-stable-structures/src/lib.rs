@@ -16,7 +16,7 @@ use ic_exports::stable_structures::{
     DefaultMemoryImpl,
 };
 pub use multimap::{Iter, RangeIter};
-pub use storage::{get_memory_by_id, StableBTreeMap, StableCell, StableMultimap};
+pub use storage::{get_memory_by_id, StableBTreeMap, StableCell, StableLog, StableMultimap};
 
 pub type Memory = VirtualMemory<DefaultMemoryImpl>;
 
