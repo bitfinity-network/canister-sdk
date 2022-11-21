@@ -79,3 +79,48 @@ impl<T: Storable> StableLog<T> {
         self.data.get(&canister_id)
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use ic_exports::{
+        ic_kit::{inject::get_context, mock_principals, MockContext},
+        stable_structures::memory_manager::MemoryId,
+    };
+
+    use super::StableLog;
+
+    #[test]
+    fn log_works() {
+        MockContext::new().inject();
+        let mut log = StableLog::new(MemoryId::new(0), MemoryId::new(1)).unwrap();
+        assert!(log.is_empty());
+
+        log.append(10u32).unwrap();
+        log.append(20u32).unwrap();
+        assert_eq!(log.len(), 2);
+
+        assert_eq!(log.get(0).unwrap(), 10);
+        assert_eq!(log.get(1).unwrap(), 20);
+    }
+
+    #[test]
+    fn two_canisters() {
+        MockContext::new()
+            .with_id(mock_principals::alice())
+            .inject();
+
+        let mut log = StableLog::new(MemoryId::new(0), MemoryId::new(1)).unwrap();
+        log.append(10u32).unwrap();
+        
+        get_context().update_id(mock_principals::bob());
+        log.append(20u32).unwrap();
+        log.append(30u32).unwrap();
+
+        get_context().update_id(mock_principals::alice());
+        assert_eq!(log.len(), 1);
+
+        get_context().update_id(mock_principals::bob());
+        assert_eq!(log.len(), 2);
+    }
+}
