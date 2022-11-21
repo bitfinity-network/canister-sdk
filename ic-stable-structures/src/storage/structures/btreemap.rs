@@ -62,6 +62,16 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
         self.get_inner().iter()
     }
 
+    /// Count of items in the map.
+    pub fn len(&self) -> u64 {
+        self.get_inner().len()
+    }
+
+    /// Is the map empty.
+    pub fn is_empty(&self) -> bool {
+        self.get_inner().is_empty()
+    }
+
     fn get_inner(&self) -> &btreemap::BTreeMap<Memory, K, V> {
         let canister_id = ic::id();
         self.data.get(&canister_id).unwrap_or(&self.empty)
@@ -70,5 +80,58 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
     fn get_inner_mut(&mut self) -> &mut btreemap::BTreeMap<Memory, K, V> {
         let canister_id = ic::id();
         self.data.get_mut(&canister_id).unwrap_or(&mut self.empty)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ic_exports::{
+        ic_kit::{inject::get_context, mock_principals, MockContext},
+        stable_structures::memory_manager::MemoryId,
+    };
+
+    use super::StableBTreeMap;
+
+    #[test]
+    fn map_works() {
+        MockContext::new().inject();
+        let mut map = StableBTreeMap::new(MemoryId::new(0), 4, 4);
+        assert!(map.is_empty());
+        
+        map.insert(0u32, 42u32).unwrap();
+        map.insert(10, 100).unwrap();
+        assert_eq!(map.get(&0), Some(42));
+        assert_eq!(map.get(&10), Some(100));
+
+        let mut iter = map.iter();
+        assert_eq!(iter.next(), Some((0, 42)));
+        assert_eq!(iter.next(), Some((10, 100)));
+        assert_eq!(iter.next(), None);
+
+        assert_eq!(map.remove(&10), Some(100));
+
+        assert_eq!(map.len(), 1);
+    }
+
+    #[test]
+    fn two_canisters() {
+        MockContext::new()
+            .with_id(mock_principals::alice())
+            .inject();
+
+        let mut map = StableBTreeMap::new(MemoryId::new(0), 4, 4);
+        map.insert(0u32, 42u32).unwrap();
+
+        get_context().update_id(mock_principals::bob());
+        map.insert(10, 100).unwrap();
+
+
+        get_context().update_id(mock_principals::alice());
+        assert_eq!(map.get(&0), Some(42));
+        assert_eq!(map.len(), 1);
+
+        get_context().update_id(mock_principals::bob());
+        assert_eq!(map.get(&10), Some(100));
+        assert_eq!(map.len(), 1);
     }
 }
