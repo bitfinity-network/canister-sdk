@@ -1,6 +1,9 @@
+use std::marker::PhantomData;
+
+use ic_exports::stable_structures::log;
 use ic_exports::stable_structures::{btreemap, cell, memory_manager::MemoryId, Storable};
 
-use crate::{get_memory_by_id, multimap, Iter, RangeIter};
+use crate::{get_memory_by_id, multimap, Error, Iter, RangeIter};
 use crate::{Memory, Result};
 
 /// Stores value in stable memory, providing `get()/set()` API.
@@ -149,6 +152,50 @@ where
     }
 
     /// Is map empty.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+/// Stores list of immutable values in stable memory.
+/// Provides only `append()` and `get()` operations.
+pub struct StableLog<T: Storable>(log::Log<Memory, Memory>, PhantomData<T>);
+
+impl<T: Storable> StableLog<T> {
+    /// Create new storage for values with `T` type.
+    pub fn new(index_memory_id: MemoryId, data_memory_id: MemoryId) -> Result<Self> {
+        // Method returns Result to be compatible with wasm implementation.
+
+        // Index and data should be stored in different memories.
+        assert_ne!(index_memory_id, data_memory_id);
+
+        let index_memory = crate::get_memory_by_id(index_memory_id);
+        let data_memory = crate::get_memory_by_id(data_memory_id);
+
+        Ok(Self(
+            log::Log::new(index_memory, data_memory),
+            PhantomData::default(),
+        ))
+    }
+
+    /// Returns reference to value stored in stable memory.
+    pub fn get(&self, index: usize) -> Option<T> {
+        self.0.get(index).map(T::from_bytes)
+    }
+
+    /// Updates value in stable memory.
+    pub fn append(&mut self, value: T) -> Result<usize> {
+        self.0
+            .append(&value.to_bytes())
+            .map_err(|_| Error::OutOfStableMemory)
+    }
+
+    /// Count of values in the log.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    // Return true, if the Log doesn't contain any value.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
