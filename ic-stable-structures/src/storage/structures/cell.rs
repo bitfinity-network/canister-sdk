@@ -50,3 +50,41 @@ impl<T: Storable> StableCell<T> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ic_exports::{
+        ic_kit::{inject::get_context, mock_principals, MockContext},
+        stable_structures::memory_manager::MemoryId,
+    };
+
+    use super::StableCell;
+
+    #[test]
+    fn cell_works() {
+        MockContext::new().inject();
+        let mut cell = StableCell::new(MemoryId::new(0), 42u32).unwrap();
+        assert_eq!(*cell.get(), 42);
+        cell.set(100).unwrap();
+        assert_eq!(*cell.get(), 100);
+    }
+
+    #[test]
+    fn two_canisters() {
+        let mut cell = StableCell::new(MemoryId::new(0), 42u32).unwrap();
+
+        MockContext::new()
+            .with_id(mock_principals::alice())
+            .inject();
+        cell.set(42).unwrap();
+
+        get_context().update_id(mock_principals::bob());
+        cell.set(100).unwrap();
+
+        get_context().update_id(mock_principals::alice());
+        assert_eq!(*cell.get(), 42);
+
+        get_context().update_id(mock_principals::bob());
+        assert_eq!(*cell.get(), 100);
+    }
+}
