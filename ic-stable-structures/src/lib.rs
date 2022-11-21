@@ -1,9 +1,9 @@
 mod multimap;
 
-#[cfg(not(target_arch = "wasm32"))]
-mod storage;
+// #[cfg(not(target_arch = "wasm32"))]
+// mod storage;
 
-#[cfg(target_arch = "wasm32")]
+// #[cfg(target_arch = "wasm32")]
 #[path = "storage_wasm.rs"]
 mod storage;
 

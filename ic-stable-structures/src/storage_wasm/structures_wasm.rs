@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
-use ic_exports::stable_structures::log;
 use ic_exports::stable_structures::{btreemap, cell, memory_manager::MemoryId, Storable};
+use ic_exports::stable_structures::{log, BoundedStorable};
 
 use crate::{get_memory_by_id, multimap, Error, Iter, RangeIter};
 use crate::{Memory, Result};
@@ -29,17 +29,20 @@ impl<T: Storable> StableCell<T> {
     }
 }
 /// Stores key-value data in stable memory.
-pub struct StableBTreeMap<K: Storable, V: Storable>(btreemap::BTreeMap<Memory, K, V>);
+pub struct StableBTreeMap<K, V>(btreemap::BTreeMap<Memory, K, V>)
+where
+    K: BoundedStorable,
+    V: BoundedStorable;
 
-impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
+impl<K, V> StableBTreeMap<K, V>
+where
+    K: BoundedStorable,
+    V: BoundedStorable,
+{
     /// Create new instance of key-value storage.
-    pub fn new(memory_id: MemoryId, max_key_size: u32, max_value_size: u32) -> Self {
+    pub fn new(memory_id: MemoryId) -> Self {
         let memory = get_memory_by_id(memory_id);
-        Self(btreemap::BTreeMap::init(
-            memory,
-            max_key_size,
-            max_value_size,
-        ))
+        Self(btreemap::BTreeMap::init(memory))
     }
 
     /// Return value associated with `key` from stable memory.
@@ -66,29 +69,23 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
 
 /// `StableMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
-pub struct StableMultimap<K1, K2, V>(multimap::StableMultimap<Memory, K1, K2, V>);
+pub struct StableMultimap<K1, K2, V>(multimap::StableMultimap<Memory, K1, K2, V>)
+where
+    K1: BoundedStorable,
+    K2: BoundedStorable,
+    V: BoundedStorable;
 
 impl<K1, K2, V> StableMultimap<K1, K2, V>
 where
-    K1: Storable,
-    K2: Storable,
-    V: Storable,
+    K1: BoundedStorable,
+    K2: BoundedStorable,
+    V: BoundedStorable,
 {
     /// Create a new instance of a `StableMultimap`.
     /// All keys and values byte representations should be less then related `..._max_size` arguments.
-    pub fn new(
-        memory_id: MemoryId,
-        max_first_key_size: u32,
-        max_second_key_size: u32,
-        max_value_size: u32,
-    ) -> Self {
+    pub fn new(memory_id: MemoryId) -> Self {
         let memory = crate::get_memory_by_id(memory_id);
-        Self(multimap::StableMultimap::new(
-            memory,
-            max_first_key_size,
-            max_second_key_size,
-            max_value_size,
-        ))
+        Self(multimap::StableMultimap::new(memory))
     }
 
     /// Get a value for the given keys.
@@ -137,7 +134,7 @@ where
     ///
     /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
     /// will be returned.
-    pub fn range(&self, first_key: &K1) -> Result<RangeIter<Memory, K2, V>> {
+    pub fn range(&self, first_key: &K1) -> Result<RangeIter<Memory, K1, K2, V>> {
         self.0.range(first_key)
     }
 
