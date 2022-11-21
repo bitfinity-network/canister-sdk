@@ -241,3 +241,75 @@ where
         self.maps.get_mut(&canister_id).unwrap_or(&mut self.empty)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ic_exports::{
+        ic_kit::{inject::get_context, mock_principals, MockContext},
+        stable_structures::memory_manager::MemoryId,
+    };
+
+    use super::StableMultimap;
+
+    #[test]
+    fn map_works() {
+        MockContext::new().inject();
+        let mut map = StableMultimap::new(MemoryId::new(0), 4, 4, 4);
+        assert!(map.is_empty());
+
+        map.insert(&0u32, &0u32, &42u32).unwrap();
+        map.insert(&0u32, &1u32, &84u32).unwrap();
+
+        map.insert(&1u32, &0u32, &10u32).unwrap();
+        map.insert(&1u32, &1u32, &20u32).unwrap();
+
+        assert_eq!(map.len(), 4);
+        assert_eq!(map.get(&0, &0), Some(42));
+        assert_eq!(map.get(&0, &1), Some(84));
+        assert_eq!(map.get(&1, &0), Some(10));
+        assert_eq!(map.get(&1, &1), Some(20));
+
+        let mut iter = map.iter();
+        assert_eq!(iter.next(), Some((0, 0, 42)));
+        assert_eq!(iter.next(), Some((0, 1, 84)));
+        assert_eq!(iter.next(), Some((1, 0, 10)));
+        assert_eq!(iter.next(), Some((1, 1, 20)));
+        assert_eq!(iter.next(), None);
+
+        let mut range = map.range(&0).unwrap();
+        assert_eq!(range.next(), Some((0, 42)));
+        assert_eq!(range.next(), Some((1, 84)));
+        assert_eq!(range.next(), None);
+
+        map.remove_partial(&0).unwrap();
+        assert_eq!(map.len(), 2);
+
+        assert_eq!(map.remove(&1, &0).unwrap(), Some(10));
+        assert_eq!(map.iter().next(), Some((1, 1, 20)));
+        assert_eq!(map.len(), 1);
+    }
+
+    #[test]
+    fn two_canisters() {
+        MockContext::new()
+            .with_id(mock_principals::alice())
+            .inject();
+
+        let mut map = StableMultimap::new(MemoryId::new(0), 4, 4, 4);
+
+        map.insert(&0u32, &0u32, &42u32).unwrap();
+        map.insert(&1u32, &0u32, &10u32).unwrap();
+
+        get_context().update_id(mock_principals::bob());
+        map.insert(&0u32, &1u32, &84u32).unwrap();
+        map.insert(&1u32, &1u32, &20u32).unwrap();
+
+        get_context().update_id(mock_principals::alice());
+        assert_eq!(map.get(&0, &0), Some(42));
+        assert_eq!(map.len(), 2);
+
+        get_context().update_id(mock_principals::bob());
+        assert_eq!(map.get(&1, &1), Some(20));
+        assert_eq!(map.len(), 2);
+    }
+}
