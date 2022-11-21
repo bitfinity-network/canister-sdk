@@ -80,7 +80,6 @@ impl<T: Storable> StableLog<T> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use ic_exports::{
@@ -112,7 +111,7 @@ mod tests {
 
         let mut log = StableLog::new(MemoryId::new(0), MemoryId::new(1)).unwrap();
         log.append(10u32).unwrap();
-        
+
         get_context().update_id(mock_principals::bob());
         log.append(20u32).unwrap();
         log.append(30u32).unwrap();

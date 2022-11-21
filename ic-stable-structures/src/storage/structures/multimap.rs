@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ic_exports::{
     ic_kit::ic,
-    stable_structures::{memory_manager::MemoryId, Storable},
+    stable_structures::{memory_manager::MemoryId, BoundedStorable},
     Principal,
 };
 
@@ -12,46 +12,30 @@ use crate::{multimap, Iter, Memory, RangeIter, Result};
 /// to fetch all values by the root key, or a single value by specifying both keys.
 pub struct StableMultimap<K1, K2, V>
 where
-    K1: Storable,
-    K2: Storable,
-    V: Storable,
+    K1: BoundedStorable,
+    K2: BoundedStorable,
+    V: BoundedStorable,
 {
     maps: HashMap<Principal, multimap::StableMultimap<Memory, K1, K2, V>>,
     memory_id: MemoryId,
-    max_first_key_size: u32,
-    max_second_key_size: u32,
-    max_value_size: u32,
     empty: multimap::StableMultimap<Memory, K1, K2, V>,
 }
 
 impl<K1, K2, V> StableMultimap<K1, K2, V>
 where
-    K1: Storable,
-    K2: Storable,
-    V: Storable,
+    K1: BoundedStorable,
+    K2: BoundedStorable,
+    V: BoundedStorable,
 {
     /// Create a new instance of a `StableMultimap`.
     /// All keys and values byte representations should be less then related `..._max_size` arguments.
-    pub fn new(
-        memory_id: MemoryId,
-        max_first_key_size: u32,
-        max_second_key_size: u32,
-        max_value_size: u32,
-    ) -> Self {
+    pub fn new(memory_id: MemoryId) -> Self {
         let memory = crate::get_memory_by_id(memory_id);
-        let empty = multimap::StableMultimap::new(
-            memory,
-            max_first_key_size,
-            max_second_key_size,
-            max_value_size,
-        );
+        let empty = multimap::StableMultimap::new(memory);
 
         Self {
             maps: HashMap::default(),
             memory_id,
-            max_first_key_size,
-            max_second_key_size,
-            max_value_size,
             empty,
         }
     }
@@ -80,7 +64,7 @@ where
     /// # MockContext::new().inject();
     ///
     /// let memory_id = MemoryId::new(0);
-    /// let mut map = StableMultimap::new(memory_id, 4, 4, 4);
+    /// let mut map = StableMultimap::new(memory_id);
     ///
     /// map.insert(&0u32, &0u32, &1u32).unwrap();
     /// map.insert(&0u32, &1u32, &2u32).unwrap();
@@ -95,12 +79,7 @@ where
         // If map for `canister_id` is not initialized, initialize it.
         let map = self.maps.entry(canister_id).or_insert_with(|| {
             let memory = crate::get_memory_by_id(self.memory_id);
-            multimap::StableMultimap::new(
-                memory,
-                self.max_first_key_size,
-                self.max_second_key_size,
-                self.max_value_size,
-            )
+            multimap::StableMultimap::new(memory)
         });
 
         map.insert(first_key, second_key, value)
@@ -120,7 +99,7 @@ where
     /// # MockContext::new().inject();
     ///
     /// let memory_id = MemoryId::new(0);
-    /// let mut map = StableMultimap::new(memory_id, 4, 4, 4);
+    /// let mut map = StableMultimap::new(memory_id);
     ///
     /// map.insert(&0u32, &0u32, &1u32).unwrap();
     /// map.insert(&0u32, &1u32, &2u32).unwrap();
@@ -149,7 +128,7 @@ where
     /// # MockContext::new().inject();
     ///
     /// let memory_id = MemoryId::new(0);
-    /// let mut map = StableMultimap::new(memory_id, 4, 4, 4);
+    /// let mut map = StableMultimap::new(memory_id);
     ///
     /// map.insert(&0u32, &0u32, &1u32).unwrap();
     /// map.insert(&0u32, &1u32, &2u32).unwrap();
@@ -181,7 +160,7 @@ where
     /// # MockContext::new().inject();
     ///
     /// let memory_id = MemoryId::new(0);
-    /// let mut map = StableMultimap::new(memory_id, 4, 4, 4);
+    /// let mut map = StableMultimap::new(memory_id);
     ///
     /// map.insert(&0u32, &0u32, &1u32).unwrap();
     /// map.insert(&0u32, &1u32, &2u32).unwrap();
@@ -192,7 +171,7 @@ where
     /// assert_eq!(range.next(), Some((1, 2)));
     /// assert_eq!(range.next(), None);
     /// ```
-    pub fn range(&self, first_key: &K1) -> Result<RangeIter<Memory, K2, V>> {
+    pub fn range(&self, first_key: &K1) -> Result<RangeIter<Memory, K1, K2, V>> {
         self.get_inner().range(first_key)
     }
 
@@ -205,7 +184,7 @@ where
     /// # MockContext::new().inject();
     ///
     /// let memory_id = MemoryId::new(0);
-    /// let mut map = StableMultimap::new(memory_id, 4, 4, 4);
+    /// let mut map = StableMultimap::new(memory_id);
     ///
     /// map.insert(&0u32, &0u32, &1u32).unwrap();
     /// map.insert(&0u32, &1u32, &2u32).unwrap();
@@ -254,7 +233,7 @@ mod tests {
     #[test]
     fn map_works() {
         MockContext::new().inject();
-        let mut map = StableMultimap::new(MemoryId::new(0), 4, 4, 4);
+        let mut map = StableMultimap::new(MemoryId::new(0));
         assert!(map.is_empty());
 
         map.insert(&0u32, &0u32, &42u32).unwrap();
@@ -295,7 +274,7 @@ mod tests {
             .with_id(mock_principals::alice())
             .inject();
 
-        let mut map = StableMultimap::new(MemoryId::new(0), 4, 4, 4);
+        let mut map = StableMultimap::new(MemoryId::new(0));
 
         map.insert(&0u32, &0u32, &42u32).unwrap();
         map.insert(&1u32, &0u32, &10u32).unwrap();

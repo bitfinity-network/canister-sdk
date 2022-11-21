@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ic_exports::{
     ic_kit::ic,
-    stable_structures::{btreemap, memory_manager::MemoryId, Storable},
+    stable_structures::{btreemap, memory_manager::MemoryId, BoundedStorable, Storable},
     Principal,
 };
 
@@ -12,22 +12,18 @@ use crate::{Memory, Result};
 pub struct StableBTreeMap<K: Storable, V: Storable> {
     data: HashMap<Principal, btreemap::BTreeMap<Memory, K, V>>,
     memory_id: MemoryId,
-    max_key_size: u32,
-    max_value_size: u32,
     empty: btreemap::BTreeMap<Memory, K, V>,
 }
 
-impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
+impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
     /// Create new instance of key-value storage.
-    pub fn new(memory_id: MemoryId, max_key_size: u32, max_value_size: u32) -> Self {
+    pub fn new(memory_id: MemoryId) -> Self {
         let memory = crate::get_memory_by_id(memory_id);
-        let empty = btreemap::BTreeMap::init(memory, max_key_size, max_value_size);
+        let empty = btreemap::BTreeMap::init(memory);
 
         Self {
             data: HashMap::default(),
             memory_id,
-            max_key_size,
-            max_value_size,
             empty,
         }
     }
@@ -46,7 +42,7 @@ impl<K: Storable, V: Storable> StableBTreeMap<K, V> {
             .entry(canister_id)
             .or_insert_with(|| {
                 let memory = crate::get_memory_by_id(self.memory_id);
-                btreemap::BTreeMap::init(memory, self.max_key_size, self.max_value_size)
+                btreemap::BTreeMap::init(memory)
             })
             .insert(key, value)?;
         Ok(())
@@ -95,9 +91,9 @@ mod tests {
     #[test]
     fn map_works() {
         MockContext::new().inject();
-        let mut map = StableBTreeMap::new(MemoryId::new(0), 4, 4);
+        let mut map = StableBTreeMap::new(MemoryId::new(0));
         assert!(map.is_empty());
-        
+
         map.insert(0u32, 42u32).unwrap();
         map.insert(10, 100).unwrap();
         assert_eq!(map.get(&0), Some(42));
@@ -119,12 +115,11 @@ mod tests {
             .with_id(mock_principals::alice())
             .inject();
 
-        let mut map = StableBTreeMap::new(MemoryId::new(0), 4, 4);
+        let mut map = StableBTreeMap::new(MemoryId::new(0));
         map.insert(0u32, 42u32).unwrap();
 
         get_context().update_id(mock_principals::bob());
         map.insert(10, 100).unwrap();
-
 
         get_context().update_id(mock_principals::alice());
         assert_eq!(map.get(&0), Some(42));
