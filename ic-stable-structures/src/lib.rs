@@ -9,6 +9,8 @@ mod storage;
 mod storage;
 
 mod error;
+#[cfg(test)]
+mod test_utils;
 
 pub use error::{Error, Result};
 pub use ic_exports::stable_structures::{memory_manager::MemoryId, Storable};
