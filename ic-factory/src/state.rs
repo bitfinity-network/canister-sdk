@@ -17,7 +17,7 @@ use ic_exports::{
     },
     BlockHeight,
 };
-use ic_helpers::{candid_header::CandidHeader, ledger::LedgerPrincipalExt};
+use ic_helpers::ledger::LedgerPrincipalExt;
 use ic_storage::{stable::Versioned, IcStorage};
 use std::{collections::HashMap, future::Future};
 use v1::{Factory, FactoryStateV1};
@@ -48,8 +48,6 @@ pub struct CanisterModule {
     hash: CanisterHash,
     /// Canister state version.
     version: u32,
-    /// Candid-serialized definition of the canister state type.
-    state_header: CandidHeader,
 }
 
 impl CanisterModule {
@@ -295,11 +293,7 @@ pub struct Owner<'a> {
 impl<'a> Authorized<Owner<'a>> {
     /// Sets the new version of the wasm code that is used to create new canisters. The
     /// `state_header` argument must provide the current canister state descrition.
-    pub fn set_canister_wasm(
-        &mut self,
-        wasm: Vec<u8>,
-        state_header: CandidHeader,
-    ) -> Result<u32, FactoryError> {
+    pub fn set_canister_wasm(&mut self, wasm: Vec<u8>) -> Result<u32, FactoryError> {
         self.auth.factory.check_update_allowed()?;
         let module_version = self
             .auth
@@ -314,7 +308,6 @@ impl<'a> Authorized<Owner<'a>> {
             wasm,
             hash,
             version: module_version,
-            state_header,
         };
 
         self.auth.factory.upgrading_module = Some(module);
