@@ -291,8 +291,7 @@ pub struct Owner<'a> {
 }
 
 impl<'a> Authorized<Owner<'a>> {
-    /// Sets the new version of the wasm code that is used to create new canisters. The
-    /// `state_header` argument must provide the current canister state descrition.
+    /// Sets the new version of the wasm code that is used to create new canisters.
     pub fn set_canister_wasm(&mut self, wasm: Vec<u8>) -> Result<u32, FactoryError> {
         self.auth.factory.check_update_allowed()?;
         let module_version = self
