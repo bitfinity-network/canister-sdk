@@ -4,8 +4,9 @@ use std::{iter::Peekable, marker::PhantomData, mem};
 
 use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
 
+pub type ChunkSize = u16;
+
 type ChunkIndex = u16;
-type ChunkSize = u16;
 
 const CHUNK_INDEX_LEN: usize = mem::size_of::<ChunkIndex>();
 
@@ -94,10 +95,10 @@ where
         Some(V::from_bytes(value_bytes))
     }
 
-    // /// List all currently stored key-value pairs.
-    // pub fn iter(&self) -> btreemap::Iter<'_, Memory, K, V> {
-    //     self.get_inner().iter()
-    // }
+    /// List all currently stored key-value pairs.
+    pub fn iter(&self) -> Iter<'_, M, K, V> {
+        Iter(self.inner.iter().peekable())
+    }
 
     /// Count of items in the map.
     pub fn len(&self) -> u64 {
@@ -228,7 +229,7 @@ impl<K: BoundedStorable> Storable for Key<K> {
 
 impl<K: BoundedStorable> BoundedStorable for Key<K> {
     fn max_size() -> u32 {
-        K::max_size() + CHUNK_INDEX_LEN as u32
+        Self::size_prefix_len() as u32 + K::max_size() + CHUNK_INDEX_LEN as u32
     }
 }
 
