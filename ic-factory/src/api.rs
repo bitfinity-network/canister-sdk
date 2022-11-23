@@ -47,10 +47,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         <Principal as ManagementPrincipalExt>::accept_cycles()
     }
 
-    fn set_canister_code<T: CandidType + Versioned>(
-        &self,
-        wasm: Vec<u8>,
-    ) -> Result<u32, FactoryError> {
+    fn set_canister_code(&self, wasm: Vec<u8>) -> Result<u32, FactoryError> {
         self.factory_state()
             .borrow_mut()
             .check_is_owner()?
