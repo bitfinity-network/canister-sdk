@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use ic_exports::stable_structures::{btreemap, cell, memory_manager::MemoryId, Storable};
 use ic_exports::stable_structures::{log, BoundedStorable};
 
+use crate::unbounded::{self, SlicedStorable};
 use crate::{get_memory_by_id, multimap, Error, Iter, RangeIter};
 use crate::{Memory, Result};
 
@@ -195,5 +196,56 @@ impl<T: Storable> StableLog<T> {
     // Return true, if the Log doesn't contain any value.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+}
+
+/// Stores key-value data in stable memory.
+pub struct StableUnboundedMap<K, V>(unbounded::StableUnboundedMap<Memory, K, V>)
+where
+    K: BoundedStorable,
+    V: SlicedStorable;
+
+impl<K, V> StableUnboundedMap<K, V>
+where
+    K: BoundedStorable,
+    V: SlicedStorable,
+{
+    /// Create new instance of key-value storage.
+    ///
+    /// If a memory with the `memory_id` contains data of the map, the map reads it, and the instance
+    /// will contain the data from the memory.
+    pub fn new(memory_id: MemoryId) -> Self {
+        let memory = crate::get_memory_by_id(memory_id);
+        Self(unbounded::StableUnboundedMap::new(memory))
+    }
+
+    /// Return value associated with `key` from stable memory.
+    pub fn get(&self, key: &K) -> Option<V> {
+        self.0.get(key)
+    }
+
+    /// Add or replace value associated with `key` in stable memory.
+    pub fn insert(&mut self, key: &K, value: &V) -> Result<()> {
+        self.0.insert(&key, &value)
+    }
+
+    /// Remove value associated with `key` from stable memory.
+    pub fn remove(&mut self, key: &K) -> Option<V> {
+        self.0.remove(key)
+    }
+
+    /// List all currently stored key-value pairs.
+    pub fn iter(&self) -> unbounded::Iter<'_, Memory, K, V> {
+        self.0.iter()
+    }
+
+    /// Count of items in the map.
+    pub fn len(&self) -> u64 {
+        self.0.len()
+    }
+
+    /// Is the map empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
