@@ -27,6 +27,9 @@ where
     V: SlicedStorable,
 {
     /// Create new instance of key-value storage.
+    ///
+    /// If a memory with the `memory_id` contains data of the map, the map reads it, and the instance
+    /// will contain the data from the memory.
     pub fn new(memory_id: MemoryId) -> Self {
         let memory = crate::get_memory_by_id(memory_id);
         let empty = unbounded::StableUnboundedMap::new(memory);

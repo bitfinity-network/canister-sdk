@@ -10,6 +10,10 @@ type ChunkIndex = u16;
 
 const CHUNK_INDEX_LEN: usize = mem::size_of::<ChunkIndex>();
 
+/// Map that allows to store values with arbitrary size in stable memory.
+///
+/// Current implementation stores values in chunks with fixed size.
+/// Size of chunk should be set using the [`SlicedStorable`] trait.
 pub struct StableUnboundedMap<M, K, V>
 where
     M: Memory + Clone,
@@ -26,6 +30,10 @@ where
     K: BoundedStorable,
     V: SlicedStorable,
 {
+    /// Create new instance of the map.
+    ///
+    /// If the `memory` contains data of the map, the map reads it, and the instance
+    /// will contain the data from the `memory`.
     pub fn new(memory: M) -> Self {
         Self {
             inner: StableBTreeMap::init(memory),
@@ -95,7 +103,7 @@ where
         Some(V::from_bytes(value_bytes))
     }
 
-    /// List all currently stored key-value pairs.
+    /// Iterator for all stored key-value pairs.
     pub fn iter(&self) -> Iter<'_, M, K, V> {
         Iter(self.inner.iter().peekable())
     }
@@ -111,10 +119,33 @@ where
     }
 }
 
+/// Provide information about length of value slice.
+///
+/// If value size is greater than `chunk_size()`, value will be split to several chunks,
+/// and store each as particular entry in inner data structures.
+///
+/// More chunks count leads to more memory allocation operations.
+/// But with big `chunk_size()` we lose space for small values,
+/// because `chunk_size()` is a least allocation unit for any value.
 pub trait SlicedStorable: Storable {
     fn chunk_size() -> ChunkSize;
 }
 
+/// Wrapper for the key.
+///
+/// # Memory layout
+/// ```ignore
+/// |-- size_prefix --|-- key_bytes --|-- chunk_index --|
+/// ```
+///
+/// where:
+/// - `size_prefix` is a len of `key_bytes`. Length of `size_prefix` depends on `K::max_size()`
+/// and calculated in `Key::size_prefix_len()`.
+/// - `key_bytes` is a result of the `<K as Storable>::to_bytes(key)` call. Length limited by the
+/// `<K as BoundedStorable>::max_size()`.
+/// - `chunk_index` is an index of chunk associated with a key instance. If inserted value split to `N`
+/// chunks, then they stored as several entries. Each entry has unique key, with difference only in `chunk_index`.
+/// In `get()` operation the value constructing from it's chunks. The `chunk_index` takes [`CHUNK_INDEX_LEN`] bytes.
 struct Key<K: BoundedStorable> {
     data: Vec<u8>,
     _p: PhantomData<K>,
@@ -178,14 +209,18 @@ impl<K: BoundedStorable> Key<K> {
         ChunkIndex::from_be_bytes(chunk_index_arr)
     }
 
+    /// Prefix of key data, which is same for all chunks of the same value.
     pub fn prefix(&self) -> &[u8] {
         &self.data[..self.data.len() - CHUNK_INDEX_LEN]
     }
 
+    /// Bytes of key `key: K`.
+    /// Result of the `<K as Storable>::to_bytes(key)` call.
     pub fn key_data(&self) -> &[u8] {
         &self.data[Self::size_prefix_len()..self.data.len() - CHUNK_INDEX_LEN]
     }
 
+    /// Create prefix of key, which is same for all chunks of the same value.
     pub fn create_prefix(key: &K) -> Result<Vec<u8>> {
         let key_bytes = key.to_bytes();
         if key_bytes.len() > K::max_size() as usize {
@@ -233,6 +268,7 @@ impl<K: BoundedStorable> BoundedStorable for Key<K> {
     }
 }
 
+/// Wrapper for value chunks stored in inner [`StableBTreeMap`].
 struct Chunk<V: SlicedStorable> {
     chunk: Vec<u8>,
     _p: PhantomData<V>,
@@ -274,6 +310,8 @@ impl<V: SlicedStorable> BoundedStorable for Chunk<V> {
     }
 }
 
+/// Iterator over values in unbounded map.
+/// Constructs a value from chunks on each `next()` call.
 pub struct Iter<'a, M, K, V>(Peekable<btreemap::Iter<'a, M, Key<K>, Chunk<V>>>)
 where
     M: Memory + Clone,
@@ -293,6 +331,7 @@ where
         let mut value_data = chunk.into_data();
 
         loop {
+            // while next item is a chunk of current value, add it's data to the `value_data`.
             let next_key = match self.0.peek() {
                 Some((k, _)) => k,
                 None => break,
