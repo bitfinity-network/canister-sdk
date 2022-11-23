@@ -102,7 +102,7 @@ impl FactoryState {
         }
     }
 
-    /// Checks if the request caller is the factory conctroller (owner).
+    /// Checks if the request caller is the factory controller (owner).
     ///
     /// # Errors
     ///
@@ -112,8 +112,8 @@ impl FactoryState {
         self.check_is_owner_internal(caller)
     }
 
-    /// This is needed to deal with ic pecularity, where we cannot call `ic_cdk::caller()`
-    /// twice in the same endpiont, hence we need to store it as a separate variable and
+    /// This is needed to deal with ic peculiarity, where we cannot call `ic_cdk::caller()`
+    /// twice in the same endpoint, hence we need to store it as a separate variable and
     /// pass it around.
     ///
     /// More on that:
@@ -391,7 +391,7 @@ impl<'a> Authorized<Owner<'a>> {
     /// Drops the canister.
     ///
     /// This method works in a similar way to [`create_canister`], see its documentation for the
-    /// details. [`register_dropped`] must be called after awaiting on the reeturned fututre.
+    /// details. [`register_dropped`] must be called after awaiting on the returned future.
     pub(crate) fn drop_canister(
         &mut self,
         canister_id: Principal,
