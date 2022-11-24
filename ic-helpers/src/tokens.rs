@@ -279,7 +279,10 @@ impl Tokens256 {
 
     /// Converts the value to `candid::Nat`.
     pub fn to_nat(&self) -> candid::Nat {
-        let limbs = self.0.limbs().map(|l| l.0.to_u64().expect("never panics"));
+        let limbs = self
+            .0
+            .limbs()
+            .map(|l| l.0.to_usize().expect("never panics"));
         let mut nums = vec![];
         for limb in limbs.into_iter() {
             // We use little endian since WASM is little endian
