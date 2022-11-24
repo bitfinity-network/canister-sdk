@@ -170,10 +170,7 @@ impl<T: Storable> StableLog<T> {
         let index_memory = crate::get_memory_by_id(index_memory_id);
         let data_memory = crate::get_memory_by_id(data_memory_id);
 
-        Ok(Self(
-            log::Log::new(index_memory, data_memory),
-            PhantomData::default(),
-        ))
+        Ok(Self(log::Log::new(index_memory, data_memory), PhantomData))
     }
 
     /// Returns reference to value stored in stable memory.
@@ -188,12 +185,12 @@ impl<T: Storable> StableLog<T> {
             .map_err(|_| Error::OutOfStableMemory)
     }
 
-    /// Count of values in the log.
+    /// Number of values in the log.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
-    // Return true, if the Log doesn't contain any value.
+    // Returns true, if the Log doesn't contain any values.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -219,17 +216,17 @@ where
         Self(unbounded::StableUnboundedMap::new(memory))
     }
 
-    /// Return value associated with `key` from stable memory.
+    /// Returns a value associated with `key` from stable memory.
     pub fn get(&self, key: &K) -> Option<V> {
         self.0.get(key)
     }
 
-    /// Add or replace value associated with `key` in stable memory.
+    /// Add or replace a value associated with `key` in stable memory.
     pub fn insert(&mut self, key: &K, value: &V) -> Result<()> {
         self.0.insert(&key, &value)
     }
 
-    /// Remove value associated with `key` from stable memory.
+    /// Remove a value associated with `key` from stable memory.
     pub fn remove(&mut self, key: &K) -> Option<V> {
         self.0.remove(key)
     }
@@ -239,12 +236,12 @@ where
         self.0.iter()
     }
 
-    /// Count of items in the map.
+    /// Nomber of items in the map.
     pub fn len(&self) -> u64 {
         self.0.len()
     }
 
-    /// Is the map empty.
+    // Returns true if there are no values in the map.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

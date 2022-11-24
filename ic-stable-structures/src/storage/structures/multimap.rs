@@ -200,7 +200,7 @@ where
         self.get_inner().iter()
     }
 
-    /// Items count.
+    /// Item count.
     pub fn len(&self) -> usize {
         self.get_inner().len()
     }

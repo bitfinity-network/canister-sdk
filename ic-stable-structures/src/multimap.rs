@@ -26,7 +26,7 @@ use crate::{Error, Result};
 
 /// `StableMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
-pub struct StableMultimap<M, K1, K2, V>(StableBTreeMap<M, KeysPair<K1, K2>, Value<V>>)
+pub struct StableMultimap<M, K1, K2, V>(StableBTreeMap<M, KeyPair<K1, K2>, Value<V>>)
 where
     M: Memory + Clone,
     K1: BoundedStorable,
@@ -57,7 +57,7 @@ where
     ///
     /// If stable memory unable to grow, the `Error::OutOfStableMemory` will be returned.
     pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Result<()> {
-        let key = KeysPair::new(first_key, second_key)?;
+        let key = KeyPair::new(first_key, second_key)?;
         self.0.insert(key, value.into())?;
         Ok(())
     }
@@ -65,7 +65,7 @@ where
     /// Get a value for the given keys.
     /// If byte representation length of any key exceeds max size, `None` will be returned.
     pub fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
-        let key = KeysPair::new(first_key, second_key).ok()?;
+        let key = KeyPair::new(first_key, second_key).ok()?;
         let value = self.0.get(&key)?;
         Some(value.value())
     }
@@ -77,7 +77,7 @@ where
     /// If byte representation length of any key exceeds max size, the `Error::ValueTooLarge`
     /// will be returned.
     pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>> {
-        let key = KeysPair::new(first_key, second_key)?;
+        let key = KeyPair::new(first_key, second_key)?;
 
         let value = self.0.remove(&key).map(Value::value);
         Ok(value)
@@ -90,12 +90,12 @@ where
     /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
     /// will be returned.
     pub fn remove_partial(&mut self, first_key: &K1) -> Result<()> {
-        let key_prefix = KeysPair::<K1, K2>::first_key_prefix(first_key)?;
+        let key_prefix = KeyPair::<K1, K2>::first_key_prefix(first_key)?;
 
         let keys: Vec<_> = self
             .0
             .range(key_prefix, None)
-            .map(|(k1k2, _)| k1k2)
+            .map(|(keys, _)| keys)
             .collect();
 
         for k in keys {
@@ -112,7 +112,7 @@ where
     /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
     /// will be returned.
     pub fn range(&self, first_key: &K1) -> Result<RangeIter<M, K1, K2, V>> {
-        let key_prefix = KeysPair::<K1, K2>::first_key_prefix(first_key)?;
+        let key_prefix = KeyPair::<K1, K2>::first_key_prefix(first_key)?;
 
         let inner = self.0.range(key_prefix, None);
         let iter = RangeIter::new(inner);
@@ -136,13 +136,13 @@ where
     }
 }
 
-struct KeysPair<K1, K2> {
+struct KeyPair<K1, K2> {
     encoded: Vec<u8>,
     first_key_len: usize,
     _p: PhantomData<(K1, K2)>,
 }
 
-impl<K1, K2> KeysPair<K1, K2>
+impl<K1, K2> KeyPair<K1, K2>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
@@ -168,7 +168,7 @@ where
         Ok(Self {
             encoded: buffer,
             first_key_len: first_key_bytes.len(),
-            _p: PhantomData::default(),
+            _p: PhantomData,
         })
     }
 
@@ -221,7 +221,7 @@ where
     }
 }
 
-impl<K1, K2> Storable for KeysPair<K1, K2>
+impl<K1, K2> Storable for KeyPair<K1, K2>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
@@ -236,12 +236,12 @@ where
         Self {
             encoded: bytes,
             first_key_len,
-            _p: PhantomData::default(),
+            _p: PhantomData,
         }
     }
 }
 
-impl<K1, K2> BoundedStorable for KeysPair<K1, K2>
+impl<K1, K2> BoundedStorable for KeyPair<K1, K2>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
@@ -261,7 +261,7 @@ impl<V: Storable> Value<V> {
 
 impl<V: Storable> From<&V> for Value<V> {
     fn from(value: &V) -> Self {
-        Self(value.to_bytes().into(), PhantomData::default())
+        Self(value.to_bytes().into(), PhantomData)
     }
 }
 
@@ -271,7 +271,7 @@ impl<V> Storable for Value<V> {
     }
 
     fn from_bytes(bytes: Vec<u8>) -> Self {
-        Self(bytes, PhantomData::default())
+        Self(bytes, PhantomData)
     }
 }
 
@@ -289,7 +289,7 @@ where
     K2: BoundedStorable,
     V: BoundedStorable,
 {
-    inner: btreemap::Iter<'a, M, KeysPair<K1, K2>, Value<V>>,
+    inner: btreemap::Iter<'a, M, KeyPair<K1, K2>, Value<V>>,
 }
 
 impl<'a, M, K1, K2, V> RangeIter<'a, M, K1, K2, V>
@@ -299,7 +299,7 @@ where
     K2: BoundedStorable,
     V: BoundedStorable,
 {
-    fn new(inner: btreemap::Iter<'a, M, KeysPair<K1, K2>, Value<V>>) -> Self {
+    fn new(inner: btreemap::Iter<'a, M, KeyPair<K1, K2>, Value<V>>) -> Self {
         Self { inner }
     }
 }
@@ -319,11 +319,11 @@ where
     fn next(&mut self) -> Option<(K2, V)> {
         self.inner
             .next()
-            .map(|(k1k2, v)| (k1k2.second_key(), v.value()))
+            .map(|(keys, v)| (keys.second_key(), v.value()))
     }
 }
 
-pub struct Iter<'a, M, K1, K2, V>(btreemap::Iter<'a, M, KeysPair<K1, K2>, Value<V>>)
+pub struct Iter<'a, M, K1, K2, V>(btreemap::Iter<'a, M, KeyPair<K1, K2>, Value<V>>)
 where
     M: Memory + Clone,
     K1: BoundedStorable,
@@ -337,7 +337,7 @@ where
     K2: BoundedStorable,
     V: BoundedStorable,
 {
-    fn new(inner: btreemap::Iter<'a, M, KeysPair<K1, K2>, Value<V>>) -> Self {
+    fn new(inner: btreemap::Iter<'a, M, KeyPair<K1, K2>, Value<V>>) -> Self {
         Self(inner)
     }
 }
@@ -352,9 +352,9 @@ where
     type Item = (K1, K2, V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|(k1k2, val)| {
-            let k1 = k1k2.first_key();
-            let k2 = k1k2.second_key();
+        self.0.next().map(|(keys, val)| {
+            let k1 = keys.first_key();
+            let k2 = keys.second_key();
             (k1, k2, val.value())
         })
     }

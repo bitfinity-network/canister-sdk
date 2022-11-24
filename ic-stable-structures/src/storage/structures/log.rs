@@ -33,7 +33,7 @@ impl<T: Storable> StableLog<T> {
             data: HashMap::default(),
             index_memory_id,
             data_memory_id,
-            _data: PhantomData::default(),
+            _data: PhantomData,
         })
     }
 
@@ -62,14 +62,14 @@ impl<T: Storable> StableLog<T> {
         Ok(index)
     }
 
-    /// Count of values in the log.
+    /// Number of values in the log.
     pub fn len(&self) -> usize {
         self.get_inner()
             .map(|inner| inner.len())
             .unwrap_or_default()
     }
 
-    // Return true, if the Log doesn't contain any value.
+    /// Return true, if the Log doesn't contain any value.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

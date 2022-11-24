@@ -41,7 +41,7 @@ where
         }
     }
 
-    /// Return value associated with `key`.
+    /// Return a value associated with `key`.
     pub fn get(&self, key: &K) -> Option<V> {
         let key_prefix = Key::create_prefix(key).ok()?;
         let mut value_data = Vec::new();
@@ -52,7 +52,7 @@ where
         Some(V::from_bytes(value_data))
     }
 
-    /// Add or replace value associated with `key`.
+    /// Add or replace a value associated with `key`.
     pub fn insert(&mut self, key: &K, value: &V) -> Result<()> {
         let mut inner_key = Key::new(key)?;
 
@@ -81,7 +81,7 @@ where
         Ok(())
     }
 
-    /// Remove value associated with `key`.
+    /// Remove a value associated with `key`.
     pub fn remove(&mut self, key: &K) -> Option<V> {
         let key_prefix = Key::create_prefix(key).ok()?;
         let keys: Vec<Key<K>> = self.inner.range(key_prefix, None).map(|(k, _)| k).collect();
@@ -119,7 +119,7 @@ where
     }
 }
 
-/// Provide information about length of value slice.
+/// Provide information about the length of the value slice.
 ///
 /// If value size is greater than `chunk_size()`, value will be split to several chunks,
 /// and store each as particular entry in inner data structures.
@@ -188,7 +188,7 @@ impl<K: BoundedStorable> Key<K> {
 
         let chunk_index_arr = chunk_index_bytes
             .try_into()
-            .expect("CHUNK_INDEX_LEN bytes in slice");
+            .expect("the slice is always has CHUNK_INDEX_LEN length");
 
         // store chunk index in big-endian format to preserve order of chunks in BTreeMap
         let chunk_index = ChunkIndex::from_be_bytes(chunk_index_arr);
@@ -330,13 +330,7 @@ where
         let (key, chunk) = self.0.next()?;
         let mut value_data = chunk.into_data();
 
-        loop {
-            // while next item is a chunk of current value, add it's data to the `value_data`.
-            let next_key = match self.0.peek() {
-                Some((k, _)) => k,
-                None => break,
-            };
-
+        while let Some((next_key, _)) = self.0.peek() {
             if next_key.prefix() != key.prefix() {
                 break;
             }
