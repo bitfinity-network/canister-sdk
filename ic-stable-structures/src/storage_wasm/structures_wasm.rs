@@ -236,7 +236,7 @@ where
         self.0.iter()
     }
 
-    /// Nomber of items in the map.
+    /// Number of items in the map.
     pub fn len(&self) -> u64 {
         self.0.len()
     }
