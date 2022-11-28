@@ -2,7 +2,7 @@ use std::fmt;
 
 use ic_exports::ic_cdk::export::candid::types::internal::TypeContainer;
 use ic_exports::ic_cdk::export::candid::types::Type;
-use ic_exports::ic_cdk::export::candid::{self};
+use ic_exports::ic_cdk::export::candid;
 
 pub struct Idl {
     pub env: TypeContainer,

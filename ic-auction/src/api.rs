@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use ic_canister::{generate_exports, generate_idl, state_getter, update, Canister, Idl, PreUpdate};
 use ic_exports::ic_cdk::export::candid::Principal;
-use ic_exports::ic_cdk::{self};
+use ic_exports::ic_cdk;
 use ic_metrics::Interval;
 
 use crate::error::{AuctionError, Result};
