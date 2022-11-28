@@ -1,9 +1,12 @@
-use ic_canister::{generate_idl, Idl, PreUpdate};
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_storage::{stable::Versioned, IcStorage};
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
+use std::rc::Rc;
 
-use ic_canister::{generate_exports, query, state_getter, update, Canister};
+use ic_canister::{
+    generate_exports, generate_idl, query, state_getter, update, Canister, Idl, PreUpdate,
+};
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_storage::stable::Versioned;
+use ic_storage::IcStorage;
 
 #[derive(Default, CandidType, Deserialize, IcStorage)]
 pub struct StateA {
@@ -54,9 +57,10 @@ generate_exports!(CanisterA, CanisterAImpl);
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ic_canister::{canister_call, Canister};
     use ic_exports::ic_kit::MockContext;
+
+    use super::*;
 
     #[test]
     fn independent_states() {

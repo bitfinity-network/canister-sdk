@@ -6,7 +6,6 @@ use ic_exports::stable_structures::BoundedStorable;
 use ic_exports::Principal;
 
 use crate::unbounded::{self, SlicedStorable};
-
 use crate::{Memory, Result};
 
 /// Stores key-value data in stable memory.
@@ -95,14 +94,12 @@ where
 mod tests {
     use std::collections::HashMap;
 
-    use ic_exports::{
-        ic_kit::{inject::get_context, mock_principals, MockContext},
-        stable_structures::memory_manager::MemoryId,
-    };
-
-    use crate::test_utils;
+    use ic_exports::ic_kit::inject::get_context;
+    use ic_exports::ic_kit::{mock_principals, MockContext};
+    use ic_exports::stable_structures::memory_manager::MemoryId;
 
     use super::StableUnboundedMap;
+    use crate::test_utils;
 
     #[test]
     fn unbounded_map_works() {

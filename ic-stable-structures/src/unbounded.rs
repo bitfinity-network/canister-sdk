@@ -1,10 +1,10 @@
-use crate::{Error, Result};
-
 use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
 use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
+
+use crate::{Error, Result};
 
 pub type ChunkSize = u16;
 
@@ -352,9 +352,8 @@ where
 mod tests {
     use ic_exports::stable_structures::DefaultMemoryImpl;
 
-    use crate::test_utils;
-
     use super::StableUnboundedMap;
+    use crate::test_utils;
 
     #[test]
     fn insert_get_test() {

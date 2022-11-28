@@ -45,7 +45,8 @@
 //!
 //! For the further example you can refer to the tests in the `canister-b` crate.
 
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use candid::Principal;
 use ic_canister::{generate_exports, query, state_getter, Canister, PreUpdate};

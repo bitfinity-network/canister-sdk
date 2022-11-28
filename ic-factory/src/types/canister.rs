@@ -1,10 +1,10 @@
-use super::checksum::Version;
-use ic_exports::ic_cdk::{
-    api::call::CallResult,
-    export::candid::{utils::ArgumentEncoder, CandidType, Principal},
-};
+use ic_exports::ic_cdk::api::call::CallResult;
+use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
+use ic_exports::ic_cdk::export::candid::{CandidType, Principal};
 use ic_helpers::management::{InstallCodeMode, ManagementPrincipalExt};
 use serde::{Deserialize, Serialize};
+
+use super::checksum::Version;
 
 /// Represents information of a canister.
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]

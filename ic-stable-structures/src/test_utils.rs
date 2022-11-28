@@ -1,6 +1,7 @@
 use ic_exports::stable_structures::Storable;
 
-use crate::{unbounded::SlicedStorable, ChunkSize};
+use crate::unbounded::SlicedStorable;
+use crate::ChunkSize;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StringValue(pub String);

@@ -1,7 +1,8 @@
 //! This module provides types and functions that help get and verify the structure of a canister
 //! state.
 
-use ic_exports::ic_cdk::export::candid::{self, ser::TypeSerialize, CandidType, Deserialize};
+use ic_exports::ic_cdk::export::candid::ser::TypeSerialize;
+use ic_exports::ic_cdk::export::candid::{self, CandidType, Deserialize};
 use ic_storage::stable::Versioned;
 
 /// Magic prefix used to signify candid encoded binary.
@@ -118,9 +119,10 @@ The canister state cannot be safely upgraded to the newer version.")
 }
 
 fn get_type_definition(state_header: &[u8]) -> Result<candid::TypeEnv, String> {
+    use std::io::Cursor;
+
     use binread::BinRead;
     use candid::binary_parser::Header;
-    use std::io::Cursor;
 
     let mut with_magic = vec![];
     with_magic.extend(MAGIC);
@@ -135,8 +137,9 @@ fn get_type_definition(state_header: &[u8]) -> Result<candid::TypeEnv, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ic_exports::ic_cdk::export::candid::{Deserialize, Encode};
+
+    use super::*;
 
     #[test]
     fn test_candid_header() {

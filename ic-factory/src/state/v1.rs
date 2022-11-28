@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_storage::stable::Versioned;
+use ic_storage::IcStorage;
+
 use super::FactoryConfiguration;
 use crate::types::{Canister, Checksum};
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_storage::{stable::Versioned, IcStorage};
-use std::collections::HashMap;
 
 #[derive(CandidType, Deserialize, IcStorage, Default)]
 pub struct FactoryStateV1 {

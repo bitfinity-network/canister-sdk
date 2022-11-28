@@ -1,13 +1,13 @@
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use ic_canister::{generate_exports, generate_idl, state_getter, update, Canister, Idl, PreUpdate};
-use ic_exports::ic_cdk::{self, export::candid::Principal};
+use ic_exports::ic_cdk::export::candid::Principal;
+use ic_exports::ic_cdk::{self};
 use ic_metrics::Interval;
 
-use crate::{
-    error::{AuctionError, Result},
-    state::{AuctionInfo, AuctionState, BiddingInfo},
-};
+use crate::error::{AuctionError, Result};
+use crate::state::{AuctionInfo, AuctionState, BiddingInfo};
 
 pub trait Auction: Canister + Sized {
     #[state_getter]

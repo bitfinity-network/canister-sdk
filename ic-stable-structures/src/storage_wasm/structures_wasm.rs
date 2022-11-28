@@ -1,11 +1,10 @@
 use std::marker::PhantomData;
 
-use ic_exports::stable_structures::{btreemap, cell, memory_manager::MemoryId, Storable};
-use ic_exports::stable_structures::{log, BoundedStorable};
+use ic_exports::stable_structures::memory_manager::MemoryId;
+use ic_exports::stable_structures::{btreemap, cell, log, BoundedStorable, Storable};
 
 use crate::unbounded::{self, SlicedStorable};
-use crate::{get_memory_by_id, multimap, Error, Iter, RangeIter};
-use crate::{Memory, Result};
+use crate::{get_memory_by_id, multimap, Error, Iter, Memory, RangeIter, Result};
 
 /// Stores value in stable memory, providing `get()/set()` API.
 pub struct StableCell<T: Storable>(cell::Cell<T, Memory>);

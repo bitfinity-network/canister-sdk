@@ -80,10 +80,9 @@ impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
 
 #[cfg(test)]
 mod tests {
-    use ic_exports::{
-        ic_kit::{inject::get_context, mock_principals, MockContext},
-        stable_structures::memory_manager::MemoryId,
-    };
+    use ic_exports::ic_kit::inject::get_context;
+    use ic_exports::ic_kit::{mock_principals, MockContext};
+    use ic_exports::stable_structures::memory_manager::MemoryId;
 
     use super::StableBTreeMap;
 
