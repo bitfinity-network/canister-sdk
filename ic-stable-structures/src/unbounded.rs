@@ -190,7 +190,7 @@ impl<K: BoundedStorable> Key<K> {
 
         let chunk_index_arr = chunk_index_bytes
             .try_into()
-            .expect("the slice is always has CHUNK_INDEX_LEN length");
+            .expect("the slice is always CHUNK_INDEX_LEN length");
 
         // store chunk index in big-endian format to preserve order of chunks in BTreeMap
         let chunk_index = ChunkIndex::from_be_bytes(chunk_index_arr);
