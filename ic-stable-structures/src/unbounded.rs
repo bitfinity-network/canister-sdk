@@ -1,6 +1,8 @@
 use crate::{Error, Result};
 
-use std::{iter::Peekable, marker::PhantomData, mem};
+use std::iter::Peekable;
+use std::marker::PhantomData;
+use std::mem;
 
 use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
 

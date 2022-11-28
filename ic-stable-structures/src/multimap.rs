@@ -67,7 +67,7 @@ where
     pub fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
         let key = KeyPair::new(first_key, second_key).ok()?;
         let value = self.0.get(&key)?;
-        Some(value.value())
+        Some(value.into_inner())
     }
 
     /// Remove a specific value and return it.
@@ -79,7 +79,7 @@ where
     pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>> {
         let key = KeyPair::new(first_key, second_key)?;
 
-        let value = self.0.remove(&key).map(Value::value);
+        let value = self.0.remove(&key).map(Value::into_inner);
         Ok(value)
     }
 
@@ -254,7 +254,7 @@ where
 struct Value<V>(Vec<u8>, PhantomData<V>);
 
 impl<V: Storable> Value<V> {
-    pub fn value(self) -> V {
+    pub fn into_inner(self) -> V {
         V::from_bytes(self.0)
     }
 }
@@ -319,7 +319,7 @@ where
     fn next(&mut self) -> Option<(K2, V)> {
         self.inner
             .next()
-            .map(|(keys, v)| (keys.second_key(), v.value()))
+            .map(|(keys, v)| (keys.second_key(), v.into_inner()))
     }
 }
 
@@ -355,7 +355,7 @@ where
         self.0.next().map(|(keys, val)| {
             let k1 = keys.first_key();
             let k2 = keys.second_key();
-            (k1, k2, val.value())
+            (k1, k2, val.into_inner())
         })
     }
 }

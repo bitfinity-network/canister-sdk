@@ -1,14 +1,12 @@
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    marker::PhantomData,
-    ops::Deref,
-};
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+use std::marker::PhantomData;
+use std::ops::Deref;
 
-use ic_exports::{
-    ic_kit::ic,
-    stable_structures::{log, memory_manager::MemoryId, Storable},
-    Principal,
-};
+use ic_exports::ic_kit::ic;
+use ic_exports::stable_structures::memory_manager::MemoryId;
+use ic_exports::stable_structures::{log, Storable};
+use ic_exports::Principal;
 
 use crate::{Error, Memory, Result};
 

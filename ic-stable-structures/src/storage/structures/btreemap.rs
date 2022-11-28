@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
-use ic_exports::{
-    ic_kit::ic,
-    stable_structures::{btreemap, memory_manager::MemoryId, BoundedStorable, Storable},
-    Principal,
-};
+use ic_exports::ic_kit::ic;
+use ic_exports::stable_structures::memory_manager::MemoryId;
+use ic_exports::stable_structures::{btreemap, BoundedStorable, Storable};
+use ic_exports::Principal;
 
 use crate::{Memory, Result};
 

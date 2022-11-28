@@ -1,10 +1,10 @@
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 
-use ic_exports::{
-    ic_kit::ic,
-    stable_structures::{cell, memory_manager::MemoryId, Storable},
-    Principal,
-};
+use ic_exports::ic_kit::ic;
+use ic_exports::stable_structures::memory_manager::MemoryId;
+use ic_exports::stable_structures::{cell, Storable};
+use ic_exports::Principal;
 
 use crate::{Memory, Result};
 
