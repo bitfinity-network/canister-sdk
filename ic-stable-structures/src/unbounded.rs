@@ -65,11 +65,20 @@ where
     pub fn insert(&mut self, key: &K, value: &V) -> Result<()> {
         let mut inner_key = Key::new(key)?;
 
+        // remove old data before insert new();
+        let previous_value = self.remove(key);
+
         let insert_result = self.insert_data(&mut inner_key, value);
 
-        if insert_result.is_err() && inner_key.get_chunk_index() > 0 {
-            // if insert failed and at least one chunk inserted, then remove the inserted chunks.
+        if insert_result.is_err() {
+            // if insert failed, then remove the inserted chunks.
             self.remove(key);
+
+            // and restore previous data
+            if let Some(prev) = previous_value {
+                self.insert(key, &prev)
+                    .expect("failed to insert previous value after failed insert");
+            }
         }
 
         insert_result
@@ -203,19 +212,6 @@ impl<K: BoundedStorable> Key<K> {
         let chunk_index = ChunkIndex::from_be_bytes(chunk_index_arr);
 
         chunk_index_bytes.copy_from_slice(&(chunk_index + 1).to_be_bytes())
-    }
-
-    pub fn get_chunk_index(&self) -> ChunkIndex {
-        let data_len = self.data.len();
-
-        // last `CHUNK_INDEX_LEN` bytes is chunk index
-        let chunk_index_bytes = &self.data[(data_len - CHUNK_INDEX_LEN as usize)..];
-
-        let chunk_index_arr = chunk_index_bytes
-            .try_into()
-            .expect("CHUNK_INDEX_LEN bytes in slice");
-
-        ChunkIndex::from_be_bytes(chunk_index_arr)
     }
 
     /// Prefix of key data, which is same for all chunks of the same value.
