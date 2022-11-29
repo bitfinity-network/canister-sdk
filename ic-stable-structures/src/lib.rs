@@ -16,12 +16,12 @@ pub use error::{Error, Result};
 pub use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::memory_manager::{self, VirtualMemory};
 use ic_exports::stable_structures::DefaultMemoryImpl;
-pub use ic_exports::stable_structures::Storable;
+pub use ic_exports::stable_structures::{Storable, BoundedStorable};
 pub use multimap::{Iter, RangeIter};
 pub use storage::{
     get_memory_by_id, StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap,
 };
-pub use unbounded::{ChunkSize, Iter as UnboundedIter};
+pub use unbounded::{SlicedStorable, ChunkSize, Iter as UnboundedIter};
 
 pub type Memory = VirtualMemory<DefaultMemoryImpl>;
 
