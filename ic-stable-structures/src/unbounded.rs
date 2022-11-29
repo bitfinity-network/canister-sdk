@@ -47,8 +47,15 @@ where
     pub fn get(&self, key: &K) -> Option<V> {
         let key_prefix = Key::create_prefix(key).ok()?;
         let mut value_data = Vec::new();
+        let mut item_present = false;
+
         for (_, chunk) in self.inner.range(key_prefix, None) {
-            value_data.extend_from_slice(&chunk.to_bytes())
+            value_data.extend_from_slice(&chunk.to_bytes());
+            item_present = true;
+        }
+
+        if !item_present {
+            return None;
         }
 
         Some(V::from_bytes(value_data))
