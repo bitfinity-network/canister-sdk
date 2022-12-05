@@ -10,7 +10,6 @@ use ic_exports::{
     ic_cdk::export::candid::utils::ArgumentEncoder,
 };
 use ic_helpers::management::ManagementPrincipalExt;
-use ic_storage::stable::Versioned;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub trait FactoryCanister: Canister + Sized + PreUpdate {
@@ -98,7 +97,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         })
     }
 
-    fn upgrade_canister<T: CandidType + Versioned>(
+    fn upgrade_canister<T: CandidType>(
         &mut self,
     ) -> AsyncReturn<Result<HashMap<Principal, UpgradeResult>, FactoryError>> {
         Box::pin(async move {
