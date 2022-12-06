@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use ic_canister::{generate_exports, generate_idl, state_getter, update, Canister, Idl, PreUpdate};
-use ic_exports::ic_cdk::{self, export::candid::Principal};
+use ic_exports::ic_cdk::export::candid::Principal;
 use ic_metrics::Interval;
 
 use crate::{
@@ -16,10 +16,12 @@ pub trait Auction: Canister + Sized {
     fn canister_pre_update(&self, method_name: &str, _method_type: ic_canister::MethodType) {
         if method_name == "run_auction" {
             if !self.auction_state().borrow().bidding_state.is_auction_due() {
+                #[cfg(feature = "debug")]
                 ic_cdk::println!("Too early to begin auction");
             }
-        } else if let Err(auction_error) = self.run_auction() {
-            ic_cdk::println!("Auction error: {auction_error:#?}");
+        } else if let Err(_auction_error) = self.run_auction() {
+            #[cfg(feature = "debug")]
+            ic_cdk::println!("Auction error: {_auction_error:#?}");
         }
     }
 
