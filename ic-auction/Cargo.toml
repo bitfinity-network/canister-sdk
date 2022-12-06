@@ -8,7 +8,7 @@ default = []
 export-api = []
 
 # Add debug outputs for the canister
-debug = []
+debug-logs = []
 
 [dependencies]
 candid = "0.8"
