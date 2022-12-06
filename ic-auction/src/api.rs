@@ -15,12 +15,12 @@ pub trait Auction: Canister + Sized {
 
     fn canister_pre_update(&self, method_name: &str, _method_type: ic_canister::MethodType) {
         if method_name == "run_auction" {
+            #[cfg(feature = "debug-logs")]
             if !self.auction_state().borrow().bidding_state.is_auction_due() {
-                #[cfg(feature = "debug")]
                 ic_cdk::println!("Too early to begin auction");
             }
         } else if let Err(_auction_error) = self.run_auction() {
-            #[cfg(feature = "debug")]
+            #[cfg(feature = "debug-logs")]
             ic_cdk::println!("Auction error: {_auction_error:#?}");
         }
     }
