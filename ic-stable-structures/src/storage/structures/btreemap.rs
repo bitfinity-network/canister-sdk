@@ -49,7 +49,7 @@ impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
 
     /// Remove value associated with `key` from stable memory.
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        self.get_inner_mut().remove(key)
+        self.mut_inner().remove(key)
     }
 
     /// List all currently stored key-value pairs.
@@ -67,12 +67,22 @@ impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
         self.get_inner().is_empty()
     }
 
+    /// Remove all entries from the map.
+    pub fn clear(&mut self) {
+        let inner = self.mut_inner();
+
+        let keys: Vec<_> = inner.iter().map(|(k, _)| k).collect();
+        for key in keys {
+            inner.remove(&key);
+        }
+    }
+
     fn get_inner(&self) -> &btreemap::BTreeMap<Memory, K, V> {
         let canister_id = ic::id();
         self.data.get(&canister_id).unwrap_or(&self.empty)
     }
 
-    fn get_inner_mut(&mut self) -> &mut btreemap::BTreeMap<Memory, K, V> {
+    fn mut_inner(&mut self) -> &mut btreemap::BTreeMap<Memory, K, V> {
         let canister_id = ic::id();
         self.data.get_mut(&canister_id).unwrap_or(&mut self.empty)
     }

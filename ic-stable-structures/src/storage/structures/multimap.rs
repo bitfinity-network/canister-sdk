@@ -110,7 +110,7 @@ where
     ///
     /// ```
     pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>> {
-        self.get_inner_mut().remove(first_key, second_key)
+        self.mut_inner().remove(first_key, second_key)
     }
 
     /// Remove all values for the partial key
@@ -142,7 +142,7 @@ where
     ///
     /// ```
     pub fn remove_partial(&mut self, first_key: &K1) -> Result<()> {
-        self.get_inner_mut().remove_partial(first_key)
+        self.mut_inner().remove_partial(first_key)
     }
 
     /// Get a range of key value pairs based on the root key.
@@ -209,12 +209,17 @@ where
         self.len() == 0
     }
 
+    /// Remove all entries from the map.
+    pub fn clear(&mut self) {
+        self.mut_inner().clear()
+    }
+
     fn get_inner(&self) -> &multimap::StableMultimap<Memory, K1, K2, V> {
         let canister_id = ic::id();
         self.maps.get(&canister_id).unwrap_or(&self.empty)
     }
 
-    fn get_inner_mut(&mut self) -> &mut multimap::StableMultimap<Memory, K1, K2, V> {
+    fn mut_inner(&mut self) -> &mut multimap::StableMultimap<Memory, K1, K2, V> {
         let canister_id = ic::id();
         self.maps.get_mut(&canister_id).unwrap_or(&mut self.empty)
     }

@@ -61,7 +61,7 @@ where
 
     /// Remove value associated with `key` from stable memory.
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        self.get_inner_mut().remove(key)
+        self.mut_inner().remove(key)
     }
 
     /// List all currently stored key-value pairs.
@@ -79,12 +79,18 @@ where
         self.get_inner().is_empty()
     }
 
+    
+    /// Remove all entries from the map.
+    pub fn clear(&mut self) {
+        self.mut_inner().clear()
+    }
+    
     fn get_inner(&self) -> &unbounded::StableUnboundedMap<Memory, K, V> {
         let canister_id = ic::id();
         self.data.get(&canister_id).unwrap_or(&self.empty)
     }
 
-    fn get_inner_mut(&mut self) -> &mut unbounded::StableUnboundedMap<Memory, K, V> {
+    fn mut_inner(&mut self) -> &mut unbounded::StableUnboundedMap<Memory, K, V> {
         let canister_id = ic::id();
         self.data.get_mut(&canister_id).unwrap_or(&mut self.empty)
     }

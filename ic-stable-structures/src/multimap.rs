@@ -135,6 +135,13 @@ where
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+    
+    pub fn clear(&mut self) {
+        let keys: Vec<_> = self.0.iter().map(|(k, _)| k).collect();
+        for key in keys {
+            self.0.remove(&key);
+        }
+    }
 }
 
 struct KeyPair<K1, K2> {
@@ -492,6 +499,24 @@ mod test {
         assert!(mm.is_empty());
     }
 
+    #[test]
+    fn clear() {
+        let mut mm = StableMultimap::new(DefaultMemoryImpl::default());
+        let k1 = Array([1u8, 2]);
+        let k2 = Array([11u8, 12, 13]);
+        let val = Array([200u8, 200, 200, 100, 100, 123]);
+        mm.insert(&k1, &k2, &val).unwrap();
+
+        let k2 = Array([21u8, 22, 23]);
+        let val = Array([123, 200u8, 200, 100, 100, 255]);
+        mm.insert(&k1, &k2, &val).unwrap();
+        let k1 = Array([21u8, 22]);
+        mm.insert(&k1, &k2, &val).unwrap();
+
+        mm.clear();
+        assert!(mm.is_empty());
+    }
+    
     #[test]
     fn iter() {
         let mm = make_map();

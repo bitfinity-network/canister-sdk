@@ -65,6 +65,16 @@ where
     pub fn iter(&self) -> btreemap::Iter<'_, Memory, K, V> {
         self.0.iter()
     }
+    
+    /// Remove all entries from the map.
+    pub fn clear(&mut self) {
+        let inner = &mut self.0;
+
+        let keys: Vec<_> = inner.iter().map(|(k, _)| k).collect();
+        for key in keys {
+            inner.remove(&key);
+        }
+    }
 }
 
 /// `StableMultimap` stores two keys against a single value, making it possible
@@ -152,11 +162,16 @@ where
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+    
+    /// Remove all entries from the map.
+    pub fn clear(&mut self) {
+        self.0.clear()
+    }
 }
 
 /// Stores list of immutable values in stable memory.
 /// Provides only `append()` and `get()` operations.
-pub struct StableLog<T: Storable>(log::Log<Memory, Memory>, PhantomData<T>);
+pub struct StableLog<T: Storable>(Option<log::Log<Memory, Memory>>, PhantomData<T>);
 
 impl<T: Storable> StableLog<T> {
     /// Create new storage for values with `T` type.
@@ -168,30 +183,46 @@ impl<T: Storable> StableLog<T> {
 
         let index_memory = crate::get_memory_by_id(index_memory_id);
         let data_memory = crate::get_memory_by_id(data_memory_id);
-
-        Ok(Self(log::Log::new(index_memory, data_memory), PhantomData))
+        
+        let inner = log::Log::new(index_memory, data_memory);
+        Ok(Self(Some(inner), PhantomData))
     }
 
     /// Returns reference to value stored in stable memory.
     pub fn get(&self, index: usize) -> Option<T> {
-        self.0.get(index).map(T::from_bytes)
+        self.get_inner().get(index).map(T::from_bytes)
     }
 
     /// Updates value in stable memory.
     pub fn append(&mut self, value: T) -> Result<usize> {
-        self.0
+        self.mut_inner()
             .append(&value.to_bytes())
             .map_err(|_| Error::OutOfStableMemory)
     }
 
     /// Number of values in the log.
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.get_inner().len()
     }
 
     // Returns true, if the Log doesn't contain any values.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+    
+    /// Remove all items from the log.
+    pub fn clear(&mut self) {
+        let inner = self.0.take().expect("inner log is always present");
+        let (index_mem, data_mem) = inner.forget();
+        self.0 = Some(log::Log::new(index_mem, data_mem));
+    }
+    
+    fn get_inner(&self) -> &log::Log<Memory, Memory> {
+        self.0.as_ref().expect("inner log is always present")
+    }
+    
+    fn mut_inner(&mut self) -> &mut log::Log<Memory, Memory> {
+        self.0.as_mut().expect("inner log is always present")
     }
 }
 
@@ -243,5 +274,11 @@ where
     // Returns true if there are no values in the map.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+    
+    
+    /// Remove all entries from the map.
+    pub fn clear(&mut self) {
+        self.0.clear()
     }
 }
