@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ic-cdk = "0.6"
+ic-cdk = { version = "0.6", features = ["timers"]}
 ic-cdk-macros = "0.6"
 
 ic-agent = { version = "0.21", optional = true }
