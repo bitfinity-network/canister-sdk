@@ -142,6 +142,7 @@ where
         for key in keys {
             self.inner.remove(&key);
         }
+        self.items_count = 0;
     }
 }
 
