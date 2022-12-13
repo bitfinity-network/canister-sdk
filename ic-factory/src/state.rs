@@ -10,7 +10,6 @@ use ic_exports::ledger_canister::{
     AccountIdentifier, Subaccount, Tokens, TransferArgs, TransferError, DEFAULT_TRANSFER_FEE,
 };
 use ic_exports::{ic_kit, BlockHeight};
-use ic_helpers::candid_header::CandidHeader;
 use ic_helpers::ledger::LedgerPrincipalExt;
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
@@ -47,8 +46,6 @@ pub struct CanisterModule {
     hash: CanisterHash,
     /// Canister state version.
     version: u32,
-    /// Candid-serialized definition of the canister state type.
-    state_header: CandidHeader,
 }
 
 impl CanisterModule {
@@ -103,7 +100,7 @@ impl FactoryState {
         }
     }
 
-    /// Checks if the request caller is the factory conctroller (owner).
+    /// Checks if the request caller is the factory controller (owner).
     ///
     /// # Errors
     ///
@@ -113,8 +110,8 @@ impl FactoryState {
         self.check_is_owner_internal(caller)
     }
 
-    /// This is needed to deal with ic pecularity, where we cannot call `ic_cdk::caller()`
-    /// twice in the same endpiont, hence we need to store it as a separate variable and
+    /// This is needed to deal with ic peculiarity, where we cannot call `ic_cdk::caller()`
+    /// twice in the same endpoint, hence we need to store it as a separate variable and
     /// pass it around.
     ///
     /// More on that:
@@ -292,13 +289,8 @@ pub struct Owner<'a> {
 }
 
 impl<'a> Authorized<Owner<'a>> {
-    /// Sets the new version of the wasm code that is used to create new canisters. The
-    /// `state_header` argument must provide the current canister state descrition.
-    pub fn set_canister_wasm(
-        &mut self,
-        wasm: Vec<u8>,
-        state_header: CandidHeader,
-    ) -> Result<u32, FactoryError> {
+    /// Sets the new version of the wasm code that is used to create new canisters.
+    pub fn set_canister_wasm(&mut self, wasm: Vec<u8>) -> Result<u32, FactoryError> {
         self.auth.factory.check_update_allowed()?;
         let module_version = self
             .auth
@@ -313,7 +305,6 @@ impl<'a> Authorized<Owner<'a>> {
             wasm,
             hash,
             version: module_version,
-            state_header,
         };
 
         self.auth.factory.upgrading_module = Some(module);
@@ -398,7 +389,7 @@ impl<'a> Authorized<Owner<'a>> {
     /// Drops the canister.
     ///
     /// This method works in a similar way to [`create_canister`], see its documentation for the
-    /// details. [`register_dropped`] must be called after awaiting on the reeturned fututre.
+    /// details. [`register_dropped`] must be called after awaiting on the returned future.
     pub(crate) fn drop_canister(
         &mut self,
         canister_id: Principal,

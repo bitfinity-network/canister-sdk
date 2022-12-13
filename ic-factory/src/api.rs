@@ -4,15 +4,13 @@ use std::rc::Rc;
 
 use candid::Deserialize;
 use ic_canister::{
-    generate_exports, generate_idl, query, state_getter, update, virtual_canister_call,
-    AsyncReturn, Canister, Idl, PreUpdate,
+    generate_exports, generate_idl, query, state_getter, update, AsyncReturn, Canister, Idl,
+    PreUpdate,
 };
 use ic_exports::candid::{CandidType, Nat, Principal};
 use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
-use ic_helpers::candid_header::{validate_header, CandidHeader, TypeCheckResult};
 use ic_helpers::management::ManagementPrincipalExt;
-use ic_storage::stable::Versioned;
 
 use super::error::FactoryError;
 use super::FactoryState;
@@ -51,53 +49,11 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         <Principal as ManagementPrincipalExt>::accept_cycles()
     }
 
-    fn check_all_states<T: CandidType + Versioned>(
-        &self,
-    ) -> AsyncReturn<HashMap<Principal, TypeCheckResult>> {
-        Box::pin(async move {
-            let canisters = self.factory_state().borrow().canister_list();
-            let mut results = HashMap::default();
-
-            for canister in canisters {
-                match virtual_canister_call!(canister, "state_check", (), CandidHeader).await {
-                    Ok(canister_header) => {
-                        results.insert(canister, validate_header::<T>(&canister_header))
-                    }
-                    Err(e) => results.insert(
-                        canister,
-                        TypeCheckResult::Error {
-                            remote_version: 0,
-                            current_version: T::version(),
-                            error_message: format!(
-                                "Failed to query canister state header: {}",
-                                e.1
-                            ),
-                        },
-                    ),
-                };
-            }
-
-            results
-        })
-    }
-
-    fn set_canister_code<T: CandidType + Versioned>(
-        &self,
-        wasm: Vec<u8>,
-        state_header: CandidHeader,
-    ) -> Result<u32, FactoryError> {
-        let validate_res = validate_header::<T>(&state_header);
-        if validate_res.is_err() {
-            return Err(FactoryError::StateCheckFailed(HashMap::from([(
-                self.principal(),
-                validate_res,
-            )])));
-        }
-
+    fn set_canister_code(&self, wasm: Vec<u8>) -> Result<u32, FactoryError> {
         self.factory_state()
             .borrow_mut()
             .check_is_owner()?
-            .set_canister_wasm(wasm, state_header)
+            .set_canister_wasm(wasm)
     }
 
     #[allow(unused_variables)]
@@ -144,27 +100,19 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         })
     }
 
-    fn upgrade_canister<T: CandidType + Versioned>(
+    fn upgrade_canister(
         &mut self,
     ) -> AsyncReturn<Result<HashMap<Principal, UpgradeResult>, FactoryError>> {
         Box::pin(async move {
             let state_rc = self.factory_state();
             let state_lock = state_rc.borrow_mut().lock()?;
-
             let caller = ic_exports::ic_kit::ic::caller();
 
-            let state_checks = self.check_all_states::<T>().await;
-            if state_checks
-                .iter()
-                .any(|(_, res)| matches!(res, TypeCheckResult::Error { .. }))
-            {
-                return Err(FactoryError::StateCheckFailed(state_checks));
-            }
-
+            let canisters = self.factory_state().borrow().canister_list();
             let module_hash = state_rc.borrow().module()?.hash().clone();
 
             let mut results = HashMap::new();
-            for (canister, _) in state_checks {
+            for canister in canisters {
                 if state_rc.borrow().canisters()[&canister] == module_hash {
                     results.insert(canister, UpgradeResult::Noop);
                     continue;
