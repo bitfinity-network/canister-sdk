@@ -77,10 +77,11 @@ impl<T: Storable> StableLog<T> {
         let canister_id = ic::id();
         if let Some(log) = self.data.remove(&canister_id) {
             let (index_memory, data_memory) = log.forget();
-            self.data.insert(canister_id, log::Log::new(index_memory, data_memory));
+            self.data
+                .insert(canister_id, log::Log::new(index_memory, data_memory));
         }
     }
-    
+
     fn get_inner(&self) -> Option<&log::Log<Memory, Memory>> {
         let canister_id = ic::id();
         self.data.get(&canister_id)
@@ -107,7 +108,7 @@ mod tests {
 
         assert_eq!(log.get(0).unwrap(), 10);
         assert_eq!(log.get(1).unwrap(), 20);
-        
+
         log.clear();
         assert!(log.is_empty());
     }

@@ -65,7 +65,7 @@ where
     pub fn iter(&self) -> btreemap::Iter<'_, Memory, K, V> {
         self.0.iter()
     }
-    
+
     /// Remove all entries from the map.
     pub fn clear(&mut self) {
         let inner = &mut self.0;
@@ -162,7 +162,7 @@ where
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-    
+
     /// Remove all entries from the map.
     pub fn clear(&mut self) {
         self.0.clear()
@@ -183,7 +183,7 @@ impl<T: Storable> StableLog<T> {
 
         let index_memory = crate::get_memory_by_id(index_memory_id);
         let data_memory = crate::get_memory_by_id(data_memory_id);
-        
+
         let inner = log::Log::new(index_memory, data_memory);
         Ok(Self(Some(inner), PhantomData))
     }
@@ -209,18 +209,18 @@ impl<T: Storable> StableLog<T> {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-    
+
     /// Remove all items from the log.
     pub fn clear(&mut self) {
         let inner = self.0.take().expect("inner log is always present");
         let (index_mem, data_mem) = inner.forget();
         self.0 = Some(log::Log::new(index_mem, data_mem));
     }
-    
+
     fn get_inner(&self) -> &log::Log<Memory, Memory> {
         self.0.as_ref().expect("inner log is always present")
     }
-    
+
     fn mut_inner(&mut self) -> &mut log::Log<Memory, Memory> {
         self.0.as_mut().expect("inner log is always present")
     }
@@ -275,8 +275,7 @@ where
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-    
-    
+
     /// Remove all entries from the map.
     pub fn clear(&mut self) {
         self.0.clear()

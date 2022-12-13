@@ -135,7 +135,7 @@ where
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-    
+
     pub fn clear(&mut self) {
         let keys: Vec<_> = self.0.iter().map(|(k, _)| k).collect();
         for key in keys {
@@ -516,7 +516,7 @@ mod test {
         mm.clear();
         assert!(mm.is_empty());
     }
-    
+
     #[test]
     fn iter() {
         let mm = make_map();

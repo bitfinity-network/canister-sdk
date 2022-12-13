@@ -135,8 +135,7 @@ where
     pub fn is_empty(&self) -> bool {
         self.items_count == 0
     }
-    
-    
+
     /// Remove all entries from the map.
     pub fn clear(&mut self) {
         let keys: Vec<_> = self.inner.iter().map(|(k, _)| k).collect();

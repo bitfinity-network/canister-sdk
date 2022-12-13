@@ -79,12 +79,11 @@ where
         self.get_inner().is_empty()
     }
 
-    
     /// Remove all entries from the map.
     pub fn clear(&mut self) {
         self.mut_inner().clear()
     }
-    
+
     fn get_inner(&self) -> &unbounded::StableUnboundedMap<Memory, K, V> {
         let canister_id = ic::id();
         self.data.get(&canister_id).unwrap_or(&self.empty)
