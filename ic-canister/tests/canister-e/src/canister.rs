@@ -24,15 +24,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use candid::CandidType;
-use candid::Deserialize;
-use candid::Principal;
-use ic_canister::generate_idl;
-use ic_canister::query;
-use ic_canister::update;
-use ic_canister::Canister;
-use ic_canister::Idl;
-use ic_canister::PreUpdate;
+use candid::{CandidType, Deserialize, Principal};
+use ic_canister::{generate_idl, query, update, Canister, Idl, PreUpdate};
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 

@@ -3,7 +3,7 @@
 
 [package]
 name = "ic-exports"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
@@ -13,7 +13,7 @@ ic-cdk-macros = "0.6"
 ic-agent = { version = "0.21", optional = true }
 
 
-ic-stable-structures = "0.1.1"
+ic-stable-structures = "0.3.0"
 ledger-canister = {git = "https://github.com/dfinity/ic", branch = "rc--2022-10-06_18-31"}
 ic-ledger-core = {git = "https://github.com/dfinity/ic", branch = "rc--2022-10-06_18-31"}
 ic-base-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-10-06_18-31"}

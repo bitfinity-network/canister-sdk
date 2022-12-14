@@ -1,7 +1,9 @@
-use crate::error::FactoryError;
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize};
 use std::cell::RefCell;
 use std::rc::Rc;
+
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize};
+
+use crate::error::FactoryError;
 
 /// A guard to prevent factory state changes while an async operation is in process.
 ///
@@ -91,8 +93,9 @@ impl<'de> Deserialize<'de> for UpdateLock {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use candid::{Decode, Encode};
+
+    use super::*;
 
     #[test]
     fn unlock_on_drop() {

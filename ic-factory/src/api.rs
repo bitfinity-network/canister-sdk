@@ -1,16 +1,22 @@
-use super::{error::FactoryError, FactoryState};
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
 use candid::Deserialize;
 use ic_canister::{
     generate_exports, generate_idl, query, state_getter, update, AsyncReturn, Canister, Idl,
     PreUpdate,
 };
-use ic_exports::{
-    candid::{CandidType, Nat, Principal},
-    ic_base_types::PrincipalId,
-    ic_cdk::export::candid::utils::ArgumentEncoder,
-};
+use ic_exports::candid::{CandidType, Nat, Principal};
+use ic_exports::ic_base_types::PrincipalId;
+use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
+use ic_exports::ic_kit::ic;
+use ic_exports::ledger_canister::{AccountIdentifier, Subaccount, DEFAULT_TRANSFER_FEE};
+use ic_helpers::ledger::LedgerPrincipalExt;
 use ic_helpers::management::ManagementPrincipalExt;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+
+use super::error::FactoryError;
+use super::FactoryState;
 
 pub trait FactoryCanister: Canister + Sized + PreUpdate {
     #[state_getter]
@@ -207,9 +213,6 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// not used ICP minus transaction fee.
     #[update(trait = true)]
     fn refund_icp(&self) -> AsyncReturn<Result<u64, FactoryError>> {
-        use ic_exports::ledger_canister::{Subaccount, DEFAULT_TRANSFER_FEE};
-        use ic_helpers::ledger::LedgerPrincipalExt;
-
         let ledger = self.factory_state().borrow().ledger_principal();
         Box::pin(async move {
             let caller = ic_exports::ic_kit::ic::caller();
@@ -256,11 +259,6 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Returns the AccountIdentifier for the caller subaccount in the factory account.
     #[query(trait = true)]
     fn get_ledger_account_id(&self) -> String {
-        use ic_exports::{
-            ic_kit::ic,
-            ledger_canister::{AccountIdentifier, Subaccount},
-        };
-
         let factory_id = ic::id();
         let caller = ic::caller();
         let account = AccountIdentifier::new(

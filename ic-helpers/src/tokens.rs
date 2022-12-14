@@ -3,17 +3,12 @@ use std::mem::size_of;
 
 use auto_ops::impl_op_ex;
 use crypto_bigint::{CheckedAdd, CheckedMul, CheckedSub, NonZero, U256};
-use ic_exports::ic_cdk::export::candid::{
-    self,
-    types::{Serializer, Type, TypeId},
-    CandidType, Deserialize,
-};
+use ic_exports::ic_cdk::export::candid::types::{Serializer, Type, TypeId};
+use ic_exports::ic_cdk::export::candid::{self, CandidType, Deserialize};
 use num_bigint::BigUint;
 use num_traits::{FromPrimitive, ToPrimitive};
-use serde::{
-    de::{Error, Unexpected},
-    Deserializer, Serialize,
-};
+use serde::de::{Error, Unexpected};
+use serde::{Deserializer, Serialize};
 
 /// Token amount limited by the value of u128::MAX (2^128 - 1).
 ///
@@ -375,9 +370,10 @@ impl std::fmt::Debug for Tokens256 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use candid::{Decode, Encode};
     use crypto_bigint::CheckedMul;
+
+    use super::*;
 
     #[test]
     fn tokens_u128_add() {

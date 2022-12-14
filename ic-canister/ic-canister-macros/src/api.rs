@@ -1,10 +1,11 @@
+use std::collections::BTreeMap;
+use std::sync::Mutex;
+
 use lazy_static::lazy_static;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{quote, ToTokens};
 use serde::Deserialize;
-use std::collections::BTreeMap;
-use std::sync::Mutex;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
