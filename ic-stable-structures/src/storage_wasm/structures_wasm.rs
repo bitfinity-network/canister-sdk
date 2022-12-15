@@ -66,6 +66,16 @@ where
         self.0.iter()
     }
 
+    /// Count of items in the map.
+    pub fn len(&self) -> u64 {
+        self.0.len()
+    }
+
+    /// Is the map empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Remove all entries from the map.
     pub fn clear(&mut self) {
         let inner = &mut self.0;
@@ -253,7 +263,7 @@ where
 
     /// Add or replace a value associated with `key` in stable memory.
     pub fn insert(&mut self, key: &K, value: &V) -> Result<()> {
-        self.0.insert(&key, &value)
+        self.0.insert(key, value)
     }
 
     /// Remove a value associated with `key` from stable memory.
