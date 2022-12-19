@@ -1,7 +1,7 @@
 use crate::{
     core::{create_canister, drop_canister, upgrade_canister},
     error::FactoryError,
-    top_up,
+    top_up::{self, CYCLES_MINTING_CANISTER},
     update_lock::UpdateLock,
 };
 use ic_canister::virtual_canister_call;
@@ -48,6 +48,17 @@ pub struct CanisterModule {
     hash: CanisterHash,
     /// Canister state version.
     version: u32,
+}
+
+#[derive(Debug, Default, IcStorage)]
+pub struct CmcConfig {
+    pub cmc_principal: Option<Principal>,
+}
+
+impl CmcConfig {
+    pub fn cmc_principal(&self) -> Principal {
+        self.cmc_principal.unwrap_or(CYCLES_MINTING_CANISTER)
+    }
 }
 
 impl CanisterModule {
@@ -270,13 +281,14 @@ impl FactoryState {
     pub fn consume_provided_cycles_or_icp(
         &self,
         caller: Principal,
+        cmc: Principal,
     ) -> impl Future<Output = Result<u64, FactoryError>> {
         let ledger = self.ledger_principal();
         let icp_to = self.icp_to();
         let icp_fee = self.icp_fee();
         let controller = self.controller();
 
-        consume_provided_icp(caller, ledger, icp_to, icp_fee, controller)
+        consume_provided_icp(caller, ledger, cmc, icp_to, icp_fee, controller)
     }
 }
 
@@ -465,13 +477,14 @@ const INITIAL_CANISTER_CYCLES: u64 = 10u64.pow(12) * 5;
 async fn consume_provided_icp(
     caller: Principal,
     ledger: Principal,
+    cmc: Principal,
     icp_to: Principal,
     icp_fee: u64,
     controller: Principal,
 ) -> Result<u64, FactoryError> {
     if caller != controller {
         // If the caller is not the controller, we require the caller to provide cycles.
-        return transfer_and_top_up(icp_fee, ledger, caller, icp_to).await;
+        return transfer_and_top_up(icp_fee, ledger, cmc, caller, icp_to).await;
     }
 
     Ok(INITIAL_CANISTER_CYCLES)
@@ -484,6 +497,7 @@ async fn consume_provided_icp(
 async fn transfer_and_top_up(
     icp_fee: u64,
     ledger: Principal,
+    cmc: Principal,
     caller: Principal,
     icp_to: Principal,
 ) -> Result<u64, FactoryError> {
@@ -505,11 +519,15 @@ async fn transfer_and_top_up(
         )))?;
     }
 
-    let block_height =
-        top_up::transfer_icp_to_cmc(top_up_fee, ledger, Subaccount::from(&PrincipalId(caller)))
-            .await?;
+    let block_height = top_up::transfer_icp_to_cmc(
+        cmc,
+        top_up_fee,
+        ledger,
+        Subaccount::from(&PrincipalId(caller)),
+    )
+    .await?;
 
-    let cycles = top_up::mint_cycles_to_factory(block_height).await?;
+    let cycles = top_up::mint_cycles_to_factory(cmc, block_height).await?;
 
     // Send the remaining ICP to the `icp_to` Principal
     send_remaining_fee_to(caller, icp_to, ledger, icp_fee - top_up_fee).await?;

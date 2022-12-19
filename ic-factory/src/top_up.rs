@@ -17,7 +17,8 @@ use ic_exports::{
 use crate::error::FactoryError;
 
 /// This Principal is a slice equivalent to `rkp4c-7iaaa-aaaaa-aaaca-cai`.
-const CYCLES_MINTING_CANISTER: Principal = Principal::from_slice(&[0, 0, 0, 0, 0, 0, 0, 4, 1, 1]);
+pub(crate) const CYCLES_MINTING_CANISTER: Principal =
+    Principal::from_slice(&[0, 0, 0, 0, 0, 0, 0, 4, 1, 1]);
 
 /// Calculates amount of ICP that can be converted to the given amount of cycles
 pub async fn icp_amount_from_cycles(cycles: u64) -> Result<u64, FactoryError> {
@@ -52,16 +53,14 @@ async fn get_conversion_rate() -> Result<IcpXdrConversionRateCertifiedResponse, 
 }
 
 pub(crate) async fn transfer_icp_to_cmc(
+    cmc: Principal,
     amount: u64,
     ledger: Principal,
     caller_subaccount: Subaccount,
 ) -> Result<BlockHeight, FactoryError> {
     let canister_id = ic_exports::ic_cdk::id();
-    let to = AccountIdentifier::new(
-        CYCLES_MINTING_CANISTER.into(),
-        Some((&PrincipalId::from(canister_id)).into()),
-    )
-    .to_address();
+    let to = AccountIdentifier::new(cmc.into(), Some((&PrincipalId::from(canister_id)).into()))
+        .to_address();
 
     let args = TransferArgs {
         memo: MEMO_TOP_UP_CANISTER,
@@ -79,6 +78,7 @@ pub(crate) async fn transfer_icp_to_cmc(
 }
 
 pub(crate) async fn mint_cycles_to_factory(
+    cmc: Principal,
     block_height: BlockHeight,
 ) -> Result<u128, FactoryError> {
     let to_canister =
@@ -90,7 +90,7 @@ pub(crate) async fn mint_cycles_to_factory(
     };
 
     virtual_canister_call!(
-        CYCLES_MINTING_CANISTER,
+        cmc,
         "notify_top_up",
         (notify_details,),
         Result<u128, NotifyError>
