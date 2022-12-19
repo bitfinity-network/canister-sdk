@@ -4,28 +4,24 @@
 //!
 //! [`The IC Management Canister`]: https://sdk.dfinity.org/docs/interface-spec/index.html#ic-management-canister
 
+use std::convert::{AsRef, From};
+
 use async_trait::async_trait;
 use ic_canister::virtual_canister_call;
-use ic_exports::{
-    ic_base_types::CanisterId,
-    ic_cdk::{
-        api::call::RejectionCode,
-        export::candid::{encode_args, utils::ArgumentEncoder, CandidType, Nat, Principal},
-    },
-    ic_ic00_types::{
-        ECDSAPublicKeyArgs, ECDSAPublicKeyResponse, EcdsaKeyId, SignWithECDSAArgs,
-        SignWithECDSAReply,
-    },
-    ic_kit::ic,
+use ic_exports::ic_base_types::CanisterId;
+use ic_exports::ic_cdk::api::call::RejectionCode;
+use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
+use ic_exports::ic_cdk::export::candid::{encode_args, CandidType, Nat, Principal};
+use ic_exports::ic_ic00_types::{
+    ECDSAPublicKeyArgs, ECDSAPublicKeyResponse, EcdsaKeyId, SignWithECDSAArgs, SignWithECDSAReply,
 };
+use ic_exports::ic_kit::ic;
 use k256::pkcs8::{self, AlgorithmIdentifier, ObjectIdentifier, SubjectPublicKeyInfo};
 use libsecp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
-use std::convert::{AsRef, From};
-
-use crate::Pubkey;
 
 use super::private::Sealed;
+use crate::Pubkey;
 
 pub type CanisterID = Principal;
 pub type UserID = Principal;

@@ -7,6 +7,9 @@ edition = "2021"
 default = []
 export-api = []
 
+# Add debug outputs for the canister
+debug-logs = []
+
 [dependencies]
 candid = "0.8"
 serde = "1.0"

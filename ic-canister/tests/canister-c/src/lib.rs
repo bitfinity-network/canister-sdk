@@ -1,9 +1,11 @@
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_metrics::{Metrics, MetricsStorage};
-use ic_storage::{stable::Versioned, IcStorage};
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use ic_canister::{generate_idl, update, Canister, MethodType, PreUpdate};
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_metrics::{Metrics, MetricsStorage};
+use ic_storage::stable::Versioned;
+use ic_storage::IcStorage;
 
 #[derive(Default, CandidType, Deserialize, IcStorage)]
 pub struct State {
@@ -60,9 +62,10 @@ pub fn idl() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ic_canister::canister_call;
     use ic_exports::ic_kit::MockContext;
+
+    use super::*;
 
     #[tokio::test]
     async fn get_metrics() {

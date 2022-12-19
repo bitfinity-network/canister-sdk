@@ -1,13 +1,14 @@
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use ic_canister::{generate_exports, generate_idl, state_getter, update, Canister, Idl, PreUpdate};
-use ic_exports::ic_cdk::{self, export::candid::Principal};
+#[cfg(feature = "debug-logs")]
+use ic_exports::ic_cdk;
+use ic_exports::ic_cdk::export::candid::Principal;
 use ic_metrics::Interval;
 
-use crate::{
-    error::{AuctionError, Result},
-    state::{AuctionInfo, AuctionState, BiddingInfo},
-};
+use crate::error::{AuctionError, Result};
+use crate::state::{AuctionInfo, AuctionState, BiddingInfo};
 
 pub trait Auction: Canister + Sized {
     #[state_getter]
@@ -15,11 +16,13 @@ pub trait Auction: Canister + Sized {
 
     fn canister_pre_update(&self, method_name: &str, _method_type: ic_canister::MethodType) {
         if method_name == "run_auction" {
+            #[cfg(feature = "debug-logs")]
             if !self.auction_state().borrow().bidding_state.is_auction_due() {
                 ic_cdk::println!("Too early to begin auction");
             }
-        } else if let Err(auction_error) = self.run_auction() {
-            ic_cdk::println!("Auction error: {auction_error:#?}");
+        } else if let Err(_auction_error) = self.run_auction() {
+            #[cfg(feature = "debug-logs")]
+            ic_cdk::println!("Auction error: {_auction_error:#?}");
         }
     }
 

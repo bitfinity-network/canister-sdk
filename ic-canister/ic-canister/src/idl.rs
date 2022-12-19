@@ -1,9 +1,8 @@
 use std::fmt;
 
-use ic_exports::ic_cdk::export::candid::{
-    self,
-    types::{internal::TypeContainer, Type},
-};
+use ic_exports::ic_cdk::export::candid;
+use ic_exports::ic_cdk::export::candid::types::internal::TypeContainer;
+use ic_exports::ic_cdk::export::candid::types::Type;
 
 pub struct Idl {
     pub env: TypeContainer,

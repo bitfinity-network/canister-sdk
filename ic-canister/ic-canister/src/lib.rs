@@ -513,16 +513,17 @@
 //!
 //! You can generate IDL (Candid) definition for your canister using [generate_idl] macro and then compile it via `candid::bindings::candid::compile()`.
 
-use ic_exports::ic_cdk::{
-    api::call::{CallResult, RejectionCode},
-    export::{
-        candid::{self, utils::ArgumentDecoder, CandidType, Deserialize},
-        Principal,
-    },
-};
-use std::{cell::RefCell, collections::HashMap, future::Future, pin::Pin, rc::Rc};
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::rc::Rc;
 
 pub use ic_canister_macros::*;
+use ic_exports::ic_cdk::api::call::{CallResult, RejectionCode};
+use ic_exports::ic_cdk::export::candid::utils::ArgumentDecoder;
+use ic_exports::ic_cdk::export::candid::{self, CandidType, Deserialize};
+use ic_exports::ic_cdk::export::Principal;
 
 pub mod idl;
 pub use idl::*;

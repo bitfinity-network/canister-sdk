@@ -1,9 +1,9 @@
-use crate::error::FactoryError;
-use ic_exports::ic_cdk::{
-    api::call::CallResult,
-    export::candid::{utils::ArgumentEncoder, Principal},
-};
+use ic_exports::ic_cdk::api::call::CallResult;
+use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
+use ic_exports::ic_cdk::export::candid::Principal;
 use ic_helpers::management::{CanisterSettings, InstallCodeMode, ManagementPrincipalExt};
+
+use crate::error::FactoryError;
 
 pub async fn create_canister<T: ArgumentEncoder + Send>(
     wasm_module: Vec<u8>,

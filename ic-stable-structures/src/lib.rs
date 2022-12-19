@@ -1,4 +1,5 @@
 mod multimap;
+mod unbounded;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod storage;
@@ -8,15 +9,19 @@ mod storage;
 mod storage;
 
 mod error;
+#[cfg(test)]
+mod test_utils;
 
 pub use error::{Error, Result};
-pub use ic_exports::stable_structures::{memory_manager::MemoryId, Storable};
-use ic_exports::stable_structures::{
-    memory_manager::{self, VirtualMemory},
-    DefaultMemoryImpl,
-};
+pub use ic_exports::stable_structures::memory_manager::MemoryId;
+use ic_exports::stable_structures::memory_manager::{self, VirtualMemory};
+use ic_exports::stable_structures::DefaultMemoryImpl;
+pub use ic_exports::stable_structures::{BoundedStorable, Storable};
 pub use multimap::{Iter, RangeIter};
-pub use storage::{get_memory_by_id, StableBTreeMap, StableCell, StableMultimap};
+pub use storage::{
+    get_memory_by_id, StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap,
+};
+pub use unbounded::{ChunkSize, Iter as UnboundedIter, SlicedStorable};
 
 pub type Memory = VirtualMemory<DefaultMemoryImpl>;
 

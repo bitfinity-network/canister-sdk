@@ -1,15 +1,13 @@
-use ic_canister::{
-    canister_call, canister_notify, generate_idl, virtual_canister_call, virtual_canister_notify,
-    PreUpdate,
-};
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_storage::IcStorage;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use canister_a::{CanisterA, CanisterAImpl, StateA};
-
-use ic_canister::{init, update, Canister};
+use ic_canister::{
+    canister_call, canister_notify, generate_idl, init, update, virtual_canister_call,
+    virtual_canister_notify, Canister, PreUpdate,
+};
+use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_storage::IcStorage;
 
 #[derive(IcStorage, CandidType, Deserialize)]
 struct StateB {
@@ -123,9 +121,10 @@ pub fn idl() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ic_exports::ic_kit::mock_principals::alice;
     use ic_exports::ic_kit::MockContext;
+
+    use super::*;
 
     fn get_canister_b(canister_a: Principal) -> CanisterB {
         let canister = CanisterB::init_instance();

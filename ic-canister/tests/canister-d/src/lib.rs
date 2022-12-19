@@ -1,9 +1,8 @@
-use ic_canister::{generate_idl, Idl, PreUpdate};
-use ic_exports::ic_cdk::export::candid::Principal;
-use ic_stable_structures::{MemoryId, StableCell};
 use std::cell::RefCell;
 
-use ic_canister::{generate_exports, query, update, Canister};
+use ic_canister::{generate_exports, generate_idl, query, update, Canister, Idl, PreUpdate};
+use ic_exports::ic_cdk::export::candid::Principal;
+use ic_stable_structures::{MemoryId, StableCell};
 
 const MEMORY_ID: MemoryId = MemoryId::new(0);
 
@@ -56,9 +55,11 @@ pub fn idl() -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::{CanisterD, CanisterDImpl};
     use ic_canister::{canister_call, Canister};
-    use ic_exports::ic_kit::{inject::get_context, MockContext};
+    use ic_exports::ic_kit::inject::get_context;
+    use ic_exports::ic_kit::MockContext;
+
+    use crate::{CanisterD, CanisterDImpl};
 
     #[test]
     fn canister_works() {
