@@ -29,12 +29,12 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         CmcConfig::get()
     }
 
-    #[query]
+    #[query(trait = true)]
     fn cmc_principal(&self) -> Principal {
         self.cmc_config().borrow().cmc_principal()
     }
 
-    #[update]
+    #[update(trait = true)]
     fn set_cmc_principal(&mut self, cmc_principal: Principal) -> Result<(), FactoryError> {
         self.factory_state().borrow_mut().check_is_owner()?;
         self.cmc_config().borrow_mut().cmc_principal = Some(cmc_principal);
