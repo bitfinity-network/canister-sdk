@@ -14,6 +14,9 @@ use ic_exports::ic_kit::ic;
 use ic_exports::ledger_canister::{AccountIdentifier, Subaccount, DEFAULT_TRANSFER_FEE};
 use ic_helpers::ledger::LedgerPrincipalExt;
 use ic_helpers::management::ManagementPrincipalExt;
+use ic_storage::IcStorage;
+
+use crate::CmcConfig;
 
 use super::error::FactoryError;
 use super::FactoryState;
@@ -21,6 +24,22 @@ use super::FactoryState;
 pub trait FactoryCanister: Canister + Sized + PreUpdate {
     #[state_getter]
     fn factory_state(&self) -> Rc<RefCell<FactoryState>>;
+
+    fn cmc_config(&self) -> Rc<RefCell<CmcConfig>> {
+        CmcConfig::get()
+    }
+
+    #[query]
+    fn cmc_principal(&self) -> Principal {
+        self.cmc_config().borrow().cmc_principal()
+    }
+
+    #[update]
+    fn set_cmc_principal(&mut self, cmc_principal: Principal) -> Result<(), FactoryError> {
+        self.factory_state().borrow_mut().check_is_owner()?;
+        self.cmc_config().borrow_mut().cmc_principal = Some(cmc_principal);
+        Ok(())
+    }
 
     /// Returns the checksum of a wasm module in hex representation.
     #[query(trait = true)]
@@ -77,7 +96,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
 
                     self.factory_state()
                         .borrow()
-                        .consume_provided_cycles_or_icp(caller)
+                        .consume_provided_cycles_or_icp(caller, self.cmc_principal())
                         .await?
                 }
 
