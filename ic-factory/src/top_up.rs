@@ -18,8 +18,8 @@ pub(crate) const CYCLES_MINTING_CANISTER: Principal =
     Principal::from_slice(&[0, 0, 0, 0, 0, 0, 0, 4, 1, 1]);
 
 /// Calculates amount of ICP that can be converted to the given amount of cycles
-pub async fn icp_amount_from_cycles(cycles: u64) -> Result<u64, FactoryError> {
-    let rate = get_conversion_rate().await?.data;
+pub async fn icp_amount_from_cycles(cmc: Principal, cycles: u64) -> Result<u64, FactoryError> {
+    let rate = get_conversion_rate(cmc).await?.data;
 
     if rate.xdr_permyriad_per_icp == 0 {
         return Err(FactoryError::GenericError(
@@ -38,9 +38,11 @@ fn calculate_icp(cycles: u64, xdr_permyriad_per_icp: u64) -> u64 {
     xdr / xdr_permyriad_per_icp
 }
 
-async fn get_conversion_rate() -> Result<IcpXdrConversionRateCertifiedResponse, FactoryError> {
+async fn get_conversion_rate(
+    cmc: Principal,
+) -> Result<IcpXdrConversionRateCertifiedResponse, FactoryError> {
     virtual_canister_call!(
-        CYCLES_MINTING_CANISTER,
+        cmc,
         "get_icp_xdr_conversion_rate",
         (),
         IcpXdrConversionRateCertifiedResponse
@@ -127,13 +129,21 @@ mod tests {
             (3_000_000_000_000, 61761436),
         ];
 
-        let expected_icp = icp_amount_from_cycles(cycles_icp[0].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(CYCLES_MINTING_CANISTER, cycles_icp[0].0)
+            .await
+            .unwrap();
         assert_eq!(expected_icp, cycles_icp[0].1);
-        let expected_icp = icp_amount_from_cycles(cycles_icp[1].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(CYCLES_MINTING_CANISTER, cycles_icp[1].0)
+            .await
+            .unwrap();
         assert_eq!(expected_icp, cycles_icp[1].1);
-        let expected_icp = icp_amount_from_cycles(cycles_icp[2].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(CYCLES_MINTING_CANISTER, cycles_icp[2].0)
+            .await
+            .unwrap();
         assert_eq!(expected_icp, cycles_icp[2].1);
-        let expected_icp = icp_amount_from_cycles(cycles_icp[3].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(CYCLES_MINTING_CANISTER, cycles_icp[3].0)
+            .await
+            .unwrap();
         assert_eq!(expected_icp, cycles_icp[3].1);
     }
 
@@ -144,7 +154,9 @@ mod tests {
             Ok::<u128, NotifyError>(1_000_000_000_000)
         });
         let block_height = 100;
-        let cycles = mint_cycles_to_factory(block_height).await.unwrap();
+        let cycles = mint_cycles_to_factory(CYCLES_MINTING_CANISTER, block_height)
+            .await
+            .unwrap();
         assert_eq!(cycles, 1_000_000_000_000);
     }
 }

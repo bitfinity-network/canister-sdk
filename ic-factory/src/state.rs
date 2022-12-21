@@ -508,7 +508,7 @@ async fn transfer_and_top_up(
         Err(FactoryError::NotEnoughIcp(balance, icp_fee))?;
     }
 
-    let top_up_fee = top_up::icp_amount_from_cycles(INITIAL_CANISTER_CYCLES).await?;
+    let top_up_fee = top_up::icp_amount_from_cycles(cmc, INITIAL_CANISTER_CYCLES).await?;
 
     if top_up_fee > icp_fee {
         Err(FactoryError::GenericError(format!(
