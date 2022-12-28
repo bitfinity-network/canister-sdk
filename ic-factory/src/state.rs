@@ -38,7 +38,7 @@ impl From<&[u8]> for CanisterHash {
 
 impl Storable for CanisterHash {
     fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
-        self.0.into()
+        self.0.as_slice().into()
     }
 
     fn from_bytes(bytes: Vec<u8>) -> Self {
@@ -142,7 +142,7 @@ impl FactoryState {
         caller: Principal,
     ) -> Result<Authorized<Owner>, FactoryError> {
         if with_config(|cfg| cfg.controller == caller) {
-            Ok(Authorized::<Owner> { auth: Owner {} })
+            Ok(Authorized::<Owner> { _auth: Owner {} })
         } else {
             Err(FactoryError::AccessDenied)
         }
@@ -226,9 +226,8 @@ impl FactoryState {
     ) -> Result<impl Future<Output = CallResult<Principal>>, FactoryError> {
         self.check_lock(lock);
 
-        let wasm = self.module()?.wasm.clone();
         Ok(create_canister(
-            wasm,
+            self.module()?.wasm,
             init_args,
             cycles,
             controller.map(|p| vec![ic_exports::ic_kit::ic::id(), p]),
@@ -264,18 +263,12 @@ impl FactoryState {
         Ok(())
     }
 
-    fn insert_canister(
-        &mut self,
-        canister_id: Principal,
-        hash: CanisterHash,
-    ) -> Result<(), FactoryError> {
+    fn insert_canister(&mut self, canister_id: Principal, hash: CanisterHash) {
         CANISTERS_MAP.with(|map| {
             map.borrow_mut()
                 .insert(PrincipalKey(canister_id), hash)
                 .expect("failed to insert canister hash to stable storage")
         });
-
-        Ok(())
     }
 
     fn remove_canister(&mut self, canister_id: Principal) -> Option<CanisterHash> {
@@ -291,8 +284,11 @@ impl FactoryState {
 
     /// Replaces canister module.
     fn set_upgrading_module(&mut self, new_module: Option<CanisterModule>) {
-        UPGRADING_MODULE_CELL
-            .with(|cell| cell.borrow_mut().set(StorableCanisterModule(new_module)));
+        UPGRADING_MODULE_CELL.with(|cell| {
+            cell.borrow_mut()
+                .set(StorableCanisterModule(new_module))
+                .expect("failed to set upgrading canister module to stable storage")
+        });
     }
 
     /// Number of canisters the factory keeps track of.
@@ -302,16 +298,12 @@ impl FactoryState {
 
     /// List of canisters the factory keeps track of.
     pub fn canister_list(&self) -> Vec<Principal> {
-        CANISTERS_MAP
-            .with(|map| map.borrow().iter().map(|(k, _)| k.0))
-            .collect()
+        CANISTERS_MAP.with(|map| map.borrow().iter().map(|(k, _)| k.0).collect())
     }
 
     /// HashMap of canisters the factory keeps track of with their code hashes.
     pub fn canisters(&self) -> HashMap<Principal, CanisterHash> {
-        CANISTERS_MAP
-            .with(|map| map.borrow().iter().map(|(k, v)| (k.0, v)))
-            .collect()
+        CANISTERS_MAP.with(|map| map.borrow().iter().map(|(k, v)| (k.0, v)).collect())
     }
 
     /// Locks the `FactoryState`, prohibiting any update operations on it until the returned lock
@@ -362,7 +354,7 @@ impl FactoryState {
 
 /// Abstraction to provided compile time checks for factory method access.
 pub struct Authorized<T> {
-    auth: T,
+    _auth: T,
 }
 
 /// The operation caller is the factory controller (owner).
@@ -385,14 +377,14 @@ impl Authorized<Owner> {
             version: module_version,
         };
 
-        Self::factory_state().set_upgrading_module(Some(module));
+        factory_state().set_upgrading_module(Some(module));
         Ok(module_version)
     }
 
     /// Update the factory controller.
     pub fn set_controller(&mut self, controller: Principal) -> Result<(), FactoryError> {
-        Self::factory_state().check_update_allowed()?;
-        Self::factory_state().set_controller(controller);
+        factory_state().check_update_allowed()?;
+        factory_state().set_controller(controller);
 
         Ok(())
     }
@@ -402,7 +394,7 @@ impl Authorized<Owner> {
         &mut self,
         ledger_principal: Principal,
     ) -> Result<(), FactoryError> {
-        let mut state = Self::factory_state();
+        let mut state = factory_state();
         state.check_update_allowed()?;
         state.set_ledger_principal(ledger_principal);
         Ok(())
@@ -410,7 +402,7 @@ impl Authorized<Owner> {
 
     /// Update the icp_fee configuration.
     pub fn set_icp_fee(&mut self, fee: u64) -> Result<(), FactoryError> {
-        let mut state = Self::factory_state();
+        let mut state = factory_state();
         state.check_update_allowed()?;
         state.set_icp_fee(fee);
         Ok(())
@@ -418,7 +410,7 @@ impl Authorized<Owner> {
 
     /// Update the icp_to configuration.
     pub fn set_fee_to(&mut self, fee_to: Principal) -> Result<(), FactoryError> {
-        let mut state = Self::factory_state();
+        let mut state = factory_state();
         state.check_update_allowed()?;
         state.set_icp_to(fee_to);
         Ok(())
@@ -434,7 +426,7 @@ impl Authorized<Owner> {
         canister_id: Principal,
         lock: &UpdateLock,
     ) -> Result<impl Future<Output = CallResult<()>>, FactoryError> {
-        let state = Self::factory_state();
+        let state = factory_state();
         state.check_lock(lock);
 
         Ok(upgrade_canister(canister_id, state.module()?.wasm))
@@ -446,7 +438,7 @@ impl Authorized<Owner> {
         canister_id: Principal,
         lock: &UpdateLock,
     ) -> Result<(), FactoryError> {
-        let mut state = Self::factory_state();
+        let mut state = factory_state();
         state.check_lock(lock);
         let hash = state.module()?.hash;
         state.insert_canister(canister_id, hash);
@@ -458,7 +450,7 @@ impl Authorized<Owner> {
     /// the factory controller and is supposed to be used only in case the state was broken by some
     /// disaster.
     pub(crate) fn release_update_lock(&mut self) {
-        Self::factory_state().unlock()
+        factory_state().unlock()
     }
 
     /// Drops the canister.
@@ -470,7 +462,7 @@ impl Authorized<Owner> {
         canister_id: Principal,
         lock: &UpdateLock,
     ) -> impl Future<Output = Result<(), FactoryError>> {
-        Self::factory_state().check_lock(lock);
+        factory_state().check_lock(lock);
         drop_canister(canister_id)
     }
 
@@ -480,7 +472,7 @@ impl Authorized<Owner> {
         canister_id: Principal,
         lock: &UpdateLock,
     ) -> Result<(), FactoryError> {
-        let mut state = Self::factory_state();
+        let mut state = factory_state();
         state.check_lock(lock);
         match state.remove_canister(canister_id) {
             Some(_) => Ok(()),
@@ -688,7 +680,7 @@ where
     F: Fn(&mut FactoryConfiguration),
 {
     CONFIG_CELL.with(|cell| {
-        let cell = cell.borrow_mut();
+        let mut cell = cell.borrow_mut();
         let mut cfg = cell.get().clone();
         f(&mut cfg);
         cell.set(cfg)

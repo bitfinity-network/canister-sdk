@@ -1,29 +1,25 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 
 use candid::Deserialize;
 use ic_canister::{
-    generate_exports, generate_idl, query, state_getter, update, AsyncReturn, Canister, Idl,
-    PreUpdate,
+    generate_exports, generate_idl, query, update, AsyncReturn, Canister, Idl, PreUpdate,
 };
 use ic_exports::candid::{CandidType, Nat, Principal};
 use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
-use ic_exports::ic_icrc1::hash;
 use ic_exports::ic_kit::ic;
 use ic_exports::ledger_canister::{AccountIdentifier, Subaccount, DEFAULT_TRANSFER_FEE};
 use ic_helpers::ledger::LedgerPrincipalExt;
 use ic_helpers::management::ManagementPrincipalExt;
 
 use super::error::FactoryError;
-use super::FactoryState;
+use crate::state;
 
 pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Returns the checksum of a wasm module in hex representation.
     #[query(trait = true)]
     fn get_checksum(&self) -> Result<String, FactoryError> {
-        Ok(hex::encode(self.factory_state().module()?.hash()))
+        Ok(hex::encode(&state::factory_state().module()?.hash().0))
     }
 
     /// Returns the cycles balances.
@@ -51,8 +47,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     }
 
     fn set_canister_code(&self, wasm: Vec<u8>) -> Result<u32, FactoryError> {
-        self.factory_state()
-            .borrow_mut()
+        state::factory_state()
             .check_is_owner()?
             .set_canister_wasm(wasm)
     }
@@ -66,15 +61,14 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         caller: Option<Principal>,
     ) -> AsyncReturn<'a, Result<Principal, FactoryError>> {
         Box::pin(async move {
-            let state_lock = self.factory_state().borrow_mut().lock()?;
+            let state_lock = state::factory_state().lock()?;
 
             let cycles = {
                 #[cfg(target_arch = "wasm32")]
                 {
                     let caller = caller.unwrap_or_else(ic_exports::ic_kit::ic::caller);
 
-                    self.factory_state()
-                        .borrow()
+                    state::factory_state()
                         .consume_provided_cycles_or_icp(caller)
                         .await?
                 }
@@ -85,15 +79,12 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
                 }
             };
 
-            let principal = self
-                .factory_state()
-                .borrow()
+            let principal = state::factory_state()
                 .create_canister(init_args, cycles, &state_lock, controller)?
                 .await
                 .map_err(|e| FactoryError::CanisterCreateFailed(e.1))?;
 
-            self.factory_state()
-                .borrow_mut()
+            state::factory_state()
                 .register_created(principal, &state_lock)
                 .expect("correct state lock");
 
@@ -105,22 +96,21 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         &mut self,
     ) -> AsyncReturn<Result<HashMap<Principal, UpgradeResult>, FactoryError>> {
         Box::pin(async move {
-            let state_rc = self.factory_state();
-            let state_lock = state_rc.borrow_mut().lock()?;
+            let mut state = state::factory_state();
+            let state_lock = state.lock()?;
             let caller = ic_exports::ic_kit::ic::caller();
 
-            let canisters = self.factory_state().borrow().canister_list();
-            let module_hash = state_rc.borrow().module()?.hash().clone();
+            let canisters = state.canister_list();
+            let module_hash = state.module()?.hash().0.clone();
 
             let mut results = HashMap::new();
             for canister in canisters {
-                if state_rc.borrow().canisters()[&canister] == module_hash {
+                if state.canisters()[&canister].0 == module_hash {
                     results.insert(canister, UpgradeResult::Noop);
                     continue;
                 }
 
-                let upgrader = state_rc
-                    .borrow_mut()
+                let upgrader = state
                     .check_is_owner_internal(caller)?
                     .upgrade(canister, &state_lock)?;
 
@@ -132,15 +122,12 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
                 results.insert(canister, upgrade_result);
             }
 
-            {
-                let mut state = state_rc.borrow_mut();
-                let mut state = state.check_is_owner_internal(caller)?;
-                for (canister, upgrade_result) in results.iter() {
-                    if matches!(upgrade_result, UpgradeResult::Upgraded) {
-                        state
-                            .register_upgraded(*canister, &state_lock)
-                            .expect("correct lock");
-                    }
+            let mut owner = state.check_is_owner_internal(caller)?;
+            for (canister, upgrade_result) in results.iter() {
+                if matches!(upgrade_result, UpgradeResult::Upgraded) {
+                    owner
+                        .register_upgraded(*canister, &state_lock)
+                        .expect("correct lock");
                 }
             }
 
@@ -150,8 +137,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
 
     #[update(trait = true)]
     fn reset_update_lock(&self) -> Result<(), FactoryError> {
-        self.factory_state()
-            .borrow_mut()
+        state::factory_state()
             .check_is_owner()?
             .release_update_lock();
         Ok(())
@@ -160,58 +146,52 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Returns the current version of canister.
     #[query(trait = true)]
     fn version(&self) -> Result<u32, FactoryError> {
-        Ok(self.factory_state().borrow().module()?.version())
+        Ok(state::factory_state().module()?.version())
     }
 
     /// Returns the number of canisters created by the factory.
     #[query(trait = true)]
     fn length(&self) -> usize {
-        self.factory_state().borrow().canister_count()
+        state::factory_state().canister_count()
     }
 
     /// Returns a vector of all canisters created by the factory.
     #[query(trait = true)]
     fn get_all(&self) -> Vec<Principal> {
-        self.factory_state().borrow().canister_list()
+        state::factory_state().canister_list()
     }
 
     /// Returns the ICP fee amount for canister creation.
     #[query(trait = true)]
     fn get_icp_fee(&self) -> u64 {
-        self.factory_state().borrow().icp_fee()
+        state::factory_state().icp_fee()
     }
 
     /// Sets the ICP fee amount for canister creation. This method can only be called
     /// by the factory controller.
     #[update(trait = true)]
     fn set_icp_fee(&self, e8s: u64) -> Result<(), FactoryError> {
-        self.factory_state()
-            .borrow_mut()
-            .check_is_owner()?
-            .set_icp_fee(e8s)
+        state::factory_state().check_is_owner()?.set_icp_fee(e8s)
     }
 
     /// Returns the principal that will receive the ICP fees.
     #[query(trait = true)]
     fn get_icp_to(&self) -> Principal {
-        self.factory_state().borrow().icp_to()
+        state::factory_state().icp_to()
     }
 
     /// Sets the principal that will receive the ICP fees. This method can only be called
     /// by the factory controller.
     #[update(trait = true)]
     fn set_icp_to(&self, to: Principal) -> Result<(), FactoryError> {
-        self.factory_state()
-            .borrow_mut()
-            .check_is_owner()?
-            .set_fee_to(to)
+        state::factory_state().check_is_owner()?.set_fee_to(to)
     }
 
     /// Returns the ICPs transferred to the factory by the caller. This method returns all
     /// not used ICP minus transaction fee.
     #[update(trait = true)]
     fn refund_icp(&self) -> AsyncReturn<Result<u64, FactoryError>> {
-        let ledger = self.factory_state().borrow().ledger_principal();
+        let ledger = state::factory_state().ledger_principal();
         Box::pin(async move {
             let caller = ic_exports::ic_kit::ic::caller();
             let balance = ledger
@@ -242,8 +222,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Sets the factory controller principal.
     #[update(trait = true)]
     fn set_controller(&self, controller: Principal) -> Result<(), FactoryError> {
-        self.factory_state()
-            .borrow_mut()
+        state::factory_state()
             .check_is_owner()?
             .set_controller(controller)
     }
@@ -251,7 +230,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
     /// Returns the factory controller principal.
     #[query(trait = true)]
     fn get_controller(&self) -> Principal {
-        self.factory_state().borrow().controller()
+        state::factory_state().controller()
     }
 
     /// Returns the AccountIdentifier for the caller subaccount in the factory account.
@@ -281,17 +260,15 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         caller: Option<Principal>,
     ) -> AsyncReturn<Result<(), FactoryError>> {
         Box::pin(async move {
-            let state_lock = self.factory_state().borrow_mut().lock()?;
+            let state_lock = state::factory_state().lock()?;
             let caller = caller.unwrap_or_else(ic_exports::ic_kit::ic::caller);
 
-            self.factory_state()
-                .borrow_mut()
+            state::factory_state()
                 .check_is_owner_internal(caller)?
                 .drop_canister(canister_id, &state_lock)
                 .await?;
 
-            self.factory_state()
-                .borrow_mut()
+            state::factory_state()
                 .check_is_owner_internal(caller)?
                 .register_dropped(canister_id, &state_lock)
         })

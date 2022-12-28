@@ -55,7 +55,7 @@ where
                 let memory = crate::get_memory_by_id(self.memory_id);
                 unbounded::StableUnboundedMap::new(memory)
             })
-            .insert(&key, &value)?;
+            .insert(key, value)?;
         Ok(())
     }
 
