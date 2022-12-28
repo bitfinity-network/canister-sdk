@@ -10,6 +10,7 @@ use ic_canister::{
 use ic_exports::candid::{CandidType, Nat, Principal};
 use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
+use ic_exports::ic_icrc1::hash;
 use ic_exports::ic_kit::ic;
 use ic_exports::ledger_canister::{AccountIdentifier, Subaccount, DEFAULT_TRANSFER_FEE};
 use ic_helpers::ledger::LedgerPrincipalExt;
@@ -19,13 +20,10 @@ use super::error::FactoryError;
 use super::FactoryState;
 
 pub trait FactoryCanister: Canister + Sized + PreUpdate {
-    #[state_getter]
-    fn factory_state(&self) -> Rc<RefCell<FactoryState>>;
-
     /// Returns the checksum of a wasm module in hex representation.
     #[query(trait = true)]
     fn get_checksum(&self) -> Result<String, FactoryError> {
-        Ok(hex::encode(self.factory_state().borrow().module()?.hash()))
+        Ok(hex::encode(self.factory_state().module()?.hash()))
     }
 
     /// Returns the cycles balances.
