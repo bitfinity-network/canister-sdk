@@ -54,16 +54,7 @@ impl BoundedStorable for CanisterHash {
 }
 
 #[derive(Debug, Default, CandidType, Deserialize, IcStorage)]
-pub struct FactoryState {
-    // /// Immutable configuration of the factory.
-    // configuration: FactoryConfiguration,
-    // /// Module that will be used for upgrading canisters on factory owns.
-    // upgrading_module: Option<CanisterModule>,
-    // /// Canisters that were created by the factory.
-    // canisters: HashMap<Principal, CanisterHash>,
-    // /// A flag used for locking the factory during the upgrade to prevent malforming the canister states.
-    // update_lock: UpdateLock,
-}
+pub struct FactoryState {}
 
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct CanisterModule {
@@ -637,15 +628,6 @@ impl BoundedStorable for PrincipalKey {
         29
     }
 }
-
-// /// Immutable configuration of the factory.
-// configuration: FactoryConfiguration,
-// /// Module that will be used for upgrading canisters on factory owns.
-// upgrading_module: Option<CanisterModule>,
-// /// Canisters that were created by the factory.
-// canisters: HashMap<Principal, CanisterHash>,
-// /// A flag used for locking the factory during the upgrade to prevent malforming the canister states.
-// update_lock: UpdateLock,
 
 const CONFIG_MEMORY_ID: MemoryId = MemoryId::new(0);
 const UPGRADING_MODULE_MEMORY_ID: MemoryId = MemoryId::new(1);
