@@ -341,6 +341,24 @@ impl FactoryState {
 
         consume_provided_icp(caller, ledger, icp_to, icp_fee, controller)
     }
+
+    /// Adds an existing canister to the canister list. This method does not have any information
+    /// about the canister it is adding to the list, so it is responsibility of the caller to check
+    /// if the canister exists and of correct type.
+    pub fn register_existing(&mut self, canister_id: Principal) -> Result<(), FactoryError> {
+        let _lock = self.lock()?;
+        self.insert_canister(canister_id, self.module()?.hash.clone());
+
+        Ok(())
+    }
+
+    /// Removes the canister from the list of the factory canisters.
+    pub fn forget(&mut self, canister_id: Principal) -> Result<(), FactoryError> {
+        let _lock = self.lock()?;
+        self.remove_canister(canister_id);
+
+        Ok(())
+    }
 }
 
 /// Abstraction to provided compile time checks for factory method access.
