@@ -347,7 +347,7 @@ impl FactoryState {
     /// if the canister exists and of correct type.
     pub fn register_existing(&mut self, canister_id: Principal) -> Result<(), FactoryError> {
         let _lock = self.lock()?;
-        self.insert_canister(canister_id, self.module()?.hash.clone());
+        self.insert_canister(canister_id, self.module()?.hash);
 
         Ok(())
     }
