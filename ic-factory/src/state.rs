@@ -218,6 +218,25 @@ impl FactoryState {
         Ok(())
     }
 
+    /// Adds an existing canister to the canister list. This method does not have any information
+    /// about the canister it is adding to the list, so it is responsibility of the caller to check
+    /// if the canister exists and of correct type.
+    pub fn register_existing(&mut self, canister_id: Principal) -> Result<(), FactoryError> {
+        let _lock = self.lock()?;
+        self.canisters
+            .insert(canister_id, self.module()?.hash.clone());
+
+        Ok(())
+    }
+
+    /// Removes the canister from the list of the factory canisters.
+    pub fn forget(&mut self, canister_id: Principal) -> Result<(), FactoryError> {
+        let _lock = self.lock()?;
+        self.canisters.remove(&canister_id);
+
+        Ok(())
+    }
+
     /// Returns information about the wasm code the factory uses to create canisters.
     pub fn module(&self) -> Result<&CanisterModule, FactoryError> {
         self.upgrading_module
