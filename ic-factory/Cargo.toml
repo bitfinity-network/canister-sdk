@@ -20,6 +20,7 @@ ic-canister = { path = "../ic-canister/ic-canister" }
 ic-canister-macros = { path = "../ic-canister/ic-canister-macros" }
 ic-storage = { path = "../ic-storage" }
 ic-helpers = { path = "../ic-helpers" }
+ic-stable-structures = { path = "../ic-stable-structures" }
 
 # This dependency is not used direcly, but we must enable `custom` feature for it to compile for wasm32 target.
 [target.'cfg(target = "wasm32-unknown-unknown")'.dependencies]
