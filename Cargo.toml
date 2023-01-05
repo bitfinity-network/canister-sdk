@@ -15,6 +15,7 @@ members = [
     "ic-canister/tests/canister-c",
     "ic-canister/tests/canister-d",
     "ic-canister/tests/canister-e",
+    "cmc-mock",
 ]
 
 [package]
