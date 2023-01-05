@@ -1,3 +1,12 @@
+//! A canister that mocks main methods of CMC canister for testing of cycles minting.
+//!
+//! The canister uses the same interface as CMC and calculates the amount of cycles to be minted
+//! the same way as the real CMC does. But since it cannot actually mint cycles, it uses cycles
+//! available to it to top up the requested canister.
+//!
+//! So for this canister to be used, use `dfx ledger fabricate-cycles` first to provide a lot of
+//! cycles to this canister, and then it can distribute them for ICP provided.
+
 use std::{cell::RefCell, rc::Rc};
 
 use candid::{CandidType, Deserialize, Principal};
