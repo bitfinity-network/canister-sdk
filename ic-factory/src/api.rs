@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use candid::Deserialize;
 use ic_canister::{
@@ -13,7 +15,7 @@ use ic_helpers::ledger::LedgerPrincipalExt;
 use ic_helpers::management::ManagementPrincipalExt;
 use ic_storage::IcStorage;
 
-use crate::CmcConfig;
+use crate::{CmcConfig, INITIAL_CANISTER_CYCLES};
 
 use super::error::FactoryError;
 use crate::state;
@@ -23,14 +25,21 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         CmcConfig::get()
     }
 
+    /// Returns the principal of CMC canister that the factory uses.
     #[query(trait = true)]
     fn cmc_principal(&self) -> Principal {
         self.cmc_config().borrow().cmc_principal()
     }
 
+    /// Changes the CMC canister to use.
+    ///
+    /// Note, that real CMC canister can use only hard-coded principal due to protocol limitation.
+    /// So this should only be used for testing with mock CMC canister.
+    ///
+    /// This method can only be called by the factory owner.
     #[update(trait = true)]
     fn set_cmc_principal(&mut self, cmc_principal: Principal) -> Result<(), FactoryError> {
-        self.factory_state().borrow_mut().check_is_owner()?;
+        state::factory_state().check_is_owner()?;
         self.cmc_config().borrow_mut().cmc_principal = Some(cmc_principal);
         Ok(())
     }
@@ -82,7 +91,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         Box::pin(async move {
             let state_lock = state::factory_state().lock()?;
 
-            let cycles = {
+            let cycles_minted = {
                 #[cfg(target_arch = "wasm32")]
                 {
                     let caller = caller.unwrap_or_else(ic_exports::ic_kit::ic::caller);
@@ -98,14 +107,17 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
                 }
             };
 
+            let cycles_to_canister = cycles_minted.min(INITIAL_CANISTER_CYCLES);
+
             let principal = state::factory_state()
-                .create_canister(init_args, cycles, &state_lock, controller)?
+                .create_canister(init_args, cycles_to_canister, &state_lock, controller)?
                 .await
                 .map_err(|e| FactoryError::CanisterCreateFailed(e.1))?;
 
             state::factory_state()
                 .register_created(principal, &state_lock)
                 .expect("correct state lock");
+            ic::print(&format!("Cycles after: {}", ic::balance()));
 
             Ok(principal)
         })
