@@ -18,12 +18,23 @@ use ic_storage::IcStorage;
 
 use crate::core::{create_canister, drop_canister, upgrade_canister};
 use crate::error::FactoryError;
-use crate::top_up;
+use crate::top_up::{self, CYCLES_MINTING_CANISTER};
 use crate::update_lock::UpdateLock;
 
 pub mod v1;
 
 pub const DEFAULT_ICP_FEE: u64 = 10u64.pow(8) * 2;
+
+/// Amount of cycles to be charged by the factory when creating a new canister. This is needed to
+/// cover the expenses made by the factory to create the canister (for all the update calls).
+///
+/// Actual amount needed to create a canister is around 1.5e9, so we use a slightly larger number
+/// to be sure the factory doesn't run out of cycles.
+pub const CANISTER_CREATION_CYCLE_COST: u64 = 10u64.pow(10);
+
+/// Amount of cycles to transfer to the newly created canister. Actual amount available in the
+/// canister will be slightly less due to canister creation fees.
+pub const INITIAL_CANISTER_CYCLES: u64 = 5 * 10u64.pow(12);
 
 #[derive(Debug, Deserialize, CandidType, Clone)]
 pub struct CanisterHash(pub Vec<u8>);
@@ -64,6 +75,17 @@ pub struct CanisterModule {
     hash: CanisterHash,
     /// Canister state version.
     version: u32,
+}
+
+#[derive(Debug, Default, IcStorage)]
+pub struct CmcConfig {
+    pub cmc_principal: Option<Principal>,
+}
+
+impl CmcConfig {
+    pub fn cmc_principal(&self) -> Principal {
+        self.cmc_principal.unwrap_or(CYCLES_MINTING_CANISTER)
+    }
 }
 
 impl CanisterModule {
@@ -333,13 +355,14 @@ impl FactoryState {
     pub fn consume_provided_cycles_or_icp(
         &self,
         caller: Principal,
+        cmc: Principal,
     ) -> impl Future<Output = Result<u64, FactoryError>> {
         let ledger = self.ledger_principal();
         let icp_to = self.icp_to();
         let icp_fee = self.icp_fee();
         let controller = self.controller();
 
-        consume_provided_icp(caller, ledger, icp_to, icp_fee, controller)
+        consume_provided_icp(caller, ledger, cmc, icp_to, icp_fee, controller)
     }
 
     /// Adds an existing canister to the canister list. This method does not have any information
@@ -545,32 +568,30 @@ impl Storable for FactoryConfiguration {
     }
 }
 
-// The canister creation fee is 10^11 cycles, so we require the provided amount to be a little larger for the operation for the cansiter.
-// According to IC docs, 10^12 cycles should always cost 1 XDR, with is ~$1.
-const INITIAL_CANISTER_CYCLES: u64 = 10u64.pow(12) * 5;
-
 async fn consume_provided_icp(
     caller: Principal,
     ledger: Principal,
+    cmc: Principal,
     icp_to: Principal,
     icp_fee: u64,
     controller: Principal,
 ) -> Result<u64, FactoryError> {
     if caller != controller {
         // If the caller is not the controller, we require the caller to provide cycles.
-        return transfer_and_top_up(icp_fee, ledger, caller, icp_to).await;
+        return transfer_and_top_up(icp_fee, ledger, cmc, caller, icp_to).await;
     }
 
-    Ok(INITIAL_CANISTER_CYCLES)
+    Ok(CANISTER_CREATION_CYCLE_COST + INITIAL_CANISTER_CYCLES)
 }
 
-/// Converts the `INITIAL_CANISTER_CYCLES` to ICP tokens, and the caller sends
+/// Converts the `INITIAL_CANISTER_CYCLES + CANISTER_CREATION_CYCLE_COST` to ICP tokens, and the caller sends
 /// the tokens to the cycles-minting-canister, the factory canister
 /// is topped up with cycles and the the icp_fee is sent to the
 /// `icp_to` principal.
 async fn transfer_and_top_up(
     icp_fee: u64,
     ledger: Principal,
+    cmc: Principal,
     caller: Principal,
     icp_to: Principal,
 ) -> Result<u64, FactoryError> {
@@ -579,24 +600,30 @@ async fn transfer_and_top_up(
         .get_balance(id, Some((&PrincipalId(caller)).into()))
         .await
         .map_err(FactoryError::LedgerError)?;
+
     if balance < icp_fee {
         Err(FactoryError::NotEnoughIcp(balance, icp_fee))?;
     }
 
-    let top_up_fee = top_up::icp_amount_from_cycles(INITIAL_CANISTER_CYCLES).await?;
-
+    let top_up_fee =
+        top_up::icp_amount_from_cycles(cmc, INITIAL_CANISTER_CYCLES + CANISTER_CREATION_CYCLE_COST)
+            .await?;
     if top_up_fee > icp_fee {
-        Err(FactoryError::GenericError(format!(
+        return Err(FactoryError::GenericError(format!(
             "The fee {} required to create {} cycles is greater than the ICP FEE {}",
             top_up_fee, INITIAL_CANISTER_CYCLES, icp_fee
         )))?;
     }
 
-    let block_height =
-        top_up::transfer_icp_to_cmc(top_up_fee, ledger, Subaccount::from(&PrincipalId(caller)))
-            .await?;
+    let block_height = top_up::transfer_icp_to_cmc(
+        cmc,
+        top_up_fee,
+        ledger,
+        Subaccount::from(&PrincipalId(caller)),
+    )
+    .await?;
 
-    let cycles = top_up::mint_cycles_to_factory(block_height).await?;
+    let cycles = top_up::mint_cycles_to_factory(cmc, block_height).await?;
 
     // Send the remaining ICP to the `icp_to` Principal
     send_remaining_fee_to(caller, icp_to, ledger, icp_fee - top_up_fee).await?;

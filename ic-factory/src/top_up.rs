@@ -14,11 +14,12 @@ use ic_exports::BlockHeight;
 use crate::error::FactoryError;
 
 /// This Principal is a slice equivalent to `rkp4c-7iaaa-aaaaa-aaaca-cai`.
-const CYCLES_MINTING_CANISTER: Principal = Principal::from_slice(&[0, 0, 0, 0, 0, 0, 0, 4, 1, 1]);
+pub(crate) const CYCLES_MINTING_CANISTER: Principal =
+    Principal::from_slice(&[0, 0, 0, 0, 0, 0, 0, 4, 1, 1]);
 
 /// Calculates amount of ICP that can be converted to the given amount of cycles
-pub async fn icp_amount_from_cycles(cycles: u64) -> Result<u64, FactoryError> {
-    let rate = get_conversion_rate().await?.data;
+pub async fn icp_amount_from_cycles(cmc: Principal, cycles: u64) -> Result<u64, FactoryError> {
+    let rate = get_conversion_rate(cmc).await?.data;
 
     if rate.xdr_permyriad_per_icp == 0 {
         return Err(FactoryError::GenericError(
@@ -30,16 +31,16 @@ pub async fn icp_amount_from_cycles(cycles: u64) -> Result<u64, FactoryError> {
 }
 
 fn calculate_icp(cycles: u64, xdr_permyriad_per_icp: u64) -> u64 {
-    // Convert cycles to XDRs - 1 XDR = 10^12 cycles
-    let xdr = cycles / DEFAULT_CYCLES_PER_XDR as u64;
-    let xdr = xdr * 10_000 * TOKEN_SUBDIVIDABLE_BY as u64;
-
-    xdr / xdr_permyriad_per_icp
+    (cycles as u128 * TOKEN_SUBDIVIDABLE_BY as u128 * 10_000
+        / DEFAULT_CYCLES_PER_XDR
+        / xdr_permyriad_per_icp as u128) as u64
 }
 
-async fn get_conversion_rate() -> Result<IcpXdrConversionRateCertifiedResponse, FactoryError> {
+async fn get_conversion_rate(
+    cmc: Principal,
+) -> Result<IcpXdrConversionRateCertifiedResponse, FactoryError> {
     virtual_canister_call!(
-        CYCLES_MINTING_CANISTER,
+        cmc,
         "get_icp_xdr_conversion_rate",
         (),
         IcpXdrConversionRateCertifiedResponse
@@ -49,16 +50,14 @@ async fn get_conversion_rate() -> Result<IcpXdrConversionRateCertifiedResponse, 
 }
 
 pub(crate) async fn transfer_icp_to_cmc(
+    cmc: Principal,
     amount: u64,
     ledger: Principal,
     caller_subaccount: Subaccount,
 ) -> Result<BlockHeight, FactoryError> {
     let canister_id = ic_exports::ic_cdk::id();
-    let to = AccountIdentifier::new(
-        CYCLES_MINTING_CANISTER.into(),
-        Some((&PrincipalId::from(canister_id)).into()),
-    )
-    .to_address();
+    let to = AccountIdentifier::new(cmc.into(), Some((&PrincipalId::from(canister_id)).into()))
+        .to_address();
 
     let args = TransferArgs {
         memo: MEMO_TOP_UP_CANISTER,
@@ -76,6 +75,7 @@ pub(crate) async fn transfer_icp_to_cmc(
 }
 
 pub(crate) async fn mint_cycles_to_factory(
+    cmc: Principal,
     block_height: BlockHeight,
 ) -> Result<u128, FactoryError> {
     let to_canister =
@@ -87,7 +87,7 @@ pub(crate) async fn mint_cycles_to_factory(
     };
 
     virtual_canister_call!(
-        CYCLES_MINTING_CANISTER,
+        cmc,
         "notify_top_up",
         (notify_details,),
         Result<u128, NotifyError>
@@ -127,13 +127,21 @@ mod tests {
             (3_000_000_000_000, 61761436),
         ];
 
-        let expected_icp = icp_amount_from_cycles(cycles_icp[0].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(CYCLES_MINTING_CANISTER, cycles_icp[0].0)
+            .await
+            .unwrap();
         assert_eq!(expected_icp, cycles_icp[0].1);
-        let expected_icp = icp_amount_from_cycles(cycles_icp[1].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(CYCLES_MINTING_CANISTER, cycles_icp[1].0)
+            .await
+            .unwrap();
         assert_eq!(expected_icp, cycles_icp[1].1);
-        let expected_icp = icp_amount_from_cycles(cycles_icp[2].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(CYCLES_MINTING_CANISTER, cycles_icp[2].0)
+            .await
+            .unwrap();
         assert_eq!(expected_icp, cycles_icp[2].1);
-        let expected_icp = icp_amount_from_cycles(cycles_icp[3].0).await.unwrap();
+        let expected_icp = icp_amount_from_cycles(CYCLES_MINTING_CANISTER, cycles_icp[3].0)
+            .await
+            .unwrap();
         assert_eq!(expected_icp, cycles_icp[3].1);
     }
 
@@ -144,7 +152,9 @@ mod tests {
             Ok::<u128, NotifyError>(1_000_000_000_000)
         });
         let block_height = 100;
-        let cycles = mint_cycles_to_factory(block_height).await.unwrap();
+        let cycles = mint_cycles_to_factory(CYCLES_MINTING_CANISTER, block_height)
+            .await
+            .unwrap();
         assert_eq!(cycles, 1_000_000_000_000);
     }
 }

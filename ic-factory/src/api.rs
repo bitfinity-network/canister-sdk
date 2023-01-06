@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use candid::Deserialize;
 use ic_canister::{
@@ -11,11 +13,35 @@ use ic_exports::ic_kit::ic;
 use ic_exports::ledger_canister::{AccountIdentifier, Subaccount, DEFAULT_TRANSFER_FEE};
 use ic_helpers::ledger::LedgerPrincipalExt;
 use ic_helpers::management::ManagementPrincipalExt;
+use ic_storage::IcStorage;
 
 use super::error::FactoryError;
-use crate::state;
+use crate::{state, CmcConfig, INITIAL_CANISTER_CYCLES};
 
 pub trait FactoryCanister: Canister + Sized + PreUpdate {
+    fn cmc_config(&self) -> Rc<RefCell<CmcConfig>> {
+        CmcConfig::get()
+    }
+
+    /// Returns the principal of CMC canister that the factory uses.
+    #[query(trait = true)]
+    fn cmc_principal(&self) -> Principal {
+        self.cmc_config().borrow().cmc_principal()
+    }
+
+    /// Changes the CMC canister to use.
+    ///
+    /// Note, that real CMC canister can use only hard-coded principal due to protocol limitation.
+    /// So this should only be used for testing with mock CMC canister.
+    ///
+    /// This method can only be called by the factory owner.
+    #[update(trait = true)]
+    fn set_cmc_principal(&mut self, cmc_principal: Principal) -> Result<(), FactoryError> {
+        state::factory_state().check_is_owner()?;
+        self.cmc_config().borrow_mut().cmc_principal = Some(cmc_principal);
+        Ok(())
+    }
+
     /// Returns the checksum of a wasm module in hex representation.
     #[query(trait = true)]
     fn get_checksum(&self) -> Result<String, FactoryError> {
@@ -63,13 +89,13 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         Box::pin(async move {
             let state_lock = state::factory_state().lock()?;
 
-            let cycles = {
+            let cycles_minted = {
                 #[cfg(target_arch = "wasm32")]
                 {
                     let caller = caller.unwrap_or_else(ic_exports::ic_kit::ic::caller);
 
                     state::factory_state()
-                        .consume_provided_cycles_or_icp(caller)
+                        .consume_provided_cycles_or_icp(caller, self.cmc_principal())
                         .await?
                 }
 
@@ -79,8 +105,10 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
                 }
             };
 
+            let cycles_to_canister = cycles_minted.min(INITIAL_CANISTER_CYCLES);
+
             let principal = state::factory_state()
-                .create_canister(init_args, cycles, &state_lock, controller)?
+                .create_canister(init_args, cycles_to_canister, &state_lock, controller)?
                 .await
                 .map_err(|e| FactoryError::CanisterCreateFailed(e.1))?;
 

@@ -1,0 +1,22 @@
+[package]
+name = "cmc-mock"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default = []
+export-api = []
+
+[dependencies]
+serde = "1.0"
+candid = "0.8"
+ic-exports = { path = "../ic-exports" }
+ic-canister = { path = "../ic-canister/ic-canister" }
+ic-canister-macros = { path = "../ic-canister/ic-canister-macros" }
+ic-storage = { path = "../ic-storage" }
+
+ic-nns-common = { git = "https://github.com/dfinity/ic", branch = "rc--2022-10-06_18-31"}
+ic-types = { git = "https://github.com/dfinity/ic", branch = "rc--2022-10-06_18-31"}
