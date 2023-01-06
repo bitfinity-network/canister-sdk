@@ -117,7 +117,7 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
             state::factory_state()
                 .register_created(principal, &state_lock)
                 .expect("correct state lock");
-            ic::print(&format!("Cycles after: {}", ic::balance()));
+            ic::print(format!("Cycles after: {}", ic::balance()));
 
             Ok(principal)
         })

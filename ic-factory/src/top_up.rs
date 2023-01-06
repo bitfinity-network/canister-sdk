@@ -32,7 +32,7 @@ pub async fn icp_amount_from_cycles(cmc: Principal, cycles: u64) -> Result<u64, 
 
 fn calculate_icp(cycles: u64, xdr_permyriad_per_icp: u64) -> u64 {
     (cycles as u128 * TOKEN_SUBDIVIDABLE_BY as u128 * 10_000
-        / DEFAULT_CYCLES_PER_XDR as u128
+        / DEFAULT_CYCLES_PER_XDR
         / xdr_permyriad_per_icp as u128) as u64
 }
 

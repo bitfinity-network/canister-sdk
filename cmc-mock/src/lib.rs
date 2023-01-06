@@ -49,6 +49,7 @@ struct CmcMockCanister {
 }
 
 impl PreUpdate for CmcMockCanister {}
+
 impl Versioned for CmcState {
     type Previous = ();
 
@@ -110,17 +111,13 @@ impl CmcMockCanister {
                 .await
                 .unwrap();
 
-        if response.blocks.len() == 1 {
-            if let CandidOperation::Transfer { amount, .. } =
-                response.blocks[0].transaction.operation
-            {
-                amount
-            } else {
-                panic!("Invalid ledger operation");
-            }
-        } else {
+        if response.blocks.len() != 1 {
             panic!("Ledger block not found");
         }
+
+        let CandidOperation::Transfer { amount, .. } = response.blocks[0].transaction.operation
+        else { panic!("Invalid ledger operation") };
+        amount
     }
 }
 
