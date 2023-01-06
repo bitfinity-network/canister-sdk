@@ -15,10 +15,8 @@ use ic_helpers::ledger::LedgerPrincipalExt;
 use ic_helpers::management::ManagementPrincipalExt;
 use ic_storage::IcStorage;
 
-use crate::{CmcConfig, INITIAL_CANISTER_CYCLES};
-
 use super::error::FactoryError;
-use crate::state;
+use crate::{state, CmcConfig, INITIAL_CANISTER_CYCLES};
 
 pub trait FactoryCanister: Canister + Sized + PreUpdate {
     fn cmc_config(&self) -> Rc<RefCell<CmcConfig>> {
@@ -117,7 +115,6 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
             state::factory_state()
                 .register_created(principal, &state_lock)
                 .expect("correct state lock");
-            ic::print(format!("Cycles after: {}", ic::balance()));
 
             Ok(principal)
         })

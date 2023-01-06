@@ -25,7 +25,7 @@ pub mod v1;
 
 pub const DEFAULT_ICP_FEE: u64 = 10u64.pow(8) * 2;
 
-/// Amount of cycles to be charded by the factory when creating a new canister. This is needed to
+/// Amount of cycles to be charged by the factory when creating a new canister. This is needed to
 /// cover the expenses made by the factory to create the canister (for all the update calls).
 ///
 /// Actual amount needed to create a canister is around 1.5e9, so we use a slightly larger number
