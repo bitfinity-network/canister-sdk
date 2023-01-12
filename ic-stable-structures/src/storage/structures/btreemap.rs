@@ -8,13 +8,21 @@ use ic_exports::Principal;
 use crate::{Memory, Result};
 
 /// Stores key-value data in stable memory.
-pub struct StableBTreeMap<K: BoundedStorable, V: BoundedStorable> {
+pub struct StableBTreeMap<K, V>
+where
+    K: BoundedStorable + Ord + Clone,
+    V: BoundedStorable,
+{
     data: HashMap<Principal, btreemap::BTreeMap<K, V, Memory>>,
     memory_id: MemoryId,
     empty: btreemap::BTreeMap<K, V, Memory>,
 }
 
-impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
+impl<K, V> StableBTreeMap<K, V>
+where
+    K: BoundedStorable + Ord + Clone,
+    V: BoundedStorable,
+{
     /// Create new instance of key-value storage.
     pub fn new(memory_id: MemoryId) -> Self {
         let memory = crate::get_memory_by_id(memory_id);

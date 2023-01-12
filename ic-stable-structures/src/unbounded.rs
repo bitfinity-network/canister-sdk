@@ -46,11 +46,12 @@ where
 
     /// Return a value associated with `key`.
     pub fn get(&self, key: &K) -> Option<V> {
-        let key_prefix = Key::create_prefix(key).ok()?;
+        let first_chunk_key = Key::new(key).ok()?;
+        let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
         let mut value_data = Vec::new();
         let mut item_present = false;
 
-        for (_, chunk) in self.inner.range(key_prefix, None) {
+        for (_, chunk) in self.inner.range(first_chunk_key..=max_chunk_key) {
             value_data.extend_from_slice(&chunk.to_bytes());
             item_present = true;
         }
@@ -102,8 +103,9 @@ where
 
     /// Remove a value associated with `key`.
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        let key_prefix = Key::create_prefix(key).ok()?;
-        let keys: Vec<Key<K>> = self.inner.range(key_prefix, None).map(|(k, _)| k).collect();
+        let first_chunk_key = Key::new(key).ok()?;
+        let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
+        let keys: Vec<Key<K>> = self.inner.range(first_chunk_key..=max_chunk_key).map(|(k, _)| k).collect();
 
         if keys.is_empty() {
             return None;
@@ -188,6 +190,26 @@ impl<K: BoundedStorable> Clone for Key<K> {
     }
 }
 
+impl<K: BoundedStorable> PartialEq for Key<K> {
+    fn eq(&self, other: &Self) -> bool {
+        self.data == other.data
+    }
+}
+
+impl<K: BoundedStorable> Eq for Key<K> {}
+
+impl<K: BoundedStorable> PartialOrd for Key<K> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.data.partial_cmp(&other.data)
+    }
+}
+
+impl<K: BoundedStorable> Ord for Key<K> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.data.cmp(&other.data)
+    }
+}
+
 impl<K: BoundedStorable> Key<K> {
     pub fn new(key: &K) -> Result<Self> {
         let key_bytes = key.to_bytes();
@@ -206,6 +228,17 @@ impl<K: BoundedStorable> Key<K> {
             data,
             _p: PhantomData,
         })
+    }
+
+    pub fn with_max_chunk_index(mut self) -> Self {
+        let data_len = self.data.len();
+
+        // last `CHUNK_INDEX_LEN` bytes is chunk index
+        let chunk_index_bytes = &mut self.data[(data_len - CHUNK_INDEX_LEN)..];
+        let chunk_index_arr = [u8::MAX; CHUNK_INDEX_LEN];
+
+        chunk_index_bytes.copy_from_slice(&chunk_index_arr);
+        self
     }
 
     pub fn increase_chunk_index(&mut self) {
@@ -233,22 +266,6 @@ impl<K: BoundedStorable> Key<K> {
     /// Result of the `<K as Storable>::to_bytes(key)` call.
     pub fn key_data(&self) -> &[u8] {
         &self.data[Self::size_prefix_len()..self.data.len() - CHUNK_INDEX_LEN]
-    }
-
-    /// Create prefix of key, which is same for all chunks of the same value.
-    pub fn create_prefix(key: &K) -> Result<Vec<u8>> {
-        let key_bytes = key.to_bytes();
-        if key_bytes.len() > K::MAX_SIZE as usize {
-            return Err(Error::ValueTooLarge(key_bytes.len() as _));
-        }
-
-        let size_prefix_len = Self::size_prefix_len();
-        let full_len = size_prefix_len + key_bytes.len();
-        let mut data = Vec::with_capacity(full_len);
-        data.extend_from_slice(&key_bytes.len().to_le_bytes()[..size_prefix_len]);
-        data.extend_from_slice(&key_bytes);
-
-        Ok(data)
     }
 
     const fn size_prefix_len() -> usize {
@@ -378,6 +395,7 @@ mod tests {
         map.insert(&0u32, &long_str).unwrap();
         map.insert(&3u32, &medium_str).unwrap();
         map.insert(&5u32, &short_str).unwrap();
+
         assert_eq!(map.get(&0).as_ref(), Some(&long_str));
         assert_eq!(map.get(&3).as_ref(), Some(&medium_str));
         assert_eq!(map.get(&5).as_ref(), Some(&short_str));

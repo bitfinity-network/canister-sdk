@@ -91,13 +91,10 @@ where
     /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
     /// will be returned.
     pub fn remove_partial(&mut self, first_key: &K1) -> Result<()> {
-        let key_prefix = KeyPair::<K1, K2>::first_key_prefix(first_key)?;
+        let min_key = KeyPair::<K1, K2>::min_key(first_key)?;
+        let max_key = KeyPair::<K1, K2>::max_key(first_key)?;
 
-        let keys: Vec<_> = self
-            .0
-            .range(key_prefix, None)
-            .map(|(keys, _)| keys)
-            .collect();
+        let keys: Vec<_> = self.0.range(min_key..=max_key).map(|(keys, _)| keys).collect();
 
         for k in keys {
             let _ = self.0.remove(&k);
@@ -113,9 +110,10 @@ where
     /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
     /// will be returned.
     pub fn range(&self, first_key: &K1) -> Result<RangeIter<M, K1, K2, V>> {
-        let key_prefix = KeyPair::<K1, K2>::first_key_prefix(first_key)?;
+        let min_key = KeyPair::<K1, K2>::min_key(first_key)?;
+        let max_key = KeyPair::<K1, K2>::max_key(first_key)?;
 
-        let inner = self.0.range(key_prefix, None);
+        let inner = self.0.range(min_key..=max_key);
         let iter = RangeIter::new(inner);
 
         Ok(iter)
@@ -148,6 +146,36 @@ struct KeyPair<K1, K2> {
     encoded: Vec<u8>,
     first_key_len: usize,
     _p: PhantomData<(K1, K2)>,
+}
+
+impl<K1: BoundedStorable, K2: BoundedStorable> Clone for KeyPair<K1, K2> {
+    fn clone(&self) -> Self {
+        Self {
+            encoded: self.encoded.clone(),
+            first_key_len: self.first_key_len,
+            _p: PhantomData,
+        }
+    }
+}
+
+impl<K1: BoundedStorable, K2: BoundedStorable> PartialEq for KeyPair<K1, K2> {
+    fn eq(&self, other: &Self) -> bool {
+        self.encoded == other.encoded && self.first_key_len == other.first_key_len
+    }
+}
+
+impl<K1: BoundedStorable, K2: BoundedStorable> Eq for KeyPair<K1, K2> {}
+
+impl<K1: BoundedStorable, K2: BoundedStorable> PartialOrd for KeyPair<K1, K2> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.encoded.partial_cmp(&other.encoded)
+    }
+}
+
+impl<K1: BoundedStorable, K2: BoundedStorable> Ord for KeyPair<K1, K2> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.encoded.cmp(&other.encoded)
+    }
 }
 
 impl<K1, K2> KeyPair<K1, K2>
@@ -185,7 +213,7 @@ where
         K1::from_bytes(self.encoded[offset..offset + self.first_key_len].into())
     }
 
-    pub fn first_key_prefix(first_key: &K1) -> Result<Vec<u8>> {
+    pub fn min_key(first_key: &K1) -> Result<Self> {
         let first_key_bytes = first_key.to_bytes();
 
         if first_key_bytes.len() > K1::MAX_SIZE as usize {
@@ -197,7 +225,31 @@ where
         Self::push_size_prefix(&mut buffer, first_key_bytes.len());
         buffer.extend_from_slice(&first_key_bytes);
 
-        Ok(buffer)
+        Ok(Self {
+            encoded: buffer,
+            first_key_len: first_key_bytes.len(),
+            _p: PhantomData,
+        })
+    }
+
+    pub fn max_key(first_key: &K1) -> Result<Self> {
+        let first_key_bytes = first_key.to_bytes();
+
+        if first_key_bytes.len() > K1::MAX_SIZE as usize {
+            return Err(Error::ValueTooLarge(first_key_bytes.len() as _));
+        }
+
+        let full_len = Self::size_prefix_len() + first_key_bytes.len();
+        let mut buffer = Vec::with_capacity(full_len);
+        Self::push_size_prefix(&mut buffer, first_key_bytes.len());
+        buffer.extend_from_slice(&first_key_bytes);
+        buffer.resize(Self::MAX_SIZE as _, 0xFF);
+
+        Ok(Self {
+            encoded: buffer,
+            first_key_len: first_key_bytes.len(),
+            _p: PhantomData,
+        })
     }
 
     pub fn second_key(&self) -> K2 {

@@ -627,6 +627,7 @@ async fn send_remaining_fee_to(
     Ok(())
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct PrincipalKey(Principal);
 
 impl Storable for PrincipalKey {
