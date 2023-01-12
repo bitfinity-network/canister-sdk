@@ -13,7 +13,7 @@ ic-cdk-macros = "0.6"
 ic-agent = { version = "0.21", optional = true }
 
 
-ic-stable-structures = {git = "https://github.com/dfinity/stable-structures", commit = "4cb438819b9c8cc841f801570c0b563a63857e01"}
+ic-stable-structures = {git = "https://github.com/dfinity/stable-structures", commit = "99f50a5b9b7eee48787ff40e16315b7e4287b08d"}
 ledger-canister = {git = "https://github.com/dfinity/ic", branch = "rc--2022-10-06_18-31"}
 ic-ledger-core = {git = "https://github.com/dfinity/ic", branch = "rc--2022-10-06_18-31"}
 ic-base-types = {git = "https://github.com/dfinity/ic", branch = "rc--2022-10-06_18-31"}
