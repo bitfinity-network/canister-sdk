@@ -29,12 +29,12 @@ impl<T: Storable> StableCell<T> {
 /// Stores key-value data in stable memory.
 pub struct StableBTreeMap<K, V>(btreemap::BTreeMap<K, V, Memory>)
 where
-    K: BoundedStorable,
+    K: BoundedStorable + Ord + Clone,
     V: BoundedStorable;
 
 impl<K, V> StableBTreeMap<K, V>
 where
-    K: BoundedStorable,
+    K: BoundedStorable + Ord + Clone,
     V: BoundedStorable,
 {
     /// Create new instance of key-value storage.
