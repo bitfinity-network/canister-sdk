@@ -27,7 +27,7 @@ use crate::{Error, Result};
 
 /// `StableMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
-pub struct StableMultimap<M, K1, K2, V>(StableBTreeMap<M, KeyPair<K1, K2>, Value<V>>)
+pub struct StableMultimap<M, K1, K2, V>(StableBTreeMap<KeyPair<K1, K2>, Value<V>, M>)
 where
     M: Memory + Clone,
     K1: BoundedStorable,
@@ -159,11 +159,11 @@ where
         let first_key_bytes = first_key.to_bytes();
         let second_key_bytes = second_key.to_bytes();
 
-        if first_key_bytes.len() > K1::max_size() as usize {
+        if first_key_bytes.len() > K1::MAX_SIZE as usize {
             return Err(Error::ValueTooLarge(first_key_bytes.len() as _));
         }
 
-        if second_key_bytes.len() > K2::max_size() as usize {
+        if second_key_bytes.len() > K2::MAX_SIZE as usize {
             return Err(Error::ValueTooLarge(second_key_bytes.len() as _));
         }
 
@@ -182,13 +182,13 @@ where
 
     pub fn first_key(&self) -> K1 {
         let offset = Self::size_prefix_len();
-        K1::from_bytes(self.encoded[offset..offset + self.first_key_len].to_vec())
+        K1::from_bytes(self.encoded[offset..offset + self.first_key_len].into())
     }
 
     pub fn first_key_prefix(first_key: &K1) -> Result<Vec<u8>> {
         let first_key_bytes = first_key.to_bytes();
 
-        if first_key_bytes.len() > K1::max_size() as usize {
+        if first_key_bytes.len() > K1::MAX_SIZE as usize {
             return Err(Error::ValueTooLarge(first_key_bytes.len() as _));
         }
 
@@ -202,19 +202,19 @@ where
 
     pub fn second_key(&self) -> K2 {
         let offset = Self::size_prefix_len() + self.first_key_len;
-        K2::from_bytes(self.encoded[offset..].to_vec())
+        K2::from_bytes(self.encoded[offset..].into())
     }
 
     fn push_size_prefix(buf: &mut Vec<u8>, first_key_size: usize) {
         buf.extend_from_slice(&first_key_size.to_le_bytes()[..Self::size_prefix_len()]);
     }
 
-    fn size_prefix_len() -> usize {
+    const fn size_prefix_len() -> usize {
         const U8_MAX: u32 = u8::MAX as u32;
         const U8_END: u32 = U8_MAX + 1;
         const U16_MAX: u32 = u16::MAX as u32;
 
-        match K1::max_size() {
+        match K1::MAX_SIZE {
             0..=U8_MAX => 1,
             U8_END..=U16_MAX => 2,
             _ => 4,
@@ -238,11 +238,11 @@ where
         Cow::Borrowed(&self.encoded)
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
         let first_key_len = Self::read_first_key_len(&bytes);
 
         Self {
-            encoded: bytes,
+            encoded: bytes.to_vec(),
             first_key_len,
             _p: PhantomData,
         }
@@ -254,16 +254,16 @@ where
     K1: BoundedStorable,
     K2: BoundedStorable,
 {
-    fn max_size() -> u32 {
-        Self::size_prefix_len() as u32 + K1::max_size() + K2::max_size()
-    }
+    const MAX_SIZE: u32 = Self::size_prefix_len() as u32 + K1::MAX_SIZE + K2::MAX_SIZE;
+
+    const IS_FIXED_SIZE: bool = false;
 }
 
 struct Value<V>(Vec<u8>, PhantomData<V>);
 
 impl<V: Storable> Value<V> {
     pub fn into_inner(self) -> V {
-        V::from_bytes(self.0)
+        V::from_bytes(self.0.into())
     }
 }
 
@@ -278,15 +278,14 @@ impl<V> Storable for Value<V> {
         Cow::Borrowed(&self.0)
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
-        Self(bytes, PhantomData)
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        Self(bytes.to_vec(), PhantomData)
     }
 }
 
 impl<V: BoundedStorable> BoundedStorable for Value<V> {
-    fn max_size() -> u32 {
-        V::max_size()
-    }
+    const MAX_SIZE: u32 = V::MAX_SIZE;
+    const IS_FIXED_SIZE: bool = V::IS_FIXED_SIZE;
 }
 
 /// Range iterator
@@ -297,7 +296,7 @@ where
     K2: BoundedStorable,
     V: BoundedStorable,
 {
-    inner: btreemap::Iter<'a, M, KeyPair<K1, K2>, Value<V>>,
+    inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>,
 }
 
 impl<'a, M, K1, K2, V> RangeIter<'a, M, K1, K2, V>
@@ -307,7 +306,7 @@ where
     K2: BoundedStorable,
     V: BoundedStorable,
 {
-    fn new(inner: btreemap::Iter<'a, M, KeyPair<K1, K2>, Value<V>>) -> Self {
+    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
         Self { inner }
     }
 }
@@ -331,7 +330,7 @@ where
     }
 }
 
-pub struct Iter<'a, M, K1, K2, V>(btreemap::Iter<'a, M, KeyPair<K1, K2>, Value<V>>)
+pub struct Iter<'a, M, K1, K2, V>(btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>)
 where
     M: Memory + Clone,
     K1: BoundedStorable,
@@ -345,7 +344,7 @@ where
     K2: BoundedStorable,
     V: BoundedStorable,
 {
-    fn new(inner: btreemap::Iter<'a, M, KeyPair<K1, K2>, Value<V>>) -> Self {
+    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
         Self(inner)
     }
 }
@@ -401,7 +400,7 @@ mod test {
             Cow::Owned(self.0.to_vec())
         }
 
-        fn from_bytes(bytes: Vec<u8>) -> Self {
+        fn from_bytes(bytes: Cow<[u8]>) -> Self {
             let mut buf = [0u8; N];
             buf.copy_from_slice(&bytes);
             Array(buf)
@@ -409,9 +408,8 @@ mod test {
     }
 
     impl<const N: usize> BoundedStorable for Array<N> {
-        fn max_size() -> u32 {
-            N as _
-        }
+        const MAX_SIZE: u32 = N as _;
+        const IS_FIXED_SIZE: bool = true;
     }
 
     fn make_map() -> StableMultimap<DefaultMemoryImpl, Array<2>, Array<3>, Array<6>> {

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
@@ -22,7 +23,7 @@ where
     K: BoundedStorable,
     V: SlicedStorable,
 {
-    inner: StableBTreeMap<M, Key<K>, Chunk<V>>,
+    inner: StableBTreeMap<Key<K>, Chunk<V>, M>,
     items_count: u64,
 }
 
@@ -58,7 +59,7 @@ where
             return None;
         }
 
-        Some(V::from_bytes(value_data))
+        Some(V::from_bytes(value_data.into()))
     }
 
     /// Add or replace a value associated with `key`.
@@ -86,7 +87,7 @@ where
 
     fn insert_data(&mut self, key: &mut Key<K>, value: &V) -> Result<()> {
         let value_bytes = value.to_bytes();
-        let chunks = value_bytes.chunks(V::chunk_size() as _);
+        let chunks = value_bytes.chunks(V::CHUNK_SIZE as _);
 
         for chunk in chunks {
             let chunk = Chunk::new(chunk.to_vec());
@@ -118,7 +119,7 @@ where
 
         self.items_count -= 1;
 
-        Some(V::from_bytes(value_bytes))
+        Some(V::from_bytes(value_bytes.into()))
     }
 
     /// Iterator for all stored key-value pairs.
@@ -155,7 +156,7 @@ where
 /// But with big `chunk_size()` we lose space for small values,
 /// because `chunk_size()` is a least allocation unit for any value.
 pub trait SlicedStorable: Storable {
-    fn chunk_size() -> ChunkSize;
+    const CHUNK_SIZE: ChunkSize;
 }
 
 /// Wrapper for the key.
@@ -190,7 +191,7 @@ impl<K: BoundedStorable> Clone for Key<K> {
 impl<K: BoundedStorable> Key<K> {
     pub fn new(key: &K) -> Result<Self> {
         let key_bytes = key.to_bytes();
-        if key_bytes.len() > K::max_size() as usize {
+        if key_bytes.len() > K::MAX_SIZE as usize {
             return Err(Error::ValueTooLarge(key_bytes.len() as _));
         }
 
@@ -211,7 +212,7 @@ impl<K: BoundedStorable> Key<K> {
         let data_len = self.data.len();
 
         // last `CHUNK_INDEX_LEN` bytes is chunk index
-        let chunk_index_bytes = &mut self.data[(data_len - CHUNK_INDEX_LEN as usize)..];
+        let chunk_index_bytes = &mut self.data[(data_len - CHUNK_INDEX_LEN)..];
 
         let chunk_index_arr = chunk_index_bytes
             .try_into()
@@ -237,7 +238,7 @@ impl<K: BoundedStorable> Key<K> {
     /// Create prefix of key, which is same for all chunks of the same value.
     pub fn create_prefix(key: &K) -> Result<Vec<u8>> {
         let key_bytes = key.to_bytes();
-        if key_bytes.len() > K::max_size() as usize {
+        if key_bytes.len() > K::MAX_SIZE as usize {
             return Err(Error::ValueTooLarge(key_bytes.len() as _));
         }
 
@@ -250,12 +251,12 @@ impl<K: BoundedStorable> Key<K> {
         Ok(data)
     }
 
-    fn size_prefix_len() -> usize {
+    const fn size_prefix_len() -> usize {
         const U8_MAX: u32 = u8::MAX as u32;
         const U8_END: u32 = U8_MAX + 1;
         const U16_MAX: u32 = u16::MAX as u32;
 
-        match K::max_size() {
+        match K::MAX_SIZE {
             0..=U8_MAX => 1,
             U8_END..=U16_MAX => 2,
             _ => 4,
@@ -268,18 +269,17 @@ impl<K: BoundedStorable> Storable for Key<K> {
         (&self.data).into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
         Self {
-            data: bytes,
+            data: bytes.to_vec(),
             _p: PhantomData,
         }
     }
 }
 
 impl<K: BoundedStorable> BoundedStorable for Key<K> {
-    fn max_size() -> u32 {
-        Self::size_prefix_len() as u32 + K::max_size() + CHUNK_INDEX_LEN as u32
-    }
+    const MAX_SIZE: u32 = Self::size_prefix_len() as u32 + K::MAX_SIZE + CHUNK_INDEX_LEN as u32;
+    const IS_FIXED_SIZE: bool = K::IS_FIXED_SIZE;
 }
 
 /// Wrapper for value chunks stored in inner [`StableBTreeMap`].
@@ -310,23 +310,22 @@ impl<V: SlicedStorable> Storable for Chunk<V> {
         (&self.chunk).into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
         Self {
-            chunk: bytes,
+            chunk: bytes.to_vec(),
             _p: PhantomData,
         }
     }
 }
 
 impl<V: SlicedStorable> BoundedStorable for Chunk<V> {
-    fn max_size() -> u32 {
-        V::chunk_size() as u32
-    }
+    const MAX_SIZE: u32 = V::CHUNK_SIZE as _;
+    const IS_FIXED_SIZE: bool = false;
 }
 
 /// Iterator over values in unbounded map.
 /// Constructs a value from chunks on each `next()` call.
-pub struct Iter<'a, M, K, V>(Peekable<btreemap::Iter<'a, M, Key<K>, Chunk<V>>>)
+pub struct Iter<'a, M, K, V>(Peekable<btreemap::Iter<'a, Key<K>, Chunk<V>, M>>)
 where
     M: Memory + Clone,
     K: BoundedStorable,
@@ -354,8 +353,8 @@ where
         }
 
         Some((
-            K::from_bytes(key.key_data().to_vec()),
-            V::from_bytes(value_data),
+            K::from_bytes(key.key_data().into()),
+            V::from_bytes(value_data.into()),
         ))
     }
 }

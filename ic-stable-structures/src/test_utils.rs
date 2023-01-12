@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use ic_exports::stable_structures::Storable;
 
 use crate::unbounded::SlicedStorable;
@@ -11,15 +13,13 @@ impl Storable for StringValue {
         self.0.to_bytes()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
         Self(String::from_bytes(bytes))
     }
 }
 
 impl SlicedStorable for StringValue {
-    fn chunk_size() -> ChunkSize {
-        64
-    }
+    const CHUNK_SIZE: ChunkSize = 64;
 }
 
 pub fn str_val(len: usize) -> StringValue {

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::future::Future;
@@ -31,7 +32,7 @@ pub struct CanisterHash(pub Vec<u8>);
 impl From<&[u8]> for CanisterHash {
     fn from(hash: &[u8]) -> Self {
         // This will panic if we will change SHA-256 to an algorithm with other hash size.
-        assert_eq!(hash.len(), Self::max_size() as usize);
+        assert_eq!(hash.len(), Self::MAX_SIZE as usize);
         Self(hash.into())
     }
 }
@@ -41,16 +42,14 @@ impl Storable for CanisterHash {
         self.0.as_slice().into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
-        Self(bytes)
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        Self(bytes.into())
     }
 }
 
 impl BoundedStorable for CanisterHash {
-    fn max_size() -> u32 {
-        // SHA-256 takes 32 bytes
-        32
-    }
+    const MAX_SIZE: u32 = 32;
+    const IS_FIXED_SIZE: bool = true;
 }
 
 #[derive(Debug, Default, CandidType, Deserialize, IcStorage)]
@@ -86,7 +85,7 @@ impl Storable for StorableCanisterModule {
             .into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
         Decode!(&bytes, Self).expect("failed to deserialize canister module")
     }
 }
@@ -540,7 +539,7 @@ impl Storable for FactoryConfiguration {
             .into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
         Decode!(&bytes, Self).expect("failed to deserialize factory configuration")
     }
 }
@@ -635,16 +634,16 @@ impl Storable for PrincipalKey {
         self.0.as_slice().into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
         PrincipalKey(Principal::from_slice(&bytes))
     }
 }
 
 impl BoundedStorable for PrincipalKey {
-    fn max_size() -> u32 {
-        // max bytes count in Principal
-        29
-    }
+    // max bytes count in Principal
+    const MAX_SIZE: u32 = 29;
+
+    const IS_FIXED_SIZE: bool = false;
 }
 
 const CONFIG_MEMORY_ID: MemoryId = MemoryId::new(0);

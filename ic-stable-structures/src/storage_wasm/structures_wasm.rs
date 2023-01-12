@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{btreemap, cell, log, BoundedStorable, Storable};
 
@@ -29,7 +27,7 @@ impl<T: Storable> StableCell<T> {
     }
 }
 /// Stores key-value data in stable memory.
-pub struct StableBTreeMap<K, V>(btreemap::BTreeMap<Memory, K, V>)
+pub struct StableBTreeMap<K, V>(btreemap::BTreeMap<K, V, Memory>)
 where
     K: BoundedStorable,
     V: BoundedStorable;
@@ -62,7 +60,7 @@ where
     }
 
     /// Iterate over all currently stored key-value pairs.
-    pub fn iter(&self) -> btreemap::Iter<'_, Memory, K, V> {
+    pub fn iter(&self) -> btreemap::Iter<'_, K, V, Memory> {
         self.0.iter()
     }
 
@@ -181,7 +179,7 @@ where
 
 /// Stores list of immutable values in stable memory.
 /// Provides only `append()` and `get()` operations.
-pub struct StableLog<T: Storable>(Option<log::Log<Memory, Memory>>, PhantomData<T>);
+pub struct StableLog<T: Storable>(Option<log::Log<T, Memory, Memory>>);
 
 impl<T: Storable> StableLog<T> {
     /// Create new storage for values with `T` type.
@@ -195,18 +193,18 @@ impl<T: Storable> StableLog<T> {
         let data_memory = crate::get_memory_by_id(data_memory_id);
 
         let inner = log::Log::new(index_memory, data_memory);
-        Ok(Self(Some(inner), PhantomData))
+        Ok(Self(Some(inner)))
     }
 
     /// Returns reference to value stored in stable memory.
     pub fn get(&self, index: usize) -> Option<T> {
-        self.get_inner().get(index).map(T::from_bytes)
+        self.get_inner().get(index)
     }
 
     /// Updates value in stable memory.
     pub fn append(&mut self, value: T) -> Result<usize> {
         self.mut_inner()
-            .append(&value.to_bytes())
+            .append(&value)
             .map_err(|_| Error::OutOfStableMemory)
     }
 
@@ -223,15 +221,15 @@ impl<T: Storable> StableLog<T> {
     /// Remove all items from the log.
     pub fn clear(&mut self) {
         let inner = self.0.take().expect("inner log is always present");
-        let (index_mem, data_mem) = inner.forget();
+        let (index_mem, data_mem) = inner.into_memories();
         self.0 = Some(log::Log::new(index_mem, data_mem));
     }
 
-    fn get_inner(&self) -> &log::Log<Memory, Memory> {
+    fn get_inner(&self) -> &log::Log<T, Memory, Memory> {
         self.0.as_ref().expect("inner log is always present")
     }
 
-    fn mut_inner(&mut self) -> &mut log::Log<Memory, Memory> {
+    fn mut_inner(&mut self) -> &mut log::Log<T, Memory, Memory> {
         self.0.as_mut().expect("inner log is always present")
     }
 }

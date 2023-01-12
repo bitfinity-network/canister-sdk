@@ -2,16 +2,16 @@ use std::collections::HashMap;
 
 use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::{btreemap, BoundedStorable, Storable};
+use ic_exports::stable_structures::{btreemap, BoundedStorable};
 use ic_exports::Principal;
 
 use crate::{Memory, Result};
 
 /// Stores key-value data in stable memory.
-pub struct StableBTreeMap<K: Storable, V: Storable> {
-    data: HashMap<Principal, btreemap::BTreeMap<Memory, K, V>>,
+pub struct StableBTreeMap<K: BoundedStorable, V: BoundedStorable> {
+    data: HashMap<Principal, btreemap::BTreeMap<K, V, Memory>>,
     memory_id: MemoryId,
-    empty: btreemap::BTreeMap<Memory, K, V>,
+    empty: btreemap::BTreeMap<K, V, Memory>,
 }
 
 impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
@@ -53,7 +53,7 @@ impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
     }
 
     /// List all currently stored key-value pairs.
-    pub fn iter(&self) -> btreemap::Iter<'_, Memory, K, V> {
+    pub fn iter(&self) -> btreemap::Iter<'_, K, V, Memory> {
         self.get_inner().iter()
     }
 
@@ -77,12 +77,12 @@ impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
         }
     }
 
-    fn get_inner(&self) -> &btreemap::BTreeMap<Memory, K, V> {
+    fn get_inner(&self) -> &btreemap::BTreeMap<K, V, Memory> {
         let canister_id = ic::id();
         self.data.get(&canister_id).unwrap_or(&self.empty)
     }
 
-    fn mut_inner(&mut self) -> &mut btreemap::BTreeMap<Memory, K, V> {
+    fn mut_inner(&mut self) -> &mut btreemap::BTreeMap<K, V, Memory> {
         let canister_id = ic::id();
         self.data.get_mut(&canister_id).unwrap_or(&mut self.empty)
     }

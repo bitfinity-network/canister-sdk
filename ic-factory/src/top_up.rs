@@ -32,7 +32,7 @@ pub async fn icp_amount_from_cycles(cycles: u64) -> Result<u64, FactoryError> {
 fn calculate_icp(cycles: u64, xdr_permyriad_per_icp: u64) -> u64 {
     // Convert cycles to XDRs - 1 XDR = 10^12 cycles
     let xdr = cycles / DEFAULT_CYCLES_PER_XDR as u64;
-    let xdr = xdr * 10_000 * TOKEN_SUBDIVIDABLE_BY as u64;
+    let xdr = xdr * 10_000 * TOKEN_SUBDIVIDABLE_BY;
 
     xdr / xdr_permyriad_per_icp
 }
