@@ -5,7 +5,7 @@ use ic_exports::cycles_minting_canister::{
     MEMO_TOP_UP_CANISTER,
 };
 use ic_exports::ic_base_types::{CanisterId, PrincipalId};
-use ic_exports::ledger_canister::{
+use ic_exports::ledger::{
     AccountIdentifier, Subaccount, Tokens, TransferArgs, TransferError, DEFAULT_TRANSFER_FEE,
     TOKEN_SUBDIVIDABLE_BY,
 };
