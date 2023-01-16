@@ -211,7 +211,7 @@ impl<K: BoundedStorable> Key<K> {
         let data_len = self.data.len();
 
         // last `CHUNK_INDEX_LEN` bytes is chunk index
-        let chunk_index_bytes = &mut self.data[(data_len - CHUNK_INDEX_LEN as usize)..];
+        let chunk_index_bytes = &mut self.data[(data_len - CHUNK_INDEX_LEN)..];
 
         let chunk_index_arr = chunk_index_bytes
             .try_into()
