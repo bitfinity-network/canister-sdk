@@ -8,7 +8,7 @@ use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_cdk::api::call::CallResult;
 use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_exports::ledger_canister::{
+use ic_exports::ledger::{
     AccountIdentifier, Subaccount, Tokens, TransferArgs, TransferError, DEFAULT_TRANSFER_FEE,
 };
 use ic_exports::{ic_kit, BlockHeight};

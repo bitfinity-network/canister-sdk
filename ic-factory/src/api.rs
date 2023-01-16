@@ -10,7 +10,7 @@ use ic_exports::candid::{CandidType, Nat, Principal};
 use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
 use ic_exports::ic_kit::ic;
-use ic_exports::ledger_canister::{AccountIdentifier, Subaccount, DEFAULT_TRANSFER_FEE};
+use ic_exports::ledger::{AccountIdentifier, Subaccount, DEFAULT_TRANSFER_FEE};
 use ic_helpers::ledger::LedgerPrincipalExt;
 use ic_helpers::management::ManagementPrincipalExt;
 use ic_storage::IcStorage;
