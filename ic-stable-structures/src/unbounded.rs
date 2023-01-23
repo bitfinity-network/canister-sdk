@@ -5,8 +5,6 @@ use std::mem;
 
 use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
 
-use crate::{Error, Result};
-
 pub type ChunkSize = u16;
 
 type ChunkIndex = u16;
@@ -45,8 +43,11 @@ where
     }
 
     /// Return a value associated with `key`.
+    /// 
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn get(&self, key: &K) -> Option<V> {
-        let first_chunk_key = Key::new(key).ok()?;
+        let first_chunk_key = Key::new(key);
         let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
         let mut value_data = Vec::new();
         let mut item_present = false;
@@ -64,29 +65,21 @@ where
     }
 
     /// Add or replace a value associated with `key`.
-    pub fn insert(&mut self, key: &K, value: &V) -> Result<()> {
-        let mut inner_key = Key::new(key)?;
+    /// 
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
+    pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
+        let mut inner_key = Key::new(key);
 
         // remove old data before insert new();
         let previous_value = self.remove(key);
 
-        let insert_result = self.insert_data(&mut inner_key, value);
+        self.insert_data(&mut inner_key, value);
 
-        if insert_result.is_err() {
-            // if insert failed, then remove the inserted chunks.
-            self.remove(key);
-
-            // and restore previous data
-            if let Some(prev) = previous_value {
-                self.insert(key, &prev)
-                    .expect("failed to insert previous value after failed insert");
-            }
-        }
-
-        insert_result
+        previous_value
     }
 
-    fn insert_data(&mut self, key: &mut Key<K>, value: &V) -> Result<()> {
+    fn insert_data(&mut self, key: &mut Key<K>, value: &V) {
         let value_bytes = value.to_bytes();
         let chunks = value_bytes.chunks(V::CHUNK_SIZE as _);
 
@@ -97,15 +90,20 @@ where
         }
 
         self.items_count += 1;
-
-        Ok(())
     }
 
     /// Remove a value associated with `key`.
+    /// 
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        let first_chunk_key = Key::new(key).ok()?;
+        let first_chunk_key = Key::new(key);
         let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
-        let keys: Vec<Key<K>> = self.inner.range(first_chunk_key..=max_chunk_key).map(|(k, _)| k).collect();
+        let keys: Vec<Key<K>> = self
+            .inner
+            .range(first_chunk_key..=max_chunk_key)
+            .map(|(k, _)| k)
+            .collect();
 
         if keys.is_empty() {
             return None;
@@ -211,11 +209,13 @@ impl<K: BoundedStorable> Ord for Key<K> {
 }
 
 impl<K: BoundedStorable> Key<K> {
-    pub fn new(key: &K) -> Result<Self> {
+    /// Crate a new key.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
+    pub fn new(key: &K) -> Self {
         let key_bytes = key.to_bytes();
-        if key_bytes.len() > K::MAX_SIZE as usize {
-            return Err(Error::ValueTooLarge(key_bytes.len() as _));
-        }
+        assert!(key_bytes.len() <= K::MAX_SIZE as usize);
 
         let size_prefix_len = Self::size_prefix_len();
         let full_len = size_prefix_len + key_bytes.len() + CHUNK_INDEX_LEN;
@@ -224,10 +224,10 @@ impl<K: BoundedStorable> Key<K> {
         data.extend_from_slice(&key_bytes);
         data.extend_from_slice(&[0u8; CHUNK_INDEX_LEN]);
 
-        Ok(Self {
+        Self {
             data,
             _p: PhantomData,
-        })
+        }
     }
 
     pub fn with_max_chunk_index(mut self) -> Self {
@@ -392,13 +392,28 @@ mod tests {
         let medium_str = test_utils::str_val(5000);
         let short_str = test_utils::str_val(50);
 
-        map.insert(&0u32, &long_str).unwrap();
-        map.insert(&3u32, &medium_str).unwrap();
-        map.insert(&5u32, &short_str).unwrap();
+        map.insert(&0u32, &long_str);
+        map.insert(&3u32, &medium_str);
+        map.insert(&5u32, &short_str);
 
         assert_eq!(map.get(&0).as_ref(), Some(&long_str));
         assert_eq!(map.get(&3).as_ref(), Some(&medium_str));
         assert_eq!(map.get(&5).as_ref(), Some(&short_str));
+    }
+
+    #[test]
+    fn insert_should_replace_previous_value() {
+        let mut map = StableUnboundedMap::new(DefaultMemoryImpl::default());
+        assert!(map.is_empty());
+
+        let long_str = test_utils::str_val(50000);
+        let short_str = test_utils::str_val(50);
+
+        assert!(map.insert(&0u32, &long_str).is_none());
+        let prev = map.insert(&0u32, &short_str).unwrap();
+        
+        assert_eq!(&prev, &long_str);
+        assert_eq!(map.get(&0).as_ref(), Some(&short_str));
     }
 
     #[test]
@@ -409,9 +424,9 @@ mod tests {
         let medium_str = test_utils::str_val(5000);
         let short_str = test_utils::str_val(50);
 
-        map.insert(&0u32, &long_str).unwrap();
-        map.insert(&3u32, &medium_str).unwrap();
-        map.insert(&5u32, &short_str).unwrap();
+        map.insert(&0u32, &long_str);
+        map.insert(&3u32, &medium_str);
+        map.insert(&5u32, &short_str);
 
         assert_eq!(map.remove(&3), Some(medium_str));
 
@@ -431,7 +446,7 @@ mod tests {
         ];
 
         for i in 0..100u32 {
-            map.insert(&i, &strs[i as usize % strs.len()]).unwrap();
+            map.insert(&i, &strs[i as usize % strs.len()]);
         }
 
         assert!(map.iter().all(|(k, v)| v == strs[k as usize % strs.len()]))

@@ -6,7 +6,7 @@ use ic_exports::stable_structures::BoundedStorable;
 use ic_exports::Principal;
 
 use crate::unbounded::{self, SlicedStorable};
-use crate::{Memory, Result};
+use crate::Memory;
 
 /// Stores key-value data in stable memory.
 pub struct StableUnboundedMap<K, V>
@@ -40,12 +40,18 @@ where
     }
 
     /// Return value associated with `key` from stable memory.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn get(&self, key: &K) -> Option<V> {
         self.get_inner().get(key)
     }
 
     /// Add or replace value associated with `key` in stable memory.
-    pub fn insert(&mut self, key: &K, value: &V) -> Result<()> {
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
+    pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
         let canister_id = ic::id();
 
         // If map for `canister_id` is not initialized, initialize it.
@@ -55,11 +61,13 @@ where
                 let memory = crate::get_memory_by_id(self.memory_id);
                 unbounded::StableUnboundedMap::new(memory)
             })
-            .insert(key, value)?;
-        Ok(())
+            .insert(key, value)
     }
 
     /// Remove value associated with `key` from stable memory.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn remove(&mut self, key: &K) -> Option<V> {
         self.mut_inner().remove(key)
     }
@@ -116,9 +124,9 @@ mod tests {
         let medium_str = test_utils::str_val(5000);
         let short_str = test_utils::str_val(50);
 
-        map.insert(&0u32, &long_str).unwrap();
-        map.insert(&3u32, &medium_str).unwrap();
-        map.insert(&5u32, &short_str).unwrap();
+        map.insert(&0u32, &long_str);
+        map.insert(&3u32, &medium_str);
+        map.insert(&5u32, &short_str);
         assert_eq!(map.get(&0).as_ref(), Some(&long_str));
         assert_eq!(map.get(&3).as_ref(), Some(&medium_str));
         assert_eq!(map.get(&5).as_ref(), Some(&short_str));
@@ -143,10 +151,10 @@ mod tests {
         let long_str = test_utils::str_val(50000);
         let medium_str = test_utils::str_val(5000);
 
-        map.insert(&0u32, &long_str).unwrap();
+        map.insert(&0u32, &long_str);
 
         get_context().update_id(mock_principals::bob());
-        map.insert(&3u32, &medium_str).unwrap();
+        map.insert(&3u32, &medium_str);
 
         get_context().update_id(mock_principals::alice());
         assert_eq!(map.get(&0), Some(long_str));
