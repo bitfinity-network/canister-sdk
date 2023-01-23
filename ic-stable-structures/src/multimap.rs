@@ -3,8 +3,6 @@ use std::marker::PhantomData;
 
 use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
 
-use crate::{Error, Result};
-
 // Keys memory layout:
 //
 // |- k1 size in bytes -|- k1 bytes -|- k2 bytes |
@@ -51,72 +49,66 @@ where
     /// Inserting a value with the same keys as an existing value
     /// will result in the old value being overwritten.
     ///
-    /// # Errors
-    ///
-    /// If byte representation length of any key or value exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
-    ///
-    /// If stable memory unable to grow, the `Error::OutOfStableMemory` will be returned.
-    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Result<()> {
-        let key = KeyPair::new(first_key, second_key)?;
-        self.0.insert(key, value.into());
-        Ok(())
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
+    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
+    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
+        let key = KeyPair::new(first_key, second_key);
+        self.0.insert(key, value.into()).map(|v| v.into_inner())
     }
 
     /// Get a value for the given keys.
     /// If byte representation length of any key exceeds max size, `None` will be returned.
+    ///
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
     pub fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
-        let key = KeyPair::new(first_key, second_key).ok()?;
-        let value = self.0.get(&key)?;
-        Some(value.into_inner())
+        let key = KeyPair::new(first_key, second_key);
+        self.0.get(&key).map(|v| v.into_inner())
     }
 
     /// Remove a specific value and return it.
     ///
-    /// # Errors
-    ///
-    /// If byte representation length of any key exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
-    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>> {
-        let key = KeyPair::new(first_key, second_key)?;
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
+    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V> {
+        let key = KeyPair::new(first_key, second_key);
 
-        let value = self.0.remove(&key).map(Value::into_inner);
-        Ok(value)
+        self.0.remove(&key).map(Value::into_inner)
     }
 
     /// Remove all values for the partial key
     ///
-    /// # Errors
-    ///
-    /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
-    pub fn remove_partial(&mut self, first_key: &K1) -> Result<()> {
-        let min_key = KeyPair::<K1, K2>::min_key(first_key)?;
-        let max_key = KeyPair::<K1, K2>::max_key(first_key)?;
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    pub fn remove_partial(&mut self, first_key: &K1) {
+        let min_key = KeyPair::<K1, K2>::min_key(first_key);
+        let max_key = KeyPair::<K1, K2>::max_key(first_key);
 
-        let keys: Vec<_> = self.0.range(min_key..=max_key).map(|(keys, _)| keys).collect();
+        let keys: Vec<_> = self
+            .0
+            .range(min_key..=max_key)
+            .map(|(keys, _)| keys)
+            .collect();
 
         for k in keys {
             let _ = self.0.remove(&k);
         }
-
-        Ok(())
     }
 
     /// Get a range of key value pairs based on the root key.
     ///
-    /// # Errors
-    ///
-    /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
-    pub fn range(&self, first_key: &K1) -> Result<RangeIter<M, K1, K2, V>> {
-        let min_key = KeyPair::<K1, K2>::min_key(first_key)?;
-        let max_key = KeyPair::<K1, K2>::max_key(first_key)?;
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    pub fn range(&self, first_key: &K1) -> RangeIter<M, K1, K2, V> {
+        let min_key = KeyPair::<K1, K2>::min_key(first_key);
+        let max_key = KeyPair::<K1, K2>::max_key(first_key);
 
         let inner = self.0.range(min_key..=max_key);
-        let iter = RangeIter::new(inner);
-
-        Ok(iter)
+        RangeIter::new(inner)
     }
 
     /// Iterator over all items in the map.
@@ -183,17 +175,15 @@ where
     K1: BoundedStorable,
     K2: BoundedStorable,
 {
-    pub fn new(first_key: &K1, second_key: &K2) -> Result<Self> {
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
+    pub fn new(first_key: &K1, second_key: &K2) -> Self {
         let first_key_bytes = first_key.to_bytes();
         let second_key_bytes = second_key.to_bytes();
 
-        if first_key_bytes.len() > K1::MAX_SIZE as usize {
-            return Err(Error::ValueTooLarge(first_key_bytes.len() as _));
-        }
-
-        if second_key_bytes.len() > K2::MAX_SIZE as usize {
-            return Err(Error::ValueTooLarge(second_key_bytes.len() as _));
-        }
+        assert!(first_key_bytes.len() <= K1::MAX_SIZE as usize);
+        assert!(second_key_bytes.len() <= K2::MAX_SIZE as usize);
 
         let full_len = Self::size_prefix_len() + first_key_bytes.len() + second_key_bytes.len();
         let mut buffer = Vec::with_capacity(full_len);
@@ -201,11 +191,11 @@ where
         buffer.extend_from_slice(&first_key_bytes);
         buffer.extend_from_slice(&second_key_bytes);
 
-        Ok(Self {
+        Self {
             encoded: buffer,
             first_key_len: first_key_bytes.len(),
             _p: PhantomData,
-        })
+        }
     }
 
     pub fn first_key(&self) -> K1 {
@@ -213,31 +203,27 @@ where
         K1::from_bytes(self.encoded[offset..offset + self.first_key_len].into())
     }
 
-    pub fn min_key(first_key: &K1) -> Result<Self> {
+    pub fn min_key(first_key: &K1) -> Self {
         let first_key_bytes = first_key.to_bytes();
 
-        if first_key_bytes.len() > K1::MAX_SIZE as usize {
-            return Err(Error::ValueTooLarge(first_key_bytes.len() as _));
-        }
+        assert!(first_key_bytes.len() <= K1::MAX_SIZE as usize);
 
         let full_len = Self::size_prefix_len() + first_key_bytes.len();
         let mut buffer = Vec::with_capacity(full_len);
         Self::push_size_prefix(&mut buffer, first_key_bytes.len());
         buffer.extend_from_slice(&first_key_bytes);
 
-        Ok(Self {
+        Self {
             encoded: buffer,
             first_key_len: first_key_bytes.len(),
             _p: PhantomData,
-        })
+        }
     }
 
-    pub fn max_key(first_key: &K1) -> Result<Self> {
+    pub fn max_key(first_key: &K1) -> Self {
         let first_key_bytes = first_key.to_bytes();
 
-        if first_key_bytes.len() > K1::MAX_SIZE as usize {
-            return Err(Error::ValueTooLarge(first_key_bytes.len() as _));
-        }
+        assert!(first_key_bytes.len() <= K1::MAX_SIZE as usize);
 
         let full_len = Self::size_prefix_len() + first_key_bytes.len();
         let mut buffer = Vec::with_capacity(full_len);
@@ -245,11 +231,11 @@ where
         buffer.extend_from_slice(&first_key_bytes);
         buffer.resize(Self::MAX_SIZE as _, 0xFF);
 
-        Ok(Self {
+        Self {
             encoded: buffer,
             first_key_len: first_key_bytes.len(),
             _p: PhantomData,
-        })
+        }
     }
 
     pub fn second_key(&self) -> K2 {
@@ -469,12 +455,12 @@ mod test {
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
-        mm.insert(&k1, &k2, &val).unwrap();
+        mm.insert(&k1, &k2, &val);
 
         let k1 = Array([10u8, 20]);
         let k2 = Array([21u8, 22, 23]);
         let val = Array([123, 200u8, 200, 100, 100, 255]);
-        mm.insert(&k1, &k2, &val).unwrap();
+        mm.insert(&k1, &k2, &val);
 
         mm
     }
@@ -486,23 +472,25 @@ mod test {
             let k1 = Array([i; 1]);
             let k2 = Array([i * 10; 2]);
             let val = Array([i; 1]);
-            mm.insert(&k1, &k2, &val).unwrap();
+            mm.insert(&k1, &k2, &val);
         }
 
         assert_eq!(mm.len(), 10);
     }
 
     #[test]
-    fn insert_overwrites() {
+    fn insert_should_replace_old_value() {
         let mut mm = make_map();
+
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
-        let val = Array([3u8, 0, 0, 0, 0, 3]);
-        mm.insert(&k1, &k2, &val).unwrap();
+        let val = Array([255u8, 255, 255, 255, 255, 255]);
 
-        let ret = mm.get(&k1, &k2).unwrap();
+        let prev_val = Array([200u8, 200, 200, 100, 100, 123]);
+        let replaced_val = mm.insert(&k1, &k2, &val).unwrap();
 
-        assert_eq!(val, ret);
+        assert_eq!(prev_val, replaced_val);
+        assert_eq!(mm.get(&k1, &k2), Some(val));
     }
 
     #[test]
@@ -521,7 +509,7 @@ mod test {
         let mut mm = make_map();
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
-        let val = mm.remove(&k1, &k2).unwrap().unwrap();
+        let val = mm.remove(&k1, &k2).unwrap();
 
         let expected = Array([200u8, 200, 200, 100, 100, 123]);
         assert_eq!(val, expected);
@@ -529,7 +517,7 @@ mod test {
 
         let k1 = Array([10u8, 20]);
         let k2 = Array([21u8, 22, 23]);
-        let _ = mm.remove(&k1, &k2).unwrap();
+        mm.remove(&k1, &k2).unwrap();
         assert!(mm.is_empty());
     }
 
@@ -539,13 +527,13 @@ mod test {
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
-        mm.insert(&k1, &k2, &val).unwrap();
+        mm.insert(&k1, &k2, &val);
 
         let k2 = Array([21u8, 22, 23]);
         let val = Array([123, 200u8, 200, 100, 100, 255]);
-        mm.insert(&k1, &k2, &val).unwrap();
+        mm.insert(&k1, &k2, &val);
 
-        mm.remove_partial(&k1).unwrap();
+        mm.remove_partial(&k1);
         assert!(mm.is_empty());
     }
 
@@ -555,13 +543,13 @@ mod test {
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
-        mm.insert(&k1, &k2, &val).unwrap();
+        mm.insert(&k1, &k2, &val);
 
         let k2 = Array([21u8, 22, 23]);
         let val = Array([123, 200u8, 200, 100, 100, 255]);
-        mm.insert(&k1, &k2, &val).unwrap();
+        mm.insert(&k1, &k2, &val);
         let k1 = Array([21u8, 22]);
-        mm.insert(&k1, &k2, &val).unwrap();
+        mm.insert(&k1, &k2, &val);
 
         mm.clear();
         assert!(mm.is_empty());
@@ -580,7 +568,7 @@ mod test {
     fn range_iter() {
         let k1 = Array([1u8, 2]);
         let mm = make_map();
-        let mut iter = mm.range(&k1).unwrap();
+        let mut iter = mm.range(&k1);
         assert!(iter.next().is_some());
         assert!(iter.next().is_none());
     }
