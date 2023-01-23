@@ -49,12 +49,18 @@ where
     }
 
     /// Add or replace value associated with `key` in stable memory.
-    pub fn insert(&mut self, key: K, value: V) -> Result<()> {
-        self.0.insert(key, value)?;
-        Ok(())
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
+    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+        self.0.insert(key, value)
     }
 
     /// Remove value associated with `key` from stable memory.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn remove(&mut self, key: &K) -> Option<V> {
         self.0.remove(key)
     }
@@ -116,43 +122,37 @@ where
     /// Inserting a value with the same keys as an existing value
     /// will result in the old value being overwritten.
     ///
-    /// # Errors
-    ///
-    /// If byte representation length of any key or value exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
-    ///
-    /// If stable memory unable to grow, the `Error::OutOfStableMemory` will be returned.
-    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Result<()> {
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
+    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
+    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
         self.0.insert(first_key, second_key, value)
     }
 
     /// Remove a specific value and return it.
     ///
-    /// # Errors
-    ///
-    /// If byte representation length of any key exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
-    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>> {
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
+    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V> {
         self.0.remove(first_key, second_key)
     }
 
     /// Remove all values for the partial key
     ///
-    /// # Errors
     ///
-    /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
-    pub fn remove_partial(&mut self, first_key: &K1) -> Result<()> {
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    pub fn remove_partial(&mut self, first_key: &K1) {
         self.0.remove_partial(first_key)
     }
 
     /// Get a range of key value pairs based on the root key.
     ///
-    /// # Errors
-    ///
-    /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
-    pub fn range(&self, first_key: &K1) -> Result<RangeIter<Memory, K1, K2, V>> {
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    pub fn range(&self, first_key: &K1) -> RangeIter<Memory, K1, K2, V> {
         self.0.range(first_key)
     }
 
@@ -255,16 +255,26 @@ where
     }
 
     /// Returns a value associated with `key` from stable memory.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn get(&self, key: &K) -> Option<V> {
         self.0.get(key)
     }
 
     /// Add or replace a value associated with `key` in stable memory.
-    pub fn insert(&mut self, key: &K, value: &V) -> Result<()> {
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
+    pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
         self.0.insert(key, value)
     }
 
     /// Remove a value associated with `key` from stable memory.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K1::MAX_SIZE`
     pub fn remove(&mut self, key: &K) -> Option<V> {
         self.0.remove(key)
     }
@@ -287,5 +297,97 @@ where
     /// Remove all entries from the map.
     pub fn clear(&mut self) {
         self.0.clear()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use ic_exports::stable_structures::memory_manager::MemoryId;
+
+    use super::{StableBTreeMap, StableUnboundedMap, StableMultimap};
+    use crate::test_utils;
+
+    #[test]
+    fn btreemap_works() {
+        let mut map = StableBTreeMap::new(MemoryId::new(0));
+        assert!(map.is_empty());
+
+        map.insert(0u32, 42u32);
+        map.insert(10, 100);
+        assert_eq!(map.get(&0), Some(42));
+        assert_eq!(map.get(&10), Some(100));
+
+        let mut iter = map.iter();
+        assert_eq!(iter.next(), Some((0, 42)));
+        assert_eq!(iter.next(), Some((10, 100)));
+        assert_eq!(iter.next(), None);
+
+        assert_eq!(map.remove(&10), Some(100));
+
+        assert_eq!(map.len(), 1);
+    }
+
+    #[test]
+    fn unbounded_map_works() {
+        let mut map = StableUnboundedMap::new(MemoryId::new(0));
+        assert!(map.is_empty());
+
+        let long_str = test_utils::str_val(50000);
+        let medium_str = test_utils::str_val(5000);
+        let short_str = test_utils::str_val(50);
+
+        map.insert(&0u32, &long_str);
+        map.insert(&3u32, &medium_str);
+        map.insert(&5u32, &short_str);
+        assert_eq!(map.get(&0).as_ref(), Some(&long_str));
+        assert_eq!(map.get(&3).as_ref(), Some(&medium_str));
+        assert_eq!(map.get(&5).as_ref(), Some(&short_str));
+
+        let entries: HashMap<_, _> = map.iter().collect();
+        let expected = HashMap::from_iter([(0, long_str), (3, medium_str.clone()), (5, short_str)]);
+        assert_eq!(entries, expected);
+
+        assert_eq!(map.remove(&3), Some(medium_str));
+
+        assert_eq!(map.len(), 2);
+    }
+
+    #[test]
+    fn map_works() {
+        let mut map = StableMultimap::new(MemoryId::new(0));
+        assert!(map.is_empty());
+
+        map.insert(&0u32, &0u32, &42u32);
+        map.insert(&0u32, &1u32, &84u32);
+
+        map.insert(&1u32, &0u32, &10u32);
+        map.insert(&1u32, &1u32, &20u32);
+
+        assert_eq!(map.len(), 4);
+        assert_eq!(map.get(&0, &0), Some(42));
+        assert_eq!(map.get(&0, &1), Some(84));
+        assert_eq!(map.get(&1, &0), Some(10));
+        assert_eq!(map.get(&1, &1), Some(20));
+
+        let mut iter = map.iter();
+        assert_eq!(iter.next(), Some((0, 0, 42)));
+        assert_eq!(iter.next(), Some((0, 1, 84)));
+        assert_eq!(iter.next(), Some((1, 0, 10)));
+        assert_eq!(iter.next(), Some((1, 1, 20)));
+        assert_eq!(iter.next(), None);
+
+        let mut range = map.range(&0);
+        assert_eq!(range.next(), Some((0, 42)));
+        assert_eq!(range.next(), Some((1, 84)));
+        assert_eq!(range.next(), None);
+
+        map.remove_partial(&0);
+        assert_eq!(map.len(), 2);
+
+        assert_eq!(map.remove(&1, &0), Some(10));
+        assert_eq!(map.iter().next(), Some((1, 1, 20)));
+        assert_eq!(map.len(), 1);
     }
 }
