@@ -41,7 +41,7 @@ where
     }
 
     /// Add or replace value associated with `key` in stable memory.
-    /// 
+    ///
     /// # Preconditions:
     ///   - key.to_bytes().len() <= Key::MAX_SIZE
     ///   - value.to_bytes().len() <= Value::MAX_SIZE

@@ -22,7 +22,12 @@ impl Manager {
         let canister_id = ic::id();
         self.0
             .entry(canister_id)
-            .or_insert_with(|| MemoryManager::init_with_bucket_size(DefaultMemoryImpl::default(), Self::BUCKET_SIZE_IN_PAGES))
+            .or_insert_with(|| {
+                MemoryManager::init_with_bucket_size(
+                    DefaultMemoryImpl::default(),
+                    Self::BUCKET_SIZE_IN_PAGES,
+                )
+            })
             .get(memory_id)
     }
 }

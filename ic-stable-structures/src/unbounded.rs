@@ -43,7 +43,7 @@ where
     }
 
     /// Return a value associated with `key`.
-    /// 
+    ///
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn get(&self, key: &K) -> Option<V> {
@@ -65,7 +65,7 @@ where
     }
 
     /// Add or replace a value associated with `key`.
-    /// 
+    ///
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
@@ -93,7 +93,7 @@ where
     }
 
     /// Remove a value associated with `key`.
-    /// 
+    ///
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn remove(&mut self, key: &K) -> Option<V> {
@@ -411,7 +411,7 @@ mod tests {
 
         assert!(map.insert(&0u32, &long_str).is_none());
         let prev = map.insert(&0u32, &short_str).unwrap();
-        
+
         assert_eq!(&prev, &long_str);
         assert_eq!(map.get(&0).as_ref(), Some(&short_str));
     }

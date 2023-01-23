@@ -306,7 +306,7 @@ mod tests {
 
     use ic_exports::stable_structures::memory_manager::MemoryId;
 
-    use super::{StableBTreeMap, StableUnboundedMap, StableMultimap};
+    use super::{StableBTreeMap, StableMultimap, StableUnboundedMap};
     use crate::test_utils;
 
     #[test]
