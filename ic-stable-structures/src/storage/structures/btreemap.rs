@@ -5,7 +5,7 @@ use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{btreemap, BoundedStorable};
 use ic_exports::Principal;
 
-use crate::{Memory, Result};
+use crate::Memory;
 
 /// Stores key-value data in stable memory.
 pub struct StableBTreeMap<K, V>
@@ -41,7 +41,11 @@ where
     }
 
     /// Add or replace value associated with `key` in stable memory.
-    pub fn insert(&mut self, key: K, value: V) -> Result<()> {
+    ///
+    /// # Preconditions:
+    ///   - key.to_bytes().len() <= Key::MAX_SIZE
+    ///   - value.to_bytes().len() <= Value::MAX_SIZE
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         let canister_id = ic::id();
 
         // If map for `canister_id` is not initialized, initialize it.
@@ -51,8 +55,7 @@ where
                 let memory = crate::get_memory_by_id(self.memory_id);
                 btreemap::BTreeMap::init(memory)
             })
-            .insert(key, value)?;
-        Ok(())
+            .insert(key, value)
     }
 
     /// Remove value associated with `key` from stable memory.
@@ -110,8 +113,8 @@ mod tests {
         let mut map = StableBTreeMap::new(MemoryId::new(0));
         assert!(map.is_empty());
 
-        map.insert(0u32, 42u32).unwrap();
-        map.insert(10, 100).unwrap();
+        map.insert(0u32, 42u32);
+        map.insert(10, 100);
         assert_eq!(map.get(&0), Some(42));
         assert_eq!(map.get(&10), Some(100));
 
@@ -132,10 +135,10 @@ mod tests {
             .inject();
 
         let mut map = StableBTreeMap::new(MemoryId::new(0));
-        map.insert(0u32, 42u32).unwrap();
+        map.insert(0u32, 42u32);
 
         get_context().update_id(mock_principals::bob());
-        map.insert(10, 100).unwrap();
+        map.insert(10, 100);
 
         get_context().update_id(mock_principals::alice());
         assert_eq!(map.get(&0), Some(42));

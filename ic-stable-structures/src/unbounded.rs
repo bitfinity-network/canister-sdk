@@ -92,7 +92,7 @@ where
 
         for chunk in chunks {
             let chunk = Chunk::new(chunk.to_vec());
-            self.inner.insert(key.clone(), chunk)?;
+            self.inner.insert(key.clone(), chunk);
             key.increase_chunk_index();
         }
 

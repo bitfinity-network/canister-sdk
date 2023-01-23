@@ -59,7 +59,7 @@ where
     /// If stable memory unable to grow, the `Error::OutOfStableMemory` will be returned.
     pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Result<()> {
         let key = KeyPair::new(first_key, second_key)?;
-        self.0.insert(key, value.into())?;
+        self.0.insert(key, value.into());
         Ok(())
     }
 
