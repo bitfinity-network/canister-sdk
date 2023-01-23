@@ -243,22 +243,13 @@ impl FactoryState {
         self.check_lock(lock);
 
         let hash = self.module()?.hash;
-
-        CANISTERS_MAP.with(|map| {
-            map.borrow_mut()
-                .insert(PrincipalKey(canister_id), hash)
-                .expect("failed to insert canister hash to stable storage")
-        });
+        self.insert_canister(canister_id, hash);
 
         Ok(())
     }
 
     fn insert_canister(&mut self, canister_id: Principal, hash: CanisterHash) {
-        CANISTERS_MAP.with(|map| {
-            map.borrow_mut()
-                .insert(PrincipalKey(canister_id), hash)
-                .expect("failed to insert canister hash to stable storage")
-        });
+        CANISTERS_MAP.with(|map| map.borrow_mut().insert(PrincipalKey(canister_id), hash));
     }
 
     fn remove_canister(&mut self, canister_id: Principal) -> Option<CanisterHash> {
