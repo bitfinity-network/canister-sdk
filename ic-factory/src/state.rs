@@ -53,7 +53,7 @@ impl Storable for CanisterHash {
         self.0.as_slice().into()
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Self(bytes.into())
     }
 }
@@ -101,13 +101,13 @@ impl CanisterModule {
 struct StorableCanisterModule(Option<CanisterModule>);
 
 impl Storable for StorableCanisterModule {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         Encode!(self)
             .expect("failed to serialize canister module")
             .into()
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Decode!(&bytes, Self).expect("failed to deserialize canister module")
     }
 }
@@ -547,13 +547,13 @@ impl Default for FactoryConfiguration {
 }
 
 impl Storable for FactoryConfiguration {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         Encode!(self)
             .expect("failed to serialize factory configuration")
             .into()
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Decode!(&bytes, Self).expect("failed to deserialize factory configuration")
     }
 }
@@ -653,7 +653,7 @@ impl Storable for PrincipalKey {
         self.0.as_slice().into()
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         PrincipalKey(Principal::from_slice(&bytes))
     }
 }

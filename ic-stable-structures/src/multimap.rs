@@ -276,7 +276,7 @@ where
         Cow::Borrowed(&self.encoded)
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         let first_key_len = Self::read_first_key_len(&bytes);
 
         Self {
@@ -312,11 +312,11 @@ impl<V: Storable> From<&V> for Value<V> {
 }
 
 impl<V> Storable for Value<V> {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::Borrowed(&self.0)
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Self(bytes.to_vec(), PhantomData)
     }
 }
@@ -438,7 +438,7 @@ mod test {
             Cow::Owned(self.0.to_vec())
         }
 
-        fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
             let mut buf = [0u8; N];
             buf.copy_from_slice(&bytes);
             Array(buf)

@@ -69,12 +69,10 @@ where
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
-        let mut inner_key = Key::new(key);
-
         // remove old data before insert new();
         let previous_value = self.remove(key);
 
-        self.insert_data(&mut inner_key, value);
+        self.insert_data(&mut Key::new(key), value);
 
         previous_value
     }
@@ -282,11 +280,11 @@ impl<K: BoundedStorable> Key<K> {
 }
 
 impl<K: BoundedStorable> Storable for Key<K> {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         (&self.data).into()
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Self {
             data: bytes.to_vec(),
             _p: PhantomData,
@@ -323,11 +321,11 @@ impl<V: SlicedStorable> Chunk<V> {
 }
 
 impl<V: SlicedStorable> Storable for Chunk<V> {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         (&self.chunk).into()
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Self {
             chunk: bytes.to_vec(),
             _p: PhantomData,

@@ -9,11 +9,11 @@ use crate::ChunkSize;
 pub struct StringValue(pub String);
 
 impl Storable for StringValue {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         self.0.to_bytes()
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Self(String::from_bytes(bytes))
     }
 }
