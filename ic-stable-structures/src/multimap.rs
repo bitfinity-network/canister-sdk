@@ -203,6 +203,7 @@ where
         K1::from_bytes(self.encoded[offset..offset + self.first_key_len].into())
     }
 
+    /// Minimum possible `KeyPair` for the specified `first_key`.
     pub fn min_key(first_key: &K1) -> Self {
         let first_key_bytes = first_key.to_bytes();
 
@@ -220,6 +221,7 @@ where
         }
     }
 
+    /// Maximum possible `KeyPair` for the specified `first_key`.
     pub fn max_key(first_key: &K1) -> Self {
         let first_key_bytes = first_key.to_bytes();
 
