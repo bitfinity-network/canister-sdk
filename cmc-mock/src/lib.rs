@@ -17,7 +17,7 @@ use ic_exports::cycles_minting_canister::{
     NotifyError, NotifyTopUp, TokensToCycles,
 };
 use ic_exports::ic_kit::ic;
-use ic_exports::ledger_canister::{CandidOperation, GetBlocksArgs, QueryBlocksResponse, Tokens};
+use ic_exports::ledger::{CandidOperation, GetBlocksArgs, QueryBlocksResponse, Tokens};
 use ic_exports::serde::Serialize;
 use ic_exports::BlockHeight;
 use ic_storage::stable::Versioned;

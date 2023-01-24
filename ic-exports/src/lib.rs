@@ -11,9 +11,9 @@ pub type BlockHeight = u64;
 pub mod ledger {
     pub use ic_ledger_core::Tokens;
     pub use icp_ledger::{
-        AccountIdentifier, BinaryAccountBalanceArgs, LedgerCanisterInitPayload, Subaccount,
-        TransferArgs, TransferError, TransferFee, TransferFeeArgs, DEFAULT_TRANSFER_FEE,
-        TOKEN_SUBDIVIDABLE_BY,
+        AccountIdentifier, BinaryAccountBalanceArgs, CandidOperation, GetBlocksArgs,
+        LedgerCanisterInitPayload, QueryBlocksResponse, Subaccount, TransferArgs, TransferError,
+        TransferFee, TransferFeeArgs, DEFAULT_TRANSFER_FEE, TOKEN_SUBDIVIDABLE_BY,
     };
 }
 
