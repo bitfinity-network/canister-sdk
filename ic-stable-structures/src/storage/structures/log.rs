@@ -1,7 +1,5 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::marker::PhantomData;
-use std::ops::Deref;
 
 use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::memory_manager::MemoryId;
@@ -13,10 +11,9 @@ use crate::{Error, Memory, Result};
 /// Stores list of immutable values in stable memory.
 /// Provides only `append()` and `get()` operations.
 pub struct StableLog<T: Storable> {
-    data: HashMap<Principal, log::Log<Memory, Memory>>,
+    data: HashMap<Principal, log::Log<T, Memory, Memory>>,
     index_memory_id: MemoryId,
     data_memory_id: MemoryId,
-    _data: PhantomData<T>,
 }
 
 impl<T: Storable> StableLog<T> {
@@ -31,13 +28,12 @@ impl<T: Storable> StableLog<T> {
             data: HashMap::default(),
             index_memory_id,
             data_memory_id,
-            _data: PhantomData,
         })
     }
 
     /// Returns reference to value stored in stable memory.
     pub fn get(&self, index: usize) -> Option<T> {
-        self.get_inner()?.get(index).map(T::from_bytes)
+        self.get_inner()?.get(index)
     }
 
     /// Updates value in stable memory.
@@ -46,14 +42,14 @@ impl<T: Storable> StableLog<T> {
         let index = match self.data.entry(canister_id) {
             Entry::Occupied(mut entry) => entry
                 .get_mut()
-                .append(value.to_bytes().deref())
+                .append(&value)
                 .map_err(|_| Error::OutOfStableMemory)?,
             Entry::Vacant(entry) => {
                 let index_memory = crate::get_memory_by_id(self.index_memory_id);
                 let data_memory = crate::get_memory_by_id(self.data_memory_id);
                 let inserted = entry.insert(log::Log::init(index_memory, data_memory)?);
                 inserted
-                    .append(value.to_bytes().deref())
+                    .append(&value)
                     .map_err(|_| Error::OutOfStableMemory)?
             }
         };
@@ -76,13 +72,13 @@ impl<T: Storable> StableLog<T> {
     pub fn clear(&mut self) {
         let canister_id = ic::id();
         if let Some(log) = self.data.remove(&canister_id) {
-            let (index_memory, data_memory) = log.forget();
+            let (index_memory, data_memory) = log.into_memories();
             self.data
                 .insert(canister_id, log::Log::new(index_memory, data_memory));
         }
     }
 
-    fn get_inner(&self) -> Option<&log::Log<Memory, Memory>> {
+    fn get_inner(&self) -> Option<&log::Log<T, Memory, Memory>> {
         let canister_id = ic::id();
         self.data.get(&canister_id)
     }

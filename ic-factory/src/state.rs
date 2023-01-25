@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::future::Future;
@@ -42,7 +43,7 @@ pub struct CanisterHash(pub Vec<u8>);
 impl From<&[u8]> for CanisterHash {
     fn from(hash: &[u8]) -> Self {
         // This will panic if we will change SHA-256 to an algorithm with other hash size.
-        assert_eq!(hash.len(), Self::max_size() as usize);
+        assert_eq!(hash.len(), Self::MAX_SIZE as usize);
         Self(hash.into())
     }
 }
@@ -52,16 +53,14 @@ impl Storable for CanisterHash {
         self.0.as_slice().into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
-        Self(bytes)
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
+        Self(bytes.into())
     }
 }
 
 impl BoundedStorable for CanisterHash {
-    fn max_size() -> u32 {
-        // SHA-256 takes 32 bytes
-        32
-    }
+    const MAX_SIZE: u32 = 32;
+    const IS_FIXED_SIZE: bool = true;
 }
 
 #[derive(Debug, Default, CandidType, Deserialize, IcStorage)]
@@ -102,13 +101,13 @@ impl CanisterModule {
 struct StorableCanisterModule(Option<CanisterModule>);
 
 impl Storable for StorableCanisterModule {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         Encode!(self)
             .expect("failed to serialize canister module")
             .into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Decode!(&bytes, Self).expect("failed to deserialize canister module")
     }
 }
@@ -266,22 +265,13 @@ impl FactoryState {
         self.check_lock(lock);
 
         let hash = self.module()?.hash;
-
-        CANISTERS_MAP.with(|map| {
-            map.borrow_mut()
-                .insert(PrincipalKey(canister_id), hash)
-                .expect("failed to insert canister hash to stable storage")
-        });
+        self.insert_canister(canister_id, hash);
 
         Ok(())
     }
 
     fn insert_canister(&mut self, canister_id: Principal, hash: CanisterHash) {
-        CANISTERS_MAP.with(|map| {
-            map.borrow_mut()
-                .insert(PrincipalKey(canister_id), hash)
-                .expect("failed to insert canister hash to stable storage")
-        });
+        CANISTERS_MAP.with(|map| map.borrow_mut().insert(PrincipalKey(canister_id), hash));
     }
 
     fn remove_canister(&mut self, canister_id: Principal) -> Option<CanisterHash> {
@@ -557,13 +547,13 @@ impl Default for FactoryConfiguration {
 }
 
 impl Storable for FactoryConfiguration {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         Encode!(self)
             .expect("failed to serialize factory configuration")
             .into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Decode!(&bytes, Self).expect("failed to deserialize factory configuration")
     }
 }
@@ -655,6 +645,7 @@ async fn send_remaining_fee_to(
     Ok(())
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct PrincipalKey(Principal);
 
 impl Storable for PrincipalKey {
@@ -662,16 +653,16 @@ impl Storable for PrincipalKey {
         self.0.as_slice().into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         PrincipalKey(Principal::from_slice(&bytes))
     }
 }
 
 impl BoundedStorable for PrincipalKey {
-    fn max_size() -> u32 {
-        // max bytes count in Principal
-        29
-    }
+    // max bytes count in Principal
+    const MAX_SIZE: u32 = 29;
+
+    const IS_FIXED_SIZE: bool = false;
 }
 
 const CONFIG_MEMORY_ID: MemoryId = MemoryId::new(0);

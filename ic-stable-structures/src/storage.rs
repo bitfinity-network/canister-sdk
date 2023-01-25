@@ -15,11 +15,19 @@ pub mod structures;
 struct Manager(HashMap<Principal, MemoryManager>);
 
 impl Manager {
+    // To reduce memory consumption in tests, use only 8KB preallocaions.
+    const BUCKET_SIZE_IN_PAGES: u16 = 8;
+
     pub fn get(&mut self, memory_id: MemoryId) -> Memory {
         let canister_id = ic::id();
         self.0
             .entry(canister_id)
-            .or_insert_with(|| MemoryManager::init(DefaultMemoryImpl::default()))
+            .or_insert_with(|| {
+                MemoryManager::init_with_bucket_size(
+                    DefaultMemoryImpl::default(),
+                    Self::BUCKET_SIZE_IN_PAGES,
+                )
+            })
             .get(memory_id)
     }
 }

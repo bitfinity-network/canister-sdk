@@ -17,7 +17,7 @@ ic-cdk-macros = "0.6"
 ic-agent = { version = "0.21", optional = true }
 
 
-ic-stable-structures = "0.3.0"
+ic-stable-structures = "0.4.1"
 icp-ledger = {git = "https://github.com/dfinity/ic", rev = "dcbf401f27d9b48354e68389c6d8293c4233b055"}
 ledger-canister = {git = "https://github.com/dfinity/ic", rev = "dcbf401f27d9b48354e68389c6d8293c4233b055"}
 ic-ledger-core = {git = "https://github.com/dfinity/ic", rev = "dcbf401f27d9b48354e68389c6d8293c4233b055"}

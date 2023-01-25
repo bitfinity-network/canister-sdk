@@ -2,19 +2,27 @@ use std::collections::HashMap;
 
 use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::{btreemap, BoundedStorable, Storable};
+use ic_exports::stable_structures::{btreemap, BoundedStorable};
 use ic_exports::Principal;
 
-use crate::{Memory, Result};
+use crate::Memory;
 
 /// Stores key-value data in stable memory.
-pub struct StableBTreeMap<K: Storable, V: Storable> {
-    data: HashMap<Principal, btreemap::BTreeMap<Memory, K, V>>,
+pub struct StableBTreeMap<K, V>
+where
+    K: BoundedStorable + Ord + Clone,
+    V: BoundedStorable,
+{
+    data: HashMap<Principal, btreemap::BTreeMap<K, V, Memory>>,
     memory_id: MemoryId,
-    empty: btreemap::BTreeMap<Memory, K, V>,
+    empty: btreemap::BTreeMap<K, V, Memory>,
 }
 
-impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
+impl<K, V> StableBTreeMap<K, V>
+where
+    K: BoundedStorable + Ord + Clone,
+    V: BoundedStorable,
+{
     /// Create new instance of key-value storage.
     pub fn new(memory_id: MemoryId) -> Self {
         let memory = crate::get_memory_by_id(memory_id);
@@ -33,7 +41,11 @@ impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
     }
 
     /// Add or replace value associated with `key` in stable memory.
-    pub fn insert(&mut self, key: K, value: V) -> Result<()> {
+    ///
+    /// # Preconditions:
+    ///   - key.to_bytes().len() <= Key::MAX_SIZE
+    ///   - value.to_bytes().len() <= Value::MAX_SIZE
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         let canister_id = ic::id();
 
         // If map for `canister_id` is not initialized, initialize it.
@@ -43,8 +55,7 @@ impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
                 let memory = crate::get_memory_by_id(self.memory_id);
                 btreemap::BTreeMap::init(memory)
             })
-            .insert(key, value)?;
-        Ok(())
+            .insert(key, value)
     }
 
     /// Remove value associated with `key` from stable memory.
@@ -53,7 +64,7 @@ impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
     }
 
     /// List all currently stored key-value pairs.
-    pub fn iter(&self) -> btreemap::Iter<'_, Memory, K, V> {
+    pub fn iter(&self) -> btreemap::Iter<'_, K, V, Memory> {
         self.get_inner().iter()
     }
 
@@ -77,12 +88,12 @@ impl<K: BoundedStorable, V: BoundedStorable> StableBTreeMap<K, V> {
         }
     }
 
-    fn get_inner(&self) -> &btreemap::BTreeMap<Memory, K, V> {
+    fn get_inner(&self) -> &btreemap::BTreeMap<K, V, Memory> {
         let canister_id = ic::id();
         self.data.get(&canister_id).unwrap_or(&self.empty)
     }
 
-    fn mut_inner(&mut self) -> &mut btreemap::BTreeMap<Memory, K, V> {
+    fn mut_inner(&mut self) -> &mut btreemap::BTreeMap<K, V, Memory> {
         let canister_id = ic::id();
         self.data.get_mut(&canister_id).unwrap_or(&mut self.empty)
     }
@@ -102,8 +113,8 @@ mod tests {
         let mut map = StableBTreeMap::new(MemoryId::new(0));
         assert!(map.is_empty());
 
-        map.insert(0u32, 42u32).unwrap();
-        map.insert(10, 100).unwrap();
+        map.insert(0u32, 42u32);
+        map.insert(10, 100);
         assert_eq!(map.get(&0), Some(42));
         assert_eq!(map.get(&10), Some(100));
 
@@ -124,10 +135,10 @@ mod tests {
             .inject();
 
         let mut map = StableBTreeMap::new(MemoryId::new(0));
-        map.insert(0u32, 42u32).unwrap();
+        map.insert(0u32, 42u32);
 
         get_context().update_id(mock_principals::bob());
-        map.insert(10, 100).unwrap();
+        map.insert(10, 100);
 
         get_context().update_id(mock_principals::alice());
         assert_eq!(map.get(&0), Some(42));

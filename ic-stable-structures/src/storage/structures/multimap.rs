@@ -5,7 +5,7 @@ use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::BoundedStorable;
 use ic_exports::Principal;
 
-use crate::{multimap, Iter, Memory, RangeIter, Result};
+use crate::{multimap, Iter, Memory, RangeIter};
 
 /// [`StableMultimap`] stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
@@ -41,6 +41,10 @@ where
 
     /// Get a value for the given keys.
     /// If byte representation length of any key exceeds max size, `None` will be returned.
+    ///
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
     pub fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
         self.get_inner().get(first_key, second_key)
     }
@@ -49,12 +53,10 @@ where
     /// Inserting a value with the same keys as an existing value
     /// will result in the old value being overwritten.
     ///
-    /// # Errors
-    ///
-    /// If byte representation length of any key or value exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
-    ///
-    /// If stable memory unable to grow, the `Error::OutOfStableMemory` will be returned.
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
+    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
     ///
     /// # Example
     /// ```rust
@@ -65,14 +67,14 @@ where
     /// let memory_id = MemoryId::new(0);
     /// let mut map = StableMultimap::new(memory_id);
     ///
-    /// map.insert(&0u32, &0u32, &1u32).unwrap();
-    /// map.insert(&0u32, &1u32, &2u32).unwrap();
-    /// map.insert(&1u32, &1u32, &3u32).unwrap();
+    /// map.insert(&0u32, &0u32, &1u32);
+    /// map.insert(&0u32, &1u32, &2u32);
+    /// map.insert(&1u32, &1u32, &3u32);
     ///
     /// assert_eq!(map.len(), 3);
     ///
     /// ```
-    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Result<()> {
+    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
         let canister_id = ic::id();
 
         // If map for `canister_id` is not initialized, initialize it.
@@ -86,10 +88,9 @@ where
 
     /// Remove a specific value and return it.
     ///
-    /// # Errors
-    ///
-    /// If byte representation length of any key exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
     ///
     /// # Example
     /// ```rust
@@ -100,25 +101,23 @@ where
     /// let memory_id = MemoryId::new(0);
     /// let mut map = StableMultimap::new(memory_id);
     ///
-    /// map.insert(&0u32, &0u32, &1u32).unwrap();
-    /// map.insert(&0u32, &1u32, &2u32).unwrap();
-    /// map.insert(&1u32, &1u32, &3u32).unwrap();
+    /// map.insert(&0u32, &0u32, &1u32);
+    /// map.insert(&0u32, &1u32, &2u32);
+    /// map.insert(&1u32, &1u32, &3u32);
     ///
-    /// assert_eq!(map.remove(&0, &1).unwrap(), Some(2));
+    /// assert_eq!(map.remove(&0, &1), Some(2));
     /// assert_eq!(map.get(&0, &1), None);
     /// assert_eq!(map.len(), 2);
     ///
     /// ```
-    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Result<Option<V>> {
+    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V> {
         self.mut_inner().remove(first_key, second_key)
     }
 
     /// Remove all values for the partial key
     ///
-    /// # Errors
-    ///
-    /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
     ///
     /// # Example
     /// ```rust
@@ -129,11 +128,11 @@ where
     /// let memory_id = MemoryId::new(0);
     /// let mut map = StableMultimap::new(memory_id);
     ///
-    /// map.insert(&0u32, &0u32, &1u32).unwrap();
-    /// map.insert(&0u32, &1u32, &2u32).unwrap();
-    /// map.insert(&1u32, &1u32, &3u32).unwrap();
+    /// map.insert(&0u32, &0u32, &1u32);
+    /// map.insert(&0u32, &1u32, &2u32);
+    /// map.insert(&1u32, &1u32, &3u32);
     ///
-    /// map.remove_partial(&0).unwrap();
+    /// map.remove_partial(&0);
     ///
     /// assert_eq!(map.get(&0, &0), None);
     /// assert_eq!(map.get(&0, &1), None);
@@ -141,16 +140,14 @@ where
     /// assert_eq!(map.len(), 1);
     ///
     /// ```
-    pub fn remove_partial(&mut self, first_key: &K1) -> Result<()> {
+    pub fn remove_partial(&mut self, first_key: &K1) {
         self.mut_inner().remove_partial(first_key)
     }
 
     /// Get a range of key value pairs based on the root key.
     ///
-    /// # Errors
-    ///
-    /// If byte representation length of `first_key` exceeds max size, the `Error::ValueTooLarge`
-    /// will be returned.
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
     ///
     /// # Example
     /// ```rust
@@ -161,16 +158,16 @@ where
     /// let memory_id = MemoryId::new(0);
     /// let mut map = StableMultimap::new(memory_id);
     ///
-    /// map.insert(&0u32, &0u32, &1u32).unwrap();
-    /// map.insert(&0u32, &1u32, &2u32).unwrap();
-    /// map.insert(&1u32, &1u32, &3u32).unwrap();
+    /// map.insert(&0u32, &0u32, &1u32);
+    /// map.insert(&0u32, &1u32, &2u32);
+    /// map.insert(&1u32, &1u32, &3u32);
     ///
-    /// let mut range = map.range(&0).unwrap();
+    /// let mut range = map.range(&0);
     /// assert_eq!(range.next(), Some((0, 1)));
     /// assert_eq!(range.next(), Some((1, 2)));
     /// assert_eq!(range.next(), None);
     /// ```
-    pub fn range(&self, first_key: &K1) -> Result<RangeIter<Memory, K1, K2, V>> {
+    pub fn range(&self, first_key: &K1) -> RangeIter<Memory, K1, K2, V> {
         self.get_inner().range(first_key)
     }
 
@@ -185,9 +182,9 @@ where
     /// let memory_id = MemoryId::new(0);
     /// let mut map = StableMultimap::new(memory_id);
     ///
-    /// map.insert(&0u32, &0u32, &1u32).unwrap();
-    /// map.insert(&0u32, &1u32, &2u32).unwrap();
-    /// map.insert(&1u32, &1u32, &3u32).unwrap();
+    /// map.insert(&0u32, &0u32, &1u32);
+    /// map.insert(&0u32, &1u32, &2u32);
+    /// map.insert(&1u32, &1u32, &3u32);
     ///
     /// let mut iter = map.iter();
     /// assert_eq!(iter.next(), Some((0, 0, 1)));
@@ -239,11 +236,11 @@ mod tests {
         let mut map = StableMultimap::new(MemoryId::new(0));
         assert!(map.is_empty());
 
-        map.insert(&0u32, &0u32, &42u32).unwrap();
-        map.insert(&0u32, &1u32, &84u32).unwrap();
+        map.insert(&0u32, &0u32, &42u32);
+        map.insert(&0u32, &1u32, &84u32);
 
-        map.insert(&1u32, &0u32, &10u32).unwrap();
-        map.insert(&1u32, &1u32, &20u32).unwrap();
+        map.insert(&1u32, &0u32, &10u32);
+        map.insert(&1u32, &1u32, &20u32);
 
         assert_eq!(map.len(), 4);
         assert_eq!(map.get(&0, &0), Some(42));
@@ -258,15 +255,15 @@ mod tests {
         assert_eq!(iter.next(), Some((1, 1, 20)));
         assert_eq!(iter.next(), None);
 
-        let mut range = map.range(&0).unwrap();
+        let mut range = map.range(&0);
         assert_eq!(range.next(), Some((0, 42)));
         assert_eq!(range.next(), Some((1, 84)));
         assert_eq!(range.next(), None);
 
-        map.remove_partial(&0).unwrap();
+        map.remove_partial(&0);
         assert_eq!(map.len(), 2);
 
-        assert_eq!(map.remove(&1, &0).unwrap(), Some(10));
+        assert_eq!(map.remove(&1, &0), Some(10));
         assert_eq!(map.iter().next(), Some((1, 1, 20)));
         assert_eq!(map.len(), 1);
     }
@@ -279,12 +276,12 @@ mod tests {
 
         let mut map = StableMultimap::new(MemoryId::new(0));
 
-        map.insert(&0u32, &0u32, &42u32).unwrap();
-        map.insert(&1u32, &0u32, &10u32).unwrap();
+        map.insert(&0u32, &0u32, &42u32);
+        map.insert(&1u32, &0u32, &10u32);
 
         get_context().update_id(mock_principals::bob());
-        map.insert(&0u32, &1u32, &84u32).unwrap();
-        map.insert(&1u32, &1u32, &20u32).unwrap();
+        map.insert(&0u32, &1u32, &84u32);
+        map.insert(&1u32, &1u32, &20u32);
 
         get_context().update_id(mock_principals::alice());
         assert_eq!(map.get(&0, &0), Some(42));

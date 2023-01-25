@@ -1,10 +1,9 @@
+use std::borrow::Cow;
 use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
 use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
-
-use crate::{Error, Result};
 
 pub type ChunkSize = u16;
 
@@ -22,7 +21,7 @@ where
     K: BoundedStorable,
     V: SlicedStorable,
 {
-    inner: StableBTreeMap<M, Key<K>, Chunk<V>>,
+    inner: StableBTreeMap<Key<K>, Chunk<V>, M>,
     items_count: u64,
 }
 
@@ -44,12 +43,16 @@ where
     }
 
     /// Return a value associated with `key`.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn get(&self, key: &K) -> Option<V> {
-        let key_prefix = Key::create_prefix(key).ok()?;
+        let first_chunk_key = Key::new(key);
+        let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
         let mut value_data = Vec::new();
         let mut item_present = false;
 
-        for (_, chunk) in self.inner.range(key_prefix, None) {
+        for (_, chunk) in self.inner.range(first_chunk_key..=max_chunk_key) {
             value_data.extend_from_slice(&chunk.to_bytes());
             item_present = true;
         }
@@ -58,51 +61,47 @@ where
             return None;
         }
 
-        Some(V::from_bytes(value_data))
+        Some(V::from_bytes(value_data.into()))
     }
 
     /// Add or replace a value associated with `key`.
-    pub fn insert(&mut self, key: &K, value: &V) -> Result<()> {
-        let mut inner_key = Key::new(key)?;
-
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
+    pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
         // remove old data before insert new();
         let previous_value = self.remove(key);
 
-        let insert_result = self.insert_data(&mut inner_key, value);
+        self.insert_data(&mut Key::new(key), value);
 
-        if insert_result.is_err() {
-            // if insert failed, then remove the inserted chunks.
-            self.remove(key);
-
-            // and restore previous data
-            if let Some(prev) = previous_value {
-                self.insert(key, &prev)
-                    .expect("failed to insert previous value after failed insert");
-            }
-        }
-
-        insert_result
+        previous_value
     }
 
-    fn insert_data(&mut self, key: &mut Key<K>, value: &V) -> Result<()> {
+    fn insert_data(&mut self, key: &mut Key<K>, value: &V) {
         let value_bytes = value.to_bytes();
-        let chunks = value_bytes.chunks(V::chunk_size() as _);
+        let chunks = value_bytes.chunks(V::CHUNK_SIZE as _);
 
         for chunk in chunks {
             let chunk = Chunk::new(chunk.to_vec());
-            self.inner.insert(key.clone(), chunk)?;
+            self.inner.insert(key.clone(), chunk);
             key.increase_chunk_index();
         }
 
         self.items_count += 1;
-
-        Ok(())
     }
 
     /// Remove a value associated with `key`.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        let key_prefix = Key::create_prefix(key).ok()?;
-        let keys: Vec<Key<K>> = self.inner.range(key_prefix, None).map(|(k, _)| k).collect();
+        let first_chunk_key = Key::new(key);
+        let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
+        let keys: Vec<Key<K>> = self
+            .inner
+            .range(first_chunk_key..=max_chunk_key)
+            .map(|(k, _)| k)
+            .collect();
 
         if keys.is_empty() {
             return None;
@@ -118,7 +117,7 @@ where
 
         self.items_count -= 1;
 
-        Some(V::from_bytes(value_bytes))
+        Some(V::from_bytes(value_bytes.into()))
     }
 
     /// Iterator for all stored key-value pairs.
@@ -155,7 +154,7 @@ where
 /// But with big `chunk_size()` we lose space for small values,
 /// because `chunk_size()` is a least allocation unit for any value.
 pub trait SlicedStorable: Storable {
-    fn chunk_size() -> ChunkSize;
+    const CHUNK_SIZE: ChunkSize;
 }
 
 /// Wrapper for the key.
@@ -187,12 +186,34 @@ impl<K: BoundedStorable> Clone for Key<K> {
     }
 }
 
+impl<K: BoundedStorable> PartialEq for Key<K> {
+    fn eq(&self, other: &Self) -> bool {
+        self.data == other.data
+    }
+}
+
+impl<K: BoundedStorable> Eq for Key<K> {}
+
+impl<K: BoundedStorable> PartialOrd for Key<K> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.data.partial_cmp(&other.data)
+    }
+}
+
+impl<K: BoundedStorable> Ord for Key<K> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.data.cmp(&other.data)
+    }
+}
+
 impl<K: BoundedStorable> Key<K> {
-    pub fn new(key: &K) -> Result<Self> {
+    /// Crate a new key.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
+    pub fn new(key: &K) -> Self {
         let key_bytes = key.to_bytes();
-        if key_bytes.len() > K::max_size() as usize {
-            return Err(Error::ValueTooLarge(key_bytes.len() as _));
-        }
+        assert!(key_bytes.len() <= K::MAX_SIZE as usize);
 
         let size_prefix_len = Self::size_prefix_len();
         let full_len = size_prefix_len + key_bytes.len() + CHUNK_INDEX_LEN;
@@ -201,10 +222,21 @@ impl<K: BoundedStorable> Key<K> {
         data.extend_from_slice(&key_bytes);
         data.extend_from_slice(&[0u8; CHUNK_INDEX_LEN]);
 
-        Ok(Self {
+        Self {
             data,
             _p: PhantomData,
-        })
+        }
+    }
+
+    pub fn with_max_chunk_index(mut self) -> Self {
+        let data_len = self.data.len();
+
+        // last `CHUNK_INDEX_LEN` bytes is chunk index
+        let chunk_index_bytes = &mut self.data[(data_len - CHUNK_INDEX_LEN)..];
+        let chunk_index_arr = [u8::MAX; CHUNK_INDEX_LEN];
+
+        chunk_index_bytes.copy_from_slice(&chunk_index_arr);
+        self
     }
 
     pub fn increase_chunk_index(&mut self) {
@@ -234,28 +266,12 @@ impl<K: BoundedStorable> Key<K> {
         &self.data[Self::size_prefix_len()..self.data.len() - CHUNK_INDEX_LEN]
     }
 
-    /// Create prefix of key, which is same for all chunks of the same value.
-    pub fn create_prefix(key: &K) -> Result<Vec<u8>> {
-        let key_bytes = key.to_bytes();
-        if key_bytes.len() > K::max_size() as usize {
-            return Err(Error::ValueTooLarge(key_bytes.len() as _));
-        }
-
-        let size_prefix_len = Self::size_prefix_len();
-        let full_len = size_prefix_len + key_bytes.len();
-        let mut data = Vec::with_capacity(full_len);
-        data.extend_from_slice(&key_bytes.len().to_le_bytes()[..size_prefix_len]);
-        data.extend_from_slice(&key_bytes);
-
-        Ok(data)
-    }
-
-    fn size_prefix_len() -> usize {
+    const fn size_prefix_len() -> usize {
         const U8_MAX: u32 = u8::MAX as u32;
         const U8_END: u32 = U8_MAX + 1;
         const U16_MAX: u32 = u16::MAX as u32;
 
-        match K::max_size() {
+        match K::MAX_SIZE {
             0..=U8_MAX => 1,
             U8_END..=U16_MAX => 2,
             _ => 4,
@@ -264,22 +280,21 @@ impl<K: BoundedStorable> Key<K> {
 }
 
 impl<K: BoundedStorable> Storable for Key<K> {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         (&self.data).into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Self {
-            data: bytes,
+            data: bytes.to_vec(),
             _p: PhantomData,
         }
     }
 }
 
 impl<K: BoundedStorable> BoundedStorable for Key<K> {
-    fn max_size() -> u32 {
-        Self::size_prefix_len() as u32 + K::max_size() + CHUNK_INDEX_LEN as u32
-    }
+    const MAX_SIZE: u32 = Self::size_prefix_len() as u32 + K::MAX_SIZE + CHUNK_INDEX_LEN as u32;
+    const IS_FIXED_SIZE: bool = K::IS_FIXED_SIZE;
 }
 
 /// Wrapper for value chunks stored in inner [`StableBTreeMap`].
@@ -306,27 +321,26 @@ impl<V: SlicedStorable> Chunk<V> {
 }
 
 impl<V: SlicedStorable> Storable for Chunk<V> {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         (&self.chunk).into()
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Self {
-            chunk: bytes,
+            chunk: bytes.to_vec(),
             _p: PhantomData,
         }
     }
 }
 
 impl<V: SlicedStorable> BoundedStorable for Chunk<V> {
-    fn max_size() -> u32 {
-        V::chunk_size() as u32
-    }
+    const MAX_SIZE: u32 = V::CHUNK_SIZE as _;
+    const IS_FIXED_SIZE: bool = false;
 }
 
 /// Iterator over values in unbounded map.
 /// Constructs a value from chunks on each `next()` call.
-pub struct Iter<'a, M, K, V>(Peekable<btreemap::Iter<'a, M, Key<K>, Chunk<V>>>)
+pub struct Iter<'a, M, K, V>(Peekable<btreemap::Iter<'a, Key<K>, Chunk<V>, M>>)
 where
     M: Memory + Clone,
     K: BoundedStorable,
@@ -354,8 +368,8 @@ where
         }
 
         Some((
-            K::from_bytes(key.key_data().to_vec()),
-            V::from_bytes(value_data),
+            K::from_bytes(key.key_data().into()),
+            V::from_bytes(value_data.into()),
         ))
     }
 }
@@ -376,12 +390,28 @@ mod tests {
         let medium_str = test_utils::str_val(5000);
         let short_str = test_utils::str_val(50);
 
-        map.insert(&0u32, &long_str).unwrap();
-        map.insert(&3u32, &medium_str).unwrap();
-        map.insert(&5u32, &short_str).unwrap();
+        map.insert(&0u32, &long_str);
+        map.insert(&3u32, &medium_str);
+        map.insert(&5u32, &short_str);
+
         assert_eq!(map.get(&0).as_ref(), Some(&long_str));
         assert_eq!(map.get(&3).as_ref(), Some(&medium_str));
         assert_eq!(map.get(&5).as_ref(), Some(&short_str));
+    }
+
+    #[test]
+    fn insert_should_replace_previous_value() {
+        let mut map = StableUnboundedMap::new(DefaultMemoryImpl::default());
+        assert!(map.is_empty());
+
+        let long_str = test_utils::str_val(50000);
+        let short_str = test_utils::str_val(50);
+
+        assert!(map.insert(&0u32, &long_str).is_none());
+        let prev = map.insert(&0u32, &short_str).unwrap();
+
+        assert_eq!(&prev, &long_str);
+        assert_eq!(map.get(&0).as_ref(), Some(&short_str));
     }
 
     #[test]
@@ -392,9 +422,9 @@ mod tests {
         let medium_str = test_utils::str_val(5000);
         let short_str = test_utils::str_val(50);
 
-        map.insert(&0u32, &long_str).unwrap();
-        map.insert(&3u32, &medium_str).unwrap();
-        map.insert(&5u32, &short_str).unwrap();
+        map.insert(&0u32, &long_str);
+        map.insert(&3u32, &medium_str);
+        map.insert(&5u32, &short_str);
 
         assert_eq!(map.remove(&3), Some(medium_str));
 
@@ -414,7 +444,7 @@ mod tests {
         ];
 
         for i in 0..100u32 {
-            map.insert(&i, &strs[i as usize % strs.len()]).unwrap();
+            map.insert(&i, &strs[i as usize % strs.len()]);
         }
 
         assert!(map.iter().all(|(k, v)| v == strs[k as usize % strs.len()]))
