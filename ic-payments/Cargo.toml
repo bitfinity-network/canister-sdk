@@ -1,0 +1,22 @@
+[package]
+name = "ic-payments"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+export-api = []
+
+[dependencies]
+serde = "1.0"
+candid = "0.8"
+ic-exports = { git = "https://github.com/infinity-swap/canister-sdk", package = "ic-exports", tag = "v0.3.36"  }
+ic-canister = { git = "https://github.com/infinity-swap/canister-sdk", package = "ic-canister", tag = "v0.3.36"  }
+ic-storage = { git = "https://github.com/infinity-swap/canister-sdk", package = "ic-storage", tag = "v0.3.36"  }
+ic-helpers = { git = "https://github.com/infinity-swap/canister-sdk", package = "ic-helpers", tag = "v0.3.36"  }
+is20-token-canister = { git = "https://github.com/infinity-swap/IS20", package = "is20-token-canister", tag = "v1.10.24" }
+is20-token = { git = "https://github.com/infinity-swap/IS20",  package = "is20-token", tag = "v1.10.24", default-features = false }
+token-factory = { git = "https://github.com/infinity-swap/IS20", package = "token-factory", tag = "v1.10.24"}
+thiserror = "1.0"
+async-recursion = "1.0.2"
+futures="0.3.26"
