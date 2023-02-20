@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 
 use auto_ops::impl_op_ex;
+use candid::Nat;
 use crypto_bigint::{CheckedAdd, CheckedMul, CheckedSub, NonZero, U256};
 use ic_exports::ic_cdk::export::candid::types::{Serializer, Type, TypeId};
 use ic_exports::ic_cdk::export::candid::{self, CandidType, Deserialize};
@@ -148,6 +149,12 @@ impl From<u128> for Tokens128 {
 impl From<Tokens128> for f64 {
     fn from(amount: Tokens128) -> Self {
         amount.amount as f64
+    }
+}
+
+impl From<Tokens128> for Nat {
+    fn from(amount: Tokens128) -> Self {
+        amount.into()
     }
 }
 
