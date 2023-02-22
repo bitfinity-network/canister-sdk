@@ -7,6 +7,7 @@ use ic_exports::Principal;
 use ic_helpers::tokens::Tokens128;
 
 use crate::error::Result;
+use crate::Timestamp;
 
 type TxId = Nat;
 
@@ -36,14 +37,15 @@ pub async fn transfer_icrc1(
     amount: Tokens128,
     fee: Tokens128,
     from_subaccount: Option<Subaccount>,
+    created_at_time: Option<Timestamp>,
 ) -> Result<TokenTransferInfo> {
     let args = TransferArg {
         from_subaccount,
         to,
-        amount: amount.into(),
-        fee: Some(fee.into()),
+        amount: amount.to_nat(),
+        fee: Some(fee.to_nat()),
         memo: Default::default(),
-        created_at_time: None,
+        created_at_time,
     };
 
     let tx_id =

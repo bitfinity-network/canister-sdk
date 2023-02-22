@@ -73,7 +73,7 @@ impl<const MEM_ID: u8> ForRecoveryList<MEM_ID> {
         })
     }
 
-    pub fn push(&self, transfer: Transfer) {
+    pub fn push(&mut self, transfer: Transfer) {
         self.with_storage(|m| {
             let key = TransferKey::new(&transfer);
             let value = TransferValue(transfer.clone());
@@ -81,14 +81,15 @@ impl<const MEM_ID: u8> ForRecoveryList<MEM_ID> {
         })
     }
 
-    pub fn pop(&self) -> Option<Transfer> {
+    pub fn take_all(&mut self) -> Vec<Transfer> {
         self.with_storage(|m| {
-            if let Some((key, value)) = m.iter().next() {
-                m.remove(&key);
-                Some(value.0)
-            } else {
-                None
-            }
+            let list = m.iter().map(|(_, v)| v.0).collect();
+            m.clear();
+            list
         })
+    }
+
+    pub fn list(&self) -> Vec<Transfer> {
+        self.with_storage(|m| m.iter().map(|(_, v)| v.0).collect())
     }
 }

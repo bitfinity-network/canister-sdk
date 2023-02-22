@@ -98,6 +98,10 @@ impl Tokens128 {
         }
     }
 
+    pub fn to_nat(&self) -> Nat {
+        self.amount.into()
+    }
+
     /// Subtracts `other` from `self`, returning Tokens128::ZERO on underflow.
     pub fn saturating_sub(&self, other: Self) -> Self {
         // we don't use the trait here because the `Sub` trait implementation returns an option
@@ -149,12 +153,6 @@ impl From<u128> for Tokens128 {
 impl From<Tokens128> for f64 {
     fn from(amount: Tokens128) -> Self {
         amount.amount as f64
-    }
-}
-
-impl From<Tokens128> for Nat {
-    fn from(amount: Tokens128) -> Self {
-        amount.into()
     }
 }
 
