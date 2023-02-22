@@ -18,5 +18,5 @@ ic-canister = { path = "../ic-canister/ic-canister" }
 ic-canister-macros = { path = "../ic-canister/ic-canister-macros" }
 ic-storage = { path = "../ic-storage" }
 
-ic-types = { git="https://github.com/dfinity/ic", rev = "dcbf401f27d9b48354e68389c6d8293c4233b055"}
-ic-nns-common = { git="https://github.com/dfinity/ic", rev = "dcbf401f27d9b48354e68389c6d8293c4233b055"}
+ic-types = { git="https://github.com/dfinity/ic", rev = "2bb106b9c0d3c65177922709fada30a199f74c6a"}
+ic-nns-common = { git="https://github.com/dfinity/ic", rev = "2bb106b9c0d3c65177922709fada30a199f74c6a"}
