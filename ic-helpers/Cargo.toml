@@ -25,7 +25,7 @@ ic-storage = { path = "../ic-storage" }
 
 # This dependency is not used direcly, but we must enable `custom` feature for it to compile for wasm32 target.
 [target.'cfg(target = "wasm32-unknown-unknown")'.dependencies]
-getrandom = { version = "0.2.6", features = ["custom"]}
+getrandom = { version = "0.2.6", features = ["custom", "js"]}
 
 [dev-dependencies]
 hex = "0.4"

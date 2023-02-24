@@ -2,10 +2,9 @@ use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 
 use auto_ops::impl_op_ex;
-use candid::Nat;
-use crypto_bigint::{CheckedAdd, CheckedMul, CheckedSub, NonZero, U256};
-use ic_exports::ic_cdk::export::candid::types::{Serializer, Type, TypeId};
-use ic_exports::ic_cdk::export::candid::{self, CandidType, Deserialize};
+use candid::types::{Serializer, Type, TypeId};
+use candid::{self, CandidType, Deserialize, Nat};
+use crypto_bigint::{CheckedAdd, CheckedMul, CheckedSub, Encoding, NonZero, U256};
 use num_bigint::BigUint;
 use num_traits::{FromPrimitive, ToPrimitive};
 use serde::de::{Error, Unexpected};
@@ -264,9 +263,12 @@ impl Tokens256 {
     /// be floored.
     pub fn to_f64(&self) -> f64 {
         let mut val = 0.0;
-        for (i, limb) in self.0.limbs().iter().enumerate() {
-            val += limb.0 as f64 * (u64::MAX as f64).powi(i as i32);
+        for (i, byte) in self.0.to_le_bytes().iter().enumerate() {
+            val += *byte as f64 * 256f64.powi(i as i32);
         }
+        // for (i, limb) in self.0.limbs().iter().enumerate() {
+        //     val += limb.0 as f64 * (u64::MAX as f64).powi(i as i32);
+        // }
 
         val
     }
@@ -487,6 +489,31 @@ mod tests {
         let expected =
             candid::Nat(BigUint::from(u128::MAX) * BigUint::from(47u128) * BigUint::from(u64::MAX));
         assert_eq!(converted, expected);
+    }
+
+    #[test]
+    fn tokens256_from_nat() {
+        let num = (Nat::from(u64::MAX) + Nat::from(1)) * 7;
+        let converted = Tokens256::from_nat(&num).unwrap();
+        let expected = ((u64::MAX as u128 + 1) * 7).into();
+        assert_eq!(converted, expected);
+    }
+
+    #[test]
+    fn tokens256_from_f64() {
+        let num = (u64::MAX as u128) * 2;
+        let num_f64 = num as f64;
+        let converted = Tokens256::from_f64(num_f64).unwrap();
+
+        assert_eq!(
+            converted.to_f64(),
+            num_f64,
+            "{}    {}    {:?}    {}",
+            num,
+            num_f64,
+            converted,
+            converted.to_f64()
+        );
     }
 
     #[test]
