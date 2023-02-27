@@ -370,7 +370,7 @@ impl std::fmt::Debug for Tokens256 {
 
 #[cfg(test)]
 mod tests {
-    use candid::{Decode, Encode};
+    use candid::{Decode, Encode, Nat};
     use crypto_bigint::CheckedMul;
 
     use super::*;
