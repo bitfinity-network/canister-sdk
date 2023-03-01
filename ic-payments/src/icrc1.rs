@@ -1,4 +1,4 @@
-use ic_canister::{canister_call, virtual_canister_call};
+use ic_canister::virtual_canister_call;
 use ic_exports::candid::{CandidType, Nat};
 use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
 use ic_exports::ic_icrc1::{Account, Subaccount};

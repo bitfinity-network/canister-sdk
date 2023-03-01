@@ -15,7 +15,7 @@ use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
 use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 use ic_payments::{Operation, Transfer, UNKNOWN_TX_ID};
 
-mod common;
+pub mod common;
 
 #[tokio::test]
 async fn credit_on_success() {

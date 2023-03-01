@@ -1,11 +1,11 @@
 use candid::Nat;
+use common::*;
 use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::mock_principals::alice;
-
-mod common;
-use common::*;
 use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 use ic_payments::{TokenConfiguration, Transfer};
+
+pub mod common;
 
 #[tokio::test]
 async fn deposit_with_success() {

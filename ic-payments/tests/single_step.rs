@@ -15,7 +15,7 @@ use crate::common::{
     init_test, setup_error, setup_success, simple_transfer, token_principal, TestBalances,
 };
 
-mod common;
+pub mod common;
 
 #[tokio::test]
 async fn transfer_args() {

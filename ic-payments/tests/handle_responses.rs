@@ -10,7 +10,7 @@ use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 
 use crate::common::{init_test, setup_success, simple_transfer, token_principal};
 
-mod common;
+pub mod common;
 
 #[tokio::test]
 async fn successful_transfer() {
