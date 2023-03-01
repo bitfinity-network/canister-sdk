@@ -8,7 +8,7 @@ use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::mock_principals::alice;
 use ic_exports::ic_kit::{ic, RejectionCode};
 use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
-use ic_payments::recovery_list::ForRecoveryList;
+use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 use ic_payments::{Operation, Transfer};
 
 use crate::common::{
@@ -130,7 +130,7 @@ async fn retry_with_success() {
     assert_eq!(tx_id, Nat::from(1));
     assert_eq!(TestBalances::balance_of(alice()), 990);
     assert_eq!(counter_clone.load(Ordering::Relaxed), 2);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
 
 #[tokio::test]
@@ -167,7 +167,7 @@ async fn retry_with_failure() {
     );
     assert_eq!(TestBalances::balance_of(alice()), 0);
     assert_eq!(counter_clone.load(Ordering::Relaxed), 2);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
 
 #[tokio::test]
@@ -193,7 +193,7 @@ async fn retry_with_maybe_failure() {
     assert_eq!(err, PaymentError::Recoverable(RecoveryDetails::IcError));
     assert_eq!(TestBalances::balance_of(alice()), 0);
     assert_eq!(counter_clone.load(Ordering::Relaxed), 3);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 1);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 1);
 }
 
 #[tokio::test]
@@ -220,7 +220,7 @@ async fn recovery_with_success() {
     assert_eq!(results.len(), 1);
     assert_eq!(results[0], Ok(Nat::from(1)));
     assert_eq!(TestBalances::balance_of(alice()), 990);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
 
 #[tokio::test]
@@ -252,7 +252,7 @@ async fn recovery_with_failure() {
         )))
     ));
     assert_eq!(TestBalances::balance_of(alice()), 0);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
 
 #[tokio::test]
@@ -284,6 +284,6 @@ async fn recovery_with_maybe_failure() {
         Err(PaymentError::Recoverable(RecoveryDetails::IcError))
     );
     assert_eq!(TestBalances::balance_of(alice()), 0);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 1);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 1);
     assert_eq!(counter_clone.load(Ordering::Relaxed), 6);
 }

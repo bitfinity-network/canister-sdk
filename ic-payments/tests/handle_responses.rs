@@ -6,7 +6,7 @@ use ic_canister::{register_raw_virtual_responder, register_virtual_responder};
 use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
 use ic_exports::ic_kit::RejectionCode;
 use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
-use ic_payments::recovery_list::ForRecoveryList;
+use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 
 use crate::common::{init_test, setup_success, simple_transfer, token_principal};
 
@@ -138,7 +138,7 @@ async fn no_retries_on_error() {
 
     terminal.transfer(simple_transfer(), 5).await.unwrap_err();
     assert_eq!(counter_clone.load(Ordering::Relaxed), 1);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
 
 #[tokio::test]
@@ -154,5 +154,5 @@ async fn retries_count() {
 
     terminal.transfer(simple_transfer(), 5).await.unwrap_err();
     assert_eq!(counter_clone.load(Ordering::Relaxed), 5);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 1);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 1);
 }

@@ -7,7 +7,7 @@ use ic_helpers::tokens::Tokens128;
 
 use crate::error::{InternalPaymentError, PaymentError, RecoveryDetails, TransferFailReason};
 use crate::icrc1::{self, TokenTransferInfo};
-use crate::recovery_list::ForRecoveryList;
+use crate::recovery_list::{RecoveryList, StableRecoveryList};
 use crate::transfer::{Operation, Stage, Transfer, TransferType};
 use crate::{Balances, TokenConfiguration, TxId};
 
@@ -18,21 +18,49 @@ pub const UNKNOWN_TX_ID: u128 = u64::MAX as u128;
 const DEFAULT_DEDUP_PERIOD: u64 = 10u64.pow(9) * 60 * 60 * 24;
 const TX_WINDOW: u64 = 10u64.pow(9) * 60 * 5;
 
-pub struct TokenTerminal<T: Balances, const MEM_ID: u8> {
+pub struct TokenTerminal<
+    T: Balances,
+    const MEM_ID: u8,
+    R: RecoveryList = StableRecoveryList<MEM_ID>,
+> {
     token_config: TokenConfiguration,
     balances: T,
+    recovery_list: R,
     deduplication_period: u64,
 }
 
-impl<T: Balances + Sync + Send, const MEM_ID: u8> TokenTerminal<T, MEM_ID> {
+impl<T: Balances + Sync + Send, const MEM_ID: u8>
+    TokenTerminal<T, MEM_ID, StableRecoveryList<MEM_ID>>
+{
     pub fn new(config: TokenConfiguration, balances: T) -> Self {
+        let recovery_list = StableRecoveryList::<MEM_ID>;
         Self {
             token_config: config,
             balances,
+            recovery_list,
             deduplication_period: DEFAULT_DEDUP_PERIOD,
         }
     }
+}
 
+impl<T: Balances + Sync + Send, R: RecoveryList, const MEM_ID: u8> TokenTerminal<T, MEM_ID, R> {
+    pub fn new_with_recovery_list(
+        config: TokenConfiguration,
+        balances: T,
+        recovery_list: R,
+    ) -> Self {
+        Self {
+            token_config: config,
+            balances,
+            recovery_list,
+            deduplication_period: DEFAULT_DEDUP_PERIOD,
+        }
+    }
+}
+
+impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
+    TokenTerminal<T, MEM_ID, R>
+{
     pub async fn deposit(
         &mut self,
         caller: Principal,
@@ -166,13 +194,13 @@ impl<T: Balances + Sync + Send, const MEM_ID: u8> TokenTerminal<T, MEM_ID> {
         self.balances.credit(recepient, amount)
     }
 
-    fn add_for_recovery(&self, transfer: Transfer) {
-        ForRecoveryList::<MEM_ID>.push(transfer);
+    fn add_for_recovery(&mut self, transfer: Transfer) {
+        self.recovery_list.push(transfer);
     }
 
     pub async fn recover_all(&mut self) -> Vec<Result<TxId, PaymentError>> {
         let mut results = vec![];
-        for tx in ForRecoveryList::<MEM_ID>.take_all() {
+        for tx in self.recovery_list.take_all() {
             results.push(self.recover_tx(tx).await);
         }
 
@@ -209,7 +237,7 @@ impl<T: Balances + Sync + Send, const MEM_ID: u8> TokenTerminal<T, MEM_ID> {
     }
 
     pub fn list_for_recovery(&self) -> Vec<Transfer> {
-        ForRecoveryList::<MEM_ID>.list()
+        self.recovery_list.list()
     }
 }
 

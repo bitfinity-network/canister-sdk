@@ -4,8 +4,13 @@ use std::cell::RefCell;
 use candid::Encode;
 use ic_stable_structures::{BoundedStorable, MemoryId, StableBTreeMap, Storable};
 
-use crate::error::Result;
 use crate::Transfer;
+
+pub trait RecoveryList {
+    fn push(&mut self, transfer: Transfer);
+    fn take_all(&mut self) -> Vec<Transfer>;
+    fn list(&self) -> Vec<Transfer>;
+}
 
 thread_local! {
     static RECOVERY_LIST_STORAGE: RefCell<Option<StableBTreeMap<TransferKey, TransferValue>>> =
@@ -56,9 +61,9 @@ impl BoundedStorable for TransferValue {
     const IS_FIXED_SIZE: bool = true;
 }
 
-pub struct ForRecoveryList<const MEM_ID: u8>;
+pub struct StableRecoveryList<const MEM_ID: u8>;
 
-impl<const MEM_ID: u8> ForRecoveryList<MEM_ID> {
+impl<const MEM_ID: u8> StableRecoveryList<MEM_ID> {
     fn with_storage<R>(
         &self,
         f: impl Fn(&mut StableBTreeMap<TransferKey, TransferValue>) -> R,
@@ -72,8 +77,10 @@ impl<const MEM_ID: u8> ForRecoveryList<MEM_ID> {
             f(map.as_mut().unwrap())
         })
     }
+}
 
-    pub fn push(&mut self, transfer: Transfer) {
+impl<const MEM_ID: u8> RecoveryList for StableRecoveryList<MEM_ID> {
+    fn push(&mut self, transfer: Transfer) {
         self.with_storage(|m| {
             let key = TransferKey::new(&transfer);
             let value = TransferValue(transfer.clone());
@@ -81,7 +88,7 @@ impl<const MEM_ID: u8> ForRecoveryList<MEM_ID> {
         })
     }
 
-    pub fn take_all(&mut self) -> Vec<Transfer> {
+    fn take_all(&mut self) -> Vec<Transfer> {
         self.with_storage(|m| {
             let list = m.iter().map(|(_, v)| v.0).collect();
             m.clear();
@@ -89,7 +96,7 @@ impl<const MEM_ID: u8> ForRecoveryList<MEM_ID> {
         })
     }
 
-    pub fn list(&self) -> Vec<Transfer> {
+    fn list(&self) -> Vec<Transfer> {
         self.with_storage(|m| m.iter().map(|(_, v)| v.0).collect())
     }
 }

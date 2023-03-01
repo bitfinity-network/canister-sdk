@@ -12,7 +12,7 @@ use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::mock_principals::alice;
 use ic_exports::ic_kit::RejectionCode;
 use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
-use ic_payments::recovery_list::ForRecoveryList;
+use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 use ic_payments::{Operation, Stage, Transfer, TransferType, UNKNOWN_TX_ID};
 
 mod common;
@@ -71,7 +71,7 @@ async fn second_stage_rejected() {
     );
     assert_eq!(counter_clone.load(Ordering::Relaxed), 2);
     assert_eq!(TestBalances::balance_of(alice()), 0);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 1);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 1);
 }
 
 #[tokio::test]
@@ -120,7 +120,7 @@ async fn credit_on_error_second_stage_failed() {
 
     terminal.transfer(transfer, 1).await.unwrap_err();
     assert_eq!(TestBalances::balance_of(alice()), 0);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 1);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 1);
 }
 
 #[tokio::test]
@@ -148,7 +148,7 @@ async fn recover_first_stage() {
     assert_eq!(results.len(), 1);
     assert_eq!(results[0], Ok(Nat::from(1)));
     assert_eq!(TestBalances::balance_of(alice()), 980);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
 
 #[tokio::test]
@@ -182,7 +182,7 @@ async fn recover_second_stage() {
     assert_eq!(results.len(), 1);
     assert_eq!(results[0], Ok(Nat::from(2)));
     assert_eq!(TestBalances::balance_of(alice()), 980);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
 
 fn setup_recovery_responses(
@@ -237,7 +237,7 @@ async fn recover_first_stage_old_zero_balance() {
         Err(PaymentError::TransferFailed(TransferFailReason::Unknown))
     );
     assert_eq!(TestBalances::balance_of(alice()), 0);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
 }
 
@@ -268,7 +268,7 @@ async fn recover_first_stage_old_non_zero_balance() {
     assert_eq!(results.len(), 1);
     assert_eq!(results[0], Ok(Nat::from(3)));
     assert_eq!(TestBalances::balance_of(alice()), 980);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
 }
 
@@ -306,7 +306,7 @@ async fn recover_second_stage_old_non_zero_balance() {
     assert_eq!(results.len(), 1);
     assert_eq!(results[0], Ok(Nat::from(3)));
     assert_eq!(TestBalances::balance_of(alice()), 980);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
 }
 
@@ -344,7 +344,7 @@ async fn recover_second_stage_old_zero_balance() {
     assert_eq!(results.len(), 1);
     assert_eq!(results[0], Ok(Nat::from(UNKNOWN_TX_ID)));
     assert_eq!(TestBalances::balance_of(alice()), 980);
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
 }
 
@@ -410,7 +410,7 @@ async fn recover_multiple_transfers() {
         TestBalances::balance_of(alice()),
         980 * SUCCESSFUL_COUNT as i128
     );
-    assert_eq!(ForRecoveryList::<0>.list().len(), errors);
+    assert_eq!(StableRecoveryList::<0>.list().len(), errors);
 
     register_virtual_responder::<_, _, Nat>(
         token_principal(),
@@ -427,5 +427,5 @@ async fn recover_multiple_transfers() {
         TestBalances::balance_of(alice()),
         980 * TRANSFER_COUNT as i128
     );
-    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+    assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
