@@ -6,6 +6,7 @@ use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
 use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::mock_principals::{alice, bob};
 use ic_exports::ic_kit::{ic, MockContext};
+use ic_exports::ledger::AccountIdentifier;
 use ic_helpers::tokens::Tokens128;
 use ic_payments::error::Result;
 use ic_payments::{Balances, Operation, TokenConfiguration, TokenTerminal, Transfer, TransferType};
@@ -64,38 +65,44 @@ pub fn token_principal() -> Principal {
     Principal::from_slice(&[1; 29])
 }
 
+pub fn minting_account() -> Account {
+    Account {
+        owner: Principal::from_slice(&[3; 29]).into(),
+        subaccount: None,
+    }
+}
+
+pub fn token_config() -> TokenConfiguration {
+    TokenConfiguration {
+        principal: token_principal(),
+        fee: 100.into(),
+        minting_account: minting_account(),
+    }
+}
+
 pub fn this_principal() -> Principal {
     Principal::from_slice(&[2; 29])
 }
 
 pub fn simple_transfer() -> Transfer {
-    Transfer {
-        amount: 10000.into(),
-        fee: 100.into(),
-        caller: alice(),
-        from: Account {
-            owner: this_principal().into(),
-            subaccount: None,
-        },
-        to: Account {
-            owner: alice().into(),
-            subaccount: None,
-        },
-        created_at: ic::time(),
-        operation: Operation::None,
-        r#type: TransferType::SingleStep,
-        token: token_principal(),
-    }
+    let to = Account {
+        owner: alice().into(),
+        subaccount: None,
+    };
+    Transfer::new(&token_config(), alice(), to, None, 1000.into())
+}
+
+pub fn init_context() -> &'static MockContext {
+    MockContext::new().with_id(this_principal()).inject()
 }
 
 pub fn init_test() -> TokenTerminal<TestBalances, 0> {
     BALANCES.with(|v| *v.borrow_mut() = vec![]);
-
-    MockContext::new().with_id(this_principal()).inject();
+    init_context();
 
     TokenTerminal::new(
-        token_principal(),
         TokenConfiguration {
+            principal: token_principal(),
             fee: 1000.into(),
             minting_account: ic_exports::ic_icrc1::Account {
                 owner: bob().into(),

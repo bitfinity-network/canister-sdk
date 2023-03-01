@@ -18,6 +18,10 @@ pub enum TransferFailReason {
 
     /// Token canister rejected the request.
     Rejected(TransferError),
+
+    TooOld,
+
+    Unknown,
 }
 
 #[derive(Debug, PartialEq, CandidType, Deserialize)]
@@ -52,7 +56,15 @@ pub enum PaymentError {
     /// recovery` list.
     ///
     /// Recovery of the transfer may be attempted by the terminal recovery mechanism.
-    Recoverable,
+    Recoverable(RecoveryDetails),
+
+    Fatal(String),
+}
+
+#[derive(Debug, CandidType, Deserialize, PartialEq)]
+pub enum RecoveryDetails {
+    IcError,
+    BadFee(Tokens128),
 }
 
 #[derive(Debug, Error, CandidType, Deserialize, PartialEq)]
@@ -69,14 +81,17 @@ pub enum InternalPaymentError {
     #[error("duplicate")]
     Duplicate(TxId),
 
-    #[error("recoverable")]
-    Recoverable,
-
     #[error("stable memory error: {0}")]
     StableMemory(String),
 
     #[error("requested transfer has invalid parameters: {0:?}")]
     InvalidParameters(ParametersError),
+
+    #[error("value overflow")]
+    Overflow,
+
+    #[error("unknown")]
+    Unknown,
 }
 
 #[derive(Debug, CandidType, Deserialize, PartialEq)]
@@ -107,7 +122,7 @@ impl From<(RejectionCode, String)> for InternalPaymentError {
             | RejectionCode::SysFatal
             | RejectionCode::SysTransient
             | RejectionCode::CanisterReject
-            | RejectionCode::NoError => Self::Recoverable,
+            | RejectionCode::NoError => Self::MaybeFailed,
         }
     }
 }
@@ -136,8 +151,9 @@ impl From<InternalPaymentError> for PaymentError {
     fn from(internal: InternalPaymentError) -> Self {
         match internal {
             InternalPaymentError::TransferFailed(reason) => Self::TransferFailed(reason),
-            InternalPaymentError::Recoverable => Self::Recoverable,
+            InternalPaymentError::MaybeFailed => Self::Recoverable(RecoveryDetails::IcError),
             InternalPaymentError::WrongFee(expected) => Self::BadFee(expected),
+            InternalPaymentError::Overflow => Self::Fatal("token amount overflow".into()),
             _ => todo!("not handled error: {internal:?}"),
         }
     }

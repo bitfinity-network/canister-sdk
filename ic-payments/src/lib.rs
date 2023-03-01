@@ -25,13 +25,14 @@ pub trait Balances {
 
 #[derive(CandidType, Debug, Deserialize, Clone)]
 pub struct TokenConfiguration {
+    pub principal: Principal,
     pub fee: Tokens128,
     pub minting_account: Account,
 }
 
 impl TokenConfiguration {
-    fn get_fee(&self, transfer: &Transfer) -> Tokens128 {
-        if transfer.from() == self.minting_account || transfer.to() == self.minting_account {
+    fn get_fee(&self, from_acc: &Account, to_acc: &Account) -> Tokens128 {
+        if *from_acc == self.minting_account || *to_acc == self.minting_account {
             Tokens128::ZERO
         } else {
             self.fee

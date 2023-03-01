@@ -6,7 +6,7 @@ use ic_exports::serde::Deserialize;
 use ic_exports::Principal;
 use ic_helpers::tokens::Tokens128;
 
-use crate::error::Result;
+use crate::error::{InternalPaymentError, Result};
 use crate::Timestamp;
 
 type TxId = Nat;
@@ -27,8 +27,9 @@ pub struct TokenConfiguration {
     pub minting_principal: Principal,
 }
 
-pub async fn get_icrc1_balance(token: Principal, account: Account) -> Result<Tokens128> {
-    Ok(virtual_canister_call!(token, "icrc1_balance_of", (account,), Tokens128).await?)
+pub async fn get_icrc1_balance(token: Principal, account: &Account) -> Result<Tokens128> {
+    let result = virtual_canister_call!(token, "icrc1_balance_of", (account,), Nat).await?;
+    Tokens128::from_nat(&result).ok_or(InternalPaymentError::Overflow)
 }
 
 pub async fn transfer_icrc1(

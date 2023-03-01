@@ -6,8 +6,8 @@ use ic_canister::{register_raw_virtual_responder, register_virtual_responder};
 use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
 use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::mock_principals::alice;
-use ic_exports::ic_kit::{ic, CallResult, RejectionCode};
-use ic_payments::error::{PaymentError, TransferFailReason};
+use ic_exports::ic_kit::{ic, RejectionCode};
+use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
 use ic_payments::recovery_list::ForRecoveryList;
 use ic_payments::{Operation, Transfer};
 
@@ -38,11 +38,11 @@ async fn transfer_args() {
         token_principal(),
         "icrc1_transfer",
         move |(args,): (TransferArg,)| {
-            assert_eq!(args.amount, transfer.amount.to_nat());
+            assert_eq!(args.amount, transfer.amount().to_nat());
             assert_eq!(args.fee, Some(fee.to_nat()));
             assert_eq!(args.from_subaccount, Some([3; 32]));
-            assert_eq!(args.to, transfer.to);
-            assert_eq!(args.created_at_time, Some(transfer.created_at));
+            assert_eq!(args.to, transfer.to());
+            assert_eq!(args.created_at_time, Some(transfer.created_at()));
 
             Ok::<Nat, TransferError>(Nat::from(1))
         },
@@ -190,17 +190,100 @@ async fn retry_with_maybe_failure() {
     };
 
     let err = terminal.transfer(transfer, 3).await.unwrap_err();
-    assert_eq!(err, PaymentError::Recoverable);
+    assert_eq!(err, PaymentError::Recoverable(RecoveryDetails::IcError));
     assert_eq!(TestBalances::balance_of(alice()), 0);
     assert_eq!(counter_clone.load(Ordering::Relaxed), 3);
     assert_eq!(ForRecoveryList::<0>.take_all().len(), 1);
 }
 
 #[tokio::test]
-async fn recovery_with_success() {}
+async fn recovery_with_success() {
+    let mut terminal = init_test();
+
+    register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
+        Err((RejectionCode::SysTransient, "recoverable".into()))
+    });
+
+    let transfer = Transfer {
+        caller: alice(),
+        amount: 1000.into(),
+        fee: 10.into(),
+        operation: Operation::CreditOnSuccess,
+        ..simple_transfer()
+    };
+
+    terminal.transfer(transfer, 3).await.unwrap_err();
+
+    setup_success(1);
+
+    let results = terminal.recover_all().await;
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0], Ok(Nat::from(1)));
+    assert_eq!(TestBalances::balance_of(alice()), 990);
+    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+}
 
 #[tokio::test]
-async fn recovery_with_failure() {}
+async fn recovery_with_failure() {
+    let mut terminal = init_test();
+
+    register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
+        Err((RejectionCode::SysTransient, "recoverable".into()))
+    });
+
+    let transfer = Transfer {
+        caller: alice(),
+        amount: 1000.into(),
+        fee: 10.into(),
+        operation: Operation::CreditOnSuccess,
+        ..simple_transfer()
+    };
+
+    terminal.transfer(transfer, 3).await.unwrap_err();
+
+    setup_error();
+
+    let results = terminal.recover_all().await;
+    assert_eq!(results.len(), 1);
+    assert!(matches!(
+        results[0],
+        Err(PaymentError::TransferFailed(TransferFailReason::Rejected(
+            TransferError::InsufficientFunds { .. }
+        )))
+    ));
+    assert_eq!(TestBalances::balance_of(alice()), 0);
+    assert_eq!(ForRecoveryList::<0>.take_all().len(), 0);
+}
 
 #[tokio::test]
-async fn recovery_with_maybe_failure() {}
+async fn recovery_with_maybe_failure() {
+    let mut terminal = init_test();
+
+    let counter = Arc::new(AtomicUsize::new(0));
+    let counter_clone = counter.clone();
+
+    register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
+        counter.fetch_add(1, Ordering::Relaxed);
+        Err((RejectionCode::SysTransient, "recoverable".into()))
+    });
+
+    let transfer = Transfer {
+        caller: alice(),
+        amount: 1000.into(),
+        fee: 10.into(),
+        operation: Operation::CreditOnSuccess,
+        ..simple_transfer()
+    };
+
+    terminal.transfer(transfer, 3).await.unwrap_err();
+
+    let results = terminal.recover_all().await;
+    assert_eq!(results.len(), 1);
+    assert_eq!(
+        results[0],
+        Err(PaymentError::Recoverable(RecoveryDetails::IcError))
+    );
+    assert_eq!(TestBalances::balance_of(alice()), 0);
+    assert_eq!(ForRecoveryList::<0>.take_all().len(), 1);
+    assert_eq!(counter_clone.load(Ordering::Relaxed), 6);
+}

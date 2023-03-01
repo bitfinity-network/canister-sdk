@@ -1,5 +1,8 @@
+use ic_exports::ic_icrc1::Subaccount;
+
 use super::*;
 use crate::error::ParametersError;
+use crate::icrc1::TokenTransferInfo;
 
 #[derive(Debug, Eq, PartialEq, CandidType, Deserialize, Clone, Copy)]
 pub enum Operation {
@@ -21,10 +24,10 @@ pub struct Transfer {
     pub created_at: Timestamp,
 }
 
-#[derive(Debug, CandidType, Deserialize, Clone, Copy)]
+#[derive(Debug, CandidType, Deserialize, Clone)]
 pub enum TransferType {
     SingleStep,
-    DoubleStep(Stage),
+    DoubleStep(Stage, Account),
 }
 
 #[derive(Debug, CandidType, Deserialize, Clone, Copy)]
@@ -36,6 +39,59 @@ pub enum Stage {
 const INTERMEDIATE_ACC_DOMAIN: &[u8] = b"is-amm-intermediate-acc";
 
 impl Transfer {
+    pub fn new(
+        token_config: &TokenConfiguration,
+        caller: Principal,
+        to: Account,
+        from_subaccount: Option<Subaccount>,
+        amount: Tokens128,
+    ) -> Self {
+        let from = Account {
+            owner: ic::id().into(),
+            subaccount: from_subaccount,
+        };
+        let fee = token_config.get_fee(&from, &to);
+        Self {
+            token: token_config.principal,
+            caller,
+            from,
+            to,
+            amount,
+            fee,
+            operation: Operation::None,
+            r#type: TransferType::SingleStep,
+            created_at: ic::time(),
+        }
+    }
+
+    pub fn with_operation(self, operation: Operation) -> Self {
+        Self { operation, ..self }
+    }
+
+    pub fn double_step(self) -> Self {
+        let interim_acc = match self.r#type {
+            TransferType::SingleStep => self.generate_interim_acc(),
+            TransferType::DoubleStep(_, interim_acc) => interim_acc,
+        };
+
+        Self {
+            r#type: TransferType::DoubleStep(Stage::First, interim_acc),
+            ..self
+        }
+    }
+
+    pub async fn execute(&self) -> Result<TokenTransferInfo> {
+        icrc1::transfer_icrc1(
+            self.token,
+            self.to(),
+            self.amount(),
+            self.fee,
+            self.from().subaccount,
+            Some(self.created_at()),
+        )
+        .await
+    }
+
     pub(crate) fn id(&self) -> [u8; 32] {
         use ic_exports::ic_crypto_sha::Sha224;
 
@@ -47,7 +103,6 @@ impl Transfer {
         hash.write(self.to.effective_subaccount());
         hash.write(&self.amount.amount.to_le_bytes());
         hash.write(self.token.as_slice());
-
         hash.write(&self.created_at.to_le_bytes());
 
         let hash_result = hash.finish();
@@ -59,22 +114,29 @@ impl Transfer {
     }
 
     pub(crate) fn from(&self) -> Account {
-        match self.r#type {
+        match &self.r#type {
             TransferType::SingleStep => self.from.clone(),
-            TransferType::DoubleStep(Stage::First) => self.from.clone(),
-            TransferType::DoubleStep(Stage::Second) => self.interim_acc(),
+            TransferType::DoubleStep(Stage::First, _) => self.from.clone(),
+            TransferType::DoubleStep(Stage::Second, acc) => acc.clone(),
         }
     }
 
-    pub(crate) fn to(&self) -> Account {
-        match self.r#type {
+    pub fn to(&self) -> Account {
+        match &self.r#type {
             TransferType::SingleStep => self.to.clone(),
-            TransferType::DoubleStep(Stage::First) => self.interim_acc(),
-            TransferType::DoubleStep(Stage::Second) => self.to.clone(),
+            TransferType::DoubleStep(Stage::First, acc) => acc.clone(),
+            TransferType::DoubleStep(Stage::Second, _) => self.to.clone(),
         }
     }
 
-    fn interim_acc(&self) -> Account {
+    pub fn interim_acc(&self) -> Option<Account> {
+        match &self.r#type {
+            TransferType::DoubleStep(_, acc) => Some(acc.clone()),
+            _ => None,
+        }
+    }
+
+    fn generate_interim_acc(&self) -> Account {
         Account {
             owner: ic::id().into(),
             subaccount: Some(self.id()),
@@ -89,14 +151,6 @@ impl Transfer {
         }
 
         if self.from == self.to {
-            return Err(InternalPaymentError::InvalidParameters(
-                ParametersError::TargetAccountInvalid,
-            ));
-        }
-
-        if matches!(self.r#type, TransferType::DoubleStep(_))
-            && (self.to == self.interim_acc() || self.from == self.interim_acc())
-        {
             return Err(InternalPaymentError::InvalidParameters(
                 ParametersError::TargetAccountInvalid,
             ));
@@ -117,7 +171,7 @@ impl Transfer {
 
     fn min_amount(&self, fee: Tokens128) -> Result<Tokens128> {
         let amount = match self.r#type {
-            TransferType::DoubleStep(Stage::First) => {
+            TransferType::DoubleStep(Stage::First, _) => {
                 fee.amount.saturating_mul(2).saturating_add(1)
             }
             _ => fee.amount.saturating_add(1),
@@ -146,6 +200,35 @@ impl Transfer {
 
     pub fn caller(&self) -> Principal {
         self.caller
+    }
+
+    pub fn renew(self) -> Self {
+        Self {
+            created_at: ic::time(),
+            ..self
+        }
+    }
+
+    pub fn created_at(&self) -> Timestamp {
+        self.created_at
+    }
+
+    pub fn r#type(&self) -> &TransferType {
+        &self.r#type
+    }
+
+    pub fn next_step(&self) -> Option<Self> {
+        match &self.r#type {
+            TransferType::DoubleStep(Stage::First, interim_acc) => Some(Self {
+                r#type: TransferType::DoubleStep(Stage::Second, interim_acc.clone()),
+                amount: self.amount_minus_fee(),
+                created_at: ic::time(),
+                to: self.to.clone(),
+                from: self.from.clone(),
+                ..*self
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -229,7 +312,13 @@ mod tests {
             amount: 1000.into(),
             fee: 0.into(),
             operation: Operation::None,
-            r#type: TransferType::DoubleStep(Stage::First),
+            r#type: TransferType::DoubleStep(
+                Stage::First,
+                Account {
+                    owner: john().into(),
+                    subaccount: Some([1; 32]),
+                },
+            ),
             created_at: 0,
         };
 
@@ -284,7 +373,13 @@ mod tests {
             amount: 1000.into(),
             fee: 0.into(),
             operation: Operation::None,
-            r#type: TransferType::DoubleStep(Stage::Second),
+            r#type: TransferType::DoubleStep(
+                Stage::Second,
+                Account {
+                    owner: john().into(),
+                    subaccount: Some([1; 32]),
+                },
+            ),
             created_at: 0,
         };
 
@@ -372,69 +467,6 @@ mod tests {
             created_at: 0,
         };
 
-        assert_eq!(
-            transfer.validate(),
-            Err(InternalPaymentError::InvalidParameters(
-                ParametersError::TargetAccountInvalid
-            ))
-        );
-    }
-
-    #[test]
-    fn validate_to_interim_acc() {
-        MockContext::new().with_id(john()).inject();
-        let mut transfer = Transfer {
-            token: alice(),
-            caller: bob(),
-            from: Account {
-                owner: john().into(),
-                subaccount: None,
-            },
-            to: Account {
-                owner: john().into(),
-                subaccount: None,
-            },
-            amount: 1000.into(),
-            fee: 0.into(),
-            operation: Operation::None,
-            r#type: TransferType::SingleStep,
-            created_at: 0,
-        };
-
-        transfer.to.subaccount = Some(transfer.id());
-        assert_eq!(transfer.validate(), Ok(()));
-
-        transfer.r#type = TransferType::DoubleStep(Stage::First);
-        assert_eq!(
-            transfer.validate(),
-            Err(InternalPaymentError::InvalidParameters(
-                ParametersError::TargetAccountInvalid
-            ))
-        );
-
-        transfer.r#type = TransferType::DoubleStep(Stage::Second);
-        assert_eq!(
-            transfer.validate(),
-            Err(InternalPaymentError::InvalidParameters(
-                ParametersError::TargetAccountInvalid
-            ))
-        );
-
-        transfer.to.subaccount = None;
-        transfer.from.subaccount = Some(transfer.id());
-
-        transfer.r#type = TransferType::SingleStep;
-        assert_eq!(transfer.validate(), Ok(()));
-
-        transfer.r#type = TransferType::DoubleStep(Stage::First);
-        assert_eq!(
-            transfer.validate(),
-            Err(InternalPaymentError::InvalidParameters(
-                ParametersError::TargetAccountInvalid
-            ))
-        );
-
-        transfer.r#type = TransferType::DoubleStep(Stage::Second);
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
