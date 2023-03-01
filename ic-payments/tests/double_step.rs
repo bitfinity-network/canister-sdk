@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use candid::{Encode, Nat};
 use common::{
-    init_context, init_test, setup_error, setup_success, simple_transfer, this_principal,
-    token_principal, TestBalances,
+    init_context, init_test, setup_error, setup_success, simple_transfer, token_principal,
+    TestBalances,
 };
 use ic_canister::{register_raw_virtual_responder, register_virtual_responder};
 use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
@@ -13,7 +13,7 @@ use ic_exports::ic_kit::mock_principals::alice;
 use ic_exports::ic_kit::RejectionCode;
 use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
 use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
-use ic_payments::{Operation, Stage, Transfer, TransferType, UNKNOWN_TX_ID};
+use ic_payments::{Operation, Transfer, UNKNOWN_TX_ID};
 
 mod common;
 

@@ -7,7 +7,7 @@ use ic_exports::Principal;
 use ic_helpers::tokens::Tokens128;
 
 use crate::error::{InternalPaymentError, Result};
-use crate::Timestamp;
+use crate::{Timestamp, TokenConfiguration};
 
 type TxId = Nat;
 
@@ -19,12 +19,6 @@ pub struct TokenTransferInfo {
     pub token_principal: Principal,
     /// Amount of tokens were transferred to the principal.
     pub amount_transferred: Tokens128,
-}
-
-#[derive(CandidType, Debug, Deserialize, Clone, Copy)]
-pub struct TokenConfiguration {
-    pub fee: Tokens128,
-    pub minting_principal: Principal,
 }
 
 pub async fn get_icrc1_balance(token: Principal, account: &Account) -> Result<Tokens128> {
@@ -52,39 +46,27 @@ pub async fn transfer_icrc1(
     let tx_id =
         virtual_canister_call!(token, "icrc1_transfer", (args,), std::result::Result<TxId, TransferError>)
             .await??;
-    // .map_err(|(code, e)| match code {
-    //     // With these error codes IC guarantees that the target canister state is not changed, so the transaction is
-    //     // not applied
-    //     RejectionCode::DestinationInvalid
-    //     | RejectionCode::CanisterReject
-    //     | RejectionCode::CanisterError => PairError::TokenTransferFailed(e.into()),
-    //     // With other error codes we cannot be sure if the transaction is applied or not, so we must take special
-    //     // care when dealing with these errors
-    //     _ => PairError::TransactionMaybeFailed(token, e),
-    // })?
-    // .map_err(|e| PairError::TokenTransferFailed(e.into()))?;
 
     Ok(TokenTransferInfo {
-        token_tx_id: tx_id.into(),
+        token_tx_id: tx_id,
         amount_transferred: amount,
         token_principal: token,
     })
 }
 
-pub async fn get_icrc1_configuration(token: Principal) -> Option<TokenConfiguration> {
+pub async fn get_icrc1_configuration(token: Principal) -> Result<TokenConfiguration> {
     // ICRC-1 standard metadata doesn't include minting account, so we have to do two requests
     // to get both fields. It's fine though since this is done only one time.
-    let fee = get_icrc1_fee(token).await.ok()?;
-    let minting_account = get_icrc1_minting_account(token).await.ok()?;
+    let fee = get_icrc1_fee(token).await?;
+    let minting_account = get_icrc1_minting_account(token).await?.unwrap_or(Account {
+        owner: Principal::management_canister().into(),
+        subaccount: None,
+    });
 
-    let minting_principal = match minting_account {
-        Some(v) if v.subaccount.is_none() => v.owner.0,
-        _ => Principal::management_canister(),
-    };
-
-    Some(TokenConfiguration {
+    Ok(TokenConfiguration {
+        principal: token,
         fee,
-        minting_principal,
+        minting_account,
     })
 }
 

@@ -4,9 +4,13 @@ use ic_exports::ic_kit::RejectionCode;
 use ic_helpers::tokens::Tokens128;
 use thiserror::Error;
 
-use crate::TxId;
-
 pub type Result<T> = std::result::Result<T, InternalPaymentError>;
+
+#[derive(Debug, PartialEq)]
+pub enum BalanceError {
+    InsufficientFunds,
+    Fatal(String),
+}
 
 #[derive(Debug, PartialEq, CandidType, Deserialize)]
 pub enum TransferFailReason {
@@ -30,11 +34,7 @@ pub enum PaymentError {
     ///
     /// This error means that the terminal didn't even attempt to perform the transaction. No
     /// further requests with the same parameters would be successful.
-    ///
-    /// Possible errors could be:
-    /// * transfer amount is smaller than the token transaction fee
-    /// * `from` account does not belong to the calling canister
-    InvalidParameters,
+    InvalidParameters(ParametersError),
 
     /// Transaction was attempted but rejected by the token canister. It's unlikely that further
     /// requests with the same parameters would be successful in current state.
@@ -57,6 +57,8 @@ pub enum PaymentError {
     ///
     /// Recovery of the transfer may be attempted by the terminal recovery mechanism.
     Recoverable(RecoveryDetails),
+
+    InsufficientFunds,
 
     Fatal(String),
 }
@@ -97,7 +99,6 @@ pub enum ParametersError {
         minimum_required: Tokens128,
         actual: Tokens128,
     },
-    NotOwner,
     TargetAccountInvalid,
     FeeTooLarge,
 }
@@ -111,7 +112,6 @@ impl From<(RejectionCode, String)> for InternalPaymentError {
             RejectionCode::CanisterError => {
                 Self::TransferFailed(TransferFailReason::TokenPanic(message))
             }
-            RejectionCode::Unknown => todo!("{code:?}, {message}"),
             // IC error or violation of IC specification. Since we don't know for sure how to deal
             // with this in advance, we treat them as potentially recoverable errors, hoping that
             // in future IC will recover and start returning something sensible.
@@ -151,7 +151,17 @@ impl From<InternalPaymentError> for PaymentError {
             InternalPaymentError::MaybeFailed => Self::Recoverable(RecoveryDetails::IcError),
             InternalPaymentError::WrongFee(expected) => Self::BadFee(expected),
             InternalPaymentError::Overflow => Self::Fatal("token amount overflow".into()),
+            InternalPaymentError::InvalidParameters(v) => Self::InvalidParameters(v),
             _ => todo!("not handled error: {internal:?}"),
+        }
+    }
+}
+
+impl From<BalanceError> for PaymentError {
+    fn from(value: BalanceError) -> Self {
+        match value {
+            BalanceError::InsufficientFunds => PaymentError::InsufficientFunds,
+            BalanceError::Fatal(v) => PaymentError::Fatal(v),
         }
     }
 }

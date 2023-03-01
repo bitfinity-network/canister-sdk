@@ -66,7 +66,7 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
         &mut self,
         caller: Principal,
         amount: Tokens128,
-    ) -> Result<TxId, PaymentError> {
+    ) -> Result<(TxId, Tokens128), PaymentError> {
         let to = PrincipalId(caller).into();
         let transfer = Transfer::new(
             &self.token_config,
@@ -77,21 +77,30 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
         )
         .with_operation(Operation::CreditOnSuccess);
 
-        self.transfer(transfer, N_RETRIES).await
+        let amount = transfer.final_amount()?;
+        let tx_id = self.transfer(transfer, N_RETRIES).await?;
+
+        Ok((tx_id, amount))
     }
 
     pub async fn withdraw(
         &mut self,
         caller: Principal,
         amount: Tokens128,
-    ) -> Result<TxId, PaymentError> {
+    ) -> Result<(TxId, Tokens128), PaymentError> {
         let to = PrincipalId(caller).into();
 
         let transfer = Transfer::new(&self.token_config, caller, to, None, amount)
             .double_step()
             .with_operation(Operation::CreditOnError);
+        transfer.validate()?;
+        let amount = transfer.final_amount()?;
 
-        self.transfer(transfer, N_RETRIES).await
+        self.balances.debit(caller, transfer.amount())?;
+
+        let tx_id = self.transfer(transfer, N_RETRIES).await?;
+
+        Ok((tx_id, amount))
     }
 
     #[async_recursion]
@@ -111,6 +120,14 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
             }
             Err(e) => Ok(self.reject(transfer, e)?),
         }
+    }
+
+    pub async fn balance(&self, of: &Account) -> Result<Tokens128, PaymentError> {
+        Ok(icrc1::get_icrc1_balance(self.token_config.principal, of).await?)
+    }
+
+    pub async fn request_token_config(&self) -> Result<TokenConfiguration, PaymentError> {
+        Ok(icrc1::get_icrc1_configuration(self.token_config.principal).await?)
     }
 
     #[async_recursion]
@@ -181,18 +198,27 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
 
     pub fn set_fee(&mut self, fee: Tokens128) {
         self.token_config.fee = fee;
+        self.update_recovery_fees();
     }
 
-    pub fn set_minting_account(&mut self, mintint_account: Account) {
-        self.token_config.minting_account = mintint_account;
+    pub fn set_minting_account(&mut self, minting_account: Account) {
+        self.token_config.minting_account = minting_account;
+        self.update_recovery_fees();
+    }
+
+    fn update_recovery_fees(&mut self) {
+        for tx in self.recovery_list.take_all() {
+            let fee = self.token_config.get_fee(&tx.from_acc(), &tx.to);
+            self.recovery_list.push(tx.with_fee(fee));
+        }
     }
 
     fn credit(
         &mut self,
         recepient: Principal,
         amount: Tokens128,
-    ) -> Result<Tokens128, InternalPaymentError> {
-        self.balances.credit(recepient, amount)
+    ) -> Result<Tokens128, PaymentError> {
+        Ok(self.balances.credit(recepient, amount)?)
     }
 
     fn add_for_recovery(&mut self, transfer: Transfer) {

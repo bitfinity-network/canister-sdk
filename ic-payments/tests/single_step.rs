@@ -6,7 +6,7 @@ use ic_canister::{register_raw_virtual_responder, register_virtual_responder};
 use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
 use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::mock_principals::alice;
-use ic_exports::ic_kit::{ic, RejectionCode};
+use ic_exports::ic_kit::RejectionCode;
 use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
 use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 use ic_payments::{Operation, Transfer};
@@ -21,25 +21,22 @@ mod common;
 async fn transfer_args() {
     let mut terminal = init_test();
     let transfer = Transfer {
-        from: Account {
-            owner: ic::id().into(),
-            subaccount: Some([3; 32]),
-        },
+        from: Some([3; 32]),
         to: Account {
             owner: alice().into(),
             subaccount: Some([4; 32]),
         },
+        fee: 10.into(),
         ..simple_transfer()
     };
     let transfer_clone = transfer.clone();
-    let fee = terminal.fee();
 
     register_virtual_responder(
         token_principal(),
         "icrc1_transfer",
         move |(args,): (TransferArg,)| {
             assert_eq!(args.amount, transfer.amount().to_nat());
-            assert_eq!(args.fee, Some(fee.to_nat()));
+            assert_eq!(args.fee, Some(10.into()));
             assert_eq!(args.from_subaccount, Some([3; 32]));
             assert_eq!(args.to, transfer.to());
             assert_eq!(args.created_at_time, Some(transfer.created_at()));

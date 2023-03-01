@@ -5,11 +5,10 @@ use ic_canister::register_virtual_responder;
 use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
 use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::mock_principals::{alice, bob};
-use ic_exports::ic_kit::{ic, MockContext};
-use ic_exports::ledger::AccountIdentifier;
+use ic_exports::ic_kit::MockContext;
 use ic_helpers::tokens::Tokens128;
-use ic_payments::error::Result;
-use ic_payments::{Balances, Operation, TokenConfiguration, TokenTerminal, Transfer, TransferType};
+use ic_payments::error::BalanceError;
+use ic_payments::{Balances, TokenConfiguration, TokenTerminal, Transfer};
 
 pub enum BalanceOperation {
     Credit(Principal, Tokens128),
@@ -32,13 +31,30 @@ impl BalanceOperation {
     }
 }
 
-pub struct TestBalances {}
+pub struct TestBalances;
 
 impl Balances for TestBalances {
-    fn credit(&mut self, recepient: Principal, amount: Tokens128) -> Result<Tokens128> {
+    fn credit(
+        &mut self,
+        recepient: Principal,
+        amount: Tokens128,
+    ) -> Result<Tokens128, BalanceError> {
         BALANCES.with(|v| {
             v.borrow_mut()
                 .push(BalanceOperation::Credit(recepient, amount))
+        });
+
+        Ok(amount)
+    }
+
+    fn debit(
+        &mut self,
+        account_owner: Principal,
+        amount: Tokens128,
+    ) -> Result<Tokens128, BalanceError> {
+        BALANCES.with(|v| {
+            v.borrow_mut()
+                .push(BalanceOperation::Debit(account_owner, amount))
         });
 
         Ok(amount)
@@ -103,7 +119,7 @@ pub fn init_test() -> TokenTerminal<TestBalances, 0> {
     TokenTerminal::new(
         TokenConfiguration {
             principal: token_principal(),
-            fee: 1000.into(),
+            fee: 10.into(),
             minting_account: ic_exports::ic_icrc1::Account {
                 owner: bob().into(),
                 subaccount: None,

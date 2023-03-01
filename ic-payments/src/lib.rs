@@ -1,11 +1,9 @@
 use candid::{CandidType, Deserialize, Nat};
-use error::InternalPaymentError;
+use error::{BalanceError, InternalPaymentError};
 use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::ic;
 use ic_exports::Principal;
 use ic_helpers::tokens::Tokens128;
-
-use crate::error::Result;
 
 pub mod error;
 mod icrc1;
@@ -20,7 +18,16 @@ type Timestamp = u64;
 type TxId = Nat;
 
 pub trait Balances {
-    fn credit(&mut self, recepient: Principal, amount: Tokens128) -> Result<Tokens128>;
+    fn credit(
+        &mut self,
+        account_owner: Principal,
+        amount: Tokens128,
+    ) -> Result<Tokens128, BalanceError>;
+    fn debit(
+        &mut self,
+        account_owner: Principal,
+        amount: Tokens128,
+    ) -> Result<Tokens128, BalanceError>;
 }
 
 #[derive(CandidType, Debug, Deserialize, Clone)]

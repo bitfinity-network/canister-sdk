@@ -15,7 +15,7 @@ pub enum Operation {
 pub struct Transfer {
     pub token: Principal,
     pub caller: Principal,
-    pub from: Account,
+    pub from: Option<Subaccount>,
     pub to: Account,
     pub amount: Tokens128,
     pub fee: Tokens128,
@@ -46,15 +46,17 @@ impl Transfer {
         from_subaccount: Option<Subaccount>,
         amount: Tokens128,
     ) -> Self {
-        let from = Account {
-            owner: ic::id().into(),
-            subaccount: from_subaccount,
-        };
-        let fee = token_config.get_fee(&from, &to);
+        let fee = token_config.get_fee(
+            &Account {
+                owner: ic::id().into(),
+                subaccount: from_subaccount,
+            },
+            &to,
+        );
         Self {
             token: token_config.principal,
             caller,
-            from,
+            from: from_subaccount,
             to,
             amount,
             fee,
@@ -80,7 +82,7 @@ impl Transfer {
         }
     }
 
-    pub async fn execute(&self) -> Result<TokenTransferInfo> {
+    pub async fn execute(&self) -> Result<TokenTransferInfo, InternalPaymentError> {
         icrc1::transfer_icrc1(
             self.token,
             self.to(),
@@ -97,8 +99,7 @@ impl Transfer {
 
         let mut hash = Sha224::new();
         hash.write(INTERMEDIATE_ACC_DOMAIN);
-        hash.write(self.from.owner.as_slice());
-        hash.write(self.from.effective_subaccount());
+        hash.write(&self.from.unwrap_or_default());
         hash.write(self.to.owner.as_slice());
         hash.write(self.to.effective_subaccount());
         hash.write(&self.amount.amount.to_le_bytes());
@@ -115,9 +116,16 @@ impl Transfer {
 
     pub(crate) fn from(&self) -> Account {
         match &self.r#type {
-            TransferType::SingleStep => self.from.clone(),
-            TransferType::DoubleStep(Stage::First, _) => self.from.clone(),
+            TransferType::SingleStep => self.from_acc(),
+            TransferType::DoubleStep(Stage::First, _) => self.from_acc(),
             TransferType::DoubleStep(Stage::Second, acc) => acc.clone(),
+        }
+    }
+
+    pub fn from_acc(&self) -> Account {
+        Account {
+            owner: ic::id().into(),
+            subaccount: self.from,
         }
     }
 
@@ -143,24 +151,17 @@ impl Transfer {
         }
     }
 
-    pub(crate) fn validate(&self) -> Result<()> {
-        if self.from.owner != ic::id().into() {
-            return Err(InternalPaymentError::InvalidParameters(
-                ParametersError::NotOwner,
-            ));
-        }
-
-        if self.from == self.to {
+    pub(crate) fn validate(&self) -> Result<(), InternalPaymentError> {
+        if self.from_acc() == self.to {
             return Err(InternalPaymentError::InvalidParameters(
                 ParametersError::TargetAccountInvalid,
             ));
         }
 
-        let min_amount = self.min_amount(self.fee)?;
-        if self.amount < min_amount {
+        if self.final_amount()?.is_zero() {
             return Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: min_amount,
+                    minimum_required: self.min_amount()?,
                     actual: self.amount,
                 },
             ));
@@ -169,21 +170,21 @@ impl Transfer {
         Ok(())
     }
 
-    fn min_amount(&self, fee: Tokens128) -> Result<Tokens128> {
-        let amount = match self.r#type {
+    pub fn effective_fee(&self) -> Result<Tokens128, InternalPaymentError> {
+        match self.r#type {
             TransferType::DoubleStep(Stage::First, _) => {
-                fee.amount.saturating_mul(2).saturating_add(1)
+                (self.fee * Tokens128::from(2)).to_tokens128().ok_or(
+                    InternalPaymentError::InvalidParameters(ParametersError::FeeTooLarge),
+                )
             }
-            _ => fee.amount.saturating_add(1),
-        };
-
-        if amount == u128::MAX {
-            Err(InternalPaymentError::InvalidParameters(
-                ParametersError::FeeTooLarge,
-            ))
-        } else {
-            Ok(amount.into())
+            _ => Ok(self.fee),
         }
+    }
+
+    fn min_amount(&self) -> Result<Tokens128, InternalPaymentError> {
+        (self.effective_fee()? + Tokens128::from(1)).ok_or(InternalPaymentError::InvalidParameters(
+            ParametersError::FeeTooLarge,
+        ))
     }
 
     pub fn amount(&self) -> Tokens128 {
@@ -192,6 +193,15 @@ impl Transfer {
 
     pub fn amount_minus_fee(&self) -> Tokens128 {
         self.amount.saturating_sub(self.fee)
+    }
+
+    pub fn final_amount(&self) -> Result<Tokens128, InternalPaymentError> {
+        (self.amount - self.effective_fee()?).ok_or(InternalPaymentError::InvalidParameters(
+            ParametersError::AmountTooSmall {
+                minimum_required: self.min_amount()?,
+                actual: self.amount,
+            },
+        ))
     }
 
     pub fn operation(&self) -> Operation {
@@ -207,6 +217,10 @@ impl Transfer {
             created_at: ic::time(),
             ..self
         }
+    }
+
+    pub fn with_fee(self, fee: Tokens128) -> Self {
+        Self { fee, ..self }
     }
 
     pub fn created_at(&self) -> Timestamp {
@@ -246,10 +260,7 @@ mod tests {
         let mut transfer = Transfer {
             token: alice(),
             caller: bob(),
-            from: Account {
-                owner: john().into(),
-                subaccount: None,
-            },
+            from: None,
             to: Account {
                 owner: bob().into(),
                 subaccount: None,
@@ -301,10 +312,7 @@ mod tests {
         let mut transfer = Transfer {
             token: alice(),
             caller: bob(),
-            from: Account {
-                owner: john().into(),
-                subaccount: None,
-            },
+            from: None,
             to: Account {
                 owner: bob().into(),
                 subaccount: None,
@@ -351,7 +359,10 @@ mod tests {
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
-                ParametersError::FeeTooLarge
+                ParametersError::AmountTooSmall {
+                    minimum_required: u128::MAX.into(),
+                    actual: 1000.into()
+                }
             ))
         );
     }
@@ -362,10 +373,7 @@ mod tests {
         let mut transfer = Transfer {
             token: alice(),
             caller: bob(),
-            from: Account {
-                owner: john().into(),
-                subaccount: None,
-            },
+            from: None,
             to: Account {
                 owner: bob().into(),
                 subaccount: None,
@@ -418,44 +426,12 @@ mod tests {
     }
 
     #[test]
-    fn validate_from_not_owner() {
-        MockContext::new().with_id(alice()).inject();
-        let transfer = Transfer {
-            token: alice(),
-            caller: bob(),
-            from: Account {
-                owner: john().into(),
-                subaccount: None,
-            },
-            to: Account {
-                owner: bob().into(),
-                subaccount: None,
-            },
-            amount: 1000.into(),
-            fee: 0.into(),
-            operation: Operation::None,
-            r#type: TransferType::SingleStep,
-            created_at: 0,
-        };
-
-        assert_eq!(
-            transfer.validate(),
-            Err(InternalPaymentError::InvalidParameters(
-                ParametersError::NotOwner
-            ))
-        );
-    }
-
-    #[test]
     fn validate_to_self() {
         MockContext::new().with_id(john()).inject();
         let transfer = Transfer {
             token: alice(),
             caller: bob(),
-            from: Account {
-                owner: john().into(),
-                subaccount: Some([1; 32]),
-            },
+            from: Some([1; 32]),
             to: Account {
                 owner: john().into(),
                 subaccount: Some([1; 32]),
@@ -479,10 +455,7 @@ mod tests {
         Transfer {
             token: alice(),
             caller: bob(),
-            from: Account {
-                owner: john().into(),
-                subaccount: None,
-            },
+            from: None,
             to: Account {
                 owner: bob().into(),
                 subaccount: None,
@@ -513,10 +486,7 @@ mod tests {
     fn id_unique_over_sender() {
         let t1 = simple_transfer();
         let t2 = Transfer {
-            from: Account {
-                owner: john().into(),
-                subaccount: Some([1; 32]),
-            },
+            from: Some([1; 32]),
             ..simple_transfer()
         };
 
@@ -565,5 +535,59 @@ mod tests {
         };
 
         assert_eq!(t1.id(), t2.id());
+    }
+
+    #[test]
+    fn effective_fee_considers_type() {
+        MockContext::new().with_id(alice()).inject();
+        let t = simple_transfer().with_fee(10.into());
+        assert_eq!(t.effective_fee().unwrap(), 10.into());
+
+        let t = t.double_step();
+        assert_eq!(t.effective_fee().unwrap(), 20.into());
+    }
+
+    #[test]
+    fn token_constructor_considers_minter_for_fee() {
+        MockContext::new().with_id(alice()).inject();
+        let t = Transfer::new(
+            &TokenConfiguration {
+                principal: bob(),
+                fee: 10.into(),
+                minting_account: Account {
+                    owner: alice().into(),
+                    subaccount: None,
+                },
+            },
+            john(),
+            Account {
+                owner: john().into(),
+                subaccount: None,
+            },
+            None,
+            1000.into(),
+        );
+
+        assert_eq!(t.effective_fee().unwrap(), 0.into());
+
+        let t = Transfer::new(
+            &TokenConfiguration {
+                principal: bob(),
+                fee: 10.into(),
+                minting_account: Account {
+                    owner: john().into(),
+                    subaccount: None,
+                },
+            },
+            john(),
+            Account {
+                owner: john().into(),
+                subaccount: None,
+            },
+            None,
+            1000.into(),
+        );
+
+        assert_eq!(t.effective_fee().unwrap(), 0.into());
     }
 }
