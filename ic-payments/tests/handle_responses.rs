@@ -116,7 +116,14 @@ async fn token_rejects_with_duplicate() {
     });
 
     let result = terminal.transfer(simple_transfer(), 1).await;
-    assert_eq!(result, Ok(3.into()));
+    assert_eq!(
+        result,
+        Err(PaymentError::TransferFailed(TransferFailReason::Rejected(
+            TransferError::Duplicate {
+                duplicate_of: 3.into(),
+            }
+        )))
+    );
 }
 
 #[tokio::test]

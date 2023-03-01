@@ -1,6 +1,7 @@
 use async_recursion::async_recursion;
 use candid::Principal;
 use ic_exports::ic_base_types::PrincipalId;
+use ic_exports::ic_icrc1::endpoints::TransferError;
 use ic_exports::ic_icrc1::{Account, Subaccount};
 use ic_exports::ic_kit::ic;
 use ic_helpers::tokens::Tokens128;
@@ -105,9 +106,6 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
             Ok(TokenTransferInfo { token_tx_id, .. }) => {
                 Ok(self.complete(transfer, token_tx_id, n_retries).await?)
             }
-            Err(InternalPaymentError::Duplicate(tx_id)) => {
-                Ok(self.complete(transfer, tx_id, n_retries).await?)
-            }
             Err(InternalPaymentError::MaybeFailed) => {
                 self.retry(transfer, n_retries.saturating_sub(1)).await
             }
@@ -129,7 +127,6 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
                     self.credit(transfer.caller(), transfer.amount_minus_fee())?;
                 }
 
-                println!("transfer ok");
                 Ok(tx_id)
             }
         }
@@ -162,12 +159,16 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
 
     async fn retry(&mut self, transfer: Transfer, n_retries: usize) -> Result<TxId, PaymentError> {
         if n_retries == 0 {
-            println!("transfer err");
             self.add_for_recovery(transfer);
             return Err(PaymentError::Recoverable(RecoveryDetails::IcError));
         }
 
-        self.transfer(transfer, n_retries).await
+        match self.transfer(transfer.clone(), n_retries).await {
+            Err(PaymentError::TransferFailed(TransferFailReason::Rejected(
+                TransferError::Duplicate { duplicate_of },
+            ))) => self.complete(transfer, duplicate_of, n_retries).await,
+            result => result,
+        }
     }
 
     pub fn fee(&self) -> Tokens128 {
@@ -207,11 +208,16 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
         results
     }
 
-    async fn recover_tx(&mut self, tx: Transfer) -> Result<TxId, PaymentError> {
-        if self.can_deduplicate(&tx) {
-            self.transfer(tx, N_RETRIES).await
+    async fn recover_tx(&mut self, transfer: Transfer) -> Result<TxId, PaymentError> {
+        if self.can_deduplicate(&transfer) {
+            match self.transfer(transfer.clone(), N_RETRIES).await {
+                Err(PaymentError::TransferFailed(TransferFailReason::Rejected(
+                    TransferError::Duplicate { duplicate_of },
+                ))) => self.complete(transfer, duplicate_of, N_RETRIES).await,
+                result => result,
+            }
         } else {
-            self.recover_old_tx(tx).await
+            self.recover_old_tx(transfer).await
         }
     }
 

@@ -78,9 +78,6 @@ pub enum InternalPaymentError {
     #[error("maybe failed")]
     MaybeFailed,
 
-    #[error("duplicate")]
-    Duplicate(TxId),
-
     #[error("stable memory error: {0}")]
     StableMemory(String),
 
@@ -135,6 +132,7 @@ impl From<TransferError> for InternalPaymentError {
             | TransferError::BadBurn { .. }
             | TransferError::CreatedInFuture { .. }
             | TransferError::TemporarilyUnavailable
+            | TransferError::Duplicate { .. }
             | TransferError::GenericError { .. } => {
                 Self::TransferFailed(TransferFailReason::Rejected(err))
             }
@@ -142,7 +140,6 @@ impl From<TransferError> for InternalPaymentError {
                 // todo: remove unwrap
                 Self::WrongFee(Tokens128::from_nat(&expected_fee).unwrap())
             }
-            TransferError::Duplicate { duplicate_of } => Self::Duplicate(duplicate_of),
         }
     }
 }
