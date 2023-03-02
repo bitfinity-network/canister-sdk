@@ -19,6 +19,7 @@ pub const UNKNOWN_TX_ID: u128 = u64::MAX as u128;
 const DEFAULT_DEDUP_PERIOD: u64 = 10u64.pow(9) * 60 * 60 * 24;
 const TX_WINDOW: u64 = 10u64.pow(9) * 60 * 5;
 
+#[derive(Debug)]
 pub struct TokenTerminal<
     T: Balances,
     const MEM_ID: u8,
@@ -67,7 +68,7 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
         caller: Principal,
         amount: Tokens128,
     ) -> Result<(TxId, Tokens128), PaymentError> {
-        let to = PrincipalId(caller).into();
+        let to = PrincipalId(ic::id()).into();
         let transfer = Transfer::new(
             &self.token_config,
             caller,
@@ -120,14 +121,6 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
             }
             Err(e) => Ok(self.reject(transfer, e)?),
         }
-    }
-
-    pub async fn balance(&self, of: &Account) -> Result<Tokens128, PaymentError> {
-        Ok(icrc1::get_icrc1_balance(self.token_config.principal, of).await?)
-    }
-
-    pub async fn request_token_config(&self) -> Result<TokenConfiguration, PaymentError> {
-        Ok(icrc1::get_icrc1_configuration(self.token_config.principal).await?)
     }
 
     #[async_recursion]
@@ -186,6 +179,14 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
             ))) => self.complete(transfer, duplicate_of, n_retries).await,
             result => result,
         }
+    }
+
+    pub fn balances(&self) -> &T {
+        &self.balances
+    }
+
+    pub fn token_config(&self) -> &TokenConfiguration {
+        &self.token_config
     }
 
     pub fn fee(&self) -> Tokens128 {
@@ -270,6 +271,13 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
 
     pub fn list_for_recovery(&self) -> Vec<Transfer> {
         self.recovery_list.list()
+    }
+
+    pub fn get_deposit_interim_account(principal: Principal) -> Account {
+        Account {
+            owner: ic::id().into(),
+            subaccount: get_principal_subaccount(principal),
+        }
     }
 }
 

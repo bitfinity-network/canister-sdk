@@ -5,5 +5,7 @@ target
 
 /target
 Cargo.lock
+ic-payments/tests/common/*.wasm
 
 **.did
+

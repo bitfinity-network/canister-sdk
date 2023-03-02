@@ -86,7 +86,7 @@ impl Transfer {
         icrc1::transfer_icrc1(
             self.token,
             self.to(),
-            self.amount(),
+            self.amount_minus_fee(),
             self.fee,
             self.from().subaccount,
             Some(self.created_at()),

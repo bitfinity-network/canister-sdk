@@ -35,7 +35,7 @@ async fn transfer_args() {
         token_principal(),
         "icrc1_transfer",
         move |(args,): (TransferArg,)| {
-            assert_eq!(args.amount, transfer.amount().to_nat());
+            assert_eq!(args.amount, transfer.amount().to_nat() - Nat::from(10));
             assert_eq!(args.fee, Some(10.into()));
             assert_eq!(args.from_subaccount, Some([3; 32]));
             assert_eq!(args.to, transfer.to());

@@ -61,6 +61,7 @@ impl BoundedStorable for TransferValue {
     const IS_FIXED_SIZE: bool = true;
 }
 
+#[derive(Debug)]
 pub struct StableRecoveryList<const MEM_ID: u8>;
 
 impl<const MEM_ID: u8> StableRecoveryList<MEM_ID> {

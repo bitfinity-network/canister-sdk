@@ -6,6 +6,7 @@ members = [
     "ic-metrics",
     "ic-helpers",
     "ic-payments",
+    "ic-payments/payment-canister",
     "ic-stable-structures",
     "ic-storage",
     "ic-storage/ic-storage-derive",

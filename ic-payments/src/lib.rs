@@ -6,7 +6,7 @@ use ic_exports::Principal;
 use ic_helpers::tokens::Tokens128;
 
 pub mod error;
-mod icrc1;
+pub mod icrc1;
 pub mod recovery_list;
 mod token_terminal;
 mod transfer;

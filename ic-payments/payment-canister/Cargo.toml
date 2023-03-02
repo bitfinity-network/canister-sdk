@@ -1,0 +1,24 @@
+[package]
+name = "payment-canister"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[features]
+default = []
+export-api = []
+
+[dependencies]
+candid = "0.8"
+serde = "1.0"
+
+ic-exports = {path = "../../ic-exports"}
+ic-storage = {path = "../../ic-storage"}
+ic-canister = {path = "../../ic-canister/ic-canister"}
+ic-helpers = {path = "../../ic-helpers"}
+ic-payments = {path = "../"}
+
+[dev-dependencies]
+tokio = {version = "1", features = ["rt", "macros"]}
