@@ -1,8 +1,11 @@
-use ic_exports::ic_icrc1::Subaccount;
+use candid::{CandidType, Deserialize, Principal};
+use ic_exports::ic_icrc1::{Account, Subaccount};
+use ic_exports::ic_kit::ic;
+use ic_helpers::tokens::Tokens128;
 
-use super::*;
-use crate::error::ParametersError;
-use crate::icrc1::TokenTransferInfo;
+use crate::error::{InternalPaymentError, ParametersError};
+use crate::icrc1::{self, TokenTransferInfo};
+use crate::{Timestamp, TokenConfiguration};
 
 /// Transfer to be executed.
 #[derive(Debug, CandidType, Deserialize, Clone)]
@@ -73,13 +76,18 @@ const INTERMEDIATE_ACC_DOMAIN: &[u8] = b"is-amm-intermediate-acc";
 impl Transfer {
     /// Creates a new trnasfer.
     ///
-    /// This constructor can be chained with other methods like [`with_operation`] or [`double_step`] to further configure the transfer.
+    /// This constructor can be chained with other methods like [`Transfer::with_operation`] or [`Transfer::double_step`] to further configure the transfer.
     ///
-    /// ```
-    /// # let token_config = TokenConfiguration::default();
-    /// # let caller = Principal::management();
+    /// ```no_run
+    /// # use ic_payments::*;
+    /// # use ic_exports::ic_icrc1::{Account, Subaccount};
+    /// # use ic_exports::ic_base_types::PrincipalId;
+    /// # use candid::Principal;
+    /// # let token_config = ic_payments::TokenConfiguration { principal:
+    /// # Principal::management_canister(), fee: 0.into(), minting_account: Account { owner: Principal::management_canister().into(), subaccount: None }};
+    /// # let caller = Principal::management_canister();
     /// # let to = PrincipalId::from(caller).into();
-    /// let transfer = Transfer::new(token_config, caller, to, None, 10_000.into())
+    /// let transfer = Transfer::new(&token_config, caller, to, None, 10_000.into())
     ///     .with_operation(Operation::CreditOnSuccess)
     ///     .double_step();
     /// ```

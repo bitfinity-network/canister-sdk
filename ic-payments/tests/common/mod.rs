@@ -7,8 +7,8 @@ use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::mock_principals::{alice, bob};
 use ic_exports::ic_kit::MockContext;
 use ic_helpers::tokens::Tokens128;
-use ic_payments::error::BalanceError;
-use ic_payments::{Balances, TokenConfiguration, TokenTerminal, Transfer};
+use ic_payments::recovery_list::StableRecoveryList;
+use ic_payments::{BalanceError, Balances, TokenConfiguration, TokenTerminal, Transfer};
 
 pub enum BalanceOperation {
     Credit(Principal, Tokens128),
@@ -112,7 +112,7 @@ pub fn init_context() -> &'static MockContext {
     MockContext::new().with_id(this_principal()).inject()
 }
 
-pub fn init_test() -> TokenTerminal<TestBalances, 0> {
+pub fn init_test() -> TokenTerminal<TestBalances, StableRecoveryList<0>> {
     BALANCES.with(|v| *v.borrow_mut() = vec![]);
     init_context();
 

@@ -96,9 +96,7 @@
 //! ```
 
 use candid::{CandidType, Deserialize, Nat};
-use error::InternalPaymentError;
 use ic_exports::ic_icrc1::Account;
-use ic_exports::ic_kit::ic;
 use ic_exports::Principal;
 use ic_helpers::tokens::Tokens128;
 
@@ -111,6 +109,7 @@ mod transfer;
 
 pub use balances::*;
 pub use error::PaymentError;
+pub use recovery_list::*;
 pub use token_terminal::*;
 pub use transfer::*;
 
@@ -119,7 +118,7 @@ type TxId = Nat;
 
 /// Configuration of the token canister.
 ///
-/// This configuration can be obtained by the [`icrc1::get_token_configuration`] function.
+/// This configuration can be obtained by the [`icrc1::get_icrc1_configuration`] function.
 #[derive(CandidType, Debug, Deserialize, Clone)]
 pub struct TokenConfiguration {
     /// Principal of the token canister.

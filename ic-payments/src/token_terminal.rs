@@ -35,7 +35,7 @@ const TX_WINDOW: u64 = 10u64.pow(9) * 60 * 5;
 /// # use ic_exports::ic_kit::ic;
 /// # use candid::Principal;
 /// # use ic_helpers::tokens::Tokens128;
-/// # use ic_payments::{TokenTerminal, BalanceError};
+/// # use ic_payments::{TokenTerminal, BalanceError, StableRecoveryList};
 /// #
 /// # struct BalancesImpl;
 /// # impl ic_payments::Balances for BalancesImpl {
@@ -59,7 +59,7 @@ const TX_WINDOW: u64 = 10u64.pow(9) * 60 * 5;
 /// // Configure the terminal
 /// let token_config = ic_payments::icrc1::get_icrc1_configuration(token_principal).await?;
 /// const STABLE_MEM_ID: u8 = 1;
-/// let mut terminal = TokenTerminal::<_, STABLE_MEM_ID>::new(token_config.clone(), balances_impl);
+/// let mut terminal = TokenTerminal::<_, StableRecoveryList<STABLE_MEM_ID>>::new(token_config.clone(), balances_impl);
 ///
 /// // Recieve tokens from the `caller`. The received amount will be credited to the `caller` in
 /// //`balances_impl`.
@@ -406,9 +406,11 @@ pub fn get_deposit_interim_account(principal: Principal) -> Account {
 
 /// Returns the subaccount id for the `pricnipal` for the deposit transfers. This subaccount is
 /// calculated as:
+/// ```pseudocode
 /// Bytes[0..1] = principal.len()
 /// Bytes[1..principal.len() + 1] = pricnipal.bytes()
 /// Bytes[principal.len() + 1..32] = 0
+/// ```
 pub fn get_principal_subaccount(principal: Principal) -> Option<Subaccount> {
     Some(ic_exports::ledger::Subaccount::from(&PrincipalId(principal)).0)
 }

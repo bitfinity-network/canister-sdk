@@ -4,6 +4,8 @@ use ic_exports::ic_kit::RejectionCode;
 use ic_helpers::tokens::Tokens128;
 use thiserror::Error;
 
+use crate::BalanceError;
+
 pub type Result<T> = std::result::Result<T, InternalPaymentError>;
 
 /// Reaseon for a transfer to fail
