@@ -4,32 +4,64 @@ use super::*;
 use crate::error::ParametersError;
 use crate::icrc1::TokenTransferInfo;
 
-#[derive(Debug, Eq, PartialEq, CandidType, Deserialize, Clone, Copy)]
-pub enum Operation {
-    None,
-    CreditOnSuccess,
-    CreditOnError,
-}
-
+/// Transfer to be executed.
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct Transfer {
+    /// Token principal.
     pub token: Principal,
+
+    /// Initiator of the transfer. This principal's balance will be used for balance operation (if
+    /// any).
     pub caller: Principal,
+
+    /// Subaccount to transfer from.
     pub from: Option<Subaccount>,
+
+    /// Account to transfer to.
     pub to: Account,
+
+    /// Amount to transfer. This amount includes the fee, so the actual value that will be recieved
+    /// by the `to` account is `amount - fee`.
     pub amount: Tokens128,
+
+    /// Transaction fee.
     pub fee: Tokens128,
+
+    /// Operation to execute after the transfer finished.
     pub operation: Operation,
+
+    /// Type of the transfer.
     pub r#type: TransferType,
+
+    /// Timestamp when the transaction was created. This timestamp is used for the transaction
+    /// deduplicated.
     pub created_at: Timestamp,
 }
 
+/// Operation to be executed after the transfer is finished.
+#[derive(Debug, Eq, PartialEq, CandidType, Deserialize, Clone, Copy)]
+pub enum Operation {
+    /// Do nothing.
+    None,
+
+    /// Add `amount - fee` to the caller's balance if the transfer is successful.
+    CreditOnSuccess,
+
+    /// Add `amount` to the caller's balance if the transfer fails.
+    CreditOnError,
+}
+
+/// Type of the transfer.
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub enum TransferType {
+    /// Direct transfer from `from` account to `to` account.
     SingleStep,
+
+    /// Transfer through an interim account, given as the second parameter.
     DoubleStep(Stage, Account),
 }
 
+/// Current step of a double-step transfer.
 #[derive(Debug, CandidType, Deserialize, Clone, Copy)]
 pub enum Stage {
     First,
@@ -39,6 +71,18 @@ pub enum Stage {
 const INTERMEDIATE_ACC_DOMAIN: &[u8] = b"is-amm-intermediate-acc";
 
 impl Transfer {
+    /// Creates a new trnasfer.
+    ///
+    /// This constructor can be chained with other methods like [`with_operation`] or [`double_step`] to further configure the transfer.
+    ///
+    /// ```
+    /// # let token_config = TokenConfiguration::default();
+    /// # let caller = Principal::management();
+    /// # let to = PrincipalId::from(caller).into();
+    /// let transfer = Transfer::new(token_config, caller, to, None, 10_000.into())
+    ///     .with_operation(Operation::CreditOnSuccess)
+    ///     .double_step();
+    /// ```
     pub fn new(
         token_config: &TokenConfiguration,
         caller: Principal,
@@ -66,10 +110,12 @@ impl Transfer {
         }
     }
 
+    /// Sets the operation of the transfer to be the given one.
     pub fn with_operation(self, operation: Operation) -> Self {
         Self { operation, ..self }
     }
 
+    /// Makes the transfer double-step.
     pub fn double_step(self) -> Self {
         let interim_acc = match self.r#type {
             TransferType::SingleStep => self.generate_interim_acc(),
@@ -82,6 +128,10 @@ impl Transfer {
         }
     }
 
+    /// Executes the transfer.
+    ///
+    /// This method does not consume the transfer since the caller might need to retry executing it
+    /// in case of a transient error.
     pub async fn execute(&self) -> Result<TokenTransferInfo, InternalPaymentError> {
         icrc1::transfer_icrc1(
             self.token,
@@ -122,6 +172,7 @@ impl Transfer {
         }
     }
 
+    /// Source account of the transfer.
     pub fn from_acc(&self) -> Account {
         Account {
             owner: ic::id().into(),
@@ -129,6 +180,7 @@ impl Transfer {
         }
     }
 
+    /// Target account of the transfer.
     pub fn to(&self) -> Account {
         match &self.r#type {
             TransferType::SingleStep => self.to.clone(),
@@ -137,6 +189,9 @@ impl Transfer {
         }
     }
 
+    /// Interim account of the transfer.
+    ///
+    /// Returns `None` if the transfer is single-step.
     pub fn interim_acc(&self) -> Option<Account> {
         match &self.r#type {
             TransferType::DoubleStep(_, acc) => Some(acc.clone()),
@@ -170,6 +225,13 @@ impl Transfer {
         Ok(())
     }
 
+    /// Effective fee of the transfer.
+    ///
+    /// Effective fee can be different from the value in the token configuration:
+    /// 1. If the from or to account of the transfer is the token minting account, the transfer fee
+    ///    is set to 0 according to ICRC-1 standard.
+    /// 2. If the transfer is double-step, effective fee will be twice the configured amount, since
+    ///    the transfer requires two transactions to be completed.
     pub fn effective_fee(&self) -> Result<Tokens128, InternalPaymentError> {
         match self.r#type {
             TransferType::DoubleStep(Stage::First, _) => {
@@ -187,14 +249,16 @@ impl Transfer {
         ))
     }
 
+    /// Amount to be transferred.
     pub fn amount(&self) -> Tokens128 {
         self.amount
     }
 
-    pub fn amount_minus_fee(&self) -> Tokens128 {
+    pub(crate) fn amount_minus_fee(&self) -> Tokens128 {
         self.amount.saturating_sub(self.fee)
     }
 
+    /// Amount that `to` account will receive after the transfer is complete.
     pub fn final_amount(&self) -> Result<Tokens128, InternalPaymentError> {
         (self.amount - self.effective_fee()?).ok_or(InternalPaymentError::InvalidParameters(
             ParametersError::AmountTooSmall {
@@ -204,14 +268,17 @@ impl Transfer {
         ))
     }
 
+    /// Operation to be executed after the transfer is completed.
     pub fn operation(&self) -> Operation {
         self.operation
     }
 
+    /// Caller of the transfer. This principal will be used for the balance operation.
     pub fn caller(&self) -> Principal {
         self.caller
     }
 
+    /// Updates `created_at` to current time.
     pub fn renew(self) -> Self {
         Self {
             created_at: ic::time(),
@@ -219,18 +286,24 @@ impl Transfer {
         }
     }
 
+    /// Updates the fee amount configured for the transfer.
     pub fn with_fee(self, fee: Tokens128) -> Self {
         Self { fee, ..self }
     }
 
+    /// Timestamp when the transfer was created.
     pub fn created_at(&self) -> Timestamp {
         self.created_at
     }
 
+    /// Type of the transfer.
     pub fn r#type(&self) -> &TransferType {
         &self.r#type
     }
 
+    /// Creates a new transfer which is the second step of a double-step transfer.
+    ///
+    /// Returns `None` if the transfer is not a first step of a double-step transfer.
     pub fn next_step(&self) -> Option<Self> {
         match &self.r#type {
             TransferType::DoubleStep(Stage::First, interim_acc) => Some(Self {
@@ -238,7 +311,6 @@ impl Transfer {
                 amount: self.amount_minus_fee(),
                 created_at: ic::time(),
                 to: self.to.clone(),
-                from: self.from.clone(),
                 ..*self
             }),
             _ => None,
