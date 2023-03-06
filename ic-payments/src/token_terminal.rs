@@ -74,21 +74,26 @@ const TX_WINDOW: u64 = 10u64.pow(9) * 60 * 5;
 /// # Ok::<(), ic_payments::PaymentError>(())
 /// # };
 /// ```
+///
+/// # Generic parameters
+/// * `B` - [`Balances`] storage.
+/// * `R` - [`RecoveryList`] storage.
+///
+/// Note that for all types that implement either of the traits above, `Rc<RefCell<T>>` also
+/// implement that trait. So to initiate an instance of `TokenTerminal` one can:
+/// * use static implementations that can be cloned and given to the token terminal by value
+/// * or give an `Rc<RefCell<T>>` of the value to the constructor.
 #[derive(Debug)]
-pub struct TokenTerminal<
-    T: Balances,
-    const MEM_ID: u8,
-    R: RecoveryList = StableRecoveryList<MEM_ID>,
-> {
+pub struct TokenTerminal<B: Balances, R: RecoveryList> {
     token_config: TokenConfiguration,
-    balances: T,
+    balances: B,
     recovery_list: R,
     deduplication_period: u64,
 }
 
-impl<T: Balances + Sync + Send, const MEM_ID: u8>
-    TokenTerminal<T, MEM_ID, StableRecoveryList<MEM_ID>>
-{
+impl<T: Balances + Sync + Send, const MEM_ID: u8> TokenTerminal<T, StableRecoveryList<MEM_ID>> {
+    /// Creates a new terminal with the [default implementation of recovery
+    /// list](StableRecoveryList).
     pub fn new(config: TokenConfiguration, balances: T) -> Self {
         let recovery_list = StableRecoveryList::<MEM_ID>;
         Self {
@@ -100,7 +105,8 @@ impl<T: Balances + Sync + Send, const MEM_ID: u8>
     }
 }
 
-impl<T: Balances + Sync + Send, R: RecoveryList, const MEM_ID: u8> TokenTerminal<T, MEM_ID, R> {
+impl<T: Balances + Sync + Send, R: RecoveryList> TokenTerminal<T, R> {
+    /// Creates a new terminal.
     pub fn new_with_recovery_list(
         config: TokenConfiguration,
         balances: T,
@@ -115,9 +121,7 @@ impl<T: Balances + Sync + Send, R: RecoveryList, const MEM_ID: u8> TokenTerminal
     }
 }
 
-impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send, const MEM_ID: u8>
-    TokenTerminal<T, MEM_ID, R>
-{
+impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, R> {
     /// Move all tokens from the depost interim account of the caller into caller's balance. See
     /// [`TokenTerminal::deposit`] for details.
     ///

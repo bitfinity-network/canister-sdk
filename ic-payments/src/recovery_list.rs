@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use candid::Encode;
 use ic_stable_structures::{BoundedStorable, MemoryId, StableBTreeMap, Storable};
@@ -10,6 +11,20 @@ pub trait RecoveryList {
     fn push(&mut self, transfer: Transfer);
     fn take_all(&mut self) -> Vec<Transfer>;
     fn list(&self) -> Vec<Transfer>;
+}
+
+impl<T: RecoveryList> RecoveryList for Rc<RefCell<T>> {
+    fn push(&mut self, transfer: Transfer) {
+        self.borrow_mut().push(transfer)
+    }
+
+    fn take_all(&mut self) -> Vec<Transfer> {
+        self.borrow_mut().take_all()
+    }
+
+    fn list(&self) -> Vec<Transfer> {
+        self.borrow_mut().list()
+    }
 }
 
 thread_local! {

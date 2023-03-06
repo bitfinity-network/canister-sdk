@@ -95,9 +95,6 @@
 //!                                                        step                     transfer
 //! ```
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use candid::{CandidType, Deserialize, Nat};
 use error::InternalPaymentError;
 use ic_exports::ic_icrc1::Account;
@@ -105,53 +102,20 @@ use ic_exports::ic_kit::ic;
 use ic_exports::Principal;
 use ic_helpers::tokens::Tokens128;
 
+mod balances;
 pub mod error;
 pub mod icrc1;
 pub mod recovery_list;
 mod token_terminal;
 mod transfer;
 
-pub use error::{BalanceError, PaymentError};
+pub use balances::*;
+pub use error::PaymentError;
 pub use token_terminal::*;
 pub use transfer::*;
 
 type Timestamp = u64;
 type TxId = Nat;
-
-/// Interface for handling the canister balances storage.
-pub trait Balances {
-    /// Increase the `account_owner`'s balance by the given `amount`.
-    fn credit(
-        &mut self,
-        account_owner: Principal,
-        amount: Tokens128,
-    ) -> Result<Tokens128, BalanceError>;
-
-    /// Decrease the `account_owners`'s balance by the given `amount`.
-    fn debit(
-        &mut self,
-        account_owner: Principal,
-        amount: Tokens128,
-    ) -> Result<Tokens128, BalanceError>;
-}
-
-impl<T: Balances> Balances for Rc<RefCell<T>> {
-    fn credit(
-        &mut self,
-        account_owner: Principal,
-        amount: Tokens128,
-    ) -> Result<Tokens128, crate::BalanceError> {
-        self.borrow_mut().credit(account_owner, amount)
-    }
-
-    fn debit(
-        &mut self,
-        account_owner: Principal,
-        amount: Tokens128,
-    ) -> Result<Tokens128, crate::BalanceError> {
-        self.borrow_mut().debit(account_owner, amount)
-    }
-}
 
 /// Configuration of the token canister.
 ///

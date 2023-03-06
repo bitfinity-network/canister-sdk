@@ -6,16 +6,6 @@ use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, InternalPaymentError>;
 
-/// Error while trying to change user's balance.
-#[derive(Debug, PartialEq, Error)]
-pub enum BalanceError {
-    #[error("user balance is less then the requested debit amount")]
-    InsufficientFunds,
-
-    #[error("unrecoverable error")]
-    Fatal(String),
-}
-
 /// Reaseon for a transfer to fail
 #[derive(Debug, PartialEq, CandidType, Deserialize, Error)]
 pub enum TransferFailReason {
