@@ -13,8 +13,8 @@ if [ ! -f ic-payments/tests/common/ic-icrc1-ledger.wasm ]; then
 fi
 
 # Build test payment canister
-cargo build --target wasm32-unknown-unknown --features export-api -p payment-canister --release
-ic-wasm target/wasm32-unknown-unknown/release/payment_canister.wasm -o ic-payments/tests/common/payment_canister.wasm shrink
+cargo build --target wasm32-unknown-unknown --features export-api -p test-payment-canister --release
+ic-wasm target/wasm32-unknown-unknown/release/test-payment_canister.wasm -o ic-payments/tests/common/payment_canister.wasm shrink
 
 # Run the test
 cargo +nightly test -p ic-payments --features state-machine
