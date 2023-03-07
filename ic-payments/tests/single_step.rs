@@ -335,3 +335,31 @@ async fn transient_error_on_recovery() {
     assert_eq!(TestBalances::balance_of(alice()), 0);
     assert_eq!(StableRecoveryList::<0>.list().len(), 1);
 }
+
+#[tokio::test]
+async fn duplicate_transfers() {
+    let mut terminal = init_test();
+    setup_success(1);
+    let transfer = Transfer {
+        caller: alice(),
+        amount: 1000.into(),
+        fee: 10.into(),
+        operation: Operation::CreditOnSuccess,
+        ..simple_transfer()
+    };
+
+    terminal.transfer(transfer.clone(), 1).await.unwrap();
+
+    register_virtual_responder(
+        token_principal(),
+        "icrc1_transfer",
+        move |_: (TransferArg,)| {
+            Err::<Nat, TransferError>(TransferError::Duplicate {
+                duplicate_of: 1.into(),
+            })
+        },
+    );
+
+    terminal.transfer(transfer, 1).await.unwrap_err();
+    assert_eq!(TestBalances::balance_of(alice()), 990);
+}
