@@ -21,11 +21,13 @@ pub struct TokenTransferInfo {
     pub amount_transferred: Tokens128,
 }
 
+/// Returns current balance of the `account` in the ICRC-1 `token` canister.
 pub async fn get_icrc1_balance(token: Principal, account: &Account) -> Result<Tokens128> {
     let result = virtual_canister_call!(token, "icrc1_balance_of", (account,), Nat).await?;
     Tokens128::from_nat(&result).ok_or(InternalPaymentError::Overflow)
 }
 
+/// Requests a transfer in an ICRC-1 `token` canister.
 pub async fn transfer_icrc1(
     token: Principal,
     to: Account,
@@ -55,6 +57,7 @@ pub async fn transfer_icrc1(
     })
 }
 
+/// Requests fee and minting account configuration from an ICRC-1 canister.
 pub async fn get_icrc1_configuration(token: Principal) -> Result<TokenConfiguration> {
     // ICRC-1 standard metadata doesn't include minting account, so we have to do two requests
     // to get both fields. It's fine though since this is done only one time.
@@ -71,10 +74,12 @@ pub async fn get_icrc1_configuration(token: Principal) -> Result<TokenConfigurat
     })
 }
 
+/// Requests fee configuration from an ICRC-1 canister.
 pub async fn get_icrc1_fee(token: Principal) -> Result<Tokens128> {
     Ok(virtual_canister_call!(token, "icrc1_fee", (), Tokens128).await?)
 }
 
+/// Requests minting account configuration from an ICRC-1 canister.
 pub async fn get_icrc1_minting_account(token: Principal) -> Result<Option<Account>> {
     Ok(virtual_canister_call!(token, "icrc1_minting_account", (), Option<Account>).await?)
 }
