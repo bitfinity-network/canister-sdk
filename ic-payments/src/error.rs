@@ -120,7 +120,8 @@ impl From<(RejectionCode, String)> for InternalPaymentError {
         match code {
             // Token canister doesn't exist or doesn't have `icrc1_transfer` method
             RejectionCode::DestinationInvalid => Self::TransferFailed(TransferFailReason::NotFound),
-            // Token canister panicced or didn't respond at all
+            // Token canister panicced or didn't respond at all. This can happen if the token
+            // canister is out of cycles or is undergoing an upgrade.
             RejectionCode::CanisterError => {
                 Self::TransferFailed(TransferFailReason::TokenPanic(message))
             }

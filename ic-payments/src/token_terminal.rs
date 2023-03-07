@@ -214,16 +214,7 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
         n_retries: usize,
     ) -> Result<TxId, PaymentError> {
         transfer.validate()?;
-
-        match transfer.execute().await {
-            Ok(TokenTransferInfo { token_tx_id, .. }) => {
-                Ok(self.complete(transfer, token_tx_id, n_retries).await?)
-            }
-            Err(InternalPaymentError::MaybeFailed) => {
-                self.retry(transfer, n_retries.saturating_sub(1)).await
-            }
-            Err(e) => Ok(self.reject(transfer, e)?),
-        }
+        self.execute_transfer(transfer, n_retries).await
     }
 
     #[async_recursion]
@@ -270,18 +261,14 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
         }
     }
 
+    #[async_recursion]
     async fn retry(&mut self, transfer: Transfer, n_retries: usize) -> Result<TxId, PaymentError> {
         if n_retries == 0 {
             self.add_for_recovery(transfer);
             return Err(PaymentError::Recoverable(RecoveryDetails::IcError));
         }
 
-        match self.transfer(transfer.clone(), n_retries).await {
-            Err(PaymentError::TransferFailed(TransferFailReason::Rejected(
-                TransferError::Duplicate { duplicate_of },
-            ))) => self.complete(transfer, duplicate_of, n_retries).await,
-            result => result,
-        }
+        self.execute_recovery_transfer(transfer, n_retries).await
     }
 
     /// Returns reference to balances structure used by the terminal.
@@ -356,14 +343,48 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
 
     async fn recover_tx(&mut self, transfer: Transfer) -> Result<TxId, PaymentError> {
         if self.can_deduplicate(&transfer) {
-            match self.transfer(transfer.clone(), N_RETRIES).await {
-                Err(PaymentError::TransferFailed(TransferFailReason::Rejected(
-                    TransferError::Duplicate { duplicate_of },
-                ))) => self.complete(transfer, duplicate_of, N_RETRIES).await,
-                result => result,
-            }
+            self.execute_recovery_transfer(transfer, N_RETRIES).await
         } else {
             self.recover_old_tx(transfer).await
+        }
+    }
+
+    async fn execute_transfer(
+        &mut self,
+        transfer: Transfer,
+        n_retries: usize,
+    ) -> Result<TxId, PaymentError> {
+        match transfer.execute().await {
+            Ok(TokenTransferInfo { token_tx_id, .. }) => {
+                Ok(self.complete(transfer, token_tx_id, n_retries).await?)
+            }
+            Err(InternalPaymentError::MaybeFailed) => {
+                self.retry(transfer, n_retries.saturating_sub(1)).await
+            }
+            Err(e) => Ok(self.reject(transfer, e)?),
+        }
+    }
+
+    async fn execute_recovery_transfer(
+        &mut self,
+        transfer: Transfer,
+        n_retries: usize,
+    ) -> Result<TxId, PaymentError> {
+        match transfer.execute().await {
+            Ok(TokenTransferInfo { token_tx_id, .. }) => {
+                Ok(self.complete(transfer, token_tx_id, n_retries).await?)
+            }
+            Err(InternalPaymentError::TransferFailed(TransferFailReason::Rejected(
+                TransferError::Duplicate { duplicate_of },
+            ))) => Ok(self.complete(transfer, duplicate_of, n_retries).await?),
+            Err(InternalPaymentError::MaybeFailed)
+            | Err(InternalPaymentError::TransferFailed(TransferFailReason::Rejected(
+                TransferError::TemporarilyUnavailable,
+            )))
+            | Err(InternalPaymentError::TransferFailed(TransferFailReason::TokenPanic(_))) => {
+                self.retry(transfer, n_retries.saturating_sub(1)).await
+            }
+            Err(e) => Ok(self.reject(transfer, e)?),
         }
     }
 
@@ -384,7 +405,9 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
             Stage::Second if interim_balance.is_zero() => {
                 self.complete(tx, UNKNOWN_TX_ID.into(), N_RETRIES).await
             }
-            Stage::Second => Ok(self.transfer(tx.renew(), N_RETRIES).await?),
+            Stage::Second => Ok(self
+                .execute_recovery_transfer(tx.renew(), N_RETRIES)
+                .await?),
         }
     }
 

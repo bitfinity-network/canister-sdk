@@ -139,7 +139,8 @@ async fn retry_with_failure() {
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
         counter.fetch_add(1, Ordering::Relaxed);
         if counter.load(Ordering::Relaxed) >= 2 {
-            let response: Result<Nat, TransferError> = Err(TransferError::TemporarilyUnavailable);
+            let response: Result<Nat, TransferError> =
+                Err(TransferError::InsufficientFunds { balance: 0.into() });
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
@@ -159,7 +160,7 @@ async fn retry_with_failure() {
     assert_eq!(
         err,
         PaymentError::TransferFailed(TransferFailReason::Rejected(
-            TransferError::TemporarilyUnavailable
+            TransferError::InsufficientFunds { balance: 0.into() }
         ))
     );
     assert_eq!(TestBalances::balance_of(alice()), 0);
@@ -283,4 +284,54 @@ async fn recovery_with_maybe_failure() {
     assert_eq!(TestBalances::balance_of(alice()), 0);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 1);
     assert_eq!(counter_clone.load(Ordering::Relaxed), 6);
+}
+
+#[tokio::test]
+async fn transient_error_on_recovery() {
+    let mut terminal = init_test();
+
+    register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
+        Err((RejectionCode::SysTransient, "recoverable".into()))
+    });
+
+    let transfer = Transfer {
+        caller: alice(),
+        amount: 1000.into(),
+        fee: 10.into(),
+        operation: Operation::CreditOnSuccess,
+        ..simple_transfer()
+    };
+
+    terminal.transfer(transfer, 3).await.unwrap_err();
+
+    register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
+        Err((
+            RejectionCode::CanisterError,
+            "token canister is out of cycles".into(),
+        ))
+    });
+
+    let results = terminal.recover_all().await;
+    assert_eq!(results.len(), 1);
+    assert_eq!(
+        results[0],
+        Err(PaymentError::Recoverable(RecoveryDetails::IcError))
+    );
+    assert_eq!(TestBalances::balance_of(alice()), 0);
+    assert_eq!(StableRecoveryList::<0>.list().len(), 1);
+
+    register_virtual_responder(
+        token_principal(),
+        "icrc1_transfer",
+        move |_: (TransferArg,)| Err::<Nat, TransferError>(TransferError::TemporarilyUnavailable),
+    );
+
+    let results = terminal.recover_all().await;
+    assert_eq!(results.len(), 1);
+    assert_eq!(
+        results[0],
+        Err(PaymentError::Recoverable(RecoveryDetails::IcError))
+    );
+    assert_eq!(TestBalances::balance_of(alice()), 0);
+    assert_eq!(StableRecoveryList::<0>.list().len(), 1);
 }
