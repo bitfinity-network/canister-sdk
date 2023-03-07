@@ -1,5 +1,5 @@
 use candid::{CandidType, Deserialize, Principal};
-use ic_exports::ic_icrc1::{Account, Subaccount};
+use ic_exports::ic_icrc1::{Account, Memo, Subaccount};
 use ic_exports::ic_kit::ic;
 use ic_helpers::tokens::Tokens128;
 
@@ -39,6 +39,10 @@ pub struct Transfer {
     /// Timestamp when the transaction was created. This timestamp is used for the transaction
     /// deduplicated.
     pub created_at: Timestamp,
+
+    /// Arbitrary bytestring that can be added to the transaction. Use this field in case several
+    /// transfers with the same timestamp must be done.
+    pub memo: Option<Memo>,
 }
 
 /// Operation to be executed after the transfer is finished.
@@ -115,6 +119,7 @@ impl Transfer {
             operation: Operation::None,
             r#type: TransferType::SingleStep,
             created_at: ic::time(),
+            memo: None,
         }
     }
 
@@ -136,6 +141,14 @@ impl Transfer {
         }
     }
 
+    /// Sets memo for transactions of this transfer.
+    pub fn with_memo(self, memo: Memo) -> Self {
+        Self {
+            memo: Some(memo),
+            ..self
+        }
+    }
+
     /// Executes the transfer.
     ///
     /// This method does not consume the transfer since the caller might need to retry executing it
@@ -148,6 +161,7 @@ impl Transfer {
             self.fee,
             self.from().subaccount,
             Some(self.created_at()),
+            self.memo.clone(),
         )
         .await
     }
@@ -319,6 +333,7 @@ impl Transfer {
                 amount: self.amount_minus_fee(),
                 created_at: ic::time(),
                 to: self.to.clone(),
+                memo: self.memo.clone(),
                 ..*self
             }),
             _ => None,
@@ -350,6 +365,7 @@ mod tests {
             operation: Operation::None,
             r#type: TransferType::SingleStep,
             created_at: 0,
+            memo: None,
         };
 
         assert!(transfer.validate().is_ok());
@@ -408,6 +424,7 @@ mod tests {
                 },
             ),
             created_at: 0,
+            memo: None,
         };
 
         assert!(transfer.validate().is_ok());
@@ -469,6 +486,7 @@ mod tests {
                 },
             ),
             created_at: 0,
+            memo: None,
         };
 
         assert!(transfer.validate().is_ok());
@@ -521,6 +539,7 @@ mod tests {
             operation: Operation::None,
             r#type: TransferType::SingleStep,
             created_at: 0,
+            memo: None,
         };
 
         assert_eq!(
@@ -545,6 +564,7 @@ mod tests {
             operation: Operation::None,
             r#type: TransferType::SingleStep,
             created_at: 0,
+            memo: None,
         }
     }
 

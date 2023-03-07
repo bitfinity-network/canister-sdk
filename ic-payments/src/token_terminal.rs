@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicU64;
+
 use async_recursion::async_recursion;
 use candid::Principal;
 use ic_exports::ic_base_types::PrincipalId;
@@ -27,6 +29,11 @@ const DEFAULT_DEDUP_PERIOD: u64 = 10u64.pow(9) * 60 * 60 * 24;
 /// Different IC nodes can have times not syncronized perfectly. We use 5 minute margin to make
 /// sure we don't try to deduplicate transactions when it's not possible already.
 const TX_WINDOW: u64 = 10u64.pow(9) * 60 * 5;
+
+// We use this counter to make every transfer created by the terminal unique, even if current
+// timestamp is the same. Since it's impossible to have timestamp repeat in operations before and
+// after upgrade, we don't care if this counter gets reset during upgrade.
+static TX_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// Bridge between an ICRC-1 token canister and the current canister. Provides safe and reliable
 /// token transfer methods to and from the canister.
@@ -161,6 +168,9 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
         amount: Tokens128,
     ) -> Result<(TxId, Tokens128), PaymentError> {
         let to = PrincipalId(ic::id()).into();
+        let memo = TX_COUNTER
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            .into();
         let transfer = Transfer::new(
             &self.token_config,
             caller,
@@ -168,7 +178,8 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
             get_principal_subaccount(caller),
             amount,
         )
-        .with_operation(Operation::CreditOnSuccess);
+        .with_operation(Operation::CreditOnSuccess)
+        .with_memo(memo);
         let amount = transfer.final_amount()?;
 
         let tx_id = self.transfer(transfer, N_RETRIES).await?;
@@ -187,10 +198,15 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
         amount: Tokens128,
     ) -> Result<(TxId, Tokens128), PaymentError> {
         let to = PrincipalId(caller).into();
+        let memo = TX_COUNTER
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            .into();
 
         let transfer = Transfer::new(&self.token_config, caller, to, None, amount)
             .double_step()
-            .with_operation(Operation::CreditOnError);
+            .with_operation(Operation::CreditOnError)
+            .with_memo(memo);
+
         transfer.validate()?;
         let amount = transfer.final_amount()?;
 

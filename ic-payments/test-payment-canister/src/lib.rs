@@ -10,14 +10,14 @@ use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::ic;
 use ic_helpers::tokens::Tokens128;
-use ic_payments::error::{BalanceError, PaymentError};
+use ic_payments::error::PaymentError;
 use ic_payments::icrc1::get_icrc1_configuration;
-use ic_payments::{Balances, TokenConfiguration, TokenTerminal};
+use ic_payments::{BalanceError, Balances, StableRecoveryList, TokenConfiguration, TokenTerminal};
 use ic_storage::IcStorage;
 
 #[derive(Debug, IcStorage)]
 pub struct PaymentState {
-    terminal: TokenTerminal<TestBalances, 0>,
+    terminal: TokenTerminal<TestBalances, StableRecoveryList<0>>,
 }
 
 impl Default for PaymentState {
@@ -45,7 +45,7 @@ impl Balances for TestBalances {
         &mut self,
         account_owner: Principal,
         amount: Tokens128,
-    ) -> Result<Tokens128, ic_payments::error::BalanceError> {
+    ) -> Result<Tokens128, BalanceError> {
         ic::print(format!("Adding {amount} for {account_owner}"));
         let entry = self.map.entry(account_owner).or_default();
         *entry = (*entry + amount).unwrap();
@@ -56,7 +56,7 @@ impl Balances for TestBalances {
         &mut self,
         account_owner: Principal,
         amount: Tokens128,
-    ) -> Result<Tokens128, ic_payments::error::BalanceError> {
+    ) -> Result<Tokens128, BalanceError> {
         let entry = self.map.entry(account_owner).or_default();
         *entry = (*entry - amount).ok_or(BalanceError::InsufficientFunds)?;
         Ok(*entry)

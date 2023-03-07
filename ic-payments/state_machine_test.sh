@@ -2,6 +2,8 @@
 # the location of google protobuf repo in your system. You can find the
 # needed repo at https://github.com/protocolbuffers/protobuf/tree/main/src/google/protobuf
 
+set -e
+
 export PROTOC_INCLUDE=${PWD}/../
 
 # Get example icrc1 canister
@@ -14,7 +16,7 @@ fi
 
 # Build test payment canister
 cargo build --target wasm32-unknown-unknown --features export-api -p test-payment-canister --release
-ic-wasm target/wasm32-unknown-unknown/release/test-payment_canister.wasm -o ic-payments/tests/common/payment_canister.wasm shrink
+ic-wasm target/wasm32-unknown-unknown/release/test_payment_canister.wasm -o ic-payments/tests/common/payment_canister.wasm shrink
 
 # Run the test
 cargo +nightly test -p ic-payments --features state-machine

@@ -2,7 +2,7 @@
 mod tests {
     use candid::{CandidType, Decode, Deserialize, Encode, Nat, Principal};
     use ic_exports::ic_base_types::{CanisterId, PrincipalId};
-    use ic_exports::ic_icrc1::endpoints::{ArchiveInfo, TransferArg, TransferError, Value};
+    use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError, Value};
     use ic_exports::ic_icrc1::Account;
     use ic_exports::ic_kit::mock_principals::{alice, bob};
     use ic_exports::ic_state_machine_tests::StateMachine;

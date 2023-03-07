@@ -1,7 +1,7 @@
 use ic_canister::virtual_canister_call;
 use ic_exports::candid::{CandidType, Nat};
 use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
-use ic_exports::ic_icrc1::{Account, Subaccount};
+use ic_exports::ic_icrc1::{Account, Memo, Subaccount};
 use ic_exports::serde::Deserialize;
 use ic_exports::Principal;
 use ic_helpers::tokens::Tokens128;
@@ -33,13 +33,14 @@ pub async fn transfer_icrc1(
     fee: Tokens128,
     from_subaccount: Option<Subaccount>,
     created_at_time: Option<Timestamp>,
+    memo: Option<Memo>,
 ) -> Result<TokenTransferInfo> {
     let args = TransferArg {
         from_subaccount,
         to,
         amount: amount.to_nat(),
         fee: Some(fee.to_nat()),
-        memo: Default::default(),
+        memo,
         created_at_time,
     };
 
