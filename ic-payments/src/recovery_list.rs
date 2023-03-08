@@ -102,7 +102,7 @@ impl<const MEM_ID: u8> RecoveryList for StableRecoveryList<MEM_ID> {
             let value = TransferValue(transfer.clone());
 
             // It is possible here that a transaction with exact same id is already added to the
-            // recovery list. But we don't need to worry about this case, becase that would mean
+            // recovery list. But we don't need to worry about this case, because that would mean
             // that the transactions have same parameters, so deduplication mechanism of ICRC-1
             // tokens would not allow both of such transactions be successful. So we can store only
             // one of them.
