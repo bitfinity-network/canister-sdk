@@ -63,18 +63,18 @@ static TX_COUNTER: AtomicU64 = AtomicU64::new(0);
 /// # let receiver = ic::caller();
 /// # async {
 ///
-///  Configure the terminal
+/// //  Configure the terminal
 /// let token_config = ic_payments::icrc1::get_icrc1_configuration(token_principal).await?;
 /// const STABLE_MEM_ID: u8 = 1;
 /// let mut terminal = TokenTerminal::<_, StableRecoveryList<STABLE_MEM_ID>>::new(token_config.clone(), balances_impl);
 ///
-///  Receive tokens from the `caller`. The received amount will be credited to the `caller` in
-/// `balances_impl`.
+/// // Receive tokens from the `caller`. The received amount will be credited to the `caller` in
+/// // `balances_impl`.
 /// let (_tx_id, received) = terminal.deposit_all(caller).await?;
 ///
-///  Send tokens to the `caller`. The sent `received` amount will be deduced from the `caller`
-///  balance in `balances_impl`, but the actual amount the caller will receive to their token
-///  account is `received - transfer_fee`.
+/// // Send tokens to the `caller`. The sent `received` amount will be deduced from the `caller`
+/// // balance in `balances_impl`, but the actual amount the caller will receive to their token
+/// // account is `received - transfer_fee`.
 /// let (_tx_id, sent) = terminal.withdraw(caller, received).await?;
 ///
 /// assert_eq!(sent.amount, received.amount - token_config.fee.amount);
