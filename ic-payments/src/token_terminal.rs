@@ -133,7 +133,6 @@ impl<T: Balances + Sync + Send, R: RecoveryList> TokenTerminal<T, R> {
 }
 
 impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, R> {
-<<<<<<< HEAD
     /// Sets a callback to be run in case the terminal detects that the token fee configuration is
     /// changed.
     ///
@@ -152,10 +151,6 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
         }
     }
 
-    /// Move all tokens from the depost interim account of the caller into caller's balance. See
-=======
-    /// Move all tokens from the deposit interim account of the caller into caller's balance. See
->>>>>>> e39a070f6a72985f0c79c9bc8351c381b49829c2
     /// [`TokenTerminal::deposit`] for details.
     ///
     /// The amount the caller will receive on their balance is `interim_account_balance -

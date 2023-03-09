@@ -7,9 +7,7 @@ use ic_exports::Principal;
 use ic_helpers::tokens::Tokens128;
 
 use crate::error::{InternalPaymentError, Result};
-use crate::{Timestamp, TokenConfiguration};
-
-type TxId = Nat;
+use crate::{Timestamp, TokenConfiguration, TxId};
 
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct TokenTransferInfo {
