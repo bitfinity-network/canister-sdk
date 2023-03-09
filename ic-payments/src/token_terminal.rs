@@ -9,7 +9,7 @@ use ic_exports::ic_kit::ic;
 use ic_helpers::tokens::Tokens128;
 
 use crate::error::{InternalPaymentError, PaymentError, RecoveryDetails, TransferFailReason};
-use crate::icrc1::{self, get_icrc1_balance, TokenTransferInfo};
+use crate::icrc1::{self, get_icrc1_balance, get_icrc1_minting_account, TokenTransferInfo};
 use crate::recovery_list::{RecoveryList, StableRecoveryList};
 use crate::transfer::{Operation, Stage, Transfer, TransferType};
 use crate::{Balances, TokenConfiguration, TxId};
@@ -34,6 +34,8 @@ const TX_WINDOW: u64 = 10u64.pow(9) * 60 * 5;
 // timestamp is the same. Since it's impossible to have timestamp repeat in operations before and
 // after upgrade, we don't care if this counter gets reset during upgrade.
 static TX_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+type ConfigChangePredicate = dyn Fn(&TokenConfiguration) + Send + Sync + 'static;
 
 /// Bridge between an ICRC-1 token canister and the current canister. Provides safe and reliable
 /// token transfer methods to and from the canister.
@@ -90,12 +92,12 @@ static TX_COUNTER: AtomicU64 = AtomicU64::new(0);
 /// implement that trait. So to initiate an instance of `TokenTerminal` one can:
 /// * use static implementations that can be cloned and given to the token terminal by value
 /// * or give an `Rc<RefCell<T>>` of the value to the constructor.
-#[derive(Debug)]
 pub struct TokenTerminal<B: Balances, R: RecoveryList> {
     token_config: TokenConfiguration,
     balances: B,
     recovery_list: R,
     deduplication_period: u64,
+    update_token_config: Option<Box<ConfigChangePredicate>>,
 }
 
 impl<T: Balances + Sync + Send, const MEM_ID: u8> TokenTerminal<T, StableRecoveryList<MEM_ID>> {
@@ -108,6 +110,7 @@ impl<T: Balances + Sync + Send, const MEM_ID: u8> TokenTerminal<T, StableRecover
             balances,
             recovery_list,
             deduplication_period: DEFAULT_DEDUP_PERIOD,
+            update_token_config: None,
         }
     }
 }
@@ -124,11 +127,30 @@ impl<T: Balances + Sync + Send, R: RecoveryList> TokenTerminal<T, R> {
             balances,
             recovery_list,
             deduplication_period: DEFAULT_DEDUP_PERIOD,
+            update_token_config: None,
         }
     }
 }
 
 impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, R> {
+    /// Sets a callback to be run in case the terminal detects that the token fee configuration is
+    /// changed.
+    ///
+    /// This callback can be used to save the updated configuration into the canister state.
+    ///
+    /// If the callback is not set, terminal will still re-request transfers with updated fee
+    /// configuration, but this might double the amount of transfer requests in future if the
+    /// configuration is not updated elsewhere.
+    pub fn on_config_update<P>(self, predicate: P) -> Self
+    where
+        P: Fn(&TokenConfiguration) + Send + Sync + 'static,
+    {
+        Self {
+            update_token_config: Some(Box::new(predicate)),
+            ..self
+        }
+    }
+
     /// Move all tokens from the depost interim account of the caller into caller's balance. See
     /// [`TokenTerminal::deposit`] for details.
     ///
@@ -377,6 +399,10 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
             Err(InternalPaymentError::MaybeFailed) => {
                 self.retry(transfer, n_retries.saturating_sub(1)).await
             }
+            Err(InternalPaymentError::WrongFee(expected)) => {
+                self.update_config_and_retry(expected, transfer, n_retries.saturating_sub(1))
+                    .await
+            }
             Err(e) => Ok(self.reject(transfer, e)?),
         }
     }
@@ -390,6 +416,10 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
             Ok(TokenTransferInfo { token_tx_id, .. }) => {
                 Ok(self.complete(transfer, token_tx_id, n_retries).await?)
             }
+            Err(InternalPaymentError::WrongFee(expected)) => {
+                self.update_config_and_retry(expected, transfer, n_retries.saturating_sub(1))
+                    .await
+            }
             Err(InternalPaymentError::TransferFailed(TransferFailReason::Rejected(
                 TransferError::Duplicate { duplicate_of },
             ))) => Ok(self.complete(transfer, duplicate_of, n_retries).await?),
@@ -401,6 +431,43 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
                 self.retry(transfer, n_retries.saturating_sub(1)).await
             }
             Err(e) => Ok(self.reject(transfer, e)?),
+        }
+    }
+
+    async fn update_config_and_retry(
+        &mut self,
+        expected_fee: Tokens128,
+        transfer: Transfer,
+        n_retries: usize,
+    ) -> Result<TxId, PaymentError> {
+        match expected_fee {
+            Tokens128::ZERO => {
+                self.set_minting_account(self.get_minting_account(expected_fee).await?)
+            }
+            v if v == self.token_config.fee => {
+                self.set_minting_account(self.get_minting_account(expected_fee).await?)
+            }
+            _ => self.set_fee(expected_fee),
+        };
+
+        let to = transfer.to();
+        let from = transfer.from();
+        let transfer = transfer.with_fee(self.token_config.get_fee(&to, &from));
+
+        if let Some(f) = &self.update_token_config {
+            f(self.token_config());
+        }
+
+        self.retry(transfer, n_retries).await
+    }
+
+    async fn get_minting_account(&self, expected_fee: Tokens128) -> Result<Account, PaymentError> {
+        match get_icrc1_minting_account(self.token_config.principal).await {
+            Ok(v) => Ok(v.unwrap_or(Account {
+                owner: Principal::management_canister().into(),
+                subaccount: None,
+            })),
+            Err(_e) => Err(PaymentError::BadFee(expected_fee)),
         }
     }
 

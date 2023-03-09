@@ -93,6 +93,18 @@
 //!  Transfer failed,  Transfer was successful,    Transfer was successful,      Transfer failed,
 //!  reject transfer      complete transfer           proceed with second      perform second step
 //!                                                        step                     transfer
+//!
+//! # Token fee change
+//!
+//! Token terminal adds the fee value to all ICRC-1 transactions to make sure that the credited
+//! amount actually equals the amount received at the target account. If the token fee
+//! amount or minting account configuration changes without `this` canister knowing about it, all
+//! transactions will fail with a `BadFee` error.
+//!
+//! In such case terminal will automatically retrieve updated configuration and retry the failed
+//! transfer. The canister can also [set a callback](TokenTerminal::on_config_update) to be called
+//! to update the configuration stored in the state.
+//!
 //! ```
 
 use candid::{CandidType, Deserialize, Nat};

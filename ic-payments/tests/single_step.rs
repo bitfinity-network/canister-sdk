@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use candid::{Encode, Nat};
@@ -12,7 +12,8 @@ use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 use ic_payments::{Operation, Transfer};
 
 use crate::common::{
-    init_test, setup_error, setup_success, simple_transfer, token_principal, TestBalances,
+    init_test, minting_account, setup_error, setup_success, simple_transfer, token_principal,
+    TestBalances,
 };
 
 pub mod common;
@@ -362,4 +363,46 @@ async fn duplicate_transfers() {
 
     terminal.transfer(transfer, 1).await.unwrap_err();
     assert_eq!(TestBalances::balance_of(alice()), 990);
+}
+
+#[tokio::test]
+async fn bad_fee_rerequest() {
+    let config_change_is_called = Arc::new(AtomicBool::new(false));
+    let config_change_is_called_clone = config_change_is_called.clone();
+    let mut terminal = init_test().on_config_update(move |config| {
+        assert_eq!(config.fee, 100.into());
+        assert_eq!(config.minting_account, minting_account());
+        config_change_is_called_clone.store(true, Ordering::Relaxed);
+    });
+
+    let counter = Arc::new(AtomicUsize::new(0));
+    register_virtual_responder(
+        token_principal(),
+        "icrc1_transfer",
+        move |(args,): (TransferArg,)| {
+            if counter.fetch_add(1, Ordering::Relaxed) == 0 {
+                Err::<Nat, TransferError>(TransferError::BadFee {
+                    expected_fee: 100.into(),
+                })
+            } else {
+                assert_eq!(args.fee, Some(100.into()));
+                Ok(1.into())
+            }
+        },
+    );
+
+    let transfer = Transfer {
+        caller: alice(),
+        amount: 1000.into(),
+        fee: 10.into(),
+        operation: Operation::CreditOnSuccess,
+        ..simple_transfer()
+    };
+
+    terminal.transfer(transfer.clone(), 3).await.unwrap();
+    assert_eq!(TestBalances::balance_of(alice()), 900);
+    assert_eq!(StableRecoveryList::<0>.list().len(), 0);
+
+    assert_eq!(terminal.fee(), 100.into());
+    assert!(config_change_is_called.load(Ordering::Relaxed));
 }

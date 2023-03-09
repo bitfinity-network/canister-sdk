@@ -4,7 +4,7 @@ use candid::{Nat, Principal};
 use ic_canister::register_virtual_responder;
 use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
 use ic_exports::ic_icrc1::Account;
-use ic_exports::ic_kit::mock_principals::{alice, bob};
+use ic_exports::ic_kit::mock_principals::alice;
 use ic_exports::ic_kit::MockContext;
 use ic_helpers::tokens::Tokens128;
 use ic_payments::recovery_list::StableRecoveryList;
@@ -120,10 +120,7 @@ pub fn init_test() -> TokenTerminal<TestBalances, StableRecoveryList<0>> {
         TokenConfiguration {
             principal: token_principal(),
             fee: 10.into(),
-            minting_account: ic_exports::ic_icrc1::Account {
-                owner: bob().into(),
-                subaccount: None,
-            },
+            minting_account: minting_account(),
         },
         TestBalances {},
     )

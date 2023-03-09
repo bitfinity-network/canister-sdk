@@ -48,9 +48,7 @@ async fn second_stage_rejected() {
             if count == 0 {
                 Ok::<Nat, TransferError>(Nat::from(1))
             } else {
-                Err::<Nat, TransferError>(TransferError::BadFee {
-                    expected_fee: 123.into(),
-                })
+                Err::<Nat, TransferError>(TransferError::TemporarilyUnavailable)
             }
         },
     );
@@ -65,10 +63,7 @@ async fn second_stage_rejected() {
     .double_step();
 
     let err = terminal.transfer(transfer, 1).await.unwrap_err();
-    assert_eq!(
-        err,
-        PaymentError::Recoverable(RecoveryDetails::BadFee(123.into()))
-    );
+    assert_eq!(err, PaymentError::Recoverable(RecoveryDetails::IcError));
     assert_eq!(counter_clone.load(Ordering::Relaxed), 2);
     assert_eq!(TestBalances::balance_of(alice()), 0);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 1);
