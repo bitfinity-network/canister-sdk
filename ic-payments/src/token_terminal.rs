@@ -100,7 +100,7 @@ pub struct TokenTerminal<B: Balances, R: RecoveryList> {
     update_token_config: Option<Box<ConfigChangePredicate>>,
 }
 
-impl<T: Balances + Sync + Send, const MEM_ID: u8> TokenTerminal<T, StableRecoveryList<MEM_ID>> {
+impl<T: Balances, const MEM_ID: u8> TokenTerminal<T, StableRecoveryList<MEM_ID>> {
     /// Creates a new terminal with the [default implementation of recovery
     /// list](StableRecoveryList).
     pub fn new(config: TokenConfiguration, balances: T) -> Self {
@@ -115,7 +115,7 @@ impl<T: Balances + Sync + Send, const MEM_ID: u8> TokenTerminal<T, StableRecover
     }
 }
 
-impl<T: Balances + Sync + Send, R: RecoveryList> TokenTerminal<T, R> {
+impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     /// Creates a new terminal.
     pub fn new_with_recovery_list(
         config: TokenConfiguration,
@@ -132,7 +132,7 @@ impl<T: Balances + Sync + Send, R: RecoveryList> TokenTerminal<T, R> {
     }
 }
 
-impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, R> {
+impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     /// Sets a callback to be run in case the terminal detects that the token fee configuration is
     /// changed.
     ///

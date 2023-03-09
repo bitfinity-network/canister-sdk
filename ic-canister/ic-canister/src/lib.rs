@@ -594,6 +594,12 @@ thread_local! {
     static __RESPONDERS: Rc<RefCell<ResponderHashMap>> = Rc::new(RefCell::new(HashMap::new()));
 }
 
+/// Saves a function that will be called when testing inter-canister calls, invoked with
+/// [virtual_canister_call] macro.
+///
+/// The saved function takes candid encoded byte string as an input and outputs raw encoded reponse
+/// back. You can use [`register_virtual_responder`] function to have the encoding/decoding being
+/// taken care of.
 pub fn register_raw_virtual_responder(
     principal: Principal,
     method_name: &str,

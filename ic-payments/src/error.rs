@@ -38,7 +38,7 @@ pub enum PaymentError {
     InvalidParameters(ParametersError),
 
     /// Transaction was attempted but rejected by the token canister. It's unlikely that further
-    /// requests with the same parameters would be successful in current state.
+    /// requests with the same parameters would be successful in the current state.
     ///
     /// When this error is returned it's guaranteed that the attempted transaction was not
     /// executed, so there's no need for recovery. After the reason of failure is dealt with the
@@ -118,7 +118,7 @@ pub enum ParametersError {
 impl From<(RejectionCode, String)> for InternalPaymentError {
     fn from((code, message): (RejectionCode, String)) -> Self {
         match code {
-            // Token canister doesn't exist or doesn't have `icrc1_transfer` method
+            // Token canister doesn't exist or doesn't have the `icrc1_transfer` method
             RejectionCode::DestinationInvalid => Self::TransferFailed(TransferFailReason::NotFound),
             // Token canister panicked or didn't respond at all. This can happen if the token
             // canister is out of cycles or is undergoing an upgrade.
@@ -127,7 +127,7 @@ impl From<(RejectionCode, String)> for InternalPaymentError {
             }
             // IC error or violation of IC specification. Since we don't know for sure how to deal
             // with this in advance, we treat them as potentially recoverable errors, hoping that
-            // in future IC will recover and start returning something sensible.
+            // in the future IC will recover and start returning something sensible.
             RejectionCode::Unknown
             | RejectionCode::SysFatal
             | RejectionCode::SysTransient

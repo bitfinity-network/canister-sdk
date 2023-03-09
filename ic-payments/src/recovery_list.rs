@@ -1,30 +1,15 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::rc::Rc;
 
 use candid::Encode;
 use ic_stable_structures::{BoundedStorable, MemoryId, StableBTreeMap, Storable};
 
 use crate::Transfer;
 
-pub trait RecoveryList {
+pub trait RecoveryList: Sync + Send {
     fn push(&mut self, transfer: Transfer);
     fn take_all(&mut self) -> Vec<Transfer>;
     fn list(&self) -> Vec<Transfer>;
-}
-
-impl<T: RecoveryList> RecoveryList for Rc<RefCell<T>> {
-    fn push(&mut self, transfer: Transfer) {
-        self.borrow_mut().push(transfer)
-    }
-
-    fn take_all(&mut self) -> Vec<Transfer> {
-        self.borrow_mut().take_all()
-    }
-
-    fn list(&self) -> Vec<Transfer> {
-        self.borrow_mut().list()
-    }
 }
 
 thread_local! {
@@ -42,7 +27,7 @@ impl TransferKey {
 }
 
 impl Storable for TransferKey {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::from(&self.0[..])
     }
 
@@ -61,12 +46,12 @@ impl BoundedStorable for TransferKey {
 struct TransferValue(Transfer);
 
 impl Storable for TransferValue {
-    fn to_bytes(&self) -> Cow<[u8]> {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
         let bytes = Encode!(&self.0).expect("serialization of transfer failed");
         Cow::Owned(bytes)
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Self(candid::decode_one(&bytes).expect("deserialization of transfer failed"))
     }
 }
@@ -90,11 +75,8 @@ impl<const MEM_ID: u8> StableRecoveryList<MEM_ID> {
     ) -> R {
         RECOVERY_LIST_STORAGE.with(|v| {
             let mut map = v.borrow_mut();
-            if map.is_none() {
-                *map = Some(StableBTreeMap::new(MemoryId::new(MEM_ID)));
-            }
-
-            f(map.as_mut().expect("Initialized above"))
+            let map = map.get_or_insert_with(|| StableBTreeMap::new(MemoryId::new(MEM_ID)));
+            f(map)
         })
     }
 }

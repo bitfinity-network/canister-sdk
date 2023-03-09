@@ -57,8 +57,8 @@ pub async fn transfer_icrc1(
 
 /// Requests fee and minting account configuration from an ICRC-1 canister.
 pub async fn get_icrc1_configuration(token: Principal) -> Result<TokenConfiguration> {
-    // ICRC-1 standard metadata doesn't include minting account, so we have to do two requests
-    // to get both fields. It's fine though since this is done only one time.
+    // ICRC-1 standard metadata doesn't include a minting account, so we have to do two requests
+    // to get both fields, which is fine though since this is done once.
     let fee = get_icrc1_fee(token).await?;
     let minting_account = get_icrc1_minting_account(token).await?.unwrap_or(Account {
         owner: Principal::management_canister().into(),
