@@ -13,7 +13,7 @@
 //!    mechanism is required to recover from such kinds of errors.
 //!
 //! [`TokenTerminal`] class provides a generic methods to perform in and out transfers, dealing
-//! with all tree issues explained above. To create it a canister has to provide an implementation
+//! with all three issues explained above. To create it a canister has to provide an implementation
 //! for a [`Balances`] trait which stores the user balances in the canister.
 //!
 //! There are also convenience methods in [`icrc1`] module to call common operations of ICRC-1
