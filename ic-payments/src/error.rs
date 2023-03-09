@@ -8,13 +8,13 @@ use crate::BalanceError;
 
 pub type Result<T> = std::result::Result<T, InternalPaymentError>;
 
-/// Reaseon for a transfer to fail
+/// Reason for a transfer to fail
 #[derive(Debug, PartialEq, CandidType, Deserialize, Error)]
 pub enum TransferFailReason {
     #[error("token canister does not exist or doesn't follow the ICRC-1 standard")]
     NotFound,
 
-    #[error("token canister panicced or didn't responded: {0}")]
+    #[error("token canister panicked or didn't respond: {0}")]
     TokenPanic(String),
 
     #[error("transfer request was rejected: {0:?}")]
@@ -54,12 +54,12 @@ pub enum PaymentError {
     #[error("transfer fee setting was not same as token fee configuration {0}")]
     BadFee(Tokens128),
 
-    /// Unknown error happend while attempting the transfer. The terminal cannot be sure that the
-    /// tranaction was not executed by the token canister, so the transfer is added to the `for
+    /// Unknown error happened while attempting the transfer. The terminal cannot be sure that the
+    /// transaction was not executed by the token canister, so the transfer is added to the `for
     /// recovery` list.
     ///
     /// Recovery of the transfer may be attempted by the terminal recovery mechanism.
-    #[error("IC error occured, the transaction can potentially be recoverred: {0:?}")]
+    #[error("IC error occurred, the transaction can potentially be recovered: {0:?}")]
     Recoverable(RecoveryDetails),
 
     #[error("caller's balance is not enough to perform the operation")]
@@ -120,7 +120,7 @@ impl From<(RejectionCode, String)> for InternalPaymentError {
         match code {
             // Token canister doesn't exist or doesn't have `icrc1_transfer` method
             RejectionCode::DestinationInvalid => Self::TransferFailed(TransferFailReason::NotFound),
-            // Token canister panicced or didn't respond at all. This can happen if the token
+            // Token canister panicked or didn't respond at all. This can happen if the token
             // canister is out of cycles or is undergoing an upgrade.
             RejectionCode::CanisterError => {
                 Self::TransferFailed(TransferFailReason::TokenPanic(message))

@@ -23,7 +23,7 @@ pub struct Transfer {
     /// Account to transfer to.
     pub to: Account,
 
-    /// Amount to transfer. This amount includes the fee, so the actual value that will be recieved
+    /// Amount to transfer. This amount includes the fee, so the actual value that will be received
     /// by the `to` account is `amount - fee`.
     pub amount: Tokens128,
 
@@ -78,7 +78,7 @@ pub enum Stage {
 const INTERMEDIATE_ACC_DOMAIN: &[u8] = b"is-amm-intermediate-acc";
 
 impl Transfer {
-    /// Creates a new trnasfer.
+    /// Creates a new transfer.
     ///
     /// This constructor can be chained with other methods like [`Transfer::with_operation`] or [`Transfer::double_step`] to further configure the transfer.
     ///
@@ -569,7 +569,7 @@ mod tests {
     }
 
     #[test]
-    fn id_unique_over_reciepient() {
+    fn id_unique_over_recipient() {
         let t1 = simple_transfer();
         let t2 = Transfer {
             to: Account {

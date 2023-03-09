@@ -26,7 +26,7 @@ const N_RETRIES: usize = 3;
 /// implementation. 24 hours used here is the most common value, used by ICP and SNS-1 ledgers.
 const DEFAULT_DEDUP_PERIOD: u64 = 10u64.pow(9) * 60 * 60 * 24;
 
-/// Different IC nodes can have times not syncronized perfectly. We use 5 minute margin to make
+/// Different IC nodes can have times not synchronized perfectly. We use 5 minute margin to make
 /// sure we don't try to deduplicate transactions when it's not possible already.
 const TX_WINDOW: u64 = 10u64.pow(9) * 60 * 5;
 
@@ -65,17 +65,17 @@ type ConfigChangePredicate = dyn Fn(&TokenConfiguration) + Send + Sync + 'static
 /// # let receiver = ic::caller();
 /// # async {
 ///
-/// // Configure the terminal
+/// //  Configure the terminal
 /// let token_config = ic_payments::icrc1::get_icrc1_configuration(token_principal).await?;
 /// const STABLE_MEM_ID: u8 = 1;
 /// let mut terminal = TokenTerminal::<_, StableRecoveryList<STABLE_MEM_ID>>::new(token_config.clone(), balances_impl);
 ///
-/// // Recieve tokens from the `caller`. The received amount will be credited to the `caller` in
-/// //`balances_impl`.
+/// // Receive tokens from the `caller`. The received amount will be credited to the `caller` in
+/// // `balances_impl`.
 /// let (_tx_id, received) = terminal.deposit_all(caller).await?;
 ///
 /// // Send tokens to the `caller`. The sent `received` amount will be deduced from the `caller`
-/// // balance in `balances_impl`, but the actual amount the caller will receive to thier token
+/// // balance in `balances_impl`, but the actual amount the caller will receive to their token
 /// // account is `received - transfer_fee`.
 /// let (_tx_id, sent) = terminal.withdraw(caller, received).await?;
 ///
@@ -133,6 +133,7 @@ impl<T: Balances + Sync + Send, R: RecoveryList> TokenTerminal<T, R> {
 }
 
 impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, R> {
+<<<<<<< HEAD
     /// Sets a callback to be run in case the terminal detects that the token fee configuration is
     /// changed.
     ///
@@ -152,9 +153,12 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
     }
 
     /// Move all tokens from the depost interim account of the caller into caller's balance. See
+=======
+    /// Move all tokens from the deposit interim account of the caller into caller's balance. See
+>>>>>>> e39a070f6a72985f0c79c9bc8351c381b49829c2
     /// [`TokenTerminal::deposit`] for details.
     ///
-    /// The amount the caller will recieve on their balance is `interim_account_balance -
+    /// The amount the caller will receive on their balance is `interim_account_balance -
     /// transfer_fee`, where `transfer_fee` is the fee set by the token canister.
     pub async fn deposit_all(
         &mut self,
@@ -165,17 +169,17 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
         self.deposit(caller, balance).await
     }
 
-    /// Move the specifed amount from the deposit interim account of the caller into caller's
+    /// Move the specified amount from the deposit interim account of the caller into caller's
     /// balance.
     ///
     /// This method implements default suggested flow for depositing tokens into the canister. The
     /// flow is:
-    /// 1. Caller transfer tokens to the depoit interim acocunt.
+    /// 1. Caller transfer tokens to the deposit interim account.
     /// 2. Caller calls a method in the canister to initiate the deposit.
     /// 3. The canister transfers tokens to the its main account and credits the transferred amount
     ///    to the caller's balance.
     ///
-    /// The amount that the caller will recieve on their balance is `interim_account_balance -
+    /// The amount that the caller will receive on their balance is `interim_account_balance -
     /// transfer_fee` where `transfer_fee` is the fee set by the token canister.
     ///
     /// This method creates a single-step transfer from interim account to the main account of the
@@ -212,7 +216,7 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
     /// Move the specified amount from the caller's balance to the caller's main account.
     ///
     /// This method creates a double-step transfer using a subaccount unique for the transfer. The
-    /// amount that the caller will recieve on their token account is `caller_balance -
+    /// amount that the caller will receive on their token account is `caller_balance -
     /// transfer_fee * 2` where `transfer_fee` is the fee set by the token canister.
     pub async fn withdraw(
         &mut self,
@@ -352,24 +356,24 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
 
     fn credit(
         &mut self,
-        recepient: Principal,
+        recipient: Principal,
         amount: Tokens128,
     ) -> Result<Tokens128, PaymentError> {
-        Ok(self.balances.credit(recepient, amount)?)
+        Ok(self.balances.credit(recipient, amount)?)
     }
 
     fn add_for_recovery(&mut self, transfer: Transfer) {
         self.recovery_list.push(transfer);
     }
 
-    /// Recover all transfers stored in the recovery list. Exect stratagy of recovery depends for
+    /// Recover all transfers stored in the recovery list. Exact strategy of recovery depends for
     /// each transfer is decided by the transfer properties. Returns result of the recovery for
     /// each transfer in the recovery list. If the recovery list was empty, returns an empty list.
     ///
     /// After the transfer is recovered (by either successfully completing it, proving that it
     /// cannot be completed or proving that it was completed already), the transfer is removed from
     /// the list. If the recovery was not successful, e.g. if the terminal has still no proof
-    /// weather the transfer is successful or not, the transfer is reterned to the recovery list.
+    /// whether the transfer is successful or not, the transfer is returned to the recovery list.
     pub async fn recover_all(&mut self) -> Vec<Result<TxId, PaymentError>> {
         let mut results = vec![];
         for tx in self.recovery_list.take_all() {
@@ -494,14 +498,14 @@ impl<T: Balances + Sync + Send, R: RecoveryList + Sync + Send> TokenTerminal<T, 
         }
     }
 
-    /// Returns the list of transfers saved currectly in the recovery list. These transfers can be
+    /// Returns the list of transfers saved currently in the recovery list. These transfers can be
     /// recovered by calling [`TokenTerminal::recover_all()`] method.
     pub fn list_for_recovery(&self) -> Vec<Transfer> {
         self.recovery_list.list()
     }
 }
 
-/// Returns the iterim account for deposit transfers. This account belongs to the `this` canister
+/// Returns the interim account for deposit transfers. This account belongs to the `this` canister
 /// and has subaccount derived from the `principal` (for details see [`get_principal_subaccount`]).
 pub fn get_deposit_interim_account(principal: Principal) -> Account {
     Account {
@@ -510,11 +514,11 @@ pub fn get_deposit_interim_account(principal: Principal) -> Account {
     }
 }
 
-/// Returns the subaccount id for the `pricnipal` for the deposit transfers. This subaccount is
+/// Returns the subaccount id for the `principal` for the deposit transfers. This subaccount is
 /// calculated as:
 /// ```pseudocode
 /// Bytes[0..1] = principal.len()
-/// Bytes[1..principal.len() + 1] = pricnipal.bytes()
+/// Bytes[1..principal.len() + 1] = principal.bytes()
 /// Bytes[principal.len() + 1..32] = 0
 /// ```
 pub fn get_principal_subaccount(principal: Principal) -> Option<Subaccount> {

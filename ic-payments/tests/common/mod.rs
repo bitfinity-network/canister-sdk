@@ -36,12 +36,12 @@ pub struct TestBalances;
 impl Balances for TestBalances {
     fn credit(
         &mut self,
-        recepient: Principal,
+        recipient: Principal,
         amount: Tokens128,
     ) -> Result<Tokens128, BalanceError> {
         BALANCES.with(|v| {
             v.borrow_mut()
-                .push(BalanceOperation::Credit(recepient, amount))
+                .push(BalanceOperation::Credit(recipient, amount))
         });
 
         Ok(amount)

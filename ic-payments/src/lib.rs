@@ -1,9 +1,9 @@
 //! `ic-payments` crate provides safe way to transfer ICRC-1 tokens to and from a canister.
 //!
 //! Most of the canisters that work with tokens require a safe and reliable way to receive from and
-//! send tokens to the users, and recieve information about such transactoins. There are a few
+//! send tokens to the users, and receive information about such transactions. There are a few
 //! challenges for implementing such transactions:
-//! 1. Whan a user transfers tokens to the canister, the canister needs to be notified somehow
+//! 1. When a user transfers tokens to the canister, the canister needs to be notified somehow
 //!    that the transfer took place. ICRC-1 standard doesn't provide signed transaction info,
 //!    and there's no method to receive a transaction by transaction ID.
 //! 2. Sometimes transactions may fail due to IC networking issues or nodes being overloaded.
@@ -16,7 +16,7 @@
 //! with all tree issues explained above. To create it a canister has to provide an implementation
 //! for a [`Balances`] trait which stores the user balances in the canister.
 //!
-//! There are also convinience methods in [`icrc1`] module to call common operations of ICRC-1
+//! There are also convenience methods in [`icrc1`] module to call common operations of ICRC-1
 //! compatible tokens.
 //!
 //! # Transfer types
@@ -25,11 +25,11 @@
 //! * Single-step transfer - performed with one inter-canister call an allows recovery during the
 //!   deduplication period of the token (typically 24 hours). After deduplication period is over,
 //!   the transfer cannot be recovered and would be considered failed.
-//! * Double-step transfer - performed in 2 steps through an interim account uniqued for the
+//! * Double-step transfer - performed in 2 steps through an interim account unique for the
 //!   transfer. Double-step transfer can be recovered at any time. Double-step transfer is
 //!   considered complete when both steps of the transfer are finished successfully. It is
 //!   considered failed only if the first step failed. If the first step is successful but the
-//!   second step failed, the transfer is always kept in recovery list until it can be succesfully
+//!   second step failed, the transfer is always kept in recovery list until it can be successfully
 //!   completed (since the tokens are already locked in the interim account).
 //!
 //! # Performing a transfer
@@ -63,13 +63,13 @@
 //! 1. Using deduplication mechanism of ICRC-1 tokens. This mechanism is applied to all
 //!    transfers that are recent enough, e.g. are initiated less than deduplication period of the
 //!    token (typically 24 hours).
-//! 2. Using interim accounts of double-step transfers. This mechism can only be applied to the
+//! 2. Using interim accounts of double-step transfers. This mechanism can only be applied to the
 //!    double-step transfers, and applied for transfers older than deduplication period.
 //!
 //! ## Recovery through deduplication
 //!
 //! If a transaction can be deduplicated, e.g. it's recent enough, then recovery attempt consists
-//! of just sending a transaction with exacly same parameters to the token. If the token canister
+//! of just sending a transaction with exactly same parameters to the token. If the token canister
 //! returns `DuplicateTransaction` error, the token terminal can be sure that the transaction was
 //! successful the first time, and then proceed to the transfer completion logic. Any other
 //! response is handled as a normal transfer response.
