@@ -71,9 +71,13 @@ impl Storable for TransferValue {
     }
 }
 
+/// The only variable size part of the transfer is memo, which is usually 32 bytes. We use 60 bytes
+/// value to account for candid header.
+const VALUE_SIZE_OFFSET: usize = 60;
+
 impl BoundedStorable for TransferValue {
-    const MAX_SIZE: u32 = (std::mem::size_of::<Transfer>() + 20) as u32;
-    const IS_FIXED_SIZE: bool = true;
+    const MAX_SIZE: u32 = (std::mem::size_of::<Transfer>() + VALUE_SIZE_OFFSET) as u32;
+    const IS_FIXED_SIZE: bool = false;
 }
 
 #[derive(Debug)]
