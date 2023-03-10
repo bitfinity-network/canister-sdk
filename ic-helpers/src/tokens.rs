@@ -3,7 +3,7 @@ use std::mem::size_of;
 
 use auto_ops::impl_op_ex;
 use candid::types::{Serializer, Type, TypeId};
-use candid::{self, CandidType, Deserialize};
+use candid::{self, CandidType, Deserialize, Nat};
 use crypto_bigint::{CheckedAdd, CheckedMul, CheckedSub, Encoding, NonZero, U256};
 use num_bigint::BigUint;
 use num_traits::{FromPrimitive, ToPrimitive};
@@ -95,6 +95,10 @@ impl Tokens128 {
         } else {
             Some(self.amount as u64)
         }
+    }
+
+    pub fn to_nat(&self) -> Nat {
+        self.amount.into()
     }
 
     /// Subtracts `other` from `self`, returning Tokens128::ZERO on underflow.

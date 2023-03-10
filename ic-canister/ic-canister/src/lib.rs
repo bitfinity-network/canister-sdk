@@ -594,7 +594,13 @@ thread_local! {
     static __RESPONDERS: Rc<RefCell<ResponderHashMap>> = Rc::new(RefCell::new(HashMap::new()));
 }
 
-fn _register_virtual_responder(
+/// Saves a function that will be called when testing inter-canister calls, invoked with
+/// [virtual_canister_call] macro.
+///
+/// The saved function takes candid encoded byte string as an input and outputs raw encoded reponse
+/// back. You can use [`register_virtual_responder`] function to have the encoding/decoding being
+/// taken care of.
+pub fn register_raw_virtual_responder(
     principal: Principal,
     method_name: &str,
     responder: impl Fn(Vec<u8>) -> CallResult<Vec<u8>> + 'static,
@@ -620,7 +626,7 @@ pub fn call_virtual_responder(
         {
             Some(responder) => responder(args),
             None => Err((
-                RejectionCode::Unknown,
+                RejectionCode::DestinationInvalid,
                 format!(
                     "canister method {method_name} is not registered for principal {principal}, METHODS: {:?}",
                     responders
@@ -662,7 +668,7 @@ where
         })
     };
 
-    _register_virtual_responder(principal, method, inner_closure);
+    register_raw_virtual_responder(principal, method, inner_closure);
 }
 
 /// Adds a responder function for a [virtual_canister_call] that will result in an error result with
@@ -672,7 +678,7 @@ pub fn register_failing_virtual_responder(
     method: &str,
     error_message: String,
 ) {
-    _register_virtual_responder(principal, method, move |_| {
+    register_raw_virtual_responder(principal, method, move |_| {
         Err((RejectionCode::Unknown, error_message.clone()))
     });
 }
