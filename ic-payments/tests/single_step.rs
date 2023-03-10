@@ -217,7 +217,7 @@ async fn recovery_with_success() {
 
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0], Ok(Nat::from(1)));
+    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(1));
     assert_eq!(TestBalances::balance_of(alice()), 990);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
@@ -279,8 +279,8 @@ async fn recovery_with_maybe_failure() {
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
     assert_eq!(
-        results[0],
-        Err(PaymentError::Recoverable(RecoveryDetails::IcError))
+        results[0].as_ref().unwrap_err(),
+        &PaymentError::Recoverable(RecoveryDetails::IcError)
     );
     assert_eq!(TestBalances::balance_of(alice()), 0);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 1);
@@ -315,8 +315,8 @@ async fn transient_error_on_recovery() {
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
     assert_eq!(
-        results[0],
-        Err(PaymentError::Recoverable(RecoveryDetails::IcError))
+        results[0].as_ref().unwrap_err(),
+        &PaymentError::Recoverable(RecoveryDetails::IcError)
     );
     assert_eq!(TestBalances::balance_of(alice()), 0);
     assert_eq!(StableRecoveryList::<0>.list().len(), 1);
@@ -330,8 +330,8 @@ async fn transient_error_on_recovery() {
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
     assert_eq!(
-        results[0],
-        Err(PaymentError::Recoverable(RecoveryDetails::IcError))
+        results[0].as_ref().unwrap_err(),
+        &PaymentError::Recoverable(RecoveryDetails::IcError)
     );
     assert_eq!(TestBalances::balance_of(alice()), 0);
     assert_eq!(StableRecoveryList::<0>.list().len(), 1);

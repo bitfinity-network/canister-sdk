@@ -345,7 +345,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     fn update_recovery_fees(&mut self) {
         for tx in self.recovery_list.take_all() {
             let fee = self.token_config.get_fee(&tx.from_acc(), &tx.to);
-            self.recovery_list.push(tx.with_fee(fee));
+            self.recovery_list.push(tx.with_fee(fee).reset_ts());
         }
     }
 
@@ -369,21 +369,29 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     /// cannot be completed or proving that it was completed already), the transfer is removed from
     /// the list. If the recovery was not successful, e.g. if the terminal has still no proof
     /// whether the transfer is successful or not, the transfer is returned to the recovery list.
-    pub async fn recover_all(&mut self) -> Vec<Result<TxId, PaymentError>> {
+    pub async fn recover_all(&mut self) -> Vec<Result<(TxId, Transfer), PaymentError>> {
         let mut results = vec![];
         for tx in self.recovery_list.take_all() {
-            results.push(self.recover_tx(tx).await);
+            if tx.token == self.token_config.principal {
+                results.push(self.recover_tx(tx).await);
+            } else {
+                // Return foreigh transfers to the recovery list
+                self.recovery_list.push(tx);
+            }
         }
 
         results
     }
 
-    async fn recover_tx(&mut self, transfer: Transfer) -> Result<TxId, PaymentError> {
-        if self.can_deduplicate(&transfer) {
-            self.execute_recovery_transfer(transfer, N_RETRIES).await
+    async fn recover_tx(&mut self, transfer: Transfer) -> Result<(TxId, Transfer), PaymentError> {
+        let tx_id = if self.can_deduplicate(&transfer) {
+            self.execute_recovery_transfer(transfer.clone(), N_RETRIES)
+                .await?
         } else {
-            self.recover_old_tx(transfer).await
-        }
+            self.recover_old_tx(transfer.clone()).await?
+        };
+
+        Ok((tx_id, transfer))
     }
 
     async fn execute_transfer(

@@ -313,6 +313,15 @@ impl Transfer {
         Self { fee, ..self }
     }
 
+    /// Sets created_at value to 0. The transfer with such parameter cannot be executed, so this
+    /// can be used to force renewal of trnasfers on recovery proces.
+    pub fn reset_ts(self) -> Self {
+        Self {
+            created_at: 0,
+            ..self
+        }
+    }
+
     /// Timestamp when the transfer was created.
     pub fn created_at(&self) -> Timestamp {
         self.created_at

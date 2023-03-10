@@ -141,7 +141,7 @@ async fn recover_first_stage() {
 
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0], Ok(Nat::from(1)));
+    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(1));
     assert_eq!(TestBalances::balance_of(alice()), 980);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
@@ -175,7 +175,7 @@ async fn recover_second_stage() {
     let results = terminal.recover_all().await;
 
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0], Ok(Nat::from(2)));
+    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(2));
     assert_eq!(TestBalances::balance_of(alice()), 980);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
@@ -228,8 +228,8 @@ async fn recover_first_stage_old_zero_balance() {
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
     assert_eq!(
-        results[0],
-        Err(PaymentError::TransferFailed(TransferFailReason::Unknown))
+        results[0].as_ref().unwrap_err(),
+        &PaymentError::TransferFailed(TransferFailReason::Unknown)
     );
     assert_eq!(TestBalances::balance_of(alice()), 0);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
@@ -261,7 +261,7 @@ async fn recover_first_stage_old_non_zero_balance() {
     let was_called = setup_recovery_responses(interim_acc, 990, 3);
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0], Ok(Nat::from(3)));
+    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(3));
     assert_eq!(TestBalances::balance_of(alice()), 980);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
@@ -299,7 +299,7 @@ async fn recover_second_stage_old_non_zero_balance() {
     let was_called = setup_recovery_responses(interim_acc, 990, 3);
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0], Ok(Nat::from(3)));
+    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(3));
     assert_eq!(TestBalances::balance_of(alice()), 980);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
@@ -337,7 +337,7 @@ async fn recover_second_stage_old_zero_balance() {
     let was_called = setup_recovery_responses(interim_acc, 0, 3);
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0], Ok(Nat::from(UNKNOWN_TX_ID)));
+    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(UNKNOWN_TX_ID));
     assert_eq!(TestBalances::balance_of(alice()), 980);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
