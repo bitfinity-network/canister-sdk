@@ -2,7 +2,9 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 
 use candid::Encode;
-use ic_stable_structures::{BoundedStorable, MemoryId, StableBTreeMap, Storable};
+use ic_stable_structures::{
+    BoundedStorable, MemoryId, SlicedStorable, StableUnboundedMap, Storable,
+};
 
 use crate::Transfer;
 
@@ -13,7 +15,7 @@ pub trait RecoveryList: Sync + Send {
 }
 
 thread_local! {
-    static RECOVERY_LIST_STORAGE: RefCell<Option<StableBTreeMap<TransferKey, TransferValue>>> =
+    static RECOVERY_LIST_STORAGE: RefCell<Option<StableUnboundedMap<TransferKey, TransferValue>>> =
         RefCell::new(None);
 }
 
@@ -60,9 +62,8 @@ impl Storable for TransferValue {
 /// value to account for candid header.
 const VALUE_SIZE_OFFSET: usize = 60;
 
-impl BoundedStorable for TransferValue {
-    const MAX_SIZE: u32 = (std::mem::size_of::<Transfer>() + VALUE_SIZE_OFFSET) as u32;
-    const IS_FIXED_SIZE: bool = false;
+impl SlicedStorable for TransferValue {
+    const CHUNK_SIZE: u16 = (std::mem::size_of::<Transfer>() + VALUE_SIZE_OFFSET) as u16;
 }
 
 #[derive(Debug)]
@@ -71,11 +72,11 @@ pub struct StableRecoveryList<const MEM_ID: u8>;
 impl<const MEM_ID: u8> StableRecoveryList<MEM_ID> {
     fn with_storage<R>(
         &self,
-        f: impl Fn(&mut StableBTreeMap<TransferKey, TransferValue>) -> R,
+        f: impl Fn(&mut StableUnboundedMap<TransferKey, TransferValue>) -> R,
     ) -> R {
         RECOVERY_LIST_STORAGE.with(|v| {
             let mut map = v.borrow_mut();
-            let map = map.get_or_insert_with(|| StableBTreeMap::new(MemoryId::new(MEM_ID)));
+            let map = map.get_or_insert_with(|| StableUnboundedMap::new(MemoryId::new(MEM_ID)));
             f(map)
         })
     }
@@ -92,7 +93,7 @@ impl<const MEM_ID: u8> RecoveryList for StableRecoveryList<MEM_ID> {
             // that the transactions have same parameters, so deduplication mechanism of ICRC-1
             // tokens would not allow both of such transactions be successful. So we can store only
             // one of them.
-            m.insert(key, value);
+            m.insert(&key, &value);
         })
     }
 
