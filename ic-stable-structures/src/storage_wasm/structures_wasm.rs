@@ -197,19 +197,19 @@ impl<T: Storable> StableLog<T> {
     }
 
     /// Returns reference to value stored in stable memory.
-    pub fn get(&self, index: usize) -> Option<T> {
+    pub fn get(&self, index: u64) -> Option<T> {
         self.get_inner().get(index)
     }
 
     /// Updates value in stable memory.
-    pub fn append(&mut self, value: T) -> Result<usize> {
+    pub fn append(&mut self, value: T) -> Result<u64> {
         self.mut_inner()
             .append(&value)
             .map_err(|_| Error::OutOfStableMemory)
     }
 
     /// Number of values in the log.
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> u64 {
         self.get_inner().len()
     }
 

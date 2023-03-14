@@ -15,7 +15,7 @@ use ic_payments::icrc1::get_icrc1_configuration;
 use ic_payments::{BalanceError, Balances, StableRecoveryList, TokenConfiguration, TokenTerminal};
 use ic_storage::IcStorage;
 
-#[derive(Debug, IcStorage)]
+#[derive(IcStorage)]
 pub struct PaymentState {
     terminal: TokenTerminal<TestBalances, StableRecoveryList<0>>,
 }

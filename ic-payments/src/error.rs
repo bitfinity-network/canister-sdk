@@ -1,6 +1,6 @@
 use candid::{CandidType, Deserialize};
+use ic_exports::ic_cdk::api::call::RejectionCode;
 use ic_exports::ic_icrc1::endpoints::TransferError;
-use ic_exports::ic_kit::RejectionCode;
 use ic_helpers::tokens::Tokens128;
 use thiserror::Error;
 
