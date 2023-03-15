@@ -190,7 +190,7 @@ impl Transfer {
         match &self.r#type {
             TransferType::SingleStep => self.from_acc(),
             TransferType::DoubleStep(Stage::First, _) => self.from_acc(),
-            TransferType::DoubleStep(Stage::Second, acc) => acc.clone(),
+            TransferType::DoubleStep(Stage::Second, acc) => *acc,
         }
     }
 
@@ -205,9 +205,9 @@ impl Transfer {
     /// Target account of the transfer.
     pub fn to(&self) -> Account {
         match &self.r#type {
-            TransferType::SingleStep => self.to.clone(),
-            TransferType::DoubleStep(Stage::First, acc) => acc.clone(),
-            TransferType::DoubleStep(Stage::Second, _) => self.to.clone(),
+            TransferType::SingleStep => self.to,
+            TransferType::DoubleStep(Stage::First, acc) => *acc,
+            TransferType::DoubleStep(Stage::Second, _) => self.to,
         }
     }
 
@@ -216,7 +216,7 @@ impl Transfer {
     /// Returns `None` if the transfer is single-step.
     pub fn interim_acc(&self) -> Option<Account> {
         match &self.r#type {
-            TransferType::DoubleStep(_, acc) => Some(acc.clone()),
+            TransferType::DoubleStep(_, acc) => Some(*acc),
             _ => None,
         }
     }
@@ -338,10 +338,10 @@ impl Transfer {
     pub fn next_step(&self) -> Option<Self> {
         match &self.r#type {
             TransferType::DoubleStep(Stage::First, interim_acc) => Some(Self {
-                r#type: TransferType::DoubleStep(Stage::Second, interim_acc.clone()),
+                r#type: TransferType::DoubleStep(Stage::Second, *interim_acc),
                 amount: self.amount_minus_fee(),
                 created_at: ic::time(),
-                to: self.to.clone(),
+                to: self.to,
                 memo: self.memo.clone(),
                 ..*self
             }),

@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use candid::Nat;
 use ic_canister::{register_raw_virtual_responder, register_virtual_responder};
+use ic_exports::ic_cdk::api::call::RejectionCode;
 use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
-use ic_exports::ic_kit::RejectionCode;
 use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
 use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 

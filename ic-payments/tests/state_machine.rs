@@ -70,7 +70,7 @@ mod tests {
         };
         let args = Encode!(&args, &Tokens128::from(1_000_000_000)).unwrap();
         let principal = env
-            .install_canister(token_wasm().into(), args.clone(), None)
+            .install_canister(token_wasm().into(), args, None)
             .expect("failed to install token canister");
 
         eprintln!("Created token canister {principal}");
@@ -80,7 +80,7 @@ mod tests {
     fn init_payment(env: &mut StateMachine, token: Principal) -> CanisterId {
         let args = Encode!(&token).unwrap();
         let principal = env
-            .install_canister(payment_canister_wasm().into(), args.clone(), None)
+            .install_canister(payment_canister_wasm().into(), args, None)
             .expect("failed to install payment canister");
 
         eprintln!("Created payment canister {principal}");
