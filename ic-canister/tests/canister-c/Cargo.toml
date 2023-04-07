@@ -17,7 +17,7 @@ serde = "1.0"
 ic-exports = { path = "../../../ic-exports" }
 ic-storage = { path = "../../../ic-storage" }
 ic-canister = { path = "../../ic-canister" }
-ic-metrics = { path = "../../../ic-metrics" }
+ic-metrics = { path = "../../../ic-metrics", features = ["export-api"] }
 
 [dev-dependencies]
 tokio = {version = "1", features = ["rt", "macros"]}

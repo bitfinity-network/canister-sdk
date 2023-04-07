@@ -49,7 +49,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use candid::Principal;
-use ic_canister::{generate_exports, query, state_getter, Canister, PreUpdate};
+use ic_canister::{generate_exports, generate_idl, query, state_getter, Canister, Idl, PreUpdate};
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize};
 use ic_storage::IcStorage;
 
@@ -90,6 +90,14 @@ pub trait Metrics: Canister {
 
     fn set_interval(interval: Interval) {
         MetricsStorage::get().borrow_mut().metrics.interval = interval;
+    }
+
+    // Important: This function *must* be defined to be the
+    // last one in the trait because it depends on the order
+    // of expansion of update/query(trait = true) methods.
+    // This function generates the candid bindings for the Metrics trait
+    fn get_idl() -> Idl {
+        generate_idl!()
     }
 }
 

@@ -274,13 +274,6 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
         account.to_hex()
     }
 
-    // Important: This function *must* be defined to be the
-    // last one in the trait because it depends on the order
-    // of expansion of update/query(trait = true) methods.
-    fn get_idl() -> Idl {
-        generate_idl!()
-    }
-
     #[allow(clippy::await_holding_refcell_ref)]
     fn drop_canister(
         &self,
@@ -300,6 +293,13 @@ pub trait FactoryCanister: Canister + Sized + PreUpdate {
                 .check_is_owner_internal(caller)?
                 .register_dropped(canister_id, &state_lock)
         })
+    }
+
+    // Important: This function *must* be defined to be the
+    // last one in the trait because it depends on the order
+    // of expansion of update/query(trait = true) methods.
+    fn get_idl() -> Idl {
+        generate_idl!()
     }
 }
 
