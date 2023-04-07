@@ -57,7 +57,12 @@ pub fn idl() -> String {
     use ic_canister::Idl;
 
     let canister_c_idl = generate_idl!();
-    candid::bindings::candid::compile(&canister_c_idl.env.env, &Some(canister_c_idl.actor))
+
+    let mut metrics_idl = <CanisterC as Metrics>::get_idl();
+
+    metrics_idl.merge(&canister_c_idl);
+
+    candid::bindings::candid::compile(&metrics_idl.env.env, &Some(metrics_idl.actor))
 }
 
 #[cfg(test)]
