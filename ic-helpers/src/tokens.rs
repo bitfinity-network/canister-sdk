@@ -246,12 +246,16 @@ impl Tokens256 {
     pub fn to_tokens128(&self) -> Option<Tokens128> {
         let bytes = self.0.to_le_bytes();
         let mut num = 0;
-        for (i, &byte) in bytes.iter().enumerate().take(Tokens128::BYTE_LENGTH) {
-            num += byte as u128 * 256u128.pow(i as u32);
+
+        if bytes[Tokens128::BYTE_LENGTH..]
+            .iter()
+            .any(|&byte| byte != 0)
+        {
+            return None;
         }
 
-        if bytes[16..].iter().any(|&byte| byte != 0) {
-            return None;
+        for (i, &byte) in bytes.iter().enumerate().take(Tokens128::BYTE_LENGTH) {
+            num += byte as u128 * 256u128.pow(i as u32);
         }
 
         Some(Tokens128::from(num))
