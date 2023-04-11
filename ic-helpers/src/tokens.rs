@@ -66,6 +66,9 @@ impl Tokens128 {
     /// Max value.
     pub const MAX: Tokens128 = Tokens128 { amount: u128::MAX };
 
+    /// Byte size of the Tokens128 value.
+    pub const BYTE_LENGTH: usize = size_of::<u128>();
+
     /// Returns true if the amount of the tokens is 0.
     pub fn is_zero(&self) -> bool {
         *self == Self::ZERO
@@ -238,14 +241,23 @@ impl Tokens256 {
     /// Number of bytes needed to represent the value.
     pub const BYTE_LENGTH: usize = 256 / 8;
 
-    /// Converts the value to Tokens128. Returns `None` if the value is greater than `Tokens128::MAX`.
+    /// Converts the value to Tokens128. Returns `None` if the value is greater
+    /// than `Tokens128::MAX`.
     pub fn to_tokens128(&self) -> Option<Tokens128> {
-        let limbs = self.0.limbs();
-        if limbs[2].0 != 0 || limbs[3].0 != 0 {
+        let bytes = self.0.to_le_bytes();
+        let mut num = 0;
+
+        if bytes[Tokens128::BYTE_LENGTH..]
+            .iter()
+            .any(|&byte| byte != 0)
+        {
             return None;
         }
 
-        let num = limbs[0].0 as u128 + limbs[1].0 as u128 * (u64::MAX as u128 + 1);
+        for (i, &byte) in bytes.iter().enumerate().take(Tokens128::BYTE_LENGTH) {
+            num += byte as u128 * 256u128.pow(i as u32);
+        }
+
         Some(Tokens128::from(num))
     }
 
@@ -360,7 +372,7 @@ impl<'de> Deserialize<'de> for Tokens256 {
     }
 }
 
-// Default U256 debug prints the number as a set of limbs, and to_string() uses hex formatting, which is inconvinient
+// Default U256 debug prints the number as a set of limbs, and to_string() uses hex formatting, which is inconvenient
 // for debugging. This implementation writes the inner number as decimal. It's not that fast but it shouldn't be
 // a problem since it's supposed to be used only for debugging.
 impl std::fmt::Debug for Tokens256 {
