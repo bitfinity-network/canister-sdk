@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{btreemap, cell, log};
+use ic_exports::stable_structures::{btreemap, cell, log, GrowFailed};
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -43,5 +43,11 @@ impl From<log::InitError> for Error {
     fn from(_: log::InitError) -> Self {
         // All `log::InitError` variants is versioning errors.
         Self::IncompatibleVersions
+    }
+}
+
+impl From<GrowFailed> for Error {
+    fn from(_: GrowFailed) -> Self {
+        Self::OutOfStableMemory
     }
 }

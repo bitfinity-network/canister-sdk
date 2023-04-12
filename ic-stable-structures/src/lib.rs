@@ -19,7 +19,7 @@ use ic_exports::stable_structures::DefaultMemoryImpl;
 pub use ic_exports::stable_structures::{BoundedStorable, Storable};
 pub use multimap::{Iter, RangeIter};
 pub use storage::{
-    get_memory_by_id, StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap,
+    get_memory_by_id, StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap, StableVec
 };
 pub use unbounded::{ChunkSize, Iter as UnboundedIter, SlicedStorable};
 
