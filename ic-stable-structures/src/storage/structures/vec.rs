@@ -37,16 +37,16 @@ impl<T: BoundedStorable> StableVec<T> {
     }
 
     pub fn get(&self, index: u64) -> Option<T> {
-        self.get_inner().map(|v| v.get(index)).flatten()
+        self.get_inner().and_then(|v| v.get(index))
     }
 
     pub fn push(&mut self, item: &T) -> Result<()> {
         let vec = self.mut_or_create_inner()?;
-        vec.push(&item).map_err(Into::into)
+        vec.push(item).map_err(Into::into)
     }
 
     pub fn pop(&mut self) -> Option<T> {
-        self.mut_inner().map(|v| v.pop()).flatten()
+        self.mut_inner().and_then(|v| v.pop())
     }
 
     fn get_inner(&self) -> Option<&InnerVec<T>> {
@@ -61,9 +61,9 @@ impl<T: BoundedStorable> StableVec<T> {
 
     fn mut_or_create_inner(&mut self) -> Result<&mut InnerVec<T>> {
         let canister_id = ic::id();
-        if !self.data.contains_key(&canister_id) {
+        if let std::collections::btree_map::Entry::Vacant(e) = self.data.entry(canister_id) {
             let vec = InnerVec::new(crate::get_memory_by_id(self.memory_id))?;
-            self.data.insert(canister_id, vec);
+            e.insert(vec);
         }
 
         Ok(self.data.get_mut(&canister_id).unwrap())
