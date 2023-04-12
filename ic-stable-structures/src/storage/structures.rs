@@ -9,5 +9,5 @@ mod btreemap;
 mod cell;
 mod log;
 mod multimap;
-mod vec;
 mod unbounded;
+mod vec;

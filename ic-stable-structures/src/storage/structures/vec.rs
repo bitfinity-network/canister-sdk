@@ -1,6 +1,10 @@
-use std::{collections::BTreeMap};
+use std::collections::BTreeMap;
 
-use ic_exports::{stable_structures::{BoundedStorable, memory_manager::MemoryId, Vec}, Principal, ic_kit::ic};
+use ic_exports::{
+    ic_kit::ic,
+    stable_structures::{memory_manager::MemoryId, BoundedStorable, Vec},
+    Principal,
+};
 
 use crate::{Memory, Result};
 
@@ -89,7 +93,10 @@ mod tests {
         get_context().update_id(mock_principals::bob());
     }
 
-    fn check_values<T: BoundedStorable + Eq + Debug>(vec: &StableVec<T>, expected_vec: &std::vec::Vec<T>) {
+    fn check_values<T: BoundedStorable + Eq + Debug>(
+        vec: &StableVec<T>,
+        expected_vec: &std::vec::Vec<T>,
+    ) {
         assert_eq!(vec.is_empty(), expected_vec.is_empty());
         assert_eq!(vec.len(), expected_vec.len() as u64);
 

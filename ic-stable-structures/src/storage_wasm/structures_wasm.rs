@@ -1,5 +1,5 @@
 use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::{btreemap, cell, log, BoundedStorable, Storable, vec};
+use ic_exports::stable_structures::{btreemap, cell, log, vec, BoundedStorable, Storable};
 
 use crate::unbounded::{self, SlicedStorable};
 use crate::{get_memory_by_id, multimap, Error, Iter, Memory, RangeIter, Result};
@@ -304,7 +304,9 @@ pub struct StableVec<T: BoundedStorable>(vec::Vec<T, Memory>);
 
 impl<T: BoundedStorable> StableVec<T> {
     pub fn new(memory_id: MemoryId) -> Result<Self> {
-        Ok(Self(vec::Vec::<T, Memory>::new(get_memory_by_id(memory_id))?))
+        Ok(Self(vec::Vec::<T, Memory>::new(get_memory_by_id(
+            memory_id,
+        ))?))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -331,7 +333,6 @@ impl<T: BoundedStorable> StableVec<T> {
     pub fn pop(&mut self) -> Option<T> {
         self.0.pop()
     }
-
 }
 
 #[cfg(test)]
