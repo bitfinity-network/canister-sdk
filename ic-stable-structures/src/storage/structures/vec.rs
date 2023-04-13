@@ -59,6 +59,7 @@ impl<T: BoundedStorable> StableVec<T> {
 
     fn mut_or_create_inner(&mut self) -> Result<&mut InnerVec<T>> {
         let canister_id = ic::id();
+
         if let std::collections::btree_map::Entry::Vacant(e) = self.data.entry(canister_id) {
             let vec = InnerVec::new(crate::get_memory_by_id(self.memory_id))?;
             e.insert(vec);
