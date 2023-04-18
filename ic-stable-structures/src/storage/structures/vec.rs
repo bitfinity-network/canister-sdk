@@ -25,6 +25,15 @@ impl<T: BoundedStorable> StableVec<T> {
         self.get_inner().map_or(true, InnerVec::is_empty)
     }
 
+    pub fn clear(&mut self) -> Result<()> {
+        let memory_id = self.memory_id;
+        if let Some(vec) = self.mut_inner() {
+            *vec = InnerVec::new(crate::get_memory_by_id(memory_id))?;
+        }
+
+        Ok(())
+    }
+
     pub fn len(&self) -> u64 {
         self.get_inner().map_or(0, InnerVec::len)
     }
@@ -176,6 +185,33 @@ mod tests {
         assert_eq!(vec.pop(), Some(1));
         check_empty(&vec);
         assert_eq!(vec.pop(), None);
+        check_empty(&vec);
+    }
+
+    #[test]
+    fn should_clear() {
+        init_context();
+
+        let mut vec = StableVec::<u64>::new(MemoryId::new(0)).unwrap();
+
+        vec.push(&1).unwrap();
+        vec.push(&2).unwrap();
+        vec.push(&3).unwrap();
+
+        set_bob_id();
+        vec.push(&4).unwrap();
+        vec.push(&5).unwrap();
+
+        set_alice_id();
+        vec.clear().unwrap();
+        check_empty(&vec);
+
+        vec.clear().unwrap();
+        check_empty(&vec);
+
+        set_bob_id();
+        check_values(&vec, &vec![4, 5]);
+        vec.clear().unwrap();
         check_empty(&vec);
     }
 }

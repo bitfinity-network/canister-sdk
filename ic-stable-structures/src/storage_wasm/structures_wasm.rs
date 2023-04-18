@@ -300,17 +300,23 @@ where
     }
 }
 
-pub struct StableVec<T: BoundedStorable>(vec::Vec<T, Memory>);
+pub struct StableVec<T: BoundedStorable>(vec::Vec<T, Memory>, MemoryId);
 
 impl<T: BoundedStorable> StableVec<T> {
     pub fn new(memory_id: MemoryId) -> Result<Self> {
-        Ok(Self(vec::Vec::<T, Memory>::new(get_memory_by_id(
+        Ok(Self(
+            vec::Vec::<T, Memory>::new(get_memory_by_id(memory_id))?,
             memory_id,
-        ))?))
+        ))
     }
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn clear(&mut self) -> Result<()> {
+        self.0 = vec::Vec::<T, Memory>::new(get_memory_by_id(self.1))?;
+        Ok(())
     }
 
     pub fn len(&self) -> u64 {
@@ -459,6 +465,19 @@ mod tests {
         assert_eq!(vec.get(0), None);
 
         assert_eq!(vec.pop(), None);
+        assert!(vec.is_empty());
+        assert_eq!(vec.len(), 0);
+        assert_eq!(vec.get(0), None);
+
+        vec.clear();
+        assert!(vec.is_empty());
+        assert_eq!(vec.len(), 0);
+        assert_eq!(vec.get(0), None);
+
+        vec.push(&1).unwrap();
+        vec.push(&2).unwrap();
+
+        vec.clear();
         assert!(vec.is_empty());
         assert_eq!(vec.len(), 0);
         assert_eq!(vec.get(0), None);
