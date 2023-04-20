@@ -56,6 +56,10 @@ impl<T: BoundedStorable> StableVec<T> {
         self.mut_inner().and_then(|v| v.pop())
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
+        self.get_inner().map(|v| v.iter()).into_iter().flatten()
+    }
+
     fn get_inner(&self) -> Option<&InnerVec<T>> {
         let canister_id = ic::id();
         self.data.get(&canister_id)
@@ -213,5 +217,26 @@ mod tests {
         check_values(&vec, &vec![4, 5]);
         vec.clear().unwrap();
         check_empty(&vec);
+    }
+
+    #[test]
+    fn should_iter() {
+        init_context();
+        let mut vec = StableVec::<u64>::new(MemoryId::new(0)).unwrap();
+
+        vec.push(&1).unwrap();
+        vec.push(&2).unwrap();
+        vec.push(&3).unwrap();
+
+        set_bob_id();
+        let mut iter = vec.iter();
+        assert_eq!(None, iter.next());
+
+        set_alice_id();
+        let mut iter = vec.iter();
+        assert_eq!(Some(1), iter.next());
+        assert_eq!(Some(2), iter.next());
+        assert_eq!(Some(3), iter.next());
+        assert_eq!(None, iter.next());
     }
 }

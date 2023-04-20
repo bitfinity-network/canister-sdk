@@ -339,6 +339,10 @@ impl<T: BoundedStorable> StableVec<T> {
     pub fn pop(&mut self) -> Option<T> {
         self.0.pop()
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
+        self.0.iter()
+    }
 }
 
 #[cfg(test)]
@@ -469,17 +473,23 @@ mod tests {
         assert_eq!(vec.len(), 0);
         assert_eq!(vec.get(0), None);
 
-        vec.clear();
+        vec.clear().unwrap();
         assert!(vec.is_empty());
         assert_eq!(vec.len(), 0);
         assert_eq!(vec.get(0), None);
 
         vec.push(&1).unwrap();
         vec.push(&2).unwrap();
+        let mut iter = vec.iter();
+        assert_eq!(Some(1), iter.next());
+        assert_eq!(Some(2), iter.next());
+        assert_eq!(None, iter.next());
+        drop(iter);
 
-        vec.clear();
+        vec.clear().unwrap();
         assert!(vec.is_empty());
         assert_eq!(vec.len(), 0);
         assert_eq!(vec.get(0), None);
+        assert_eq!(None, vec.iter().next());
     }
 }
