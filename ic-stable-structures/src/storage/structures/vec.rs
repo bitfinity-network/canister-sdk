@@ -8,12 +8,15 @@ use crate::{Memory, Result};
 
 type InnerVec<T> = Vec<T, Memory>;
 
+/// A stable analogue of the `std::vec::Vec`:
+/// integer-indexed collection of mutable values that is able to grow.
 pub struct StableVec<T: BoundedStorable> {
     data: BTreeMap<Principal, InnerVec<T>>,
     memory_id: MemoryId,
 }
 
 impl<T: BoundedStorable> StableVec<T> {
+    /// Creates new `StableVec`
     pub fn new(memory_id: MemoryId) -> Result<Self> {
         Ok(Self {
             data: Default::default(),
@@ -21,10 +24,12 @@ impl<T: BoundedStorable> StableVec<T> {
         })
     }
 
+    /// Returns if vector is empty
     pub fn is_empty(&self) -> bool {
         self.get_inner().map_or(true, InnerVec::is_empty)
     }
 
+    /// Removes al the values from the vector
     pub fn clear(&mut self) -> Result<()> {
         let memory_id = self.memory_id;
         if let Some(vec) = self.mut_inner() {
@@ -34,28 +39,34 @@ impl<T: BoundedStorable> StableVec<T> {
         Ok(())
     }
 
+    /// Returns the number of elements in the vector
     pub fn len(&self) -> u64 {
         self.get_inner().map_or(0, InnerVec::len)
     }
 
+    /// Sets the value at `index` to `item`
     pub fn set(&mut self, index: u64, item: &T) -> Result<()> {
         self.mut_or_create_inner()?.set(index, item);
         Ok(())
     }
 
+    /// Returns the value at `index`
     pub fn get(&self, index: u64) -> Option<T> {
         self.get_inner().and_then(|v| v.get(index))
     }
 
+    /// Appends new value to the vector
     pub fn push(&mut self, item: &T) -> Result<()> {
         let vec = self.mut_or_create_inner()?;
         vec.push(item).map_err(Into::into)
     }
 
+    /// Pops the last value from the vector
     pub fn pop(&mut self) -> Option<T> {
         self.mut_inner().and_then(|v| v.pop())
     }
 
+    /// Returns iterator over the elements in the vector
     pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
         self.get_inner().map(|v| v.iter()).into_iter().flatten()
     }
