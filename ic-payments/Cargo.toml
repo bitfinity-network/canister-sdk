@@ -10,7 +10,6 @@ state-machine = ["ic-exports/state-machine"]
 ic-exports = { path = "../ic-exports" }
 ic-canister = { path = "../ic-canister/ic-canister" }
 ic-storage = { path = "../ic-storage" }
-ic-helpers = { path = "../ic-helpers" }
 ic-stable-structures = { path = "../ic-stable-structures/" }
 serde = "1.0"
 candid = "0.8"

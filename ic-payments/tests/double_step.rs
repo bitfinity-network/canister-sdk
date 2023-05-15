@@ -46,7 +46,7 @@ async fn second_stage_rejected() {
         move |_: (TransferArg,)| {
             let count = counter.fetch_add(1, Ordering::Relaxed);
             if count == 0 {
-                Ok::<Nat, TransferError>(Nat::from(1))
+                Ok::<Nat, TransferError>(1.into())
             } else {
                 Err::<Nat, TransferError>(TransferError::TemporarilyUnavailable)
             }
@@ -97,7 +97,7 @@ async fn credit_on_error_second_stage_failed() {
         move |_: (TransferArg,)| {
             let count = counter.fetch_add(1, Ordering::Relaxed);
             if count == 0 {
-                Ok::<Nat, TransferError>(Nat::from(1))
+                Ok::<Nat, TransferError>(1.into())
             } else {
                 Err::<Nat, TransferError>(TransferError::TemporarilyUnavailable)
             }
@@ -141,7 +141,7 @@ async fn recover_first_stage() {
 
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(1));
+    assert_eq!(results[0].as_ref().unwrap().0, 1);
     assert_eq!(TestBalances::balance_of(alice()), 980);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
@@ -152,7 +152,7 @@ async fn recover_second_stage() {
     let counter = Arc::new(AtomicUsize::new(0));
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
         if counter.fetch_add(1, Ordering::Relaxed) == 0 {
-            let response: Result<Nat, TransferError> = Ok(Nat::from(1));
+            let response: Result<Nat, TransferError> = Ok(1.into());
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
@@ -175,7 +175,7 @@ async fn recover_second_stage() {
     let results = terminal.recover_all().await;
 
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(2));
+    assert_eq!(results[0].as_ref().unwrap().0, 2);
     assert_eq!(TestBalances::balance_of(alice()), 980);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
@@ -261,7 +261,7 @@ async fn recover_first_stage_old_non_zero_balance() {
     let was_called = setup_recovery_responses(interim_acc, 990, 3);
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(3));
+    assert_eq!(results[0].as_ref().unwrap().0, 3);
     assert_eq!(TestBalances::balance_of(alice()), 980);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
@@ -274,7 +274,7 @@ async fn recover_second_stage_old_non_zero_balance() {
     let call_counter = Arc::new(AtomicUsize::new(0));
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
         if call_counter.fetch_add(1, Ordering::Relaxed) == 0 {
-            let response: Result<Nat, TransferError> = Ok(Nat::from(1));
+            let response: Result<Nat, TransferError> = Ok(1.into());
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
@@ -299,7 +299,7 @@ async fn recover_second_stage_old_non_zero_balance() {
     let was_called = setup_recovery_responses(interim_acc, 990, 3);
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(3));
+    assert_eq!(results[0].as_ref().unwrap().0, 3);
     assert_eq!(TestBalances::balance_of(alice()), 980);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
@@ -312,7 +312,7 @@ async fn recover_second_stage_old_zero_balance() {
     let call_counter = Arc::new(AtomicUsize::new(0));
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
         if call_counter.fetch_add(1, Ordering::Relaxed) == 0 {
-            let response: Result<Nat, TransferError> = Ok(Nat::from(1));
+            let response: Result<Nat, TransferError> = Ok(1.into());
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
@@ -337,7 +337,7 @@ async fn recover_second_stage_old_zero_balance() {
     let was_called = setup_recovery_responses(interim_acc, 0, 3);
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(UNKNOWN_TX_ID));
+    assert_eq!(results[0].as_ref().unwrap().0, UNKNOWN_TX_ID);
     assert_eq!(TestBalances::balance_of(alice()), 980);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
@@ -358,7 +358,7 @@ async fn recover_multiple_transfers() {
         if call_number < SUCCESSFUL_COUNT * 2 {
             println!("ok");
             let tx_id = transaction_counter.fetch_add(1, Ordering::Relaxed) as u128;
-            let response: Result<Nat, TransferError> = Ok(Nat::from(tx_id));
+            let response: Result<Nat, TransferError> = Ok(tx_id.into());
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else if call_number < SUCCESSFUL_COUNT * 2 + PARTIALLY_SUCCESSFUL_COUNT * 2
@@ -368,7 +368,7 @@ async fn recover_multiple_transfers() {
         {
             println!("kinda ok");
             let tx_id = transaction_counter.fetch_add(1, Ordering::Relaxed) as u128;
-            let response: Result<Nat, TransferError> = Ok(Nat::from(tx_id));
+            let response: Result<Nat, TransferError> = Ok(tx_id.into());
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
@@ -401,10 +401,7 @@ async fn recover_multiple_transfers() {
     assert_eq!(successes, SUCCESSFUL_COUNT);
     assert_eq!(errors, TRANSFER_COUNT - SUCCESSFUL_COUNT);
 
-    assert_eq!(
-        TestBalances::balance_of(alice()),
-        980 * SUCCESSFUL_COUNT as i128
-    );
+    assert_eq!(TestBalances::balance_of(alice()), 980 * SUCCESSFUL_COUNT);
     assert_eq!(StableRecoveryList::<0>.list().len(), errors);
 
     register_virtual_responder::<_, _, Nat>(
@@ -418,9 +415,6 @@ async fn recover_multiple_transfers() {
     assert_eq!(results.len(), errors);
     assert!(results.iter().all(|v| v.is_ok()));
 
-    assert_eq!(
-        TestBalances::balance_of(alice()),
-        980 * TRANSFER_COUNT as i128
-    );
+    assert_eq!(TestBalances::balance_of(alice()), 980 * TRANSFER_COUNT);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }

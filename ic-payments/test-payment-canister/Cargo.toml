@@ -17,7 +17,6 @@ serde = "1.0"
 ic-exports = {path = "../../ic-exports"}
 ic-storage = {path = "../../ic-storage"}
 ic-canister = {path = "../../ic-canister/ic-canister"}
-ic-helpers = {path = "../../ic-helpers"}
 ic-payments = {path = "../"}
 
 [dev-dependencies]

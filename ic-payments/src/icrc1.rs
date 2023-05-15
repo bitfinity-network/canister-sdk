@@ -5,7 +5,7 @@ use ic_exports::ic_icrc1::{Account, Memo, Subaccount};
 use ic_exports::serde::Deserialize;
 use ic_exports::Principal;
 
-use crate::error::{InternalPaymentError, Result};
+use crate::error::Result;
 use crate::{Timestamp, TokenConfiguration, TxId};
 
 #[derive(Debug, CandidType, Deserialize, Clone)]

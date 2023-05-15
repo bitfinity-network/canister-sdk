@@ -36,13 +36,13 @@ async fn transfer_args() {
         token_principal(),
         "icrc1_transfer",
         move |(args,): (TransferArg,)| {
-            assert_eq!(args.amount, transfer.amount().to_nat() - Nat::from(10));
+            assert_eq!(args.amount, transfer.amount() - 10);
             assert_eq!(args.fee, Some(10.into()));
             assert_eq!(args.from_subaccount, Some([3; 32]));
             assert_eq!(args.to, transfer.to());
             assert_eq!(args.created_at_time, Some(transfer.created_at()));
 
-            Ok::<Nat, TransferError>(Nat::from(1))
+            Ok::<Nat, TransferError>(1.into())
         },
     );
 
@@ -125,7 +125,7 @@ async fn retry_with_success() {
     };
 
     let tx_id = terminal.transfer(transfer, 3).await.unwrap();
-    assert_eq!(tx_id, Nat::from(1));
+    assert_eq!(tx_id, 1);
     assert_eq!(TestBalances::balance_of(alice()), 990);
     assert_eq!(counter_clone.load(Ordering::Relaxed), 2);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
@@ -217,7 +217,7 @@ async fn recovery_with_success() {
 
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].as_ref().unwrap().0, Nat::from(1));
+    assert_eq!(results[0].as_ref().unwrap().0, 1);
     assert_eq!(TestBalances::balance_of(alice()), 990);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
@@ -370,7 +370,7 @@ async fn bad_fee_rerequest() {
     let config_change_is_called = Arc::new(AtomicBool::new(false));
     let config_change_is_called_clone = config_change_is_called.clone();
     let mut terminal = init_test().on_config_update(move |config| {
-        assert_eq!(config.fee, 100.into());
+        assert_eq!(config.fee, 100);
         assert_eq!(config.minting_account, minting_account());
         config_change_is_called_clone.store(true, Ordering::Relaxed);
     });
@@ -403,6 +403,6 @@ async fn bad_fee_rerequest() {
     assert_eq!(TestBalances::balance_of(alice()), 900);
     assert_eq!(StableRecoveryList::<0>.list().len(), 0);
 
-    assert_eq!(terminal.fee(), 100.into());
+    assert_eq!(terminal.fee(), 100);
     assert!(config_change_is_called.load(Ordering::Relaxed));
 }

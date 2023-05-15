@@ -147,7 +147,7 @@ impl TokenConfiguration {
         if *from_acc == self.minting_account || *to_acc == self.minting_account {
             0.into()
         } else {
-            self.fee
+            self.fee.clone()
         }
     }
 }
