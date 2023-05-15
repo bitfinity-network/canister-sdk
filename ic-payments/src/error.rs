@@ -105,10 +105,9 @@ pub enum ParametersError {
         "amount to transfer {actual} is smaller than minimum possible value {minimum_required}"
     )]
     AmountTooSmall { minimum_required: Nat, actual: Nat },
+
     #[error("target account cannot be equal to the source account")]
     TargetAccountInvalid,
-    #[error("fee value is too large")]
-    FeeTooLarge,
 }
 
 impl From<(RejectionCode, String)> for InternalPaymentError {

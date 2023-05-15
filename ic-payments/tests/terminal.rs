@@ -2,7 +2,7 @@ use common::*;
 use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::mock_principals::alice;
 use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
-use ic_payments::{TokenConfiguration, Transfer};
+use ic_payments::{Balances, TokenConfiguration, Transfer};
 
 pub mod common;
 
@@ -30,20 +30,22 @@ async fn deposit_with_error() {
 async fn withdraw_with_success() {
     let mut terminal = init_test();
     setup_success(1);
+    TestBalances.credit(alice(), 3000.into()).unwrap();
 
     let (tx_id, amount) = terminal.withdraw(alice(), 1000.into()).await.unwrap();
     assert_eq!(tx_id, 1);
     assert_eq!(amount, 980);
-    assert_eq!(TestBalances::balance_of(alice()), -1000);
+    assert_eq!(TestBalances::balance_of(alice()), 2000);
 }
 
 #[tokio::test]
 async fn withdraw_with_error() {
     let mut terminal = init_test();
     setup_error();
+    TestBalances.credit(alice(), 3000.into()).unwrap();
 
     terminal.withdraw(alice(), 1000.into()).await.unwrap_err();
-    assert_eq!(TestBalances::balance_of(alice()), 0);
+    assert_eq!(TestBalances::balance_of(alice()), 3000);
 }
 
 #[test]

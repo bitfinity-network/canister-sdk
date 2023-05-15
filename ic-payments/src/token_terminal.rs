@@ -75,9 +75,9 @@ type ConfigChangePredicate = dyn Fn(&TokenConfiguration) + Send + Sync + 'static
 /// // Send tokens to the `caller`. The sent `received` amount will be deduced from the `caller`
 /// // balance in `balances_impl`, but the actual amount the caller will receive to their token
 /// // account is `received - transfer_fee`.
-/// let (_tx_id, sent) = terminal.withdraw(caller, received).await?;
+/// let (_tx_id, sent) = terminal.withdraw(caller, received.clone()).await?;
 ///
-/// assert_eq!(sent.amount, received.amount - token_config.fee.amount);
+/// assert_eq!(sent, received - token_config.fee.clone());
 /// # Ok::<(), ic_payments::PaymentError>(())
 /// # };
 /// ```

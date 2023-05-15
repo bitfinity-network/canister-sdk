@@ -405,7 +405,10 @@ mod tests {
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
-                ParametersError::FeeTooLarge
+                ParametersError::AmountTooSmall {
+                    minimum_required: transfer.fee.clone() + 1,
+                    actual: 1000.into(),
+                }
             ))
         );
     }
@@ -526,7 +529,10 @@ mod tests {
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
-                ParametersError::FeeTooLarge
+                ParametersError::AmountTooSmall {
+                    minimum_required: transfer.fee.clone() + 1,
+                    actual: 1000.into(),
+                }
             ))
         );
     }
