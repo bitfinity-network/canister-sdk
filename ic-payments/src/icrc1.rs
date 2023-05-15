@@ -4,7 +4,6 @@ use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
 use ic_exports::ic_icrc1::{Account, Memo, Subaccount};
 use ic_exports::serde::Deserialize;
 use ic_exports::Principal;
-use ic_helpers::tokens::Tokens128;
 
 use crate::error::{InternalPaymentError, Result};
 use crate::{Timestamp, TokenConfiguration, TxId};
@@ -16,21 +15,20 @@ pub struct TokenTransferInfo {
     /// Principal of the transferred token.
     pub token_principal: Principal,
     /// Amount of tokens were transferred to the principal.
-    pub amount_transferred: Tokens128,
+    pub amount_transferred: Nat,
 }
 
 /// Returns current balance of the `account` in the ICRC-1 `token` canister.
-pub async fn get_icrc1_balance(token: Principal, account: &Account) -> Result<Tokens128> {
-    let result = virtual_canister_call!(token, "icrc1_balance_of", (account,), Nat).await?;
-    Tokens128::from_nat(&result).ok_or(InternalPaymentError::Overflow)
+pub async fn get_icrc1_balance(token: Principal, account: &Account) -> Result<Nat> {
+    Ok(virtual_canister_call!(token, "icrc1_balance_of", (account,), Nat).await?)
 }
 
 /// Requests a transfer in an ICRC-1 `token` canister.
 pub async fn transfer_icrc1(
     token: Principal,
     to: Account,
-    amount: Tokens128,
-    fee: Tokens128,
+    amount: Nat,
+    fee: Nat,
     from_subaccount: Option<Subaccount>,
     created_at_time: Option<Timestamp>,
     memo: Option<Memo>,
@@ -38,8 +36,8 @@ pub async fn transfer_icrc1(
     let args = TransferArg {
         from_subaccount,
         to,
-        amount: amount.to_nat(),
-        fee: Some(fee.to_nat()),
+        amount: amount.clone(),
+        fee: Some(fee),
         memo,
         created_at_time,
     };
@@ -73,8 +71,8 @@ pub async fn get_icrc1_configuration(token: Principal) -> Result<TokenConfigurat
 }
 
 /// Requests fee configuration from an ICRC-1 canister.
-pub async fn get_icrc1_fee(token: Principal) -> Result<Tokens128> {
-    Ok(virtual_canister_call!(token, "icrc1_fee", (), Tokens128).await?)
+pub async fn get_icrc1_fee(token: Principal) -> Result<Nat> {
+    Ok(virtual_canister_call!(token, "icrc1_fee", (), Nat).await?)
 }
 
 /// Requests minting account configuration from an ICRC-1 canister.

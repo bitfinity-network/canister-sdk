@@ -1,12 +1,11 @@
 use std::sync::atomic::AtomicU64;
 
 use async_recursion::async_recursion;
-use candid::Principal;
+use candid::{Nat, Principal};
 use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_icrc1::endpoints::TransferError;
 use ic_exports::ic_icrc1::{Account, Subaccount};
 use ic_exports::ic_kit::ic;
-use ic_helpers::tokens::Tokens128;
 
 use crate::error::{InternalPaymentError, PaymentError, RecoveryDetails, TransferFailReason};
 use crate::icrc1::{self, get_icrc1_balance, get_icrc1_minting_account, TokenTransferInfo};
@@ -155,10 +154,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     ///
     /// The amount the caller will receive on their balance is `interim_account_balance -
     /// transfer_fee`, where `transfer_fee` is the fee set by the token canister.
-    pub async fn deposit_all(
-        &mut self,
-        caller: Principal,
-    ) -> Result<(TxId, Tokens128), PaymentError> {
+    pub async fn deposit_all(&mut self, caller: Principal) -> Result<(TxId, Nat), PaymentError> {
         let account = get_deposit_interim_account(caller);
         let balance = get_icrc1_balance(self.token_config.principal, &account).await?;
         self.deposit(caller, balance).await
@@ -186,8 +182,8 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     pub async fn deposit(
         &mut self,
         caller: Principal,
-        amount: Tokens128,
-    ) -> Result<(TxId, Tokens128), PaymentError> {
+        amount: Nat,
+    ) -> Result<(TxId, Nat), PaymentError> {
         let to = PrincipalId(ic::id()).into();
         let memo = TX_COUNTER
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
@@ -197,7 +193,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
             caller,
             to,
             get_principal_subaccount(caller),
-            amount,
+            amount.clone(),
         )
         .with_operation(Operation::CreditOnSuccess)
         .with_memo(memo);

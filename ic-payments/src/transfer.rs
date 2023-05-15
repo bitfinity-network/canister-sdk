@@ -1,7 +1,6 @@
-use candid::{CandidType, Deserialize, Principal};
+candid::{CandidType, Deserialize, Nat, Principal};
 use ic_exports::ic_icrc1::{Account, Memo, Subaccount};
 use ic_exports::ic_kit::ic;
-use ic_helpers::tokens::Tokens128;
 
 use crate::error::{InternalPaymentError, ParametersError};
 use crate::icrc1::{self, TokenTransferInfo};
@@ -25,10 +24,10 @@ pub struct Transfer {
 
     /// Amount to transfer. This amount includes the fee, so the actual value that will be received
     /// by the `to` account is `amount - fee`.
-    pub amount: Tokens128,
+    pub amount: Nat,
 
     /// Transaction fee.
-    pub fee: Tokens128,
+    pub fee: Nat,
 
     /// Operation to execute after the transfer finished.
     pub operation: Operation,
@@ -100,7 +99,7 @@ impl Transfer {
         caller: Principal,
         to: Account,
         from_subaccount: Option<Subaccount>,
-        amount: Tokens128,
+        amount: Nat,
     ) -> Self {
         let fee = token_config.get_fee(
             &Account {
@@ -254,40 +253,41 @@ impl Transfer {
     ///    is set to 0 according to ICRC-1 standard.
     /// 2. If the transfer is double-step, effective fee will be twice the configured amount, since
     ///    the transfer requires two transactions to be completed.
-    pub fn effective_fee(&self) -> Result<Tokens128, InternalPaymentError> {
+    pub fn effective_fee(&self) -> Nat {
         match self.r#type {
-            TransferType::DoubleStep(Stage::First, _) => {
-                (self.fee * Tokens128::from(2)).to_tokens128().ok_or(
-                    InternalPaymentError::InvalidParameters(ParametersError::FeeTooLarge),
-                )
-            }
-            _ => Ok(self.fee),
+            TransferType::DoubleStep(Stage::First, _) => self.fee * Nat::from(2),
+            _ => self.fee,
         }
     }
 
-    fn min_amount(&self) -> Result<Tokens128, InternalPaymentError> {
-        (self.effective_fee()? + Tokens128::from(1)).ok_or(InternalPaymentError::InvalidParameters(
-            ParametersError::FeeTooLarge,
-        ))
+    fn min_amount(&self) -> Nat {
+        self.effective_fee() + Nat::from(1)
     }
 
     /// Amount to be transferred.
-    pub fn amount(&self) -> Tokens128 {
+    pub fn amount(&self) -> Nat {
         self.amount
     }
 
-    pub(crate) fn amount_minus_fee(&self) -> Tokens128 {
-        self.amount.saturating_sub(self.fee)
+    pub(crate) fn amount_minus_fee(&self) -> Nat {
+        match self.amount > self.fee {
+            true => self.amount - self.fee,
+            false => 0.into(),
+        }
     }
 
     /// Amount that `to` account will receive after the transfer is complete.
-    pub fn final_amount(&self) -> Result<Tokens128, InternalPaymentError> {
-        (self.amount - self.effective_fee()?).ok_or(InternalPaymentError::InvalidParameters(
-            ParametersError::AmountTooSmall {
-                minimum_required: self.min_amount()?,
-                actual: self.amount,
-            },
-        ))
+    pub fn final_amount(&self) -> Result<Nat, InternalPaymentError> {
+        let effective_fee = self.effective_fee();
+        match self.amount > effective_fee {
+            true => Ok(self.amount - effective_fee),
+            false => Err(ParametersError::AmountTooSmall 
+                {
+                    minimum_required: self.min_amount(),
+                    actual: self.amount,
+                }.into()
+            ),
+        }
     }
 
     /// Operation to be executed after the transfer is completed.
