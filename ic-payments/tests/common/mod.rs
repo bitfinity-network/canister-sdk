@@ -6,13 +6,12 @@ use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
 use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::mock_principals::alice;
 use ic_exports::ic_kit::MockContext;
-use ic_helpers::tokens::Tokens128;
 use ic_payments::recovery_list::StableRecoveryList;
 use ic_payments::{BalanceError, Balances, TokenConfiguration, TokenTerminal, Transfer};
 
 pub enum BalanceOperation {
-    Credit(Principal, Tokens128),
-    Debit(Principal, Tokens128),
+    Credit(Principal, Nat),
+    Debit(Principal, Nat),
 }
 
 impl BalanceOperation {
@@ -23,10 +22,10 @@ impl BalanceOperation {
         }
     }
 
-    fn amount(&self) -> i128 {
+    fn perform(&self, with: Nat) -> Nat {
         match self {
-            Self::Credit(_, amount) => amount.amount as i128,
-            Self::Debit(_, amount) => -(amount.amount as i128),
+            Self::Credit(_, amount) => with + amount.clone(),
+            Self::Debit(_, amount) => with - amount.clone(),
         }
     }
 }
@@ -34,27 +33,19 @@ impl BalanceOperation {
 pub struct TestBalances;
 
 impl Balances for TestBalances {
-    fn credit(
-        &mut self,
-        recipient: Principal,
-        amount: Tokens128,
-    ) -> Result<Tokens128, BalanceError> {
+    fn credit(&mut self, recipient: Principal, amount: Nat) -> Result<Nat, BalanceError> {
         BALANCES.with(|v| {
             v.borrow_mut()
-                .push(BalanceOperation::Credit(recipient, amount))
+                .push(BalanceOperation::Credit(recipient, amount.clone()))
         });
 
         Ok(amount)
     }
 
-    fn debit(
-        &mut self,
-        account_owner: Principal,
-        amount: Tokens128,
-    ) -> Result<Tokens128, BalanceError> {
+    fn debit(&mut self, account_owner: Principal, amount: Nat) -> Result<Nat, BalanceError> {
         BALANCES.with(|v| {
             v.borrow_mut()
-                .push(BalanceOperation::Debit(account_owner, amount))
+                .push(BalanceOperation::Debit(account_owner, amount.clone()))
         });
 
         Ok(amount)
@@ -62,13 +53,12 @@ impl Balances for TestBalances {
 }
 
 impl TestBalances {
-    pub fn balance_of(principal: Principal) -> i128 {
+    pub fn balance_of(principal: Principal) -> Nat {
         BALANCES.with(|v| {
             v.borrow()
                 .iter()
                 .filter(|entry| entry.of() == principal)
-                .map(|entry| entry.amount())
-                .sum()
+                .fold(0.into(), |acc, item| item.perform(acc))
         })
     }
 }
@@ -130,7 +120,7 @@ pub fn setup_success(tx_id: u128) {
     register_virtual_responder(
         token_principal(),
         "icrc1_transfer",
-        move |_: (TransferArg,)| Ok::<Nat, TransferError>(Nat::from(tx_id)),
+        move |_: (TransferArg,)| Ok::<Nat, TransferError>(tx_id.into()),
     );
 }
 

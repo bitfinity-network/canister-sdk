@@ -1,12 +1,11 @@
 use std::sync::atomic::AtomicU64;
 
 use async_recursion::async_recursion;
-use candid::Principal;
+use candid::{Nat, Principal};
 use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_icrc1::endpoints::TransferError;
 use ic_exports::ic_icrc1::{Account, Subaccount};
 use ic_exports::ic_kit::ic;
-use ic_helpers::tokens::Tokens128;
 
 use crate::error::{InternalPaymentError, PaymentError, RecoveryDetails, TransferFailReason};
 use crate::icrc1::{self, get_icrc1_balance, get_icrc1_minting_account, TokenTransferInfo};
@@ -42,8 +41,7 @@ type ConfigChangePredicate = dyn Fn(&TokenConfiguration) + Send + Sync + 'static
 ///
 /// ```no_run
 /// # use ic_exports::ic_kit::ic;
-/// # use candid::Principal;
-/// # use ic_helpers::tokens::Tokens128;
+/// # use candid::{Nat, Principal};
 /// # use ic_payments::{TokenTerminal, BalanceError, StableRecoveryList};
 /// #
 /// # struct BalancesImpl;
@@ -51,13 +49,13 @@ type ConfigChangePredicate = dyn Fn(&TokenConfiguration) + Send + Sync + 'static
 /// #     fn credit(
 /// #         &mut self,
 /// #         account_owner: Principal,
-/// #         amount: Tokens128,
-/// #     ) -> Result<Tokens128, BalanceError> { todo!() }
+/// #         amount: Nat,
+/// #     ) -> Result<Nat, BalanceError> { todo!() }
 /// #     fn debit(
 /// #         &mut self,
 /// #         account_owner: Principal,
-/// #         amount: Tokens128,
-/// #     ) -> Result<Tokens128, BalanceError> { todo!() }
+/// #         amount: Nat,
+/// #     ) -> Result<Nat, BalanceError> { todo!() }
 /// # }
 /// # let token_principal = candid::Principal::management_canister();
 /// # let balances_impl = BalancesImpl;
@@ -77,9 +75,9 @@ type ConfigChangePredicate = dyn Fn(&TokenConfiguration) + Send + Sync + 'static
 /// // Send tokens to the `caller`. The sent `received` amount will be deduced from the `caller`
 /// // balance in `balances_impl`, but the actual amount the caller will receive to their token
 /// // account is `received - transfer_fee`.
-/// let (_tx_id, sent) = terminal.withdraw(caller, received).await?;
+/// let (_tx_id, sent) = terminal.withdraw(caller, received.clone()).await?;
 ///
-/// assert_eq!(sent.amount, received.amount - token_config.fee.amount);
+/// assert_eq!(sent, received - token_config.fee.clone());
 /// # Ok::<(), ic_payments::PaymentError>(())
 /// # };
 /// ```
@@ -155,10 +153,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     ///
     /// The amount the caller will receive on their balance is `interim_account_balance -
     /// transfer_fee`, where `transfer_fee` is the fee set by the token canister.
-    pub async fn deposit_all(
-        &mut self,
-        caller: Principal,
-    ) -> Result<(TxId, Tokens128), PaymentError> {
+    pub async fn deposit_all(&mut self, caller: Principal) -> Result<(TxId, Nat), PaymentError> {
         let account = get_deposit_interim_account(caller);
         let balance = get_icrc1_balance(self.token_config.principal, &account).await?;
         self.deposit(caller, balance).await
@@ -186,8 +181,8 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     pub async fn deposit(
         &mut self,
         caller: Principal,
-        amount: Tokens128,
-    ) -> Result<(TxId, Tokens128), PaymentError> {
+        amount: Nat,
+    ) -> Result<(TxId, Nat), PaymentError> {
         let to = PrincipalId(ic::id()).into();
         let memo = TX_COUNTER
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
@@ -197,7 +192,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
             caller,
             to,
             get_principal_subaccount(caller),
-            amount,
+            amount.clone(),
         )
         .with_operation(Operation::CreditOnSuccess)
         .with_memo(memo);
@@ -216,8 +211,8 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     pub async fn withdraw(
         &mut self,
         caller: Principal,
-        amount: Tokens128,
-    ) -> Result<(TxId, Tokens128), PaymentError> {
+        amount: Nat,
+    ) -> Result<(TxId, Nat), PaymentError> {
         let to = PrincipalId(caller).into();
         let memo = TX_COUNTER
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
@@ -319,8 +314,8 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     }
 
     /// Token transfer fee configured for the terminal.
-    pub fn fee(&self) -> Tokens128 {
-        self.token_config.fee
+    pub fn fee(&self) -> Nat {
+        self.token_config.fee.clone()
     }
 
     /// Token minting account configured for the terminal.
@@ -330,7 +325,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
 
     /// Changes the token transfer fee configuration. This has effect on all new transfers as well
     /// as all transfers stored in the recovery list.
-    pub fn set_fee(&mut self, fee: Tokens128) {
+    pub fn set_fee(&mut self, fee: Nat) {
         self.token_config.fee = fee;
         self.update_recovery_fees();
     }
@@ -349,11 +344,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         }
     }
 
-    fn credit(
-        &mut self,
-        recipient: Principal,
-        amount: Tokens128,
-    ) -> Result<Tokens128, PaymentError> {
+    fn credit(&mut self, recipient: Principal, amount: Nat) -> Result<Nat, PaymentError> {
         Ok(self.balances.credit(recipient, amount)?)
     }
 
@@ -443,18 +434,16 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
 
     async fn update_config_and_retry(
         &mut self,
-        expected_fee: Tokens128,
+        expected_fee: Nat,
         transfer: Transfer,
         n_retries: usize,
     ) -> Result<TxId, PaymentError> {
         match expected_fee {
-            Tokens128::ZERO => {
-                self.set_minting_account(self.get_minting_account(expected_fee).await?)
-            }
+            v if v == 0 => self.set_minting_account(self.get_minting_account(v).await?),
             v if v == self.token_config.fee => {
-                self.set_minting_account(self.get_minting_account(expected_fee).await?)
+                self.set_minting_account(self.get_minting_account(v).await?)
             }
-            _ => self.set_fee(expected_fee),
+            v => self.set_fee(v),
         };
 
         let to = transfer.to();
@@ -468,7 +457,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         self.retry(transfer, n_retries).await
     }
 
-    async fn get_minting_account(&self, expected_fee: Tokens128) -> Result<Account, PaymentError> {
+    async fn get_minting_account(&self, expected_fee: Nat) -> Result<Account, PaymentError> {
         match get_icrc1_minting_account(self.token_config.principal).await {
             Ok(v) => Ok(v.unwrap_or(Account {
                 owner: Principal::management_canister().into(),
@@ -487,12 +476,12 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         let interim_balance = icrc1::get_icrc1_balance(self.token_config.principal, acc).await?;
 
         match stage {
-            Stage::First if interim_balance.is_zero() => self.reject(
+            Stage::First if interim_balance == 0 => self.reject(
                 tx,
                 InternalPaymentError::TransferFailed(TransferFailReason::Unknown),
             ),
             Stage::First => self.complete(tx, UNKNOWN_TX_ID.into(), N_RETRIES).await,
-            Stage::Second if interim_balance.is_zero() => {
+            Stage::Second if interim_balance == 0 => {
                 self.complete(tx, UNKNOWN_TX_ID.into(), N_RETRIES).await
             }
             Stage::Second => Ok(self
