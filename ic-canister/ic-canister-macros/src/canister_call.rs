@@ -194,13 +194,22 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
                 Err(e) => return Err((::ic_exports::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
             };
 
-            let result = ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args)?;
+            let __caller = ::ic_exports::ic_kit::ic::caller();
+            let __id = ::ic_exports::ic_kit::ic::id();
+            ::ic_exports::ic_kit::inject::get_context().update_caller(__id);
+            ::ic_exports::ic_kit::inject::get_context().update_id(#principal);
+
+            let result = ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args);
+
+            ::ic_exports::ic_kit::inject::get_context().update_caller(__caller);
+            ::ic_exports::ic_kit::inject::get_context().update_id(__id);
+
+            let result = result?;
 
             let result = match #decode {
                 Ok(v) => v #tuple_index,
                 Err(e) => return Err((::ic_exports::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to deserialize return value: {}", e))),
             };
-
             Ok(result)
         }
     };
