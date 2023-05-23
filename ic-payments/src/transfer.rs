@@ -406,7 +406,7 @@ mod tests {
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: transfer.fee.clone() + 1,
+                    minimum_required: transfer.fee + 1,
                     actual: 1000.into(),
                 }
             ))
@@ -530,7 +530,7 @@ mod tests {
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: transfer.fee.clone() + 1,
+                    minimum_required: transfer.fee + 1,
                     actual: 1000.into(),
                 }
             ))
