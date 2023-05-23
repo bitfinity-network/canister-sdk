@@ -88,6 +88,17 @@ pub trait Metrics: Canister {
         metrics.metrics.insert(curr_values());
     }
 
+    /// This function updates the metrics at intervals with the specified timer
+    #[cfg(target_arch = "wasm32")]
+    fn update_metrics_timer(&mut self, timer: std::time::Duration) {
+        use ic_exports::ic_cdk_timers;
+        let metrics = MetricsStorage::get();
+
+        ic_cdk_timers::set_timer_interval(timer, move || {
+            metrics.borrow_mut().metrics.insert(curr_values());
+        });
+    }
+
     fn set_interval(interval: Interval) {
         MetricsStorage::get().borrow_mut().metrics.interval = interval;
     }
