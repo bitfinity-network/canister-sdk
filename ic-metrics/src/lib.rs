@@ -47,6 +47,7 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::Duration;
 
 use candid::Principal;
 use ic_canister::{generate_exports, generate_idl, query, state_getter, Canister, Idl, PreUpdate};
@@ -68,7 +69,7 @@ pub struct MetricsData {
     pub heap_memory_size: u64,
 }
 
-pub trait Metrics: Canister {
+pub trait Metrics: Canister + Clone {
     #[state_getter]
     fn metrics(&self) -> Rc<RefCell<MetricsStorage>>;
 
@@ -86,6 +87,17 @@ pub trait Metrics: Canister {
         let metrics = MetricsStorage::get();
         let mut metrics = metrics.borrow_mut();
         metrics.metrics.insert(curr_values());
+    }
+
+    /// This function updates the metrics at intervals with the specified timer
+    #[cfg(target_arch = "wasm32")]
+    fn update_metrics_timer(&mut self, timer: Duration) {
+        use ic_exports::ic_cdk_timers;
+        let self_ = self.clone();
+
+        ic_cdk_timers::set_timer_interval(timer, move || {
+            self_.update_metrics();
+        });
     }
 
     fn set_interval(interval: Interval) {
