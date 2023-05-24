@@ -8,7 +8,7 @@ use crate::BalanceError;
 pub type Result<T> = std::result::Result<T, InternalPaymentError>;
 
 /// Reason for a transfer to fail
-#[derive(Debug, PartialEq, CandidType, Deserialize, Error)]
+#[derive(Debug, PartialEq, Eq, Clone, CandidType, Deserialize, Error)]
 pub enum TransferFailReason {
     #[error("token canister does not exist or doesn't follow the ICRC-1 standard")]
     NotFound,
@@ -27,7 +27,7 @@ pub enum TransferFailReason {
 }
 
 /// Error while executing a transfer.
-#[derive(Debug, PartialEq, CandidType, Deserialize, Error)]
+#[derive(Debug, PartialEq, Eq, Clone, CandidType, Deserialize, Error)]
 pub enum PaymentError {
     /// Requested transfer parameters are invalid.
     ///
@@ -69,7 +69,7 @@ pub enum PaymentError {
 }
 
 /// Reason for the transfer failure.
-#[derive(Debug, CandidType, Deserialize, PartialEq)]
+#[derive(Debug, CandidType, Deserialize, PartialEq, Eq, Clone)]
 pub enum RecoveryDetails {
     /// IC error occurred that doesn't guarantee a specific state of the request. After the IC
     /// deals with the reason of the error, the recovery can be attempted again.
@@ -99,7 +99,7 @@ pub enum InternalPaymentError {
 }
 
 /// Invalid transfer parameters.
-#[derive(Debug, CandidType, Deserialize, PartialEq, Error)]
+#[derive(Debug, CandidType, Deserialize, PartialEq, Eq, Clone, Error)]
 pub enum ParametersError {
     #[error(
         "amount to transfer {actual} is smaller than minimum possible value {minimum_required}"
