@@ -239,7 +239,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     ///
     /// If the transaction succeeds or fails (e.g. it's not saved to the recovery list), the
     /// [transfer operation](Transfer.operation) is executed before the method returns.
-    #[async_recursion]
+    #[async_recursion(?Send)]
     pub async fn transfer(
         &mut self,
         transfer: Transfer,
@@ -249,7 +249,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         self.execute_transfer(transfer, n_retries).await
     }
 
-    #[async_recursion]
+    #[async_recursion(?Send)]
     async fn complete(
         &mut self,
         transfer: Transfer,
@@ -293,7 +293,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         }
     }
 
-    #[async_recursion]
+    #[async_recursion(?Send)]
     async fn retry(&mut self, transfer: Transfer, n_retries: usize) -> Result<TxId, PaymentError> {
         if n_retries == 0 {
             self.add_for_recovery(transfer);
