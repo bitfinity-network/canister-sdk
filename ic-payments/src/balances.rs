@@ -12,7 +12,7 @@ pub enum BalanceError {
 }
 
 /// Interface for handling the canister balances storage.
-pub trait Balances: Sync + Send {
+pub trait Balances {
     /// Increase the `account_owner`'s balance by the given `amount`.
     fn credit(&mut self, account_owner: Principal, amount: Nat) -> Result<Nat, BalanceError>;
 
