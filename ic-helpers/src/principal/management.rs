@@ -13,7 +13,8 @@ use ic_exports::ic_cdk::api::call::RejectionCode;
 use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
 use ic_exports::ic_cdk::export::candid::{encode_args, CandidType, Nat, Principal};
 use ic_exports::ic_ic00_types::{
-    ECDSAPublicKeyArgs, ECDSAPublicKeyResponse, EcdsaKeyId, SignWithECDSAArgs, SignWithECDSAReply,
+    ECDSAPublicKeyArgs, ECDSAPublicKeyResponse, EcdsaCurve, EcdsaKeyId, SignWithECDSAArgs,
+    SignWithECDSAReply,
 };
 use ic_exports::ic_kit::ic;
 use k256::pkcs8::{self, AlgorithmIdentifier, ObjectIdentifier, SubjectPublicKeyInfo};
@@ -199,9 +200,10 @@ impl ManagementPrincipalExt for Principal {
         let request = ECDSAPublicKeyArgs {
             canister_id,
             derivation_path,
-            key_id: "secp256k1"
-                .parse::<EcdsaKeyId>()
-                .expect("why ic devs have decided to change curve parser"),
+            key_id: EcdsaKeyId {
+                curve: EcdsaCurve::Secp256k1,
+                name: Default::default(),
+            },
         };
         virtual_canister_call!(
             Principal::management_canister(),
@@ -218,9 +220,10 @@ impl ManagementPrincipalExt for Principal {
         derivation_path: Vec<Vec<u8>>,
     ) -> Result<SignWithECDSAReply, (RejectionCode, String)> {
         let request = SignWithECDSAArgs {
-            key_id: "secp256k1"
-                .parse::<EcdsaKeyId>()
-                .expect("why ic devs have decided to change curve parser"),
+            key_id: EcdsaKeyId {
+                curve: EcdsaCurve::Secp256k1,
+                name: Default::default(),
+            },
             message_hash: *hash,
             derivation_path,
         };
