@@ -84,13 +84,12 @@ impl Transfer {
     ///
     /// ```no_run
     /// # use ic_payments::*;
-    /// # use ic_exports::ic_icrc1::{Account, Subaccount};
-    /// # use ic_exports::ic_base_types::PrincipalId;
+    /// # use ic_exports::icrc1::account::{Account, Subaccount};
     /// # use candid::Principal;
     /// # let token_config = ic_payments::TokenConfiguration { principal:
     /// # Principal::management_canister(), fee: 0.into(), minting_account: Account { owner: Principal::management_canister().into(), subaccount: None }};
     /// # let caller = Principal::management_canister();
-    /// # let to = PrincipalId::from(caller).into();
+    /// # let to = caller.into();
     /// let transfer = Transfer::new(&token_config, caller, to, None, 10_000.into())
     ///     .with_operation(Operation::CreditOnSuccess)
     ///     .double_step();
