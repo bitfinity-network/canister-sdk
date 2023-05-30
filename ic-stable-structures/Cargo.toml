@@ -1,8 +1,8 @@
 [package]
 name = "ic-stable-structures"
-version = "0.4.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 ic-exports = { path = "../ic-exports" }
-thiserror = "1.0.32"
+thiserror = { workspace = true }
