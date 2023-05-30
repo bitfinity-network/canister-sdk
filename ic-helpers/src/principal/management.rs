@@ -358,8 +358,10 @@ pub struct CallSignature {
 }
 
 pub fn der_encode_pub_key(pk: &Pubkey) -> Vec<u8> {
-    let public_key = k256::PublicKey::from_sec1_bytes(&pk.as_bytes()).expect("not a valid public key");
-    let public_key_der = k256::pkcs8::EncodePublicKey::to_public_key_der(&public_key).expect("export error");
+    let public_key =
+        k256::PublicKey::from_sec1_bytes(&pk.as_bytes()).expect("not a valid public key");
+    let public_key_der =
+        k256::pkcs8::EncodePublicKey::to_public_key_der(&public_key).expect("export error");
     public_key_der.as_ref().into()
 }
 

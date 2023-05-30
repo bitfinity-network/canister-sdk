@@ -79,7 +79,7 @@ ic-agent = { version = "0.24" }
 ic-base-types = { git = "https://github.com/dfinity/ic", rev = "07293961dc498062a2fdf5ed69dd0b0f4d123e31" }
 ic-cdk = "0.8"
 ic-cdk-macros = "0.6"
-ic-cdk-timers = "0.2"
+ic-cdk-timers = "0.1"
 ic-crypto-sha = { git = "https://github.com/dfinity/ic", rev = "07293961dc498062a2fdf5ed69dd0b0f4d123e31" }
 ic-ic00-types = { git = "https://github.com/dfinity/ic", rev = "07293961dc498062a2fdf5ed69dd0b0f4d123e31" }
 ic-icrc1 = { git = "https://github.com/dfinity/ic", rev = "07293961dc498062a2fdf5ed69dd0b0f4d123e31" }
