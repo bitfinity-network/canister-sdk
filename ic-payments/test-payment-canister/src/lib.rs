@@ -9,7 +9,6 @@ use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::ic;
-use ic_helpers::tokens::Tokens128;
 use ic_payments::error::PaymentError;
 use ic_payments::icrc1::get_icrc1_configuration;
 use ic_payments::{BalanceError, Balances, StableRecoveryList, TokenConfiguration, TokenTerminal};
@@ -37,29 +36,20 @@ impl Default for PaymentState {
 
 #[derive(Debug, Default, CandidType, Deserialize)]
 struct TestBalances {
-    map: HashMap<Principal, Tokens128>,
+    map: HashMap<Principal, Nat>,
 }
 
 impl Balances for TestBalances {
-    fn credit(
-        &mut self,
-        account_owner: Principal,
-        amount: Tokens128,
-    ) -> Result<Tokens128, BalanceError> {
-        ic::print(format!("Adding {amount} for {account_owner}"));
+    fn credit(&mut self, account_owner: Principal, amount: Nat) -> Result<Nat, BalanceError> {
         let entry = self.map.entry(account_owner).or_default();
-        *entry = (*entry + amount).unwrap();
-        Ok(*entry)
+        *entry = entry.clone() + amount;
+        Ok(entry.clone())
     }
 
-    fn debit(
-        &mut self,
-        account_owner: Principal,
-        amount: Tokens128,
-    ) -> Result<Tokens128, BalanceError> {
+    fn debit(&mut self, account_owner: Principal, amount: Nat) -> Result<Nat, BalanceError> {
         let entry = self.map.entry(account_owner).or_default();
-        *entry = (*entry - amount).ok_or(BalanceError::InsufficientFunds)?;
-        Ok(*entry)
+        *entry = entry.clone() - amount;
+        Ok(entry.clone())
     }
 }
 
@@ -102,7 +92,7 @@ impl PaymentCanister {
     }
 
     #[update]
-    async fn deposit(&self, amount: Tokens128) -> Result<(Nat, Tokens128), PaymentError> {
+    async fn deposit(&self, amount: Nat) -> Result<(Nat, Nat), PaymentError> {
         let caller = ic::caller();
         let result = PaymentState::get()
             .borrow_mut()
@@ -124,7 +114,7 @@ impl PaymentCanister {
     }
 
     #[update]
-    async fn withdraw(&self, amount: Tokens128) -> Result<(Nat, Tokens128), PaymentError> {
+    async fn withdraw(&self, amount: Nat) -> Result<(Nat, Nat), PaymentError> {
         PaymentState::get()
             .borrow_mut()
             .terminal
@@ -133,7 +123,7 @@ impl PaymentCanister {
     }
 
     #[update]
-    async fn get_balance(&self) -> (Tokens128, Tokens128) {
+    async fn get_balance(&self) -> (Nat, Nat) {
         let state = PaymentState::get();
         let terminal = &state.borrow().terminal;
         let token = terminal.token_config().principal;
@@ -144,7 +134,7 @@ impl PaymentCanister {
             .balances()
             .map
             .get(&caller)
-            .copied()
+            .cloned()
             .unwrap_or_default();
 
         let token_canister_balance = ic_payments::icrc1::get_icrc1_balance(

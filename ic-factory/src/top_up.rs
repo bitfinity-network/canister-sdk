@@ -107,6 +107,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_calculate_amount() {
+        MockContext::new().inject();
+
         register_virtual_responder(
             CYCLES_MINTING_CANISTER,
             "get_icp_xdr_conversion_rate",

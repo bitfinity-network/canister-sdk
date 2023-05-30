@@ -1,5 +1,4 @@
-use candid::Principal;
-use ic_helpers::tokens::Tokens128;
+use candid::{Nat, Principal};
 use thiserror::Error;
 
 /// Error while trying to change user's balance.
@@ -13,18 +12,10 @@ pub enum BalanceError {
 }
 
 /// Interface for handling the canister balances storage.
-pub trait Balances: Sync + Send {
+pub trait Balances {
     /// Increase the `account_owner`'s balance by the given `amount`.
-    fn credit(
-        &mut self,
-        account_owner: Principal,
-        amount: Tokens128,
-    ) -> Result<Tokens128, BalanceError>;
+    fn credit(&mut self, account_owner: Principal, amount: Nat) -> Result<Nat, BalanceError>;
 
     /// Decrease the `account_owners`'s balance by the given `amount`.
-    fn debit(
-        &mut self,
-        account_owner: Principal,
-        amount: Tokens128,
-    ) -> Result<Tokens128, BalanceError>;
+    fn debit(&mut self, account_owner: Principal, amount: Nat) -> Result<Nat, BalanceError>;
 }

@@ -110,7 +110,6 @@
 use candid::{CandidType, Deserialize, Nat};
 use ic_exports::ic_icrc1::Account;
 use ic_exports::Principal;
-use ic_helpers::tokens::Tokens128;
 
 mod balances;
 pub mod error;
@@ -137,18 +136,18 @@ pub struct TokenConfiguration {
     pub principal: Principal,
 
     /// Transaction fee.
-    pub fee: Tokens128,
+    pub fee: Nat,
 
     /// Token minting account.
     pub minting_account: Account,
 }
 
 impl TokenConfiguration {
-    pub(crate) fn get_fee(&self, from_acc: &Account, to_acc: &Account) -> Tokens128 {
+    pub(crate) fn get_fee(&self, from_acc: &Account, to_acc: &Account) -> Nat {
         if *from_acc == self.minting_account || *to_acc == self.minting_account {
-            Tokens128::ZERO
+            0.into()
         } else {
-            self.fee
+            self.fee.clone()
         }
     }
 }

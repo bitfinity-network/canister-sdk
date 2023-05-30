@@ -5,7 +5,9 @@ use ic_exports::candid::Principal;
 use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::DefaultMemoryImpl;
-pub use structures::{StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap};
+pub use structures::{
+    StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap, StableVec,
+};
 
 use crate::{Memory, MemoryManager};
 

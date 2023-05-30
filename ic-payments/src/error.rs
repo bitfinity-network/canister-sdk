@@ -1,7 +1,6 @@
-use candid::{CandidType, Deserialize};
+use candid::{CandidType, Deserialize, Nat};
 use ic_exports::ic_cdk::api::call::RejectionCode;
 use ic_exports::ic_icrc1::endpoints::TransferError;
-use ic_helpers::tokens::Tokens128;
 use thiserror::Error;
 
 use crate::BalanceError;
@@ -9,7 +8,7 @@ use crate::BalanceError;
 pub type Result<T> = std::result::Result<T, InternalPaymentError>;
 
 /// Reason for a transfer to fail
-#[derive(Debug, PartialEq, CandidType, Deserialize, Error)]
+#[derive(Debug, PartialEq, Eq, Clone, CandidType, Deserialize, Error)]
 pub enum TransferFailReason {
     #[error("token canister does not exist or doesn't follow the ICRC-1 standard")]
     NotFound,
@@ -28,7 +27,7 @@ pub enum TransferFailReason {
 }
 
 /// Error while executing a transfer.
-#[derive(Debug, PartialEq, CandidType, Deserialize, Error)]
+#[derive(Debug, PartialEq, Eq, Clone, CandidType, Deserialize, Error)]
 pub enum PaymentError {
     /// Requested transfer parameters are invalid.
     ///
@@ -52,7 +51,7 @@ pub enum PaymentError {
     /// Calling canister must adjust its configuration and then can attempt the same transfer
     /// again.
     #[error("transfer fee setting was not same as token fee configuration {0}")]
-    BadFee(Tokens128),
+    BadFee(Nat),
 
     /// Unknown error happened while attempting the transfer. The terminal cannot be sure that the
     /// transaction was not executed by the token canister, so the transfer is added to the `for
@@ -70,7 +69,7 @@ pub enum PaymentError {
 }
 
 /// Reason for the transfer failure.
-#[derive(Debug, CandidType, Deserialize, PartialEq)]
+#[derive(Debug, CandidType, Deserialize, PartialEq, Eq, Clone)]
 pub enum RecoveryDetails {
     /// IC error occurred that doesn't guarantee a specific state of the request. After the IC
     /// deals with the reason of the error, the recovery can be attempted again.
@@ -78,7 +77,7 @@ pub enum RecoveryDetails {
 
     /// Second stage transfer returned `BadFee` error. The token terminal should update it's token
     /// configuration and attempt to recover the transfer.
-    BadFee(Tokens128),
+    BadFee(Nat),
 }
 
 #[derive(Debug, Error, CandidType, Deserialize, PartialEq)]
@@ -87,32 +86,28 @@ pub enum InternalPaymentError {
     TransferFailed(TransferFailReason),
 
     #[error("wrong fee")]
-    WrongFee(Tokens128),
+    WrongFee(Nat),
 
     #[error("maybe failed")]
     MaybeFailed,
 
     #[error("requested transfer has invalid parameters: {0:?}")]
-    InvalidParameters(ParametersError),
+    InvalidParameters(#[from] ParametersError),
 
     #[error("value overflow")]
     Overflow,
 }
 
 /// Invalid transfer parameters.
-#[derive(Debug, CandidType, Deserialize, PartialEq, Error)]
+#[derive(Debug, CandidType, Deserialize, PartialEq, Eq, Clone, Error)]
 pub enum ParametersError {
     #[error(
         "amount to transfer {actual} is smaller than minimum possible value {minimum_required}"
     )]
-    AmountTooSmall {
-        minimum_required: Tokens128,
-        actual: Tokens128,
-    },
+    AmountTooSmall { minimum_required: Nat, actual: Nat },
+
     #[error("target account cannot be equal to the source account")]
     TargetAccountInvalid,
-    #[error("fee value is too large")]
-    FeeTooLarge,
 }
 
 impl From<(RejectionCode, String)> for InternalPaymentError {
@@ -149,9 +144,7 @@ impl From<TransferError> for InternalPaymentError {
             | TransferError::GenericError { .. } => {
                 Self::TransferFailed(TransferFailReason::Rejected(err))
             }
-            TransferError::BadFee { expected_fee } => {
-                Self::WrongFee(Tokens128::from_nat(&expected_fee).unwrap_or(Tokens128::MAX))
-            }
+            TransferError::BadFee { expected_fee } => Self::WrongFee(expected_fee),
         }
     }
 }

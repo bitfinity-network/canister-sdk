@@ -1,7 +1,6 @@
-use candid::{CandidType, Deserialize, Principal};
+use candid::{CandidType, Deserialize, Nat, Principal};
 use ic_exports::ic_icrc1::{Account, Memo, Subaccount};
 use ic_exports::ic_kit::ic;
-use ic_helpers::tokens::Tokens128;
 
 use crate::error::{InternalPaymentError, ParametersError};
 use crate::icrc1::{self, TokenTransferInfo};
@@ -25,10 +24,10 @@ pub struct Transfer {
 
     /// Amount to transfer. This amount includes the fee, so the actual value that will be received
     /// by the `to` account is `amount - fee`.
-    pub amount: Tokens128,
+    pub amount: Nat,
 
     /// Transaction fee.
-    pub fee: Tokens128,
+    pub fee: Nat,
 
     /// Operation to execute after the transfer finished.
     pub operation: Operation,
@@ -100,7 +99,7 @@ impl Transfer {
         caller: Principal,
         to: Account,
         from_subaccount: Option<Subaccount>,
-        amount: Tokens128,
+        amount: Nat,
     ) -> Self {
         let fee = token_config.get_fee(
             &Account {
@@ -158,7 +157,7 @@ impl Transfer {
             self.token,
             self.to(),
             self.amount_minus_fee(),
-            self.fee,
+            self.fee.clone(),
             self.from().subaccount,
             Some(self.created_at()),
             self.memo.clone(),
@@ -174,7 +173,7 @@ impl Transfer {
         hash.write(&self.from.unwrap_or_default());
         hash.write(self.to.owner.as_slice());
         hash.write(self.to.effective_subaccount());
-        hash.write(&self.amount.amount.to_le_bytes());
+        hash.write(&self.amount.0.to_bytes_le());
         hash.write(self.token.as_slice());
         hash.write(&self.created_at.to_le_bytes());
 
@@ -235,11 +234,11 @@ impl Transfer {
             ));
         }
 
-        if self.final_amount()?.is_zero() {
+        if self.final_amount()? == 0 {
             return Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: self.min_amount()?,
-                    actual: self.amount,
+                    minimum_required: self.min_amount(),
+                    actual: self.amount.clone(),
                 },
             ));
         }
@@ -254,40 +253,40 @@ impl Transfer {
     ///    is set to 0 according to ICRC-1 standard.
     /// 2. If the transfer is double-step, effective fee will be twice the configured amount, since
     ///    the transfer requires two transactions to be completed.
-    pub fn effective_fee(&self) -> Result<Tokens128, InternalPaymentError> {
+    pub fn effective_fee(&self) -> Nat {
         match self.r#type {
-            TransferType::DoubleStep(Stage::First, _) => {
-                (self.fee * Tokens128::from(2)).to_tokens128().ok_or(
-                    InternalPaymentError::InvalidParameters(ParametersError::FeeTooLarge),
-                )
-            }
-            _ => Ok(self.fee),
+            TransferType::DoubleStep(Stage::First, _) => self.fee.clone() * 2,
+            _ => self.fee.clone(),
         }
     }
 
-    fn min_amount(&self) -> Result<Tokens128, InternalPaymentError> {
-        (self.effective_fee()? + Tokens128::from(1)).ok_or(InternalPaymentError::InvalidParameters(
-            ParametersError::FeeTooLarge,
-        ))
+    fn min_amount(&self) -> Nat {
+        self.effective_fee() + 1
     }
 
     /// Amount to be transferred.
-    pub fn amount(&self) -> Tokens128 {
-        self.amount
+    pub fn amount(&self) -> Nat {
+        self.amount.clone()
     }
 
-    pub(crate) fn amount_minus_fee(&self) -> Tokens128 {
-        self.amount.saturating_sub(self.fee)
+    pub(crate) fn amount_minus_fee(&self) -> Nat {
+        match self.amount > self.fee {
+            true => self.amount.clone() - self.fee.clone(),
+            false => 0.into(),
+        }
     }
 
     /// Amount that `to` account will receive after the transfer is complete.
-    pub fn final_amount(&self) -> Result<Tokens128, InternalPaymentError> {
-        (self.amount - self.effective_fee()?).ok_or(InternalPaymentError::InvalidParameters(
-            ParametersError::AmountTooSmall {
-                minimum_required: self.min_amount()?,
-                actual: self.amount,
-            },
-        ))
+    pub fn final_amount(&self) -> Result<Nat, InternalPaymentError> {
+        let effective_fee = self.effective_fee();
+        match self.amount > effective_fee {
+            true => Ok(self.amount.clone() - effective_fee),
+            false => Err(ParametersError::AmountTooSmall {
+                minimum_required: self.min_amount(),
+                actual: self.amount.clone(),
+            }
+            .into()),
+        }
     }
 
     /// Operation to be executed after the transfer is completed.
@@ -309,7 +308,7 @@ impl Transfer {
     }
 
     /// Updates the fee amount configured for the transfer.
-    pub fn with_fee(self, fee: Tokens128) -> Self {
+    pub fn with_fee(self, fee: Nat) -> Self {
         Self { fee, ..self }
     }
 
@@ -341,8 +340,8 @@ impl Transfer {
                 r#type: TransferType::DoubleStep(Stage::Second, *interim_acc),
                 amount: self.amount_minus_fee(),
                 created_at: ic::time(),
-                to: self.to,
                 memo: self.memo.clone(),
+                fee: self.fee.clone(),
                 ..*self
             }),
             _ => None,
@@ -402,11 +401,14 @@ mod tests {
                 }
             ))
         );
-        transfer.fee = Tokens128::MAX;
+        transfer.fee = u128::MAX.into();
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
-                ParametersError::FeeTooLarge
+                ParametersError::AmountTooSmall {
+                    minimum_required: transfer.fee + 1,
+                    actual: 1000.into(),
+                }
             ))
         );
     }
@@ -523,11 +525,14 @@ mod tests {
                 }
             ))
         );
-        transfer.fee = Tokens128::MAX;
+        transfer.fee = u128::MAX.into();
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
-                ParametersError::FeeTooLarge
+                ParametersError::AmountTooSmall {
+                    minimum_required: transfer.fee + 1,
+                    actual: 1000.into(),
+                }
             ))
         );
     }
@@ -650,10 +655,10 @@ mod tests {
     fn effective_fee_considers_type() {
         MockContext::new().with_id(alice()).inject();
         let t = simple_transfer().with_fee(10.into());
-        assert_eq!(t.effective_fee().unwrap(), 10.into());
+        assert_eq!(t.effective_fee(), 10);
 
         let t = t.double_step();
-        assert_eq!(t.effective_fee().unwrap(), 20.into());
+        assert_eq!(t.effective_fee(), 20);
     }
 
     #[test]
@@ -677,7 +682,7 @@ mod tests {
             1000.into(),
         );
 
-        assert_eq!(t.effective_fee().unwrap(), 0.into());
+        assert_eq!(t.effective_fee(), 0);
 
         let t = Transfer::new(
             &TokenConfiguration {
@@ -697,6 +702,6 @@ mod tests {
             1000.into(),
         );
 
-        assert_eq!(t.effective_fee().unwrap(), 0.into());
+        assert_eq!(t.effective_fee(), 0);
     }
 }
