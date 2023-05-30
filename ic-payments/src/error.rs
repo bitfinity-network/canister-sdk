@@ -1,6 +1,5 @@
 use candid::{CandidType, Deserialize, Nat};
-use ic_exports::ic_cdk::api::call::RejectionCode;
-use ic_exports::ic_icrc1::endpoints::TransferError;
+use ic_exports::{ic_cdk::api::call::RejectionCode, icrc1::transfer::TransferError};
 use thiserror::Error;
 
 use crate::BalanceError;

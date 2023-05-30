@@ -14,7 +14,7 @@ use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
 use ic_exports::ic_cdk::export::candid::{encode_args, CandidType, Nat, Principal};
 use ic_exports::ic_ic00_types::{
     ECDSAPublicKeyArgs, ECDSAPublicKeyResponse, EcdsaCurve, EcdsaKeyId, SignWithECDSAArgs,
-    SignWithECDSAReply,
+    SignWithECDSAReply, DerivationPath,
 };
 use ic_exports::ic_kit::ic;
 use k256::pkcs8::{self, AlgorithmIdentifier, ObjectIdentifier, SubjectPublicKeyInfo};
@@ -199,7 +199,7 @@ impl ManagementPrincipalExt for Principal {
     ) -> Result<Pubkey, (RejectionCode, String)> {
         let request = ECDSAPublicKeyArgs {
             canister_id,
-            derivation_path,
+            derivation_path: DerivationPath::new(derivation_path),
             key_id: EcdsaKeyId {
                 curve: EcdsaCurve::Secp256k1,
                 name: Default::default(),
@@ -225,7 +225,7 @@ impl ManagementPrincipalExt for Principal {
                 name: Default::default(),
             },
             message_hash: *hash,
-            derivation_path,
+            derivation_path: DerivationPath::new(derivation_path),
         };
         virtual_canister_call!(
             Principal::management_canister(),

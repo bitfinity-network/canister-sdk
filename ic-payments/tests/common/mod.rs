@@ -2,10 +2,10 @@ use std::cell::RefCell;
 
 use candid::{Nat, Principal};
 use ic_canister::register_virtual_responder;
-use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError};
-use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::mock_principals::alice;
 use ic_exports::ic_kit::MockContext;
+use ic_exports::icrc1::account::Account;
+use ic_exports::icrc1::transfer::{TransferArg, TransferError};
 use ic_payments::recovery_list::StableRecoveryList;
 use ic_payments::{BalanceError, Balances, TokenConfiguration, TokenTerminal, Transfer};
 

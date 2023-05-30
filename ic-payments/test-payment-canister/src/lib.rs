@@ -5,10 +5,9 @@ use std::collections::HashMap;
 
 use candid::Nat;
 use ic_canister::{init, update, Canister, PreUpdate};
-use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
-use ic_exports::ic_icrc1::Account;
 use ic_exports::ic_kit::ic;
+use ic_exports::icrc1::account::Account;
 use ic_payments::error::PaymentError;
 use ic_payments::icrc1::get_icrc1_configuration;
 use ic_payments::{BalanceError, Balances, StableRecoveryList, TokenConfiguration, TokenTerminal};
@@ -26,7 +25,7 @@ impl Default for PaymentState {
                 TokenConfiguration {
                     principal: Principal::management_canister(),
                     fee: 0.into(),
-                    minting_account: PrincipalId::from(Principal::management_canister()).into(),
+                    minting_account: Principal::management_canister().into(),
                 },
                 TestBalances::default(),
             ),
