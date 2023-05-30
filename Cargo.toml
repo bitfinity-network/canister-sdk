@@ -52,7 +52,7 @@ async-recursion = "1.0.2"
 async-trait = "0.1"
 auto_ops = "0.3"
 binread = "2.2"
-crypto-bigint = { version = "0.4", features = ["serde"] }
+crypto-bigint = { version = "0.5", features = ["serde"] }
 cycles-minting-canister = { git = "https://github.com/dfinity/ic", rev = "36674c853f5515ccad589a042187835219c8b712" }
 getrandom = { version = "0.2", features = ["custom"] }
 hex = "0.4"
@@ -67,8 +67,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11.2"
 serde_cbor = "0.11.2"
 serde_json = "1.0"
-serde_tokenstream = "0.1"
-sha2 = "0.9"
+serde_tokenstream = "0.2"
+sha2 = "0.10"
 syn = "1.0"
 thiserror = "1.0"
 tokio = "1.0"
@@ -80,7 +80,7 @@ ic-agent = { version = "0.24" }
 ic-base-types = { git = "https://github.com/dfinity/ic", rev = "36674c853f5515ccad589a042187835219c8b712" }
 ic-cdk = "0.8"
 ic-cdk-macros = "0.6"
-ic-cdk-timers = "0.1"
+ic-cdk-timers = "0.2"
 ic-crypto-sha = { git = "https://github.com/dfinity/ic", rev = "36674c853f5515ccad589a042187835219c8b712" }
 ic-ic00-types = { git = "https://github.com/dfinity/ic", rev = "36674c853f5515ccad589a042187835219c8b712" }
 ic-icrc1 = { git = "https://github.com/dfinity/ic", rev = "36674c853f5515ccad589a042187835219c8b712" }

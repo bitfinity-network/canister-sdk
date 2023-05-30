@@ -292,7 +292,7 @@ impl Tokens256 {
     pub fn to_nat(&self) -> candid::Nat {
         let limbs = self
             .0
-            .limbs()
+            .as_limbs()
             .map(|l| l.0.to_usize().expect("never panics"));
         let mut nums = vec![];
         for limb in limbs.into_iter() {
