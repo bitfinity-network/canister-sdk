@@ -56,9 +56,8 @@ crypto-bigint = { version = "0.5", features = ["serde"] }
 cycles-minting-canister = { git = "https://github.com/dfinity/ic", rev = "07293961dc498062a2fdf5ed69dd0b0f4d123e31" }
 getrandom = { version = "0.2", features = ["custom"] }
 hex = "0.4"
-k256 = "0.11"
+k256 = "0.13"
 lazy_static = "1"
-libsecp256k1 = "0.7"
 num-bigint = "0.4"
 num-traits = "0.2"
 proc-macro2 = "1.0"

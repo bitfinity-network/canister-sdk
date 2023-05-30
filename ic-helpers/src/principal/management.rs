@@ -17,8 +17,6 @@ use ic_exports::ic_ic00_types::{
     SignWithECDSAArgs, SignWithECDSAReply,
 };
 use ic_exports::ic_kit::ic;
-use k256::pkcs8::{self, AlgorithmIdentifier, ObjectIdentifier, SubjectPublicKeyInfo};
-use libsecp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
 
 use super::private::Sealed;
@@ -360,18 +358,9 @@ pub struct CallSignature {
 }
 
 pub fn der_encode_pub_key(pk: &Pubkey) -> Vec<u8> {
-    let pubkey = PublicKey::parse_slice(pk.as_bytes(), None).expect("not a valid public key");
-    let pubkey_bytes_uncompress = pubkey.serialize();
-    let der_encoded_public_key: pkcs8::Document = SubjectPublicKeyInfo {
-        algorithm: AlgorithmIdentifier {
-            oid: ObjectIdentifier::new_unwrap("1.2.840.10045.2.1"),
-            parameters: Some((&ObjectIdentifier::new_unwrap("1.3.132.0.10")).into()),
-        },
-        subject_public_key: &pubkey_bytes_uncompress,
-    }
-    .try_into()
-    .expect("not a valid PublicKeyDocument");
-    der_encoded_public_key.as_ref().into()
+    let public_key = k256::PublicKey::from_sec1_bytes(&pk.as_bytes()).expect("not a valid public key");
+    let public_key_der = k256::pkcs8::EncodePublicKey::to_public_key_der(&public_key).expect("export error");
+    public_key_der.as_ref().into()
 }
 
 #[cfg(test)]

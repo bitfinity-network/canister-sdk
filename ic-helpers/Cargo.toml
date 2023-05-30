@@ -12,7 +12,6 @@ serde_json = { workspace = true }
 serde_bytes = { workspace = true }
 serde_cbor = { workspace = true }
 thiserror = { workspace = true }
-libsecp256k1 = { workspace = true }
 k256 = { workspace = true }
 auto_ops = { workspace = true }
 crypto-bigint = { workspace = true }
