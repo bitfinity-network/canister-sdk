@@ -1,15 +1,15 @@
 [package]
 name = "ic-metrics"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [features]
 default = []
 export-api = []
 
 [dependencies]
-serde = "1.0"
-candid = "0.8"
+serde = { workspace = true }
+candid = { workspace = true }
 
 ic-exports = { path = "../ic-exports" }
 ic-canister = { path = "../ic-canister/ic-canister" }

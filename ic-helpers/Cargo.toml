@@ -1,23 +1,22 @@
 [package]
-edition = "2021"
 name = "ic-helpers"
-version = "0.3.12"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
-async-trait = "0.1"
-candid = "0.8"
-num-traits = "0.2"
-serde = "1.0"
-serde_json = "1.0"
-serde_bytes = "0.11.2"
-serde_cbor = "0.11.2"
-thiserror = "1.0"
-libsecp256k1 = "0.7"
-k256 = "0.11"
-auto_ops = "0.3"
-crypto-bigint = { version = "0.4", features = ["serde"] }
-num-bigint = "0.4"
-binread = "2.2"
+async-trait = { workspace = true }
+candid = { workspace = true }
+num-traits = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_bytes = { workspace = true }
+serde_cbor = { workspace = true }
+thiserror = { workspace = true }
+k256 = { workspace = true }
+auto_ops = { workspace = true }
+crypto-bigint = { workspace = true }
+num-bigint = { workspace = true }
+binread = { workspace = true }
 
 ic-exports = { path = "../ic-exports" }
 ic-canister = { path = "../ic-canister/ic-canister" }
@@ -25,7 +24,7 @@ ic-storage = { path = "../ic-storage" }
 
 # This dependency is not used direcly, but we must enable `custom` feature for it to compile for wasm32 target.
 [target.'cfg(target = "wasm32-unknown-unknown")'.dependencies]
-getrandom = { version = "0.2.6", features = ["custom"]}
+getrandom = { workspace = true }
 
 [dev-dependencies]
-hex = "0.4"
+hex = { workspace = true }

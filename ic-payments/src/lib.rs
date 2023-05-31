@@ -108,7 +108,7 @@
 //! ```
 
 use candid::{CandidType, Deserialize, Nat};
-use ic_exports::ic_icrc1::Account;
+use ic_exports::icrc1::account::Account;
 use ic_exports::Principal;
 
 mod balances;

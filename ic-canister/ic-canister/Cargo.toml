@@ -1,12 +1,12 @@
 [package]
 name = "ic-canister"
-version = "0.2.3"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 ic-exports = {path = "../../ic-exports" }
 ic-canister-macros = { path = "../ic-canister-macros" }
 
 [dev-dependencies]
-serde = "1.0"
-tokio-test = "0.4"
+serde = { workspace = true }
+tokio-test = { workspace = true }

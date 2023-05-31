@@ -17,5 +17,7 @@ pub mod ledger {
     };
 }
 
+pub use icrc_ledger_types::*;
+
 #[cfg(feature = "state-machine")]
 pub use ic_state_machine_tests;

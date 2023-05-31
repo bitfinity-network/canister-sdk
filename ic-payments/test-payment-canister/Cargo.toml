@@ -1,7 +1,8 @@
 [package]
 name = "test-payment-canister"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+
 
 [lib]
 crate-type = ["lib", "cdylib"]
@@ -11,8 +12,8 @@ default = []
 export-api = []
 
 [dependencies]
-candid = "0.8"
-serde = "1.0"
+candid = { workspace = true }
+serde = { workspace = true }
 
 ic-exports = {path = "../../ic-exports"}
 ic-storage = {path = "../../ic-storage"}
@@ -20,4 +21,4 @@ ic-canister = {path = "../../ic-canister/ic-canister"}
 ic-payments = {path = "../"}
 
 [dev-dependencies]
-tokio = {version = "1", features = ["rt", "macros"]}
+tokio = { workspace = true, features = ["rt", "macros"]}

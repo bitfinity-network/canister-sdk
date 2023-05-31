@@ -2,10 +2,11 @@
 mod tests {
     use candid::{CandidType, Decode, Deserialize, Encode, Nat, Principal};
     use ic_exports::ic_base_types::{CanisterId, PrincipalId};
-    use ic_exports::ic_icrc1::endpoints::{TransferArg, TransferError, Value};
-    use ic_exports::ic_icrc1::Account;
     use ic_exports::ic_kit::mock_principals::{alice, bob};
     use ic_exports::ic_state_machine_tests::StateMachine;
+    use ic_exports::icrc::generic_value::Value;
+    use ic_exports::icrc1::account::Account;
+    use ic_exports::icrc1::transfer::{TransferArg, TransferError};
     use ic_payments::error::{PaymentError, TransferFailReason};
     use ic_payments::get_principal_subaccount;
 

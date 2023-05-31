@@ -3,9 +3,9 @@ use std::sync::atomic::AtomicU64;
 use async_recursion::async_recursion;
 use candid::{Nat, Principal};
 use ic_exports::ic_base_types::PrincipalId;
-use ic_exports::ic_icrc1::endpoints::TransferError;
-use ic_exports::ic_icrc1::{Account, Subaccount};
 use ic_exports::ic_kit::ic;
+use ic_exports::icrc1::account::{Account, Subaccount};
+use ic_exports::icrc1::transfer::TransferError;
 
 use crate::error::{InternalPaymentError, PaymentError, RecoveryDetails, TransferFailReason};
 use crate::icrc1::{self, get_icrc1_balance, get_icrc1_minting_account, TokenTransferInfo};
@@ -183,7 +183,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         caller: Principal,
         amount: Nat,
     ) -> Result<(TxId, Nat), PaymentError> {
-        let to = PrincipalId(ic::id()).into();
+        let to = ic::id().into();
         let memo = TX_COUNTER
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
             .into();
@@ -213,7 +213,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         caller: Principal,
         amount: Nat,
     ) -> Result<(TxId, Nat), PaymentError> {
-        let to = PrincipalId(caller).into();
+        let to = caller.into();
         let memo = TX_COUNTER
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
             .into();
