@@ -2,8 +2,9 @@ pub use candid; // this is needed for candid-derive macro exports
 pub use ic_cdk::export::*;
 pub use {
     cycles_minting_canister, ic_base_types, ic_cdk, ic_cdk_macros, ic_cdk_timers, ic_crypto_sha,
-    ic_ic00_types, ic_icrc1, ic_icrc1_index, ic_kit, ic_ledger_core,
-    ic_stable_structures as stable_structures, ledger_canister,
+    ic_ic00_types, ic_icrc1, ic_icrc1_index, ic_icrc1_ledger as icrc1_ledger, ic_kit,
+    ic_ledger_canister_core, ic_ledger_core, ic_stable_structures as stable_structures,
+    icrc_ledger_types as icrc_types, ledger_canister,
 };
 
 pub type BlockHeight = u64;
@@ -16,8 +17,6 @@ pub mod ledger {
         TransferFee, TransferFeeArgs, DEFAULT_TRANSFER_FEE, TOKEN_SUBDIVIDABLE_BY,
     };
 }
-
-pub use icrc_ledger_types::*;
 
 #[cfg(feature = "state-machine")]
 pub use ic_state_machine_tests;

@@ -4,9 +4,9 @@ mod tests {
     use ic_exports::ic_base_types::{CanisterId, PrincipalId};
     use ic_exports::ic_kit::mock_principals::{alice, bob};
     use ic_exports::ic_state_machine_tests::StateMachine;
-    use ic_exports::icrc::generic_value::Value;
-    use ic_exports::icrc1::account::Account;
-    use ic_exports::icrc1::transfer::{TransferArg, TransferError};
+    use ic_exports::icrc_types::icrc::generic_value::Value;
+    use ic_exports::icrc_types::icrc1::account::Account;
+    use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
     use ic_payments::error::{PaymentError, TransferFailReason};
     use ic_payments::get_principal_subaccount;
 
@@ -52,12 +52,12 @@ mod tests {
     fn init_token(env: &mut StateMachine) -> CanisterId {
         let args = InitArgs {
             minting_account: Account {
-                owner: alice().into(),
+                owner: alice(),
                 subaccount: None,
             },
             initial_balances: vec![(
                 Account {
-                    owner: bob().into(),
+                    owner: bob(),
                     subaccount: None,
                 },
                 INIT_BALANCE as u64,
@@ -93,7 +93,7 @@ mod tests {
         of: Principal,
     ) -> Option<Nat> {
         let account = Account {
-            owner: of.into(),
+            owner: of,
             subaccount: None,
         };
         let payload = Encode!(&account).unwrap();

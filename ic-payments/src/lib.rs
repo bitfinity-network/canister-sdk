@@ -108,7 +108,6 @@
 //! ```
 
 use candid::{CandidType, Deserialize, Nat};
-use ic_exports::icrc1::account::Account;
 use ic_exports::Principal;
 
 mod balances;
@@ -120,6 +119,7 @@ mod transfer;
 
 pub use balances::*;
 pub use error::PaymentError;
+use ic_exports::icrc_types::icrc1::account::Account;
 pub use recovery_list::*;
 pub use token_terminal::*;
 pub use transfer::*;

@@ -13,7 +13,7 @@ state-machine = ["ic-state-machine-tests"]
 [dependencies]
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
-ic-cdk-timers =  { workspace = true }
+ic-cdk-timers = { workspace = true }
 
 ic-agent = { workspace = true, optional = true }
 
@@ -29,7 +29,9 @@ ic-icrc1-index = { workspace = true }
 ic-icrc1 = { workspace = true }
 ic-crypto-sha = { workspace = true }
 icrc-ledger-types = { workspace = true }
+ic-icrc1-ledger = { workspace = true }
+ic-ledger-canister-core = { workspace = true }
 
 ic-kit = { workspace = true }
 
-ic-state-machine-tests = { workspace = true, optional = true}
+ic-state-machine-tests = { workspace = true, optional = true }

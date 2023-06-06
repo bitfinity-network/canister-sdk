@@ -4,8 +4,8 @@ use async_recursion::async_recursion;
 use candid::{Nat, Principal};
 use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_kit::ic;
-use ic_exports::icrc1::account::{Account, Subaccount};
-use ic_exports::icrc1::transfer::TransferError;
+use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
+use ic_exports::icrc_types::icrc1::transfer::TransferError;
 
 use crate::error::{InternalPaymentError, PaymentError, RecoveryDetails, TransferFailReason};
 use crate::icrc1::{self, get_icrc1_balance, get_icrc1_minting_account, TokenTransferInfo};
@@ -460,7 +460,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     async fn get_minting_account(&self, expected_fee: Nat) -> Result<Account, PaymentError> {
         match get_icrc1_minting_account(self.token_config.principal).await {
             Ok(v) => Ok(v.unwrap_or(Account {
-                owner: Principal::management_canister().into(),
+                owner: Principal::management_canister(),
                 subaccount: None,
             })),
             Err(_e) => Err(PaymentError::BadFee(expected_fee)),
@@ -501,7 +501,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
 /// and has subaccount derived from the `principal` (for details see [`get_principal_subaccount`]).
 pub fn get_deposit_interim_account(principal: Principal) -> Account {
     Account {
-        owner: ic::id().into(),
+        owner: ic::id(),
         subaccount: get_principal_subaccount(principal),
     }
 }
