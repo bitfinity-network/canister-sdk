@@ -5,8 +5,8 @@ use candid::{Encode, Nat};
 use ic_canister::{register_raw_virtual_responder, register_virtual_responder};
 use ic_exports::ic_cdk::api::call::RejectionCode;
 use ic_exports::ic_kit::mock_principals::alice;
-use ic_exports::icrc1::account::Account;
-use ic_exports::icrc1::transfer::{TransferArg, TransferError};
+use ic_exports::icrc_types::icrc1::account::Account;
+use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
 use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
 use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 use ic_payments::{Operation, Transfer};
@@ -24,7 +24,7 @@ async fn transfer_args() {
     let transfer = Transfer {
         from: Some([3; 32]),
         to: Account {
-            owner: alice().into(),
+            owner: alice(),
             subaccount: Some([4; 32]),
         },
         fee: 10.into(),

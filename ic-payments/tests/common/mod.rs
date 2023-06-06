@@ -4,8 +4,8 @@ use candid::{Nat, Principal};
 use ic_canister::register_virtual_responder;
 use ic_exports::ic_kit::mock_principals::alice;
 use ic_exports::ic_kit::MockContext;
-use ic_exports::icrc1::account::Account;
-use ic_exports::icrc1::transfer::{TransferArg, TransferError};
+use ic_exports::icrc_types::icrc1::account::Account;
+use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
 use ic_payments::recovery_list::StableRecoveryList;
 use ic_payments::{BalanceError, Balances, TokenConfiguration, TokenTerminal, Transfer};
 
@@ -73,7 +73,7 @@ pub fn token_principal() -> Principal {
 
 pub fn minting_account() -> Account {
     Account {
-        owner: Principal::from_slice(&[3; 29]).into(),
+        owner: Principal::from_slice(&[3; 29]),
         subaccount: None,
     }
 }
@@ -92,7 +92,7 @@ pub fn this_principal() -> Principal {
 
 pub fn simple_transfer() -> Transfer {
     let to = Account {
-        owner: alice().into(),
+        owner: alice(),
         subaccount: None,
     };
     Transfer::new(&token_config(), alice(), to, None, 1000.into())

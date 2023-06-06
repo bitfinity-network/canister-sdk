@@ -1,11 +1,10 @@
-use candid::{CandidType, Deserialize, Nat, Principal};
-use ic_exports::ic_kit::ic;
-use ic_exports::icrc1::account::{Account, Subaccount};
-use ic_exports::icrc1::transfer::Memo;
-
 use crate::error::{InternalPaymentError, ParametersError};
 use crate::icrc1::{self, TokenTransferInfo};
 use crate::{Timestamp, TokenConfiguration};
+use candid::{CandidType, Deserialize, Nat, Principal};
+use ic_exports::ic_kit::ic;
+use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
+use ic_exports::icrc_types::icrc1::transfer::Memo;
 
 /// Transfer to be executed.
 #[derive(Debug, CandidType, Deserialize, Clone)]
@@ -40,7 +39,7 @@ pub struct Transfer {
     /// deduplicated.
     pub created_at: Timestamp,
 
-    /// Arbitrary bytestring that can be added to the transaction. Use this field in case several
+    /// Arbitrary byte-string that can be added to the transaction. Use this field in case several
     /// transfers with the same timestamp must be done.
     pub memo: Option<Memo>,
 }
@@ -103,7 +102,7 @@ impl Transfer {
     ) -> Self {
         let fee = token_config.get_fee(
             &Account {
-                owner: ic::id().into(),
+                owner: ic::id(),
                 subaccount: from_subaccount,
             },
             &to,
@@ -196,7 +195,7 @@ impl Transfer {
     /// Source account of the transfer.
     pub fn from_acc(&self) -> Account {
         Account {
-            owner: ic::id().into(),
+            owner: ic::id(),
             subaccount: self.from,
         }
     }
@@ -222,7 +221,7 @@ impl Transfer {
 
     fn generate_interim_acc(&self) -> Account {
         Account {
-            owner: ic::id().into(),
+            owner: ic::id(),
             subaccount: Some(self.id()),
         }
     }
@@ -365,7 +364,7 @@ mod tests {
             caller: bob(),
             from: None,
             to: Account {
-                owner: bob().into(),
+                owner: bob(),
                 subaccount: None,
             },
             amount: 1000.into(),
@@ -421,7 +420,7 @@ mod tests {
             caller: bob(),
             from: None,
             to: Account {
-                owner: bob().into(),
+                owner: bob(),
                 subaccount: None,
             },
             amount: 1000.into(),
@@ -430,7 +429,7 @@ mod tests {
             r#type: TransferType::DoubleStep(
                 Stage::First,
                 Account {
-                    owner: john().into(),
+                    owner: john(),
                     subaccount: Some([1; 32]),
                 },
             ),
@@ -483,7 +482,7 @@ mod tests {
             caller: bob(),
             from: None,
             to: Account {
-                owner: bob().into(),
+                owner: bob(),
                 subaccount: None,
             },
             amount: 1000.into(),
@@ -492,7 +491,7 @@ mod tests {
             r#type: TransferType::DoubleStep(
                 Stage::Second,
                 Account {
-                    owner: john().into(),
+                    owner: john(),
                     subaccount: Some([1; 32]),
                 },
             ),
@@ -545,7 +544,7 @@ mod tests {
             caller: bob(),
             from: Some([1; 32]),
             to: Account {
-                owner: john().into(),
+                owner: john(),
                 subaccount: Some([1; 32]),
             },
             amount: 1000.into(),
@@ -570,7 +569,7 @@ mod tests {
             caller: bob(),
             from: None,
             to: Account {
-                owner: bob().into(),
+                owner: bob(),
                 subaccount: None,
             },
             amount: 1000.into(),
@@ -587,7 +586,7 @@ mod tests {
         let t1 = simple_transfer();
         let t2 = Transfer {
             to: Account {
-                owner: bob().into(),
+                owner: bob(),
                 subaccount: Some([1; 32]),
             },
             ..simple_transfer()
@@ -669,13 +668,13 @@ mod tests {
                 principal: bob(),
                 fee: 10.into(),
                 minting_account: Account {
-                    owner: alice().into(),
+                    owner: alice(),
                     subaccount: None,
                 },
             },
             john(),
             Account {
-                owner: john().into(),
+                owner: john(),
                 subaccount: None,
             },
             None,
@@ -689,13 +688,13 @@ mod tests {
                 principal: bob(),
                 fee: 10.into(),
                 minting_account: Account {
-                    owner: john().into(),
+                    owner: john(),
                     subaccount: None,
                 },
             },
             john(),
             Account {
-                owner: john().into(),
+                owner: john(),
                 subaccount: None,
             },
             None,

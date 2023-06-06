@@ -1,6 +1,6 @@
 use common::*;
 use ic_exports::ic_kit::mock_principals::alice;
-use ic_exports::icrc1::account::Account;
+use ic_exports::icrc_types::icrc1::account::Account;
 use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 use ic_payments::{Balances, TokenConfiguration, Transfer};
 
@@ -77,7 +77,7 @@ fn update_minting_account() {
     StableRecoveryList::<0>.push(transfer);
 
     terminal.set_minting_account(Account {
-        owner: alice().into(),
+        owner: alice(),
         subaccount: Some([12; 32]),
     });
 

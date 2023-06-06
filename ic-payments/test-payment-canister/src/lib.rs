@@ -7,7 +7,7 @@ use candid::Nat;
 use ic_canister::{init, update, Canister, PreUpdate};
 use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
 use ic_exports::ic_kit::ic;
-use ic_exports::icrc1::account::Account;
+use ic_exports::icrc_types::icrc1::account::Account;
 use ic_payments::error::PaymentError;
 use ic_payments::icrc1::get_icrc1_configuration;
 use ic_payments::{BalanceError, Balances, StableRecoveryList, TokenConfiguration, TokenTerminal};
@@ -68,7 +68,7 @@ impl PaymentCanister {
             principal: token_canister,
             fee: 0.into(),
             minting_account: Account {
-                owner: Principal::management_canister().into(),
+                owner: Principal::management_canister(),
                 subaccount: None,
             },
         };
@@ -139,7 +139,7 @@ impl PaymentCanister {
         let token_canister_balance = ic_payments::icrc1::get_icrc1_balance(
             token,
             &Account {
-                owner: ic::id().into(),
+                owner: ic::id(),
                 subaccount: None,
             },
         )

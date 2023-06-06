@@ -1,7 +1,8 @@
 use ic_canister::virtual_canister_call;
 use ic_exports::candid::{CandidType, Nat};
-use ic_exports::icrc1::account::{Account, Subaccount};
-use ic_exports::icrc1::transfer::{Memo, TransferArg, TransferError};
+
+use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
+use ic_exports::icrc_types::icrc1::transfer::{Memo, TransferArg, TransferError};
 use ic_exports::serde::Deserialize;
 use ic_exports::Principal;
 
@@ -59,7 +60,7 @@ pub async fn get_icrc1_configuration(token: Principal) -> Result<TokenConfigurat
     // to get both fields, which is fine though since this is done once.
     let fee = get_icrc1_fee(token).await?;
     let minting_account = get_icrc1_minting_account(token).await?.unwrap_or(Account {
-        owner: Principal::management_canister().into(),
+        owner: Principal::management_canister(),
         subaccount: None,
     });
 
