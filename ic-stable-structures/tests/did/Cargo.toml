@@ -1,0 +1,12 @@
+[package]
+name = "did"
+version.workspace = true
+edition.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[dependencies]
+candid = { workspace = true }
+ic-stable-structures = { path = "../../../ic-stable-structures" }
+serde = { workspace = true }

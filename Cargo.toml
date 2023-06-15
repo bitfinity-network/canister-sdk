@@ -17,6 +17,8 @@ members = [
     "ic-payments",
     "ic-payments/test-payment-canister",
     "ic-stable-structures",
+    "ic-stable-structures/tests/did",
+    "ic-stable-structures/tests/dummy_canister",
     "ic-storage",
     "ic-storage/ic-storage-derive",
 ]
