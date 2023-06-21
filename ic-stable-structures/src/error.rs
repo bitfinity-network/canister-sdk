@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{btreemap, cell, log, GrowFailed};
+use ic_exports::stable_structures::{btreemap, cell, log, vec, GrowFailed};
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -11,6 +11,10 @@ pub enum Error {
     ValueTooLarge(u64),
     #[error("memory manager and stable structure has incompatible versions")]
     IncompatibleVersions,
+    #[error("the vector type is not compatible with the current vector")]
+    IncompatibleElementType,
+    #[error("bad magic number: {0:?}")]
+    BadMagic([u8; 3]),
 }
 
 impl From<cell::InitError> for Error {
@@ -43,6 +47,17 @@ impl From<log::InitError> for Error {
     fn from(_: log::InitError) -> Self {
         // All `log::InitError` variants is versioning errors.
         Self::IncompatibleVersions
+    }
+}
+
+impl From<vec::InitError> for Error {
+    fn from(e: vec::InitError) -> Self {
+        match e {
+            vec::InitError::IncompatibleVersion(_) => Self::IncompatibleVersions,
+            vec::InitError::IncompatibleElementType => Self::IncompatibleElementType,
+            vec::InitError::OutOfMemory => Self::OutOfStableMemory,
+            vec::InitError::BadMagic(magic) => Self::BadMagic(magic),
+        }
     }
 }
 

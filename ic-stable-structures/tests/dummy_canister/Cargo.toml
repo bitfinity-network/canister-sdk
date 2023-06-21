@@ -1,0 +1,20 @@
+[package]
+name = "dummy_canister"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+export-api = []
+
+[dependencies]
+candid = { workspace = true }
+did = { path = "../did" }
+ic-canister = { path = "../../../ic-canister/ic-canister" }
+ic-cdk = { workspace = true }
+ic-exports = { path = "../../../ic-exports" }
+ic-stable-structures = { path = "../../../ic-stable-structures" }
+serde = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }

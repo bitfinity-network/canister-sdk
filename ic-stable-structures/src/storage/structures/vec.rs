@@ -29,7 +29,7 @@ impl<T: BoundedStorable> StableVec<T> {
         self.get_inner().map_or(true, InnerVec::is_empty)
     }
 
-    /// Removes al the values from the vector
+    /// Removes all the values from the vector
     pub fn clear(&mut self) -> Result<()> {
         let memory_id = self.memory_id;
         if let Some(vec) = self.mut_inner() {

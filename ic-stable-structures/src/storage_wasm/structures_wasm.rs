@@ -192,7 +192,7 @@ impl<T: Storable> StableLog<T> {
         let index_memory = crate::get_memory_by_id(index_memory_id);
         let data_memory = crate::get_memory_by_id(data_memory_id);
 
-        let inner = log::Log::new(index_memory, data_memory);
+        let inner = log::Log::init(index_memory, data_memory)?;
         Ok(Self(Some(inner)))
     }
 
@@ -308,7 +308,7 @@ impl<T: BoundedStorable> StableVec<T> {
     /// Creates new `StableVec`
     pub fn new(memory_id: MemoryId) -> Result<Self> {
         Ok(Self(
-            vec::Vec::<T, Memory>::new(get_memory_by_id(memory_id))?,
+            vec::Vec::<T, Memory>::init(get_memory_by_id(memory_id))?,
             memory_id,
         ))
     }
