@@ -1,0 +1,27 @@
+[package]
+name = "ic-log"
+version.workspace = true
+edition.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = { workspace = true }
+arc-swap = { workspace = true }
+candid = { workspace = true }
+env_logger = { workspace = true }
+humantime = { workspace = true }
+ic-exports = { path = "../ic-exports" }
+log = { workspace = true }
+ringbuffer = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+ic-canister = { path = "../ic-canister/ic-canister" }
+
+[features]
+export-api = []
+
+[[example]]
+name = "log_canister"
+path = "examples/log_canister.rs"

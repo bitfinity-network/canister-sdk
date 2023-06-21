@@ -1,29 +1,40 @@
-# canister-sdk
+# Canister SDK
 
 SDK for writing and testing canisters for the Internet Computer in Rust. This repo includes a few crates that help to
 simplify the tricky aspects of IC canisters development:
 
-- [simplifying and testing of inter-canister communications](#inter-canister-calls-and-testing)
-- [allowing dependencies between canisters](#dependencies-between-canisters)
-- [canisters composition](#canister-traits-and-composition) (combining APIs from different crates into a single
-  canister)
-- [in-memory state management](#in-memory-storage)
-- [versioning of the state for canister upgrades](#versioned-state)
-- [collect canister metrics and define your own](#ic-metrics)
+- [Canister SDK](#canister-sdk)
+  - [Crates](#crates)
+  - [canister-sdk](#canister-sdk-1)
+    - [ic-exports](#ic-exports)
+    - [ic-canister](#ic-canister)
+      - [Inter-canister calls and testing](#inter-canister-calls-and-testing)
+      - [Canister traits and composition](#canister-traits-and-composition)
+      - [Dependencies between canisters](#dependencies-between-canisters)
+    - [ic-factory](#ic-factory)
+    - [ic-helpers](#ic-helpers)
+    - [ic-storage](#ic-storage)
+      - [In-memory storage](#in-memory-storage)
+      - [Versioned state](#versioned-state)
+      - [Canister state and upgrades](#canister-state-and-upgrades)
+    - [ic-metrics](#ic-metrics)
+    - [ic-auction](#ic-auction)
+    - [ic-log](#ic-log)
 
 This project builds on top of `ic-cdk` and `ic-kit` crates. It is not intended to replace them, but adds some types and
 macros to simplify things that are not dealt with by those crates.
 
-# Crates
+## Crates
 
 The following crates are included in this repo:
 
+- `ic-auction` - This crate provides an API trait for auction canisters. This crate is optional.
 - `ic-canister` - This crate provides a set of macros and types to simplify the development of canisters.
 - `ic-export` - This crate mainly re-exports commonly used dependencies from `ic` dependencies.
+- `ic-factory` - This crate provides an API trait for factory canisters. This crate is optional.
+- `ic-log` - This crate provides a simple logger implementation of the `log` crate. Log records are saved into memory and can be inspected with a canister query.
 - `ic-metrics` - This crate provides an API trait to simplify the collection of metrics from canisters.
 - `ic-storage` - This crate provides a simple in-memory storage for canisters.
-- `ic-factory` - This crate provides an API trait for factory canisters. This crate is optional.
-- `ic-auction` - This crate provides an API trait for auction canisters. This crate is optional.
 
 ## canister-sdk
 
@@ -53,7 +64,7 @@ use `canister-sdk` dependency with dependent features that will trigger the nece
 
 There's an example crate on how to use the `export-api` feature in the [canister-e](./ic-canister/tests/canister-e/) directory. This crate shows how to use the `export-api` features to export the methods in the canister and how to generate the idl for the canister with the methods included.
 
-## ic-exports
+### ic-exports
 
 The `ic-exports` crate re-exports commonly used `ic` dependencies. This means that you can use the `ic-exports` crate to
 import the `ic` dependencies without having to specify the version of the `ic` dependencies in your `Cargo.toml` file.
@@ -77,13 +88,13 @@ The common `ic` dependencies that are re-exported are:
 - `ic-base-types`
 - `ic-ic00-types`
 
-## ic-canister
+### ic-canister
 
 This crate introduces a framework to write easily testable canisters, including testing inter-canister calls,
 as well as a way to compose canister APIs using rust traits. There are few examples below, but for the details
 you can check out the [crate documentation](./ic-canister/ic-canister/src/lib.rs).
 
-### Inter-canister calls and testing
+#### Inter-canister calls and testing
 
 For example, you can have a canister with simple API:
 
@@ -144,7 +155,7 @@ Even though the canisters use statics internally to store the canister state, th
 instances of
 canisters with `init_instance` method, and each one of them will have a separate state.
 
-### Canister traits and composition
+#### Canister traits and composition
 
 It is also possible to write a trait to store some part of the canister API that can be reused in different canisters.
 This also allows to compose a canister from different
@@ -165,7 +176,7 @@ impl OtherCanisterTrait for MyCanister {
 For other examples you can look into
 the [tests](https://github.com/infinity-swap/canister-sdk/blob/f835312e13b567ca2cb1d75cc3a1647da5d41204/ic-canister/tests/canister_a/src/lib.rs#L21-L46)
 
-### Dependencies between canisters
+#### Dependencies between canisters
 
 If you use `ic-cdk` to create your canister's API's, you cannot simply use a canister as a rust dependency for another
 canister, because all the APIs of that dependency will not be included into the canister you're implementing. If you
@@ -173,7 +184,7 @@ create a canister using `canister-sdk`, don't forget to add a `export-api` featu
 export all the wasm from the canister trait definition (more specifically from one that is auto-generated
 by `generate_exports!` macro).
 
-## ic-factory
+### ic-factory
 
 The "generic" trait API for the factory canisters. The `Factory` canister trait can be used to simplify writing factory
 logic for the canisters you implement. It also provides a convenient way to upgrade all the canisters that the factory
@@ -215,15 +226,15 @@ feature `factory` to your `Cargo.toml` file to use the `Factory` trait.
   canister-sdk = { git = "https://github.com/infinity-swap/canister-sdk", features = ["factory"] tag = "vx.x.xx"}
 ```
 
-## ic-helpers
+### ic-helpers
 
 Some helpers and wrappers over principals we use on day-to-day basis for ledger and management canister calls.
 
-## ic-storage
+### ic-storage
 
 Introduces traits `IcStorage` and `Versioned` for in-memory and stable storage management respectively.
 
-### In-memory storage
+#### In-memory storage
 
 In the past, the `ic-cdk` crate provided methods in the `ic_cdk::storage` module to store and get structs from the
 canister's memory, but they were removed in version `0.5.0` (for a good reason). The recommended way to store the data
@@ -250,7 +261,7 @@ assert_eq!(local_state.borrow().value, 42);
 It also allows having generic state structures. For detailed information, check out
 the [crate level documentation](./ic-storage/src/lib.rs).
 
-### Versioned state
+#### Versioned state
 
 The `ic_storage::stable` module introduces `Versioned` trait that allows transparent upgrades for the state during
 canister upgrades (even over several versions of state at once). When using this trait, the state structure can
@@ -260,7 +271,7 @@ version and run the upgrade methods until the current version of the type (the `
 
 Check out the [module level documentation](./ic-storage/src/stable.rs) for more details.
 
-### Canister state and upgrades
+#### Canister state and upgrades
 
 When using `Canister` deriving macro, the fields that are marked with `#[state]` attribute are all preserved over
 canister upgrades. This is done using `Versioned` trait. This means that at this moment you can have only one `#[state]`
@@ -272,7 +283,7 @@ If a canister needs to have a state that is not preserved during the upgrade pro
 temporary data), `#[state(stable_store = false)]` can be used in addition to the `#[state]` field. Any number of
 non-stable state fields can be added to a canister.
 
-## ic-metrics
+### ic-metrics
 
 Metrics trait that the canister can implement to store a history of necessary metrics (stored
 in [MetricsData](https://github.com/infinity-swap/canister-sdk/blob/f835312e13b567ca2cb1d75cc3a1647da5d41204/ic-metrics/src/map.rs#L14-L18))
@@ -286,7 +297,7 @@ This crate currently provides two APIs for metrics, these are :-
   certain period of the interval.
 - `get_curr_metrics` - This API returns the current metrics data for the canister.
 
-## ic-auction
+### ic-auction
 
 The IC canisters needs cycles to run and as well as to pay for the storage. This crate provides a mechanism of cycle
 auctions, that doesn't require owner's attention for the canister cycle management. Cycle auctions are run in a set of
@@ -302,3 +313,9 @@ This crate is optional and can be used by adding the feature `auction` to your `
 
 Note: When you're using the `canister-sdk` with these crates, make sure to include `export-api` feature as well, and
 when building the canister, make sure to include the `--export-api` flag.
+
+### ic-log
+
+IC log is a log library for IC canisters. It allows you to use the `log` crate macros (`debug!`, `info!`, `error!`...) into a canister. The records are written into memory with a configurable history size and can be later be retrieved by a query to the canister.
+
+You can see ic-log in action in the [examples](./ic-log/examples/log_canister.rs)
