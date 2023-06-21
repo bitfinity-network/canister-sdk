@@ -15,3 +15,13 @@ ic-exports = { path = "../ic-exports" }
 log = { workspace = true }
 ringbuffer = { workspace = true }
 serde = { workspace = true }
+
+[dev-dependencies]
+ic-canister = { path = "../ic-canister/ic-canister" }
+
+[features]
+export-api = []
+
+[[example]]
+name = "log_canister"
+path = "examples/log_canister.rs"

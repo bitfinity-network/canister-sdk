@@ -23,6 +23,12 @@
                   "candid": "ic-canister/tests/canister-d/canister-d.did",
                   "wasm": "target/wasm32-unknown-unknown/release/canister-d.wasm",
                   "type": "custom"
+            },
+            "log_canister": {
+              "candid": "ic-log/examples/log_canister.did",
+              "build": "bash scripts/build_log_canister.sh",
+              "wasm": "target/wasm32-unknown-unknown/release/examples/log_canister.wasm",
+              "type": "custom"
             }
       },
       "networks": {
