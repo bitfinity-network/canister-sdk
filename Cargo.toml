@@ -1,23 +1,24 @@
 [workspace]
 members = [
-    "ic-exports",
-    "ic-factory",
+    "cmc-mock",
     "ic-auction",
-    "ic-metrics",
-    "ic-helpers",
-    "ic-payments",
-    "ic-payments/test-payment-canister",
-    "ic-stable-structures",
-    "ic-storage",
-    "ic-storage/ic-storage-derive",
-    "ic-canister/ic-canister",
     "ic-canister/ic-canister-macros",
+    "ic-canister/ic-canister",
     "ic-canister/tests/canister-a",
     "ic-canister/tests/canister-b",
     "ic-canister/tests/canister-c",
     "ic-canister/tests/canister-d",
     "ic-canister/tests/canister-e",
-    "cmc-mock",
+    "ic-exports",
+    "ic-factory",
+    "ic-helpers",
+    "ic-log",
+    "ic-metrics",
+    "ic-payments",
+    "ic-payments/test-payment-canister",
+    "ic-stable-structures",
+    "ic-storage",
+    "ic-storage/ic-storage-derive",
 ]
 
 [package]
@@ -48,19 +49,25 @@ ic-helpers = { path = "./ic-helpers" }
 ic-metrics = { path = "./ic-metrics" }
 
 [workspace.dependencies]
+anyhow = "1"
+arc-swap = "1.6"
 async-recursion = "1.0.2"
 async-trait = "0.1"
 auto_ops = "0.3"
 binread = "2.2"
 crypto-bigint = { version = "0.5", features = ["serde"] }
+env_logger = "0.10"
 getrandom = { version = "0.2", features = ["custom"] }
 hex = "0.4"
+humantime = "2.1"
 k256 = "0.13"
 lazy_static = "1"
+log = "0.4"
 num-bigint = "0.4"
 num-traits = "0.2"
 proc-macro2 = "1.0"
 quote = "1.0"
+ringbuffer = "0.14"
 serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11.2"
 serde_cbor = "0.11.2"
