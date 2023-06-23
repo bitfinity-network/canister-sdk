@@ -18,10 +18,11 @@ impl PreUpdate for LogCanister {}
 impl LogCanister {
     #[init]
     pub fn init(&self) {
-        let mut settings = LogSettings::default();
-        settings.in_memory_records = Some(128);
-        settings.log_filter = Some("info".to_string());
-        settings.enable_console = true;
+        let settings = LogSettings {
+            in_memory_records: Some(128),
+            log_filter: Some("info".to_string()),
+            enable_console: true,
+        };
         match init_log(&settings) {
             Ok(logger_config) => LoggerConfigService::default().init(logger_config),
             Err(err) => {

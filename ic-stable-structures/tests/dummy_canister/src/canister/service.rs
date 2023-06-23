@@ -103,7 +103,7 @@ impl Service {
     }
 
     pub fn get_tx_from_cell() -> Transaction {
-        TX_CELL.with(|tx| tx.borrow().get().clone())
+        TX_CELL.with(|tx| *tx.borrow().get())
     }
 
     pub fn insert_tx_to_cell(transaction: Transaction) {
