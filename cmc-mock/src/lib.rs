@@ -61,7 +61,11 @@ impl Versioned for CmcState {
 impl CmcMockCanister {
     #[init]
     pub fn init(&mut self, payload: CyclesCanisterInitPayload) {
-        self.state.borrow_mut().ledger = payload.ledger_canister_id.get().into();
+        self.state.borrow_mut().ledger = payload
+            .ledger_canister_id
+            .expect("ledger canister id is not set")
+            .get()
+            .into();
     }
 
     #[query]
