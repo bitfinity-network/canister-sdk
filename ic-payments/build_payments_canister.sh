@@ -6,7 +6,7 @@ export PROTOC_INCLUDE=${PWD}/../
 
 # Get example icrc1 canister
 if [ ! -f ic-payments/tests/common/ic-icrc1-ledger.wasm ]; then
-    export IC_VERSION=b43543ce7365acd1720294e701e8e8361fa30c8f
+    export IC_VERSION=4824fd13586f1be43ea842241f22ee98f98230d0
     curl -o ic-icrc1-ledger.wasm.gz https://download.dfinity.systems/ic/${IC_VERSION}/canisters/ic-icrc1-ledger.wasm.gz
     gunzip ic-icrc1-ledger.wasm.gz
     mv ic-icrc1-ledger.wasm ic-payments/tests/common/
