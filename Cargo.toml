@@ -29,7 +29,7 @@ version.workspace = true
 edition.workspace = true
 
 [workspace.package]
-version = "0.3.56"
+version = "0.3.58"
 edition = "2021"
 
 [features]
@@ -95,8 +95,7 @@ ic-icrc1 = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea84
 ic-icrc1-index = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
 ic-ledger-core = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
 ic-nns-common = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-# waiting for dfinity response <https://infinityswap.atlassian.net/browse/EPROD-431>
-ic-stable-structures = "=0.5.4"
+ic-stable-structures = "^0.5.6"
 ic-state-machine-tests = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
 ic-types = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
 icp-ledger = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
