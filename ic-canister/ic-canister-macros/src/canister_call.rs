@@ -2,9 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
-use syn::{
-    parse_macro_input, Expr, ExprMethodCall, ExprTuple, Ident, LitStr, Token, Type, TypeTuple,
-};
+use syn::{parse_macro_input, Expr, ExprMethodCall, Ident, Token, Type, TypeTuple};
 
 struct CanisterCall {
     method_call: ExprMethodCall,
@@ -46,12 +44,12 @@ pub(crate) fn canister_call(input: TokenStream) -> TokenStream {
     let method = input.method_call.method;
     let method_name = method.to_string();
     let inner_method = Ident::new(&format!("__{method}"), method.span());
-    let args = normalize_args(&input.method_call.args);
+    let args = normalize_args(input.method_call.args);
     let cycles = input.cycles;
     let cdk_call = get_cdk_call(
         quote! {#canister.principal()},
-        &method_name,
-        &args,
+        quote! {#method_name},
+        quote! {(#args)},
         &input.response_type,
         cycles,
     );
@@ -89,9 +87,14 @@ pub(crate) fn canister_notify(input: TokenStream) -> TokenStream {
     let method = input.method_call.method;
     let method_name = method.to_string();
     let inner_method = Ident::new(&format!("___{method}"), method.span());
-    let args = normalize_args(&input.method_call.args);
+    let args = normalize_args(input.method_call.args);
     let cycles = input.cycles;
-    let cdk_call = get_cdk_notify(quote! {#canister.principal()}, &method_name, &args, cycles);
+    let cdk_call = get_cdk_notify(
+        quote! {#canister.principal()},
+        quote! {#method_name},
+        quote! {(#args)},
+        cycles,
+    );
 
     let expanded = quote! {
         {
@@ -120,8 +123,8 @@ pub(crate) fn canister_notify(input: TokenStream) -> TokenStream {
 
 struct VirtualCanisterCall {
     principal: Expr,
-    method_name: LitStr,
-    args: ExprTuple,
+    method_name: Expr,
+    args: Expr,
     response_type: Type,
     cycles: Option<Expr>,
 }
@@ -160,15 +163,15 @@ impl Parse for VirtualCanisterCall {
 pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as VirtualCanisterCall);
     let principal = &input.principal;
-    let args = normalize_args(&input.args.elems);
-    let method_name = input.method_name.value();
+    let args = normalize_expr(input.args);
+    let method_name = &input.method_name;
     let response_type = &input.response_type;
     let cycles = input.cycles;
 
     let cdk_call = get_cdk_call(
         quote! {#principal},
-        &method_name,
-        &args,
+        quote! {#method_name},
+        quote! {#args},
         response_type,
         cycles,
     );
@@ -234,11 +237,16 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
 pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as VirtualCanisterCall);
     let principal = &input.principal;
-    let args = normalize_args(&input.args.elems);
-    let method_name = input.method_name.value();
+    let args = normalize_expr(input.args);
+    let method_name = &input.method_name;
     let cycles = input.cycles;
 
-    let cdk_call = get_cdk_notify(quote! {#principal}, &method_name, &args, cycles);
+    let cdk_call = get_cdk_notify(
+        quote! {#principal},
+        quote! {#method_name},
+        quote! {#args},
+        cycles,
+    );
 
     let responder_call = quote! {
         async {
@@ -273,8 +281,8 @@ pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
 
 fn get_cdk_call(
     principal: proc_macro2::TokenStream,
-    method_name: &str,
-    args: &Punctuated<Expr, Token![,]>,
+    method_name: proc_macro2::TokenStream,
+    args: proc_macro2::TokenStream,
     response_type: &Type,
     cycles: Option<Expr>,
 ) -> proc_macro2::TokenStream {
@@ -283,11 +291,11 @@ fn get_cdk_call(
     if is_tuple {
         if let Some(cycles) = cycles {
             quote! {
-                ::ic_exports::ic_cdk::api::call::call_with_payment::<_, #response_type>(#principal, #method_name, (#args), #cycles)
+                ::ic_exports::ic_cdk::api::call::call_with_payment::<_, #response_type>(#principal, #method_name, #args, #cycles)
             }
         } else {
             quote! {
-                ::ic_exports::ic_cdk::api::call::call::<_, #response_type>(#principal, #method_name, (#args))
+                ::ic_exports::ic_cdk::api::call::call::<_, #response_type>(#principal, #method_name, #args)
             }
         }
     } else {
@@ -302,13 +310,13 @@ fn get_cdk_call(
         if let Some(cycles) = cycles {
             quote! {
                 async {
-                    ::ic_exports::ic_cdk::api::call::call_with_payment::<_, #tuple_response_type>(#principal, #method_name, (#args), #cycles).await.map(|x| x.0)
+                    ::ic_exports::ic_cdk::api::call::call_with_payment::<_, #tuple_response_type>(#principal, #method_name, #args, #cycles).await.map(|x| x.0)
                 }
             }
         } else {
             quote! {
                 async {
-                    ::ic_exports::ic_cdk::api::call::call::<_, #tuple_response_type>(#principal, #method_name, (#args)).await.map(|x| x.0)
+                    ::ic_exports::ic_cdk::api::call::call::<_, #tuple_response_type>(#principal, #method_name, #args).await.map(|x| x.0)
                 }
             }
         }
@@ -317,26 +325,35 @@ fn get_cdk_call(
 
 fn get_cdk_notify(
     principal: proc_macro2::TokenStream,
-    method_name: &str,
-    args: &Punctuated<Expr, Token![,]>,
+    method_name: proc_macro2::TokenStream,
+    args: proc_macro2::TokenStream,
     cycles: Option<Expr>,
 ) -> proc_macro2::TokenStream {
     if let Some(cycles) = cycles {
         quote! {
 
-                ::ic_exports::ic_cdk::api::call::notify_with_payment128(#principal, #method_name, (#args), #cycles)
+                ::ic_exports::ic_cdk::api::call::notify_with_payment128(#principal, #method_name, #args, #cycles)
 
         }
     } else {
         quote! {
-                ::ic_exports::ic_cdk::api::call::notify(#principal, #method_name, (#args))
+                ::ic_exports::ic_cdk::api::call::notify(#principal, #method_name, #args)
 
         }
     }
 }
 
-fn normalize_args(args: &Punctuated<Expr, Token![,]>) -> Punctuated<Expr, Token![,]> {
-    let mut args = args.clone();
+fn normalize_expr(args: Expr) -> Expr {
+    match args {
+        Expr::Tuple(mut expr) => {
+            expr.elems = normalize_args(expr.elems);
+            Expr::Tuple(expr)
+        }
+        _ => args,
+    }
+}
+
+fn normalize_args(mut args: Punctuated<Expr, Token![,]>) -> Punctuated<Expr, Token![,]> {
     if !args.empty_or_trailing() {
         args.push_punct(std::default::Default::default());
     }
