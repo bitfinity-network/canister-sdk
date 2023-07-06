@@ -13,8 +13,8 @@ pub enum Error {
     IncompatibleVersions,
     #[error("the vector type is not compatible with the current vector")]
     IncompatibleElementType,
-    #[error("bad magic number: {0:?}")]
-    BadMagic([u8; 3]),
+    #[error("bad magic number: actual: {actual:?}, expected: {expected:?}")]
+    BadMagic { actual: [u8; 3], expected: [u8; 3] },
 }
 
 impl From<cell::InitError> for Error {
@@ -56,7 +56,7 @@ impl From<vec::InitError> for Error {
             vec::InitError::IncompatibleVersion(_) => Self::IncompatibleVersions,
             vec::InitError::IncompatibleElementType => Self::IncompatibleElementType,
             vec::InitError::OutOfMemory => Self::OutOfStableMemory,
-            vec::InitError::BadMagic(magic) => Self::BadMagic(magic),
+            vec::InitError::BadMagic { actual, expected } => Self::BadMagic { actual, expected },
         }
     }
 }
