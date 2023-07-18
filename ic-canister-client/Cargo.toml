@@ -14,7 +14,7 @@ ic-agent-client = ["dep:ic-agent"]
 candid = { workspace = true }
 ic-agent = { workspace = true, optional = true }
 ic-canister = { path = "../ic-canister/ic-canister" }
-ic-cdk = { workspace = true }
+ic-exports = { path = "../ic-exports" }
 serde_json = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
