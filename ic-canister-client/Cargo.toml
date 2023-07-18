@@ -1,0 +1,21 @@
+[package]
+name = "ic-canister-client"
+version.workspace = true
+edition.workspace = true
+description = "Client for interacting with an IC Canister"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+ic-agent-client = ["dep:ic-agent"]
+
+[dependencies]
+candid = { workspace = true }
+ic-agent = { workspace = true, optional = true }
+ic-canister = { path = "../ic-canister/ic-canister" }
+ic-exports = { path = "../ic-exports" }
+serde_json = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }

@@ -9,6 +9,7 @@ members = [
     "ic-canister/tests/canister-c",
     "ic-canister/tests/canister-d",
     "ic-canister/tests/canister-e",
+    "ic-canister-client",
     "ic-exports",
     "ic-factory",
     "ic-helpers",
@@ -29,7 +30,7 @@ version.workspace = true
 edition.workspace = true
 
 [workspace.package]
-version = "0.3.58"
+version = "0.3.59"
 edition = "2021"
 
 [features]
