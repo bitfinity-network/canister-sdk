@@ -1,4 +1,4 @@
-use ic_exports::ic_cdk::api::call::RejectionCode;
+use ic_cdk::api::call::RejectionCode;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
