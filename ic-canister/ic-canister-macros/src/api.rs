@@ -46,16 +46,11 @@ pub(crate) fn api_method(
     let parameters =
         serde_tokenstream::from_tokenstream::<ApiAttrParameters>(&attr.into()).unwrap();
 
-    let _ = &input
-        .sig
-        .generics
-        .params
-        .iter()
-        .filter_map(|generic| match generic {
-            syn::GenericParam::Lifetime(_) => Some(generic),
-            _ => panic!("candid method does not support generics that are not lifetimes"),
-        })
-        .collect::<Vec<_>>();
+    input.sig.generics.params.iter().for_each(|generic| {
+        if !matches!(generic, syn::GenericParam::Lifetime(_)) {
+            panic!("candid method does not support generics that are not lifetimes");
+        }
+    });
 
     if method_type == "init" && parameters.is_trait {
         panic!("Cannot set up init method for a trait definition. This should be done by the struct that implements this trait.");
