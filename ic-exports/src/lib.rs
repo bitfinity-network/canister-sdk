@@ -13,19 +13,17 @@ pub use {
 
 pub type BlockHeight = u64;
 
-// pub mod ledger {
-//     pub use ic_ledger_core::Tokens;
-//     pub use icp_ledger::{
-//         AccountIdentifier, BinaryAccountBalanceArgs, CandidOperation, GetBlocksArgs,
-//         LedgerCanisterInitPayload, QueryBlocksResponse, Subaccount, TransferArgs, TransferError,
-//         TransferFee, TransferFeeArgs, DEFAULT_TRANSFER_FEE, TOKEN_SUBDIVIDABLE_BY,
-//     };
-// }
-// pub use {
-//     ic_icrc1_ledger as icrc1_ledger,
-//     ic_ledger_canister_core, ic_ledger_core,
-//     icrc_ledger_types as icrc_types, ledger_canister,
-// };
+#[cfg(feature = "ledger")]
+pub mod ledger {
+    pub use ic_ledger_core::Tokens;
+    pub use icp_ledger::{
+        AccountIdentifier, BinaryAccountBalanceArgs, CandidOperation, GetBlocksArgs,
+        LedgerCanisterInitPayload, QueryBlocksResponse, Subaccount, TransferArgs, TransferError,
+        TransferFee, TransferFeeArgs, DEFAULT_TRANSFER_FEE, TOKEN_SUBDIVIDABLE_BY,
+    };
+}
+#[cfg(feature = "ledger")]
+pub use icrc_ledger_types as icrc_types;
 
 #[cfg(feature = "state-machine")]
 pub use ic_state_machine_tests;

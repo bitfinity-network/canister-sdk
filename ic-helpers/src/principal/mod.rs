@@ -7,5 +7,6 @@ mod private {
     impl Sealed for Principal {}
 }
 
+#[cfg(feature = "ledger")]
 pub mod ledger;
 pub mod management;

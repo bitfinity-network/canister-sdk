@@ -15,11 +15,11 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 
-ic-exports = { path = "../ic-exports" }
+ic-exports = { path = "../ic-exports", features = ["ledger"]}
 ic-canister = { path = "../ic-canister/ic-canister" }
 ic-canister-macros = { path = "../ic-canister/ic-canister-macros" }
 ic-storage = { path = "../ic-storage" }
-ic-helpers = { path = "../ic-helpers" }
+ic-helpers = { path = "../ic-helpers", features = ["ledger"] }
 ic-stable-structures = { path = "../ic-stable-structures" }
 
 # This dependency is not used direcly, but we must enable `custom` feature for it to compile for wasm32 target.

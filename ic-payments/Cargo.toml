@@ -7,7 +7,7 @@ edition.workspace = true
 state-machine = ["ic-exports/state-machine"]
 
 [dependencies]
-ic-exports = { path = "../ic-exports" }
+ic-exports = { path = "../ic-exports", features = ["ledger"] }
 ic-canister = { path = "../ic-canister/ic-canister" }
 ic-storage = { path = "../ic-storage" }
 ic-stable-structures = { path = "../ic-stable-structures/" }

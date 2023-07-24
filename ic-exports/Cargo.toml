@@ -9,7 +9,7 @@ edition.workspace = true
 [features]
 default = []
 state-machine = ["ic-state-machine-tests"]
-ledger = ["icp-ledger", "ledger-canister", "ic-ledger-core", "icrc-ledger-types", "ic-icrc1-ledger", "ic-ledger-canister-core"]
+ledger = ["icp-ledger", "ic-ledger-core", "icrc-ledger-types"]
 
 [dependencies]
 ic-cdk = { workspace = true }
@@ -26,10 +26,7 @@ ic-icrc1-index = { workspace = true }
 ic-icrc1 = { workspace = true }
 
 icp-ledger = { workspace = true, optional = true }
-ledger-canister = { workspace = true, optional = true }
 ic-ledger-core = { workspace = true, optional = true }
 icrc-ledger-types = { workspace = true, optional = true }
-ic-icrc1-ledger = { workspace = true, optional = true }
-ic-ledger-canister-core = { workspace = true, optional = true }
 
 ic-state-machine-tests = { workspace = true, optional = true }
