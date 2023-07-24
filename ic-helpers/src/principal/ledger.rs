@@ -61,7 +61,7 @@ impl LedgerPrincipalExt for Principal {
 
         let args = TransferArgs {
             memo: Default::default(),
-            amount: (Tokens::from_e8s(amount) - DEFAULT_TRANSFER_FEE)?,
+            amount: Tokens::from_e8s(amount - DEFAULT_TRANSFER_FEE.get_e8s()),
             fee: DEFAULT_TRANSFER_FEE,
             from_subaccount,
             to: AccountIdentifier::new(PrincipalId(to), to_subaccount).to_address(),

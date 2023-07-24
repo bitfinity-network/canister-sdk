@@ -14,9 +14,7 @@ state-machine = ["ic-state-machine-tests"]
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 ic-cdk-timers = { workspace = true }
-
-ic-agent = { workspace = true, optional = true }
-
+ic-kit = { workspace = true }
 
 ic-stable-structures = { workspace = true }
 icp-ledger = { workspace = true }
@@ -32,6 +30,5 @@ icrc-ledger-types = { workspace = true }
 ic-icrc1-ledger = { workspace = true }
 ic-ledger-canister-core = { workspace = true }
 
-ic-kit = { workspace = true }
 
 ic-state-machine-tests = { workspace = true, optional = true }
