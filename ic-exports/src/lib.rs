@@ -24,7 +24,9 @@ pub mod ledger {
     };
 }
 #[cfg(feature = "ledger")]
-pub use {ic_ledger_canister_core, icrc1_ledger, icrc_ledger_types as icrc_types};
+pub use {
+    ic_icrc1_ledger as icrc1_ledger, ic_ledger_canister_core, icrc_ledger_types as icrc_types,
+};
 
 #[cfg(feature = "state-machine")]
 pub use ic_state_machine_tests;
