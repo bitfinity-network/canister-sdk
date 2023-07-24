@@ -12,7 +12,6 @@ state-machine = ["ic-state-machine-tests"]
 ledger = ["ic-icrc1-ledger", "ic-ledger-canister-core", "ic-ledger-core", "icp-ledger", "icrc-ledger-types"]
 
 [dependencies]
-getrandom = { workspace = true }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 ic-cdk-timers = { workspace = true }
@@ -21,6 +20,7 @@ ic-stable-structures = { workspace = true }
 
 ic-base-types = { workspace = true }
 ic-ic00-types = { workspace = true }
+ic-crypto-getrandom-for-wasm = { workspace = true }
 
 ic-icrc1-ledger = { workspace = true, optional = true }
 ic-ledger-canister-core = { workspace = true, optional = true }
