@@ -1,9 +1,9 @@
 use candid::Principal;
-use ic_canister::virtual_canister_call;
 use cycles_minting_canister::{
     IcpXdrConversionRateCertifiedResponse, NotifyError, NotifyTopUp, DEFAULT_CYCLES_PER_XDR,
     MEMO_TOP_UP_CANISTER,
 };
+use ic_canister::virtual_canister_call;
 use ic_exports::ic_base_types::{CanisterId, PrincipalId};
 use ic_exports::ledger::{
     AccountIdentifier, Subaccount, Tokens, TransferArgs, TransferError, DEFAULT_TRANSFER_FEE,
@@ -99,8 +99,8 @@ pub(crate) async fn mint_cycles_to_factory(
 
 #[cfg(test)]
 mod tests {
-    use ic_canister::register_virtual_responder;
     use cycles_minting_canister::IcpXdrConversionRate;
+    use ic_canister::register_virtual_responder;
     use ic_exports::ic_kit::MockContext;
 
     use super::*;

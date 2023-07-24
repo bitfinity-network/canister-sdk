@@ -24,5 +24,7 @@ ic-ic00-types = { workspace = true }
 icp-ledger = { workspace = true, optional = true }
 ic-ledger-core = { workspace = true, optional = true }
 icrc-ledger-types = { workspace = true, optional = true }
+ic-icrc1-ledger = { workspace = true, optional = true }
+ic-ledger-canister-core = { workspace = true, optional = true }
 
 ic-state-machine-tests = { workspace = true, optional = true }

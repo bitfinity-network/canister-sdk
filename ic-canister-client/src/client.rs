@@ -41,4 +41,3 @@ pub trait CanisterClient {
         T: ArgumentEncoder + Send,
         R: for<'de> Deserialize<'de> + CandidType;
 }
-
