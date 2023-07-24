@@ -12,7 +12,7 @@ use std::rc::Rc;
 
 use candid::{CandidType, Deserialize, Principal};
 use ic_canister::{init, query, update, virtual_canister_call, Canister, PreUpdate};
-use ic_exports::cycles_minting_canister::{
+use cycles_minting_canister::{
     CyclesCanisterInitPayload, IcpXdrConversionRate, IcpXdrConversionRateCertifiedResponse,
     NotifyError, NotifyTopUp, TokensToCycles,
 };

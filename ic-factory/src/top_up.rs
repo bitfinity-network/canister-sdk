@@ -1,6 +1,6 @@
 use candid::Principal;
 use ic_canister::virtual_canister_call;
-use ic_exports::cycles_minting_canister::{
+use cycles_minting_canister::{
     IcpXdrConversionRateCertifiedResponse, NotifyError, NotifyTopUp, DEFAULT_CYCLES_PER_XDR,
     MEMO_TOP_UP_CANISTER,
 };
@@ -100,7 +100,7 @@ pub(crate) async fn mint_cycles_to_factory(
 #[cfg(test)]
 mod tests {
     use ic_canister::register_virtual_responder;
-    use ic_exports::cycles_minting_canister::IcpXdrConversionRate;
+    use cycles_minting_canister::IcpXdrConversionRate;
     use ic_exports::ic_kit::MockContext;
 
     use super::*;

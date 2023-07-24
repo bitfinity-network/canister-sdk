@@ -19,11 +19,7 @@ ic-kit = { workspace = true }
 ic-stable-structures = { workspace = true }
 
 ic-base-types = { workspace = true }
-ic-crypto-sha = { workspace = true }
 ic-ic00-types = { workspace = true }
-cycles-minting-canister = { workspace = true }
-ic-icrc1-index = { workspace = true }
-ic-icrc1 = { workspace = true }
 
 icp-ledger = { workspace = true, optional = true }
 ic-ledger-core = { workspace = true, optional = true }

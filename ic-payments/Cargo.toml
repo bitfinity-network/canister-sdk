@@ -9,6 +9,7 @@ state-machine = ["ic-exports/state-machine"]
 [dependencies]
 ic-exports = { path = "../ic-exports", features = ["ledger"] }
 ic-canister = { path = "../ic-canister/ic-canister" }
+ic-crypto-sha = { workspace = true }
 ic-storage = { path = "../ic-storage" }
 ic-stable-structures = { path = "../ic-stable-structures/" }
 serde = { workspace = true }
