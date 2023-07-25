@@ -9,7 +9,7 @@ edition.workspace = true
 [features]
 default = []
 state-machine = ["ic-state-machine-tests"]
-ledger = ["ic-icrc1-ledger", "ic-ledger-canister-core", "ic-ledger-core", "icp-ledger", "icrc-ledger-types"]
+ledger = ["ic-icrc1-ledger", "ic-ledger-canister-core", "icp-ledger", "icrc-ledger-types"]
 
 [dependencies]
 ic-cdk = { workspace = true }
@@ -20,11 +20,12 @@ ic-stable-structures = { workspace = true }
 
 ic-base-types = { workspace = true }
 ic-ic00-types = { workspace = true }
+
+# Do not remove: This fixes the getrandom deployment in wasm canisters
 ic-crypto-getrandom-for-wasm = { workspace = true }
 
 ic-icrc1-ledger = { workspace = true, optional = true }
 ic-ledger-canister-core = { workspace = true, optional = true }
-ic-ledger-core = { workspace = true, optional = true }
 icp-ledger = { workspace = true, optional = true }
 icrc-ledger-types = { workspace = true, optional = true }
 

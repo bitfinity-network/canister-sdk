@@ -1,6 +1,6 @@
-//
-// Export dependencies from crates.io
-//
+// ----------------------------------- //
+// Export dependencies from crates.io  //
+// ----------------------------------- //
 
 pub use candid; // this is needed for candid-derive macro exports
 pub use ic_cdk::export::*;
@@ -8,18 +8,17 @@ pub use {ic_cdk, ic_cdk_macros, ic_cdk_timers, ic_kit, ic_stable_structures as s
 
 pub type BlockHeight = u64;
 
-//
-// Export dependencies from dfinity github repository
-//
+// --------------------------------------------------- //
+// Export dependencies from dfinity github repository  //
+// --------------------------------------------------- //
 
 pub use {ic_base_types, ic_ic00_types};
 
 #[cfg(feature = "ledger")]
 pub mod ledger {
-    pub use ic_ledger_core::Tokens;
     pub use icp_ledger::{
         AccountIdentifier, BinaryAccountBalanceArgs, CandidOperation, GetBlocksArgs,
-        LedgerCanisterInitPayload, QueryBlocksResponse, Subaccount, TransferArgs, TransferError,
+        LedgerCanisterInitPayload, QueryBlocksResponse, Subaccount, Tokens, TransferArgs, TransferError,
         TransferFee, TransferFeeArgs, DEFAULT_TRANSFER_FEE, TOKEN_SUBDIVIDABLE_BY,
     };
 }
