@@ -11,11 +11,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use candid::{CandidType, Deserialize, Principal};
-use ic_canister::{init, query, update, virtual_canister_call, Canister, PreUpdate};
-use ic_exports::cycles_minting_canister::{
+use cycles_minting_canister::{
     CyclesCanisterInitPayload, IcpXdrConversionRate, IcpXdrConversionRateCertifiedResponse,
     NotifyError, NotifyTopUp, TokensToCycles,
 };
+use ic_canister::{init, query, update, virtual_canister_call, Canister, PreUpdate};
 use ic_exports::ic_kit::ic;
 use ic_exports::ledger::{CandidOperation, GetBlocksArgs, QueryBlocksResponse, Tokens};
 use ic_exports::serde::Serialize;
@@ -119,8 +119,11 @@ impl CmcMockCanister {
             panic!("Ledger block not found");
         }
 
-        let Some(CandidOperation::Transfer { amount, .. }) = response.blocks[0].transaction.operation
-        else { panic!("Invalid ledger operation") };
+        let Some(CandidOperation::Transfer { amount, .. }) =
+            response.blocks[0].transaction.operation
+        else {
+            panic!("Invalid ledger operation")
+        };
         amount
     }
 }

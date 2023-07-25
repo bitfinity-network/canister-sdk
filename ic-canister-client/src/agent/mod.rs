@@ -3,7 +3,7 @@ mod identity;
 use std::path::{Path, PathBuf};
 
 use candid::utils::ArgumentEncoder;
-use candid::{encode_args, CandidType, Principal, Decode};
+use candid::{encode_args, CandidType, Decode, Principal};
 use ic_agent::identity::PemError;
 use serde::Deserialize;
 use thiserror::Error;

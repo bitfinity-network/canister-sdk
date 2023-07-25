@@ -472,7 +472,9 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     }
 
     async fn recover_old_tx(&mut self, tx: Transfer) -> Result<TxId, PaymentError> {
-        let TransferType::DoubleStep(stage, acc) = tx.r#type() else { return Err(PaymentError::TransferFailed(TransferFailReason::TooOld));};
+        let TransferType::DoubleStep(stage, acc) = tx.r#type() else {
+            return Err(PaymentError::TransferFailed(TransferFailReason::TooOld));
+        };
         let interim_balance = icrc1::get_icrc1_balance(self.token_config.principal, acc).await?;
 
         match stage {
