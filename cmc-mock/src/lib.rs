@@ -119,8 +119,11 @@ impl CmcMockCanister {
             panic!("Ledger block not found");
         }
 
-        let Some(CandidOperation::Transfer { amount, .. }) = response.blocks[0].transaction.operation
-        else { panic!("Invalid ledger operation") };
+        let Some(CandidOperation::Transfer { amount, .. }) =
+            response.blocks[0].transaction.operation
+        else {
+            panic!("Invalid ledger operation")
+        };
         amount
     }
 }

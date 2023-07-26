@@ -1,0 +1,21 @@
+[package]
+name = "ic-kit"
+version.workspace = true
+edition.workspace = true
+categories = ["api-bindings", "data-structures", "development-tools::testing"]
+keywords = ["internet-computer", "canister", "cdk", "fleek"]
+include = ["src", "Cargo.toml", "README.md"]
+
+[dependencies]
+ic-cdk = { workspace = true }
+ic-cdk-macros = { workspace = true }
+candid = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_bytes = { workspace = true }
+futures = { workspace = true, default-features = false, features = ["executor"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+# [patch.crates-io]
+# num-bigint = { git = "https://github.com/rust-num/num-bigint" }

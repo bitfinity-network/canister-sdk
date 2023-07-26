@@ -32,6 +32,6 @@ icrc-ledger-types = { workspace = true }
 ic-icrc1-ledger = { workspace = true }
 ic-ledger-canister-core = { workspace = true }
 
-ic-kit = { workspace = true }
+ic-kit = { path = "../ic-kit" }
 
 ic-state-machine-tests = { workspace = true, optional = true }
