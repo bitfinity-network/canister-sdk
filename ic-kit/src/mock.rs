@@ -87,6 +87,7 @@ pub struct WatcherCall {
 
 impl MockContext {
     /// Create a new mock context which could be injected for testing.
+    #[allow(clippy::new_without_default)]
     #[inline]
     pub fn new() -> Self {
         let time = SystemTime::now()
@@ -315,12 +316,12 @@ impl MockContext {
 
         let mut certificate = Vec::with_capacity(32 * 8);
 
-        for i in 0..32 {
+        for data_item in data.iter().take(32) {
             let mut hasher = std::collections::hash_map::DefaultHasher::new();
             for b in &certificate {
                 hasher.write_u8(*b);
             }
-            hasher.write_u8(data[i]);
+            hasher.write_u8(*data_item);
             let hash = hasher.finish().to_be_bytes();
             certificate.extend_from_slice(&hash);
         }
@@ -331,6 +332,7 @@ impl MockContext {
     /// This is how we do interior mutability for MockContext. Since the context is only accessible
     /// by only one thread, it is safe to do it here.
     #[inline]
+    #[allow(clippy::mut_from_ref)]
     fn as_mut(&self) -> &mut Self {
         unsafe {
             let const_ptr = self as *const Self;
@@ -387,10 +389,7 @@ impl MockContext {
     /// Return the certified data set on the canister.
     #[inline]
     pub fn get_certified_data(&self) -> Option<Vec<u8>> {
-        match &self.certified_data {
-            Some(v) => Some(v.clone()),
-            None => None,
-        }
+        self.certified_data.as_ref().cloned()
     }
 
     /// Add the given handler to the call handlers pipeline.
@@ -427,7 +426,7 @@ impl Context for MockContext {
     #[inline]
     fn id(&self) -> Principal {
         self.as_mut().watcher.called_id = true;
-        self.id.clone()
+        self.id
     }
 
     #[inline]
@@ -454,7 +453,7 @@ impl Context for MockContext {
             )
         }
 
-        self.caller.clone()
+        self.caller
     }
 
     #[inline]
@@ -507,7 +506,7 @@ impl Context for MockContext {
         self.as_mut()
             .storage
             .entry(type_id)
-            .or_insert_with(|| Box::new(T::default()))
+            .or_insert_with(|| Box::<T>::default())
             .downcast_mut()
             .expect("Unexpected value of invalid type.")
     }
@@ -520,7 +519,7 @@ impl Context for MockContext {
         mut_ref
             .storage
             .entry(type_id)
-            .or_insert_with(|| Box::new(T::default()))
+            .or_insert_with(|| Box::<T>::default())
             .downcast_mut()
             .expect("Unexpected value of invalid type.")
     }
@@ -622,10 +621,7 @@ impl Context for MockContext {
     #[inline]
     fn data_certificate(&self) -> Option<Vec<u8>> {
         self.as_mut().watcher.called_data_certificate = true;
-        match &self.certificate {
-            Some(c) => Some(c.clone()),
-            None => None,
-        }
+        self.certificate.as_ref().cloned()
     }
 
     #[inline]
@@ -785,7 +781,7 @@ impl WatcherCall {
     /// Canister ID that was target of the call.
     #[inline]
     pub fn canister_id(&self) -> Principal {
-        self.canister_id.clone()
+        self.canister_id
     }
 }
 
@@ -849,7 +845,7 @@ mod tests {
             let user_balance = ic::get_mut::<u64>();
 
             if amount > *user_balance {
-                return Err(format!("Insufficient balance."));
+                return Err("Insufficient balance.".to_string());
             }
 
             *user_balance -= amount;
@@ -983,9 +979,9 @@ mod tests {
     fn test_storage_simple() {
         let ctx = MockContext::new().inject();
         let watcher = ctx.watch();
-        assert_eq!(watcher.is_modified::<canister::Counter>(), false);
+        assert!(!watcher.is_modified::<canister::Counter>());
         assert_eq!(canister::increment(0), 1);
-        assert_eq!(watcher.is_modified::<canister::Counter>(), true);
+        assert!(watcher.is_modified::<canister::Counter>());
         assert_eq!(canister::increment(0), 2);
         assert_eq!(canister::increment(0), 3);
         assert_eq!(canister::increment(1), 1);
@@ -1007,14 +1003,14 @@ mod tests {
         assert_eq!(canister::decrement(1), 16);
 
         let watcher = ctx.watch();
-        assert_eq!(watcher.is_modified::<canister::Counter>(), false);
+        assert!(!watcher.is_modified::<canister::Counter>());
         ctx.store({
             let mut map = canister::Counter::default();
             map.insert(0, 12);
             map.insert(1, 17);
             map
         });
-        assert_eq!(watcher.is_modified::<canister::Counter>(), true);
+        assert!(watcher.is_modified::<canister::Counter>());
 
         assert_eq!(canister::increment(0), 13);
         assert_eq!(canister::decrement(1), 16);
@@ -1049,7 +1045,7 @@ mod tests {
         let counter = ctx.get::<canister::Counter>();
         let data: Vec<(u64, i64)> = counter
             .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
+            .map(|(k, v)| (*k, *v))
             .collect();
         assert_eq!(data, vec![(0, 2), (1, 27), (2, 5), (3, 17)]);
 
@@ -1071,12 +1067,12 @@ mod tests {
         );
 
         canister::set_certified_data(&[1, 2, 3]);
-        assert_eq!(watcher.called_set_certified_data, true);
+        assert!(watcher.called_set_certified_data);
         assert_eq!(ctx.get_certified_data(), Some(vec![1, 2, 3]));
         assert_eq!(ctx.data_certificate(), Some(MockContext::sign(&[1, 2, 3])));
 
         canister::data_certificate();
-        assert_eq!(watcher.called_data_certificate, true);
+        assert!(watcher.called_data_certificate);
     }
 
     #[tokio::test]
@@ -1090,28 +1086,24 @@ mod tests {
 
         assert_eq!(canister::user_balance(), 1000);
 
-        assert_eq!(
-            watcher.is_canister_called(&Principal::management_canister()),
-            false
+        assert!(
+            !watcher.is_canister_called(&Principal::management_canister())
         );
-        assert_eq!(watcher.is_method_called("deposit_cycles"), false);
-        assert_eq!(
-            watcher.is_called(&Principal::management_canister(), "deposit_cycles"),
-            false
+        assert!(!watcher.is_method_called("deposit_cycles"));
+        assert!(
+            !watcher.is_called(&Principal::management_canister(), "deposit_cycles")
         );
         assert_eq!(watcher.cycles_consumed(), 0);
 
         canister::withdraw(users::bob(), 100).await.unwrap();
 
         assert_eq!(watcher.call_count(), 1);
-        assert_eq!(
-            watcher.is_canister_called(&Principal::management_canister()),
-            true
+        assert!(
+            watcher.is_canister_called(&Principal::management_canister())
         );
-        assert_eq!(watcher.is_method_called("deposit_cycles"), true);
-        assert_eq!(
-            watcher.is_called(&Principal::management_canister(), "deposit_cycles"),
-            true
+        assert!(watcher.is_method_called("deposit_cycles"));
+        assert!(
+            watcher.is_called(&Principal::management_canister(), "deposit_cycles")
         );
         assert_eq!(watcher.cycles_consumed(), 100);
 

@@ -24,7 +24,7 @@ pub trait CallHandler {
         cycles: u64,
         canister_id: &Principal,
         method: &str,
-        args_raw: &Vec<u8>,
+        args_raw: &[u8],
         ctx: Option<&mut MockContext>,
     ) -> (CallResult<Vec<u8>>, u64);
 }
@@ -43,6 +43,7 @@ pub struct Method {
     response: Option<Vec<u8>>,
 }
 
+#[allow(clippy::enum_variant_names)]
 enum MethodAtom {
     ConsumeAllCycles,
     ConsumeCycles(u64),
@@ -51,7 +52,8 @@ enum MethodAtom {
 
 /// A method which uses Rust closures to handle the calls, it accepts every call.
 pub struct RawHandler {
-    handler: Box<dyn Fn(&mut MockContext, &Vec<u8>, &Principal, &str) -> CallResult<Vec<u8>>>,
+    #[allow(clippy::type_complexity)]
+    handler: Box<dyn Fn(&mut MockContext, &[u8], &Principal, &str) -> CallResult<Vec<u8>>>,
 }
 
 /// Can be used to represent a canister and different method on the canister.
@@ -161,7 +163,7 @@ impl Canister {
     /// different canister id.
     #[inline]
     pub fn new(id: Principal) -> Self {
-        let context = MockContext::new().with_id(id.clone());
+        let context = MockContext::new().with_id(id);
 
         Canister {
             id,
@@ -222,9 +224,10 @@ impl Canister {
 
 impl RawHandler {
     /// Create a raw handler.
+    #[allow(clippy::type_complexity)]
     #[inline]
     pub fn raw(
-        handler: Box<dyn Fn(&mut MockContext, &Vec<u8>, &Principal, &str) -> CallResult<Vec<u8>>>,
+        handler: Box<dyn Fn(&mut MockContext, &[u8], &Principal, &str) -> CallResult<Vec<u8>>>,
     ) -> Self {
         Self { handler }
     }
@@ -265,7 +268,7 @@ impl CallHandler for Method {
         cycles: u64,
         _canister_id: &Principal,
         _method: &str,
-        args_raw: &Vec<u8>,
+        args_raw: &[u8],
         ctx: Option<&mut MockContext>,
     ) -> (CallResult<Vec<u8>>, u64) {
         let mut default_ctx = MockContext::new().with_msg_cycles(cycles);
@@ -324,13 +327,13 @@ impl CallHandler for RawHandler {
         cycles: u64,
         canister_id: &Principal,
         method: &str,
-        args_raw: &Vec<u8>,
+        args_raw: &[u8],
         ctx: Option<&mut MockContext>,
     ) -> (CallResult<Vec<u8>>, u64) {
         let mut default_ctx = MockContext::new()
-            .with_caller(caller.clone())
+            .with_caller(*caller)
             .with_msg_cycles(cycles)
-            .with_id(canister_id.clone());
+            .with_id(*canister_id);
         let ctx = ctx.unwrap_or(&mut default_ctx);
 
         let handler = &self.handler;
@@ -361,13 +364,13 @@ impl CallHandler for Canister {
         cycles: u64,
         canister_id: &Principal,
         method: &str,
-        args_raw: &Vec<u8>,
+        args_raw: &[u8],
         ctx: Option<&mut MockContext>,
     ) -> (CallResult<Vec<u8>>, u64) {
         assert!(ctx.is_none());
 
         let mut ctx = self.context.borrow_mut();
-        ctx.update_caller(caller.clone());
+        ctx.update_caller(*caller);
         ctx.update_msg_cycles(cycles);
 
         let res = if let Some(handler) = self.methods.get(method) {
@@ -410,18 +413,15 @@ mod tests {
     #[test]
     fn method_name() {
         let nameless = Method::new();
-        assert_eq!(
-            nameless.accept(&Principal::management_canister(), "XXX"),
-            true
+        assert!(
+            nameless.accept(&Principal::management_canister(), "XXX")
         );
         let named = Method::new().name("deposit");
-        assert_eq!(
-            named.accept(&Principal::management_canister(), "XXX"),
-            false
+        assert!(
+            !named.accept(&Principal::management_canister(), "XXX")
         );
-        assert_eq!(
-            named.accept(&Principal::management_canister(), "deposit"),
-            true
+        assert!(
+            named.accept(&Principal::management_canister(), "deposit")
         );
     }
 

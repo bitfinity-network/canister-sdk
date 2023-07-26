@@ -53,6 +53,7 @@ pub trait Context {
     /// Return a mutable reference to the given data type, if the data is not present the default
     /// value of the type is constructed and stored. The changes made to the data during updates
     /// is preserved.
+    #[allow(clippy::mut_from_ref)]
     fn get_mut<T: 'static + Default>(&self) -> &mut T;
 
     /// Remove the data associated with the given data type.
