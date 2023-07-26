@@ -44,13 +44,3 @@ pub mod mock_principals {
 pub mod ic;
 /// The type definition of common canisters on the Internet Computer.
 pub mod interfaces;
-
-/// Return the IC context depending on the build target.
-#[inline(always)]
-#[deprecated(note = "get_context is deprecated use ic_kit::ic::*")]
-pub fn get_context() -> &'static impl Context {
-    #[cfg(not(target_family = "wasm"))]
-    return inject::get_context();
-    #[cfg(target_family = "wasm")]
-    return wasm::IcContext::context();
-}

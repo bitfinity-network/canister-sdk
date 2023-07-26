@@ -13,10 +13,6 @@ async fn send_cycles(canister_id: Principal, cycles: u64) -> Result<(), String> 
         .map_err(|(code, msg)| format!("Call failed with code={}: {}", code as u8, msg))
 }
 
-async fn async_job(canister_id: Principal, cycles: u64) {
-    let _ = send_cycles(canister_id, cycles).await;
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -31,7 +27,7 @@ mod tests {
         assert_eq!(whoami(), mock_principals::alice());
     }
 
-    #[async_test]
+    #[tokio::test]
     async fn test_send_cycles() {
         // Create a context that just consumes 1000 cycles from all the inter-canister calls and
         // returns "()" in response.
@@ -48,7 +44,7 @@ mod tests {
         assert_eq!(watcher.cycles_sent(), 5000);
     }
 
-    #[async_test]
+    #[tokio::test]
     async fn test_spawn() {
         let ctx = MockContext::new()
             .with_consume_cycles_handler(1000)

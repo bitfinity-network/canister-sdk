@@ -56,7 +56,6 @@ ic-metrics = { path = "./ic-metrics" }
 anyhow = "1"
 arc-swap = "1.6"
 async-recursion = "1.0.2"
-async-std = "1"
 async-trait = "0.1"
 auto_ops = "0.3"
 binread = "2.2"

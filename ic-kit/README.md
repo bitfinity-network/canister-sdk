@@ -11,11 +11,8 @@ Add this to your `Cargo.toml`
 
 ```toml
 [dependencies]
-ic-kit = "0.4.3"
-ic-cdk = "0.3.1"
-
-[target.'cfg(not(target_family = "wasm"))'.dependencies]
-async-std = { version="1.10.0", features = ["attributes"] }
+ic-kit = "0.3"
+ic-cdk = "0.9"
 ```
 
 ## Example Usage
@@ -50,7 +47,7 @@ mod tests {
         assert_eq!(whoami(), mock_principals::alice());
     }
 
-    #[async_test]
+    #[tokio::test]
     async fn test_send_cycles() {
         // Create a context that just consumes 1000 cycles from all the inter-canister calls and
         // returns "()" in response.
