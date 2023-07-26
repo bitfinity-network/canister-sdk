@@ -165,7 +165,7 @@ impl Transfer {
     }
 
     pub(crate) fn id(&self) -> [u8; 32] {
-        use ic_exports::ic_crypto_sha::Sha224;
+        use ic_crypto_sha::Sha224;
 
         let mut hash = Sha224::new();
         hash.write(INTERMEDIATE_ACC_DOMAIN);

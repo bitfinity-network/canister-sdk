@@ -86,23 +86,20 @@ tokio-test = "0.4"
 
 # IC dependencies
 candid = "0.8"
-cycles-minting-canister = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
+cycles-minting-canister = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-agent = { version = "0.24" }
-ic-base-types = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
+ic-base-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-cdk = "0.9"
 ic-cdk-macros = "0.6"
 ic-cdk-timers = "0.1"
-ic-crypto-sha = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-ic-ic00-types = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-ic-icrc1 = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-ic-icrc1-index = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-ic-ledger-core = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-ic-nns-common = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
+ic-crypto-sha = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
+ic-crypto-getrandom-for-wasm = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
+ic-ic00-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
+ic-nns-common = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-stable-structures = "^0.5.6"
-ic-state-machine-tests = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-ic-types = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-icp-ledger = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-icrc-ledger-types = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-ledger-canister = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-ic-icrc1-ledger = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
-ic-ledger-canister-core = { git = "https://github.com/dfinity/ic", rev = "4824fd13586f1be43ea842241f22ee98f98230d0" }
+ic-state-machine-tests = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
+ic-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
+icp-ledger = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
+icrc-ledger-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
+ic-icrc1-ledger = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
+ic-ledger-canister-core = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }

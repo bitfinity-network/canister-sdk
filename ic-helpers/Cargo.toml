@@ -28,3 +28,7 @@ getrandom = { workspace = true }
 
 [dev-dependencies]
 hex = { workspace = true }
+
+[features]
+default = []
+ledger = ["ic-exports/ledger"]
