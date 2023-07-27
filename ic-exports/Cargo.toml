@@ -15,8 +15,10 @@ ledger = ["ic-icrc1-ledger", "ic-ledger-canister-core", "icp-ledger", "icrc-ledg
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 ic-cdk-timers = { workspace = true }
-ic-kit = { workspace = true }
+
 ic-stable-structures = { workspace = true }
+
+ic-kit = { path = "../ic-kit" }
 
 ic-base-types = { workspace = true }
 ic-ic00-types = { workspace = true }
