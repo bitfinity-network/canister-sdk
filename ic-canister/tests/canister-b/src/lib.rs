@@ -78,9 +78,7 @@ impl CanisterB {
     #[allow(unused_mut)]
     #[allow(unused_variables)]
     async fn notify_increment_virtual(&self, value: u32) -> bool {
-        virtual_canister_notify!(self.state.borrow().canister_a, "inc_counter", (value,), ())
-            .await
-            .unwrap();
+        virtual_canister_notify!(self.state.borrow().canister_a, "inc_counter", (value,), ()).unwrap();
         true
     }
 
