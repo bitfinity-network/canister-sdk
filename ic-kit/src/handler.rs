@@ -413,16 +413,10 @@ mod tests {
     #[test]
     fn method_name() {
         let nameless = Method::new();
-        assert!(
-            nameless.accept(&Principal::management_canister(), "XXX")
-        );
+        assert!(nameless.accept(&Principal::management_canister(), "XXX"));
         let named = Method::new().name("deposit");
-        assert!(
-            !named.accept(&Principal::management_canister(), "XXX")
-        );
-        assert!(
-            named.accept(&Principal::management_canister(), "deposit")
-        );
+        assert!(!named.accept(&Principal::management_canister(), "XXX"));
+        assert!(named.accept(&Principal::management_canister(), "deposit"));
     }
 
     #[test]
