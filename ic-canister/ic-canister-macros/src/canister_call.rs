@@ -249,24 +249,20 @@ pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
     );
 
     let responder_call = quote! {
-        async {
-            let encoded_args = match ::ic_exports::ic_cdk::export::candid::encode_args((#args)) {
-                Ok(v) => v,
-                Err(e) => return Err((::ic_exports::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
-            };
+        let encoded_args = match ::ic_exports::ic_cdk::export::candid::encode_args((#args)) {
+            Ok(v) => v,
+            Err(e) => return Err((::ic_exports::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
+        };
 
-            let result = ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args)?;
-            Ok(())
-        }
+        let result = ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args)?;
+        Ok(())
     };
 
     let expanded = quote! {
         {
             #[cfg(target_arch = "wasm32")]
-           {
-               async {
-                    #cdk_call
-               }
+            {
+                #cdk_call
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -331,14 +327,11 @@ fn get_cdk_notify(
 ) -> proc_macro2::TokenStream {
     if let Some(cycles) = cycles {
         quote! {
-
-                ::ic_exports::ic_cdk::api::call::notify_with_payment128(#principal, #method_name, #args, #cycles)
-
+            ::ic_exports::ic_cdk::api::call::notify_with_payment128(#principal, #method_name, #args, #cycles)
         }
     } else {
         quote! {
-                ::ic_exports::ic_cdk::api::call::notify(#principal, #method_name, #args)
-
+            ::ic_exports::ic_cdk::api::call::notify(#principal, #method_name, #args)
         }
     }
 }

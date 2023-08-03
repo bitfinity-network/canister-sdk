@@ -18,8 +18,8 @@ pub use {ic_base_types, ic_ic00_types};
 pub mod ledger {
     pub use icp_ledger::{
         AccountIdentifier, BinaryAccountBalanceArgs, CandidOperation, GetBlocksArgs,
-        LedgerCanisterInitPayload, QueryBlocksResponse, Subaccount, Tokens, TransferArgs, TransferError,
-        TransferFee, TransferFeeArgs, DEFAULT_TRANSFER_FEE, TOKEN_SUBDIVIDABLE_BY,
+        LedgerCanisterInitPayload, QueryBlocksResponse, Subaccount, Tokens, TransferArgs,
+        TransferError, TransferFee, TransferFeeArgs, DEFAULT_TRANSFER_FEE, TOKEN_SUBDIVIDABLE_BY,
     };
 }
 #[cfg(feature = "ledger")]

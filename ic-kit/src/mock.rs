@@ -1043,10 +1043,7 @@ mod tests {
         assert!(watcher.called_stable_restore);
 
         let counter = ctx.get::<canister::Counter>();
-        let data: Vec<(u64, i64)> = counter
-            .iter()
-            .map(|(k, v)| (*k, *v))
-            .collect();
+        let data: Vec<(u64, i64)> = counter.iter().map(|(k, v)| (*k, *v)).collect();
         assert_eq!(data, vec![(0, 2), (1, 27), (2, 5), (3, 17)]);
 
         assert_eq!(canister::increment(0), 3);
@@ -1086,25 +1083,17 @@ mod tests {
 
         assert_eq!(canister::user_balance(), 1000);
 
-        assert!(
-            !watcher.is_canister_called(&Principal::management_canister())
-        );
+        assert!(!watcher.is_canister_called(&Principal::management_canister()));
         assert!(!watcher.is_method_called("deposit_cycles"));
-        assert!(
-            !watcher.is_called(&Principal::management_canister(), "deposit_cycles")
-        );
+        assert!(!watcher.is_called(&Principal::management_canister(), "deposit_cycles"));
         assert_eq!(watcher.cycles_consumed(), 0);
 
         canister::withdraw(users::bob(), 100).await.unwrap();
 
         assert_eq!(watcher.call_count(), 1);
-        assert!(
-            watcher.is_canister_called(&Principal::management_canister())
-        );
+        assert!(watcher.is_canister_called(&Principal::management_canister()));
         assert!(watcher.is_method_called("deposit_cycles"));
-        assert!(
-            watcher.is_called(&Principal::management_canister(), "deposit_cycles")
-        );
+        assert!(watcher.is_called(&Principal::management_canister(), "deposit_cycles"));
         assert_eq!(watcher.cycles_consumed(), 100);
 
         // The user balance needs to be decremented.

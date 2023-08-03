@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use ringbuffer::{AllocRingBuffer, RingBufferRead, RingBufferWrite};
+use ringbuffer::{AllocRingBuffer, RingBuffer};
 
 use crate::formatter::buffer::Buffer;
 use crate::platform;
@@ -42,9 +42,12 @@ impl Writer for ConsoleWriter {
     }
 }
 
+const INIT_LOG_CAPACITY: usize = 128;
+
 type LogRecordsBuffer = AllocRingBuffer<String>;
 thread_local! {
-    static LOG_RECORDS: RefCell<LogRecordsBuffer> = RefCell::new(LogRecordsBuffer::new());
+    static LOG_RECORDS: RefCell<LogRecordsBuffer> = 
+        RefCell::new(LogRecordsBuffer::new(INIT_LOG_CAPACITY));
 }
 
 /// Writer that stores strings in a thread_local memory circular buffer.
@@ -54,7 +57,7 @@ pub struct InMemoryWriter {}
 impl InMemoryWriter {
     pub fn init_buffer(capacity: usize) {
         LOG_RECORDS.with(|records| {
-            *records.borrow_mut() = LogRecordsBuffer::with_capacity(capacity);
+            *records.borrow_mut() = LogRecordsBuffer::new(capacity);
         });
     }
 
@@ -88,7 +91,7 @@ impl Writer for InMemoryWriter {
 
 #[cfg(test)]
 pub mod tests {
-    use ringbuffer::RingBufferExt;
+    use ringbuffer::RingBuffer;
 
     use super::*;
 
