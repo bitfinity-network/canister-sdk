@@ -249,13 +249,16 @@ pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
     );
 
     let responder_call = quote! {
-        let encoded_args = match ::ic_exports::ic_cdk::export::candid::encode_args((#args)) {
-            Ok(v) => v,
-            Err(e) => return Err((::ic_exports::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
+        let notify_call = || -> ::std::result::Result<(), (::ic_exports::ic_cdk::api::call::RejectionCode, std::string::String)> {
+            let encoded_args = match ::ic_exports::ic_cdk::export::candid::encode_args((#args)) {
+                Ok(v) => v,
+                Err(e) => return Err((::ic_exports::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
+            };
+    
+            let result = ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args)?;
+            Ok(())
         };
-
-        let result = ::ic_canister::call_virtual_responder(#principal, #method_name, encoded_args)?;
-        Ok(())
+        notify_call()
     };
 
     let expanded = quote! {
