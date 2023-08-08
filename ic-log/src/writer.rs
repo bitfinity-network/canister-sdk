@@ -46,7 +46,7 @@ const INIT_LOG_CAPACITY: usize = 128;
 
 type LogRecordsBuffer = AllocRingBuffer<String>;
 thread_local! {
-    static LOG_RECORDS: RefCell<LogRecordsBuffer> = 
+    static LOG_RECORDS: RefCell<LogRecordsBuffer> =
         RefCell::new(LogRecordsBuffer::new(INIT_LOG_CAPACITY));
 }
 
