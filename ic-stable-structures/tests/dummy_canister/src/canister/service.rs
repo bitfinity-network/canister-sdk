@@ -1,5 +1,6 @@
 use ic_stable_structures::{
-    MemoryId, StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap, StableVec,
+    MemoryId, StableBTreeMap, StableCell, StableLog, StableMultimap, StableRingBuffer,
+    StableRingBufferIndices, StableUnboundedMap, StableVec,
 };
 use std::cell::RefCell;
 
@@ -12,6 +13,8 @@ const TX_LOG_MEMORY_ID: MemoryId = MemoryId::new(4);
 const TX_CELL_MEMORY_ID: MemoryId = MemoryId::new(5);
 const TX_BTREEMAP_MEMORY_ID: MemoryId = MemoryId::new(6);
 const TX_MULTIMAP_MEMORY_ID: MemoryId = MemoryId::new(7);
+const TX_RING_BUFFER_INDICES_MEMORY_ID: MemoryId = MemoryId::new(8);
+const TX_RING_BUFFER_VEC_MEMORY_ID: MemoryId = MemoryId::new(9);
 
 thread_local! {
 
@@ -37,6 +40,18 @@ thread_local! {
 
     static TX_VEC: RefCell<StableVec<Transaction>> = {
         RefCell::new(StableVec::new(TX_VEC_MEMORY_ID).expect("failed to create stable vec"))
+    };
+
+    static TX_RING_BUFFER_DATA: RefCell<StableVec<Transaction>> = {
+        RefCell::new(StableVec::new(TX_RING_BUFFER_VEC_MEMORY_ID).expect("failed to create stable vec"))
+    };
+
+    static TX_RING_BUFFER_INDICES: RefCell<StableCell<StableRingBufferIndices>> = {
+        RefCell::new(StableCell::new(TX_RING_BUFFER_INDICES_MEMORY_ID, StableRingBufferIndices::new(4)).expect("failed to create stable cell"))
+    };
+
+    static TX_RING_BUFFER: RefCell<StableRingBuffer<Transaction>> = {
+        RefCell::new(StableRingBuffer::new(&TX_RING_BUFFER_DATA, &TX_RING_BUFFER_INDICES))
     };
 
 
@@ -87,6 +102,14 @@ impl Service {
                 value: 0,
             });
         }
+        let should_init_ring_buf = TX_RING_BUFFER.with(|txs| txs.borrow().len()) == 0;
+        if should_init_ring_buf {
+            Self::push_tx_to_ring_buffer(Transaction {
+                from: 0,
+                to: 0,
+                value: 0,
+            });
+        }
     }
 
     pub fn get_tx_from_btreemap(key: u64) -> Option<Transaction> {
@@ -128,6 +151,14 @@ impl Service {
 
             storage.borrow().len()
         })
+    }
+
+    pub fn get_tx_from_ring_buffer(idx: u64) -> Option<Transaction> {
+        TX_RING_BUFFER.with(|tx| tx.borrow().get_value_from_end(idx))
+    }
+
+    pub fn push_tx_to_ring_buffer(transaction: Transaction) -> u64 {
+        TX_RING_BUFFER.with(|storage| storage.borrow_mut().push(&transaction))
     }
 
     pub fn get_tx_from_map(key: u64) -> Option<Transaction> {

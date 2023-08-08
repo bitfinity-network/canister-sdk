@@ -1,8 +1,12 @@
 use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::{btreemap, cell, log, vec, BoundedStorable, Storable};
+use ic_exports::stable_structures::{
+    btreemap, cell, log, ring_buffer, vec, BoundedStorable, Storable,
+};
 
 use crate::unbounded::{self, SlicedStorable};
 use crate::{get_memory_by_id, multimap, Error, Iter, Memory, RangeIter, Result};
+
+pub use ic_exports::stable_structures::ring_buffer::{Indices, StableRingBuffer};
 
 /// Stores value in stable memory, providing `get()/set()` API.
 pub struct StableCell<T: Storable>(cell::Cell<T, Memory>);

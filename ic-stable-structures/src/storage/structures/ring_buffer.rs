@@ -16,6 +16,14 @@ pub struct Indices {
 }
 
 impl Indices {
+    /// Create a new Indices with the provided capacity
+    pub fn new(capacity: u64) -> Self {
+        Self {
+            capacity,
+            latest: 0,
+        }
+    }
+
     /// Get next index within ring buffer
     fn next_index(&self, mut index: u64) -> u64 {
         assert!(self.capacity > 0);

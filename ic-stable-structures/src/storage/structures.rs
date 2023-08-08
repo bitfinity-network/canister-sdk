@@ -2,7 +2,7 @@ pub use btreemap::StableBTreeMap;
 pub use cell::StableCell;
 pub use log::StableLog;
 pub use multimap::StableMultimap;
-pub use ring_buffer::StableRingBuffer;
+pub use ring_buffer::{Indices as StableRingBufferIndices, StableRingBuffer};
 pub use unbounded::StableUnboundedMap;
 pub use vec::StableVec;
 

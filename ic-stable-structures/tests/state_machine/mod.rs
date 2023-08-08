@@ -16,6 +16,7 @@ mod cell;
 mod log;
 mod map;
 mod multimap;
+mod ring_buffer;
 mod vec;
 
 #[derive(Debug)]
@@ -155,6 +156,34 @@ impl StateMachineTestContext {
             ic::caller().into(),
             self.dummy_canister,
             "push_tx_to_vec",
+            args,
+        )?;
+
+        let key = Decode!(&res.bytes(), u64)?;
+
+        Ok(key)
+    }
+
+    pub fn get_tx_from_ring_buffer(&self, index: u64) -> Result<Option<Transaction>> {
+        let args = Encode!(&index).unwrap();
+        let res = self.env.execute_ingress_as(
+            ic::caller().into(),
+            self.dummy_canister,
+            "get_tx_from_ring_buffer",
+            args,
+        )?;
+
+        let tx = Decode!(&res.bytes(), Option<Transaction>)?;
+
+        Ok(tx)
+    }
+
+    pub fn push_tx_to_ring_buffer(&self, from: u8, to: u8, value: u8) -> Result<u64> {
+        let args = Encode!(&Transaction { from, to, value }).unwrap();
+        let res = self.env.execute_ingress_as(
+            ic::caller().into(),
+            self.dummy_canister,
+            "push_tx_to_ring_buffer",
             args,
         )?;
 
