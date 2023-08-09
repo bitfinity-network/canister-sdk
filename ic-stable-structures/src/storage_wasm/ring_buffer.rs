@@ -184,6 +184,11 @@ impl<T: BoundedStorable + 'static> StableRingBuffer<T> {
         })
     }
 
+    /// Get the element by the absolute index.
+    pub fn get_value(&self, index: u64) -> Option<T> {
+        self.data.with(|data| data.borrow().get(index))
+    }
+
     fn with_indices<R>(&self, f: impl Fn(&Indices) -> R) -> R {
         self.indices.with(|i| {
             let indices = i.borrow();

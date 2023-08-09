@@ -184,6 +184,11 @@ impl<T: BoundedStorable + 'static> StableRingBuffer<T> {
         })
     }
 
+    /// Get the element by the absolute index.
+    pub fn get_value(&self, index: u64) -> Option<T> {
+        self.data.with(|data| data.borrow().get(index))
+    }
+
     fn with_indices<R>(&self, f: impl Fn(&Indices) -> R) -> R {
         self.indices.with(|i| {
             let indices = i.borrow();
@@ -348,15 +353,19 @@ mod tests {
             assert_eq!(buffer.is_empty(), true);
 
             assert_eq!(buffer.push(&1), 0);
+            assert_eq!(buffer.get_value(0).unwrap(), 1);
             check_buffer(buffer, &vec![1]);
 
             assert_eq!(buffer.push(&2), 1);
+            assert_eq!(buffer.get_value(1).unwrap(), 2);
             check_buffer(buffer, &vec![1, 2]);
 
             assert_eq!(buffer.push(&3), 2);
+            assert_eq!(buffer.get_value(2).unwrap(), 3);
             check_buffer(buffer, &vec![1, 2, 3]);
 
             assert_eq!(buffer.push(&4), 0);
+            assert_eq!(buffer.get_value(0).unwrap(), 4);
             check_buffer(buffer, &vec![2, 3, 4])
         });
     }
