@@ -3,8 +3,7 @@ use std::cell::RefCell;
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::DefaultMemoryImpl;
 pub use structures::{
-    StableBTreeMap, StableCell, StableLog, StableMultimap, StableRingBuffer,
-    StableRingBufferIndices, StableUnboundedMap, StableVec,
+    StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap, StableVec,
 };
 
 use crate::{Memory, MemoryManager};
