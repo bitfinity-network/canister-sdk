@@ -1,4 +1,5 @@
 mod multimap;
+mod ring_buffer;
 mod unbounded;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -18,9 +19,10 @@ use ic_exports::stable_structures::memory_manager::{self, VirtualMemory};
 use ic_exports::stable_structures::DefaultMemoryImpl;
 pub use ic_exports::stable_structures::{BoundedStorable, Storable};
 pub use multimap::{Iter, RangeIter};
+pub use ring_buffer::{Indices as StableRingBufferIndices, StableRingBuffer};
 pub use storage::{
-    get_memory_by_id, StableBTreeMap, StableCell, StableLog, StableMultimap, StableRingBuffer,
-    StableRingBufferIndices, StableUnboundedMap, StableVec,
+    get_memory_by_id, StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap,
+    StableVec,
 };
 pub use unbounded::{ChunkSize, Iter as UnboundedIter, SlicedStorable};
 
