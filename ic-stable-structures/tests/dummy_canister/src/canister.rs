@@ -80,6 +80,16 @@ impl DummyCanister {
         Service::push_tx_to_vec(transaction)
     }
 
+    #[query]
+    pub fn get_tx_from_ring_buffer(&self, idx: u64) -> Option<Transaction> {
+        Service::get_tx_from_ring_buffer(idx)
+    }
+
+    #[update]
+    pub async fn push_tx_to_ring_buffer(&self, transaction: Transaction) -> u64 {
+        Service::push_tx_to_ring_buffer(transaction)
+    }
+
     pub fn idl() -> Idl {
         generate_idl!()
     }
