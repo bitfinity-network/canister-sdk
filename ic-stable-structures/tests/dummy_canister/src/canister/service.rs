@@ -158,7 +158,7 @@ impl Service {
     }
 
     pub fn push_tx_to_ring_buffer(transaction: Transaction) -> u64 {
-        TX_RING_BUFFER.with(|storage| storage.borrow_mut().push(&transaction))
+        TX_RING_BUFFER.with(|storage| storage.borrow_mut().push(&transaction).0)
     }
 
     pub fn get_tx_from_map(key: u64) -> Option<Transaction> {
