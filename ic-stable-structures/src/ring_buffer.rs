@@ -156,21 +156,22 @@ impl<T: BoundedStorable + 'static> StableRingBuffer<T> {
 
     /// Push new element to the buffer.
     ///
-    /// Returns the index of the added item
-    pub fn push(&mut self, val: &T) -> u64 {
+    /// Returns the index of the added item and the removed element if any
+    pub fn push(&mut self, val: &T) -> (u64, Option<T>) {
         self.with_indices_data_mut(|indices, data| {
             let len = data.len();
             if len < indices.capacity {
                 data.push(val).expect("failed to add new element");
                 indices.latest = len;
 
-                len
+                (len, None)
             } else {
                 let new_newest = indices.next_index(indices.latest);
+                let prev_value = data.get(new_newest);
                 data.set(new_newest, val).expect("failed to set value");
                 indices.latest = indices.next_index(indices.latest);
 
-                new_newest
+                (new_newest, prev_value)
             }
         })
     }
@@ -352,16 +353,16 @@ mod tests {
             check_buffer(buffer, &vec![]);
             assert_eq!(buffer.is_empty(), true);
 
-            assert_eq!(buffer.push(&1), 0);
+            assert_eq!(buffer.push(&1), (0, None));
             check_buffer(buffer, &vec![1]);
 
-            assert_eq!(buffer.push(&2), 1);
+            assert_eq!(buffer.push(&2), (1, None));
             check_buffer(buffer, &vec![1, 2]);
 
-            assert_eq!(buffer.push(&3), 2);
+            assert_eq!(buffer.push(&3), (2, None));
             check_buffer(buffer, &vec![1, 2, 3]);
 
-            assert_eq!(buffer.push(&4), 0);
+            assert_eq!(buffer.push(&4), (0, Some(1)));
             check_buffer(buffer, &vec![2, 3, 4])
         });
     }
