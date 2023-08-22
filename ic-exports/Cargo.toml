@@ -21,9 +21,6 @@ ic-stable-structures = { workspace = true }
 
 ic-kit = { path = "../ic-kit" }
 
-ic-base-types = { workspace = true }
-ic-ic00-types = { workspace = true }
-
 # Do not remove: This fixes the getrandom deployment in wasm canisters
 ic-crypto-getrandom-for-wasm = { path = "../ic-crypto-getrandom-for-wasm" }
 ic-ledger-types = { workspace = true, optional = true }

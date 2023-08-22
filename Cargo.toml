@@ -83,11 +83,9 @@ tokio-test = "0.4"
 # IC dependencies
 candid = "0.9"
 ic-agent = { version = "0.26" }
-ic-base-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-cdk = "0.10"
 ic-cdk-macros = "0.7"
 ic-cdk-timers = "0.4"
 ic-ledger-types = "0.7"
-ic-ic00-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-stable-structures = "^0.5.6"
 ic-state-machine-tests = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
