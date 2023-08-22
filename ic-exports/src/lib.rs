@@ -9,5 +9,3 @@ pub mod ledger {
     pub use ic_ledger_types::*;
 }
 
-#[cfg(feature = "state-machine")]
-pub use ic_state_machine_tests;

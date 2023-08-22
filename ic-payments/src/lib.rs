@@ -107,8 +107,8 @@
 //!
 //! ```
 
-use candid::{CandidType, Deserialize, Nat};
-use ic_exports::{Principal, ledger::AccountIdentifier};
+use candid::{CandidType, Deserialize, Nat, Principal};
+use ic_exports::ledger::AccountIdentifier;
 
 mod balances;
 pub mod error;

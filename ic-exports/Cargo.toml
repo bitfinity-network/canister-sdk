@@ -8,7 +8,6 @@ edition.workspace = true
 
 [features]
 default = []
-state-machine = ["ic-state-machine-tests"]
 ledger = ["ic-ledger-types"]
 
 [dependencies]
@@ -24,5 +23,3 @@ ic-kit = { path = "../ic-kit" }
 # Do not remove: This fixes the getrandom deployment in wasm canisters
 ic-crypto-getrandom-for-wasm = { path = "../ic-crypto-getrandom-for-wasm" }
 ic-ledger-types = { workspace = true, optional = true }
-
-ic-state-machine-tests = { workspace = true, optional = true }

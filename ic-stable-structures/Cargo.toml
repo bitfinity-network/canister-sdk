@@ -13,9 +13,5 @@ candid = { workspace = true }
 did = { path = "./tests/did" }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
-once_cell = "1.18"
+once_cell = { workspace = true }
 serde = { workspace = true }
-
-
-[features]
-state-machine = ["ic-exports/state-machine"]
