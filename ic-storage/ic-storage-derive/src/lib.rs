@@ -27,7 +27,7 @@ pub fn derive_ic_storage(input: TokenStream) -> TokenStream {
                 use ::std::rc::Rc;
                 use ::std::cell::RefCell;
                 use ::std::collections::HashMap;
-                use ::ic_exports::ic_cdk::export::candid::Principal;
+                use ::ic_exports::candid::Principal;
 
                 thread_local! {
                     static store: RefCell<HashMap<Principal, Rc<RefCell<#ident>>>> = RefCell::new(HashMap::default());

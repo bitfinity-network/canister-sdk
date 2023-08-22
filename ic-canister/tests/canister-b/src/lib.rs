@@ -6,7 +6,7 @@ use ic_canister::{
     canister_call, canister_notify, generate_idl, init, update, virtual_canister_call,
     virtual_canister_notify, Canister, PreUpdate,
 };
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_exports::candid::{CandidType, Deserialize, Principal};
 use ic_storage::IcStorage;
 
 #[derive(IcStorage, CandidType, Deserialize)]

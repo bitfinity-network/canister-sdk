@@ -35,7 +35,7 @@
 //! ```ignored
 //! use std::cell::RefCell;
 //! use std::rc::Rc;
-//! use ic_exports::ic_cdk::export::candid::{Principal, CandidType, Deserialize};
+//! use ic_exports::candid::{Principal, CandidType, Deserialize};
 //! use ic_storage::stable::Versioned;
 //! use ic_canister::{Canister, PreUpdate};
 //! use ic_canister::storage::IcStorage;
@@ -74,7 +74,7 @@
 //! The canister initialization method can be declared with [init] macro.
 //!
 //! ```
-//! use ic_exports::ic_cdk::export::Principal;
+//! use ic_exports::candid::Principal;
 //! use ic_canister::{Canister, PreUpdate, init};
 //!
 //! #[derive(Clone, Canister)]
@@ -273,7 +273,7 @@
 //!
 //! ```ignore
 //! use ic_exports::ic_cdk::api::call::CallResult;
-//! use ic_exports::ic_cdk::export::Principal;
+//! use ic_exports::candid::Principal;
 //! use ic_canister::virtual_canister_call;
 //!
 //! let principal = Principal::from_text("qd4yy-7yaaa-aaaag-aacdq-cai").unwrap();
@@ -298,7 +298,7 @@
 //! cannot be used. Instead, you can use [virtual_canister_notify] macro.
 //!
 //! ```ignore
-//! use ic_exports::ic_cdk::export::Principal;
+//! use ic_exports::candid::Principal;
 //! use ic_canister::virtual_canister_notify;
 //!
 //! let principal = Principal::from_text("qd4yy-7yaaa-aaaag-aacdq-cai").unwrap();
@@ -437,7 +437,7 @@
 //!
 //! ```ignore
 //! use ic_exports::ic_cdk::api::call::CallResult;
-//! use ic_exports::ic_cdk::export::Principal;
+//! use ic_exports::candid::Principal;
 //! use ic_canister::{Canister, update, canister_call};
 //!
 //! impl SecondCanister {
@@ -458,7 +458,7 @@
 //!
 //! ```ignore
 //! use ic_exports::ic_cdk::api::call::CallResult;
-//! use ic_exports::ic_cdk::export::Principal;
+//! use ic_exports::candid::Principal;
 //! use ic_canister::{Canister, register_virtual_responder, update, virtual_canister_call};
 //!
 //! impl SecondCanister {

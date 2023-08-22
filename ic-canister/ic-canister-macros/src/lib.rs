@@ -139,7 +139,7 @@ pub fn post_upgrade(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// Generates IDL (Candid) definition of the canister.
 ///
 /// ```ignore
-/// use ic_cdk::export::Principal;
+/// use candid::Principal;
 /// use ic_canister::Canister;
 ///
 /// #[derive(Clone, Canister)]

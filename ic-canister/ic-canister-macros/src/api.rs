@@ -464,7 +464,7 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         #[allow(non_camel_case_types)]
         #struct_vis struct #struct_name {
             #[id]
-            principal: ::ic_exports::ic_cdk::export::Principal,
+            principal: ::ic_exports::candid::Principal,
         }
 
         impl #trait_name for #struct_name {
@@ -558,7 +558,7 @@ fn store_candid_definitions(modes: &str, sig: &Signature) -> Result<(), syn::Err
 }
 
 pub(crate) fn generate_idl() -> TokenStream {
-    let candid = quote! { ::ic_exports::ic_cdk::export::candid };
+    let candid = quote! { ::ic_exports::candid };
 
     // Init
     let init = INIT.lock().unwrap().as_mut().map(|args| {

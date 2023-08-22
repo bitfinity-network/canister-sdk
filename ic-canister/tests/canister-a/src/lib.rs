@@ -4,7 +4,7 @@ use std::rc::Rc;
 use ic_canister::{
     generate_exports, generate_idl, query, state_getter, update, Canister, Idl, PreUpdate,
 };
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_exports::candid::{CandidType, Deserialize, Principal};
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 

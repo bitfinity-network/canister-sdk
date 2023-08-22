@@ -1,4 +1,4 @@
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize};
+use ic_exports::candid::{CandidType, Deserialize};
 
 #[derive(CandidType, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pubkey(Vec<u8>);

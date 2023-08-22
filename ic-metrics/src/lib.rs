@@ -50,7 +50,7 @@ use std::rc::Rc;
 
 use candid::Principal;
 use ic_canister::{generate_exports, generate_idl, query, state_getter, Canister, Idl, PreUpdate};
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize};
+use ic_exports::candid::{CandidType, Deserialize};
 use ic_storage::IcStorage;
 
 #[cfg(target_arch = "wasm32")]
