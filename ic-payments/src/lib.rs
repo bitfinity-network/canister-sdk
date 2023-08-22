@@ -108,7 +108,7 @@
 //! ```
 
 use candid::{CandidType, Deserialize, Nat};
-use ic_exports::Principal;
+use ic_exports::{Principal, ledger::AccountIdentifier};
 
 mod balances;
 pub mod error;
@@ -119,12 +119,10 @@ mod transfer;
 
 pub use balances::*;
 pub use error::PaymentError;
-use ic_exports::icrc_types::icrc1::account::Account;
 pub use recovery_list::*;
 pub use token_terminal::*;
 pub use transfer::*;
 
-type Timestamp = u64;
 type TxId = Nat;
 
 /// Configuration of the token canister.
@@ -139,11 +137,11 @@ pub struct TokenConfiguration {
     pub fee: Nat,
 
     /// Token minting account.
-    pub minting_account: Account,
+    pub minting_account: AccountIdentifier,
 }
 
 impl TokenConfiguration {
-    pub(crate) fn get_fee(&self, from_acc: &Account, to_acc: &Account) -> Nat {
+    pub(crate) fn get_fee(&self, from_acc: &AccountIdentifier, to_acc: &AccountIdentifier) -> Nat {
         if *from_acc == self.minting_account || *to_acc == self.minting_account {
             0.into()
         } else {

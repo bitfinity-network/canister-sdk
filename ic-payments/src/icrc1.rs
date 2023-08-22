@@ -1,13 +1,12 @@
 use ic_canister::virtual_canister_call;
 use ic_exports::candid::{CandidType, Nat};
 
-use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
-use ic_exports::icrc_types::icrc1::transfer::{Memo, TransferArg, TransferError};
+use ic_exports::ledger::{AccountIdentifier, Subaccount, Memo, TransferArgs, TransferError, Timestamp};
 use ic_exports::serde::Deserialize;
 use ic_exports::Principal;
 
 use crate::error::Result;
-use crate::{Timestamp, TokenConfiguration, TxId};
+use crate::{TokenConfiguration, TxId};
 
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct TokenTransferInfo {
@@ -20,21 +19,21 @@ pub struct TokenTransferInfo {
 }
 
 /// Returns current balance of the `account` in the ICRC-1 `token` canister.
-pub async fn get_icrc1_balance(token: Principal, account: &Account) -> Result<Nat> {
+pub async fn get_icrc1_balance(token: Principal, account: &AccountIdentifier) -> Result<Nat> {
     Ok(virtual_canister_call!(token, "icrc1_balance_of", (account,), Nat).await?)
 }
 
 /// Requests a transfer in an ICRC-1 `token` canister.
 pub async fn transfer_icrc1(
     token: Principal,
-    to: Account,
+    to: AccountIdentifier,
     amount: Nat,
     fee: Nat,
     from_subaccount: Option<Subaccount>,
     created_at_time: Option<Timestamp>,
-    memo: Option<Memo>,
+    memo: Memo,
 ) -> Result<TokenTransferInfo> {
-    let args = TransferArg {
+    let args = TransferArgs {
         from_subaccount,
         to,
         amount: amount.clone(),
@@ -77,6 +76,6 @@ pub async fn get_icrc1_fee(token: Principal) -> Result<Nat> {
 }
 
 /// Requests minting account configuration from an ICRC-1 canister.
-pub async fn get_icrc1_minting_account(token: Principal) -> Result<Option<Account>> {
-    Ok(virtual_canister_call!(token, "icrc1_minting_account", (), Option<Account>).await?)
+pub async fn get_icrc1_minting_account(token: Principal) -> Result<Option<AccountIdentifier>> {
+    Ok(virtual_canister_call!(token, "icrc1_minting_account", (), Option<AccountIdentifier>).await?)
 }

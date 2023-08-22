@@ -16,16 +16,8 @@ pub use {ic_base_types, ic_ic00_types};
 
 #[cfg(feature = "ledger")]
 pub mod ledger {
-    pub use ic_ledger_types::{
-        AccountIdentifier, AccountBalanceArgs, GetBlocksArgs,
-        QueryBlocksResponse, Subaccount, Tokens, TransferArgs,
-        TransferError, DEFAULT_FEE,
-    };
+    pub use ic_ledger_types::*;
 }
-#[cfg(feature = "ledger")]
-pub use {
-    ic_icrc1_ledger as icrc1_ledger, ic_ledger_canister_core, icrc_ledger_types as icrc_types,
-};
 
 #[cfg(feature = "state-machine")]
 pub use ic_state_machine_tests;

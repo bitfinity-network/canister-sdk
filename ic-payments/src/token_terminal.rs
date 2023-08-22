@@ -3,8 +3,7 @@ use std::sync::atomic::AtomicU64;
 use async_recursion::async_recursion;
 use candid::{Nat, Principal};
 use ic_exports::ic_kit::ic;
-use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
-use ic_exports::icrc_types::icrc1::transfer::TransferError;
+use ic_exports::ledger::{AccountIdentifier, Subaccount, TransferError};
 
 use crate::error::{InternalPaymentError, PaymentError, RecoveryDetails, TransferFailReason};
 use crate::icrc1::{self, get_icrc1_balance, get_icrc1_minting_account, TokenTransferInfo};
@@ -318,7 +317,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     }
 
     /// Token minting account configured for the terminal.
-    pub fn minting_account(&self) -> &Account {
+    pub fn minting_account(&self) -> &AccountIdentifier {
         &self.token_config.minting_account
     }
 
@@ -331,7 +330,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
 
     /// Changes the minting account of the token. This has effect on all new transfers as well as
     /// all transfer stored in the recovery list.
-    pub fn set_minting_account(&mut self, minting_account: Account) {
+    pub fn set_minting_account(&mut self, minting_account: AccountIdentifier) {
         self.token_config.minting_account = minting_account;
         self.update_recovery_fees();
     }
@@ -418,12 +417,9 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
                     .await
             }
             Err(InternalPaymentError::TransferFailed(TransferFailReason::Rejected(
-                TransferError::Duplicate { duplicate_of },
-            ))) => Ok(self.complete(transfer, duplicate_of, n_retries).await?),
+                TransferError::TxDuplicate { duplicate_of },
+            ))) => Ok(self.complete(transfer, duplicate_of.into(), n_retries).await?),
             Err(InternalPaymentError::MaybeFailed)
-            | Err(InternalPaymentError::TransferFailed(TransferFailReason::Rejected(
-                TransferError::TemporarilyUnavailable,
-            )))
             | Err(InternalPaymentError::TransferFailed(TransferFailReason::TokenPanic(_))) => {
                 self.retry(transfer, n_retries.saturating_sub(1)).await
             }
@@ -456,9 +452,9 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         self.retry(transfer, n_retries).await
     }
 
-    async fn get_minting_account(&self, expected_fee: Nat) -> Result<Account, PaymentError> {
+    async fn get_minting_account(&self, expected_fee: Nat) -> Result<AccountIdentifier, PaymentError> {
         match get_icrc1_minting_account(self.token_config.principal).await {
-            Ok(v) => Ok(v.unwrap_or(Account {
+            Ok(v) => Ok(v.unwrap_or(AccountIdentifier {
                 owner: Principal::management_canister(),
                 subaccount: None,
             })),

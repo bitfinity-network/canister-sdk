@@ -15,8 +15,8 @@ members = [
     "ic-kit",
     "ic-log",
     "ic-metrics",
-    "ic-payments",
-    "ic-payments/test-payment-canister",
+    # "ic-payments",
+    # "ic-payments/test-payment-canister",
     "ic-stable-structures",
     "ic-stable-structures/tests/did",
     "ic-stable-structures/tests/dummy_canister",
@@ -91,6 +91,3 @@ ic-ledger-types = "0.6"
 ic-ic00-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-stable-structures = "^0.5.6"
 ic-state-machine-tests = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
-icrc-ledger-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
-ic-icrc1-ledger = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
-ic-ledger-canister-core = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }

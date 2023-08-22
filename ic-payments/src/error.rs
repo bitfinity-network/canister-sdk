@@ -1,6 +1,6 @@
 use candid::{CandidType, Deserialize, Nat};
 use ic_exports::ic_cdk::api::call::RejectionCode;
-use ic_exports::icrc_types::icrc1::transfer::TransferError;
+use ic_exports::ledger::TransferError;
 use thiserror::Error;
 
 use crate::BalanceError;
@@ -136,12 +136,9 @@ impl From<TransferError> for InternalPaymentError {
     fn from(err: TransferError) -> Self {
         match err {
             TransferError::InsufficientFunds { .. }
-            | TransferError::TooOld
-            | TransferError::BadBurn { .. }
-            | TransferError::CreatedInFuture { .. }
-            | TransferError::TemporarilyUnavailable
-            | TransferError::Duplicate { .. }
-            | TransferError::GenericError { .. } => {
+            | TransferError::TxCreatedInFuture
+            | TransferError::TxDuplicate { .. }
+            | TransferError::TxTooOld { .. } => {
                 Self::TransferFailed(TransferFailReason::Rejected(err))
             }
             TransferError::BadFee { expected_fee } => Self::WrongFee(expected_fee),

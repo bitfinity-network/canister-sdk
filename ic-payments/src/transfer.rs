@@ -1,10 +1,9 @@
 use crate::error::{InternalPaymentError, ParametersError};
 use crate::icrc1::{self, TokenTransferInfo};
-use crate::{Timestamp, TokenConfiguration};
+use crate::{TokenConfiguration};
 use candid::{CandidType, Deserialize, Nat, Principal};
 use ic_exports::ic_kit::ic;
-use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
-use ic_exports::icrc_types::icrc1::transfer::Memo;
+use ic_exports::ledger::{AccountIdentifier, Subaccount, Timestamp, Memo};
 
 /// Transfer to be executed.
 #[derive(Debug, CandidType, Deserialize, Clone)]
@@ -20,7 +19,7 @@ pub struct Transfer {
     pub from: Option<Subaccount>,
 
     /// Account to transfer to.
-    pub to: Account,
+    pub to: AccountIdentifier,
 
     /// Amount to transfer. This amount includes the fee, so the actual value that will be received
     /// by the `to` account is `amount - fee`.
@@ -64,7 +63,7 @@ pub enum TransferType {
     SingleStep,
 
     /// Transfer through an interim account, given as the second parameter.
-    DoubleStep(Stage, Account),
+    DoubleStep(Stage, AccountIdentifier),
 }
 
 /// Current step of a double-step transfer.
@@ -96,12 +95,12 @@ impl Transfer {
     pub fn new(
         token_config: &TokenConfiguration,
         caller: Principal,
-        to: Account,
+        to: AccountIdentifier,
         from_subaccount: Option<Subaccount>,
         amount: Nat,
     ) -> Self {
         let fee = token_config.get_fee(
-            &Account {
+            &AccountIdentifier {
                 owner: ic::id(),
                 subaccount: from_subaccount,
             },
