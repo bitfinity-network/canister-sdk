@@ -8,16 +8,14 @@ pub use {ic_cdk, ic_cdk_macros, ic_cdk_timers, ic_kit, ic_stable_structures as s
 
 pub type BlockHeight = u64;
 
-// --------------------------------------------------- //
-// Export dependencies from dfinity github repository  //
-// --------------------------------------------------- //
-
-pub use {ic_base_types, ic_ic00_types};
-
 #[cfg(feature = "ledger")]
 pub mod ledger {
     pub use ic_ledger_types::*;
 }
+
+// --------------------------------------------------- //
+// Export dependencies from dfinity github repository  //
+// --------------------------------------------------- //
 
 #[cfg(feature = "state-machine")]
 pub use ic_state_machine_tests;
