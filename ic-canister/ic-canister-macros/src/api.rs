@@ -602,19 +602,19 @@ pub(crate) fn generate_idl() -> TokenStream {
                 #(#rets)*
                 let func = Function { args, rets, modes: #modes };
                 if cfg!(feature = "export-api") {
-                    service.push((#name.to_string(), Type::Func(func)));
+                    service.push((#name.to_string(), Type(std::rc::Rc::new(TypeInner::Func(func)))));
                 }
             }
         }
     });
 
     let service = quote! {
-        use #candid::types::{CandidType, Function, Type};
+        use #candid::types::*;
         let mut service = Vec::<(String, Type)>::new();
         let mut env = #candid::types::internal::TypeContainer::new();
         #(#gen_tys)*
         service.sort_unstable_by_key(|(name, _)| name.clone());
-        let ty = Type::Service(service);
+        let ty = Type(std::rc::Rc::new(TypeInner::Service(service)));
     };
 
     methods.clear();
@@ -622,7 +622,7 @@ pub(crate) fn generate_idl() -> TokenStream {
     let actor = match init {
         Some(init) => quote! {
             #init
-            let actor = Type::Class(init_args, Box::new(ty));
+            let actor = Type(std::rc::Rc::new(TypeInner::Class(init_args, ty)));
         },
         None => quote! { let actor = ty; },
     };
