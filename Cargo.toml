@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "cmc-mock",
     "ic-auction",
     "ic-canister/ic-canister-macros",
     "ic-canister/ic-canister",
@@ -11,7 +10,7 @@ members = [
     "ic-canister/tests/canister-e",
     "ic-canister-client",
     "ic-exports",
-    "ic-factory",
+    "ic-crypto-getrandom-for-wasm",
     "ic-helpers",
     "ic-kit",
     "ic-log",
@@ -36,17 +35,14 @@ edition = "2021"
 
 [features]
 default = []
-factory-api = ["ic-factory?/export-api"]
 auction-api = ["ic-auction?/export-api"]
 metrics-api = ["ic-metrics/export-api"]
 auction = ["dep:ic-auction"]
-factory = ["dep:ic-factory"]
 
 
 [dependencies]
 ic-exports = { path = "./ic-exports" }
 ic-auction = { path = "./ic-auction", optional = true }
-ic-factory = { path = "./ic-factory", optional = true }
 ic-canister = { path = "./ic-canister/ic-canister" }
 ic-storage = { path = "./ic-storage" }
 ic-helpers = { path = "./ic-helpers" }
@@ -92,14 +88,11 @@ ic-base-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94
 ic-cdk = "0.9"
 ic-cdk-macros = "0.6"
 ic-cdk-timers = "0.1"
-ic-crypto-sha = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
-ic-crypto-getrandom-for-wasm = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
+ic-ledger-types = "0.6"
 ic-ic00-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
-ic-nns-common = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-stable-structures = "^0.5.6"
 ic-state-machine-tests = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
-icp-ledger = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 icrc-ledger-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-icrc1-ledger = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-ledger-canister-core = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }

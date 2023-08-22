@@ -2,7 +2,6 @@ use std::sync::atomic::AtomicU64;
 
 use async_recursion::async_recursion;
 use candid::{Nat, Principal};
-use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_kit::ic;
 use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
 use ic_exports::icrc_types::icrc1::transfer::TransferError;
@@ -516,5 +515,5 @@ pub fn get_deposit_interim_account(principal: Principal) -> Account {
 /// Bytes[principal.len() + 1..32] = 0
 /// ```
 pub fn get_principal_subaccount(principal: Principal) -> Option<Subaccount> {
-    Some(ic_exports::ledger::Subaccount::from(&PrincipalId(principal)).0)
+    Some(ic_exports::ledger::Subaccount::from(principal).0)
 }

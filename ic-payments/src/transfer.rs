@@ -165,18 +165,18 @@ impl Transfer {
     }
 
     pub(crate) fn id(&self) -> [u8; 32] {
-        use ic_crypto_sha::Sha224;
+        use sha2::{Digest, Sha224};
 
-        let mut hash = Sha224::new();
-        hash.write(INTERMEDIATE_ACC_DOMAIN);
-        hash.write(&self.from.unwrap_or_default());
-        hash.write(self.to.owner.as_slice());
-        hash.write(self.to.effective_subaccount());
-        hash.write(&self.amount.0.to_bytes_le());
-        hash.write(self.token.as_slice());
-        hash.write(&self.created_at.to_le_bytes());
+        let mut hash = Sha224::default();
+        hash.update(INTERMEDIATE_ACC_DOMAIN);
+        hash.update(&self.from.unwrap_or_default());
+        hash.update(self.to.owner.as_slice());
+        hash.update(self.to.effective_subaccount());
+        hash.update(&self.amount.0.to_bytes_le());
+        hash.update(self.token.as_slice());
+        hash.update(&self.created_at.to_le_bytes());
 
-        let hash_result = hash.finish();
+        let hash_result: [u8; 28] = hash.finalize().into();
         let mut subaccount = [0; 32];
         subaccount[0..4].copy_from_slice(b"vfrc");
         subaccount[4..].copy_from_slice(&hash_result);
