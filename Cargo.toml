@@ -82,7 +82,6 @@ tokio-test = "0.4"
 
 # IC dependencies
 candid = "0.8"
-cycles-minting-canister = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-agent = { version = "0.24" }
 ic-base-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-cdk = "0.9"
@@ -92,7 +91,6 @@ ic-ledger-types = "0.6"
 ic-ic00-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-stable-structures = "^0.5.6"
 ic-state-machine-tests = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
-ic-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 icrc-ledger-types = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-icrc1-ledger = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
 ic-ledger-canister-core = { git = "https://github.com/dfinity/ic", rev = "cf4e446d1997dd94c7fee21c6daffafded2857de" }
