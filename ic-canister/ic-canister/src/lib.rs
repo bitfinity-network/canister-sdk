@@ -520,9 +520,9 @@ use std::pin::Pin;
 use std::rc::Rc;
 
 pub use ic_canister_macros::*;
-use ic_exports::ic_cdk::api::call::{CallResult, RejectionCode};
 use ic_exports::candid::utils::ArgumentDecoder;
 use ic_exports::candid::{self, CandidType, Deserialize, Principal};
+use ic_exports::ic_cdk::api::call::{CallResult, RejectionCode};
 
 pub mod idl;
 pub use idl::*;

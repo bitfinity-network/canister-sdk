@@ -27,31 +27,40 @@ impl Idl {
         };
 
         match (self.actor.0.as_ref(), other.actor.0.as_ref()) {
-            (TypeInner::Class(ref class, left), TypeInner::Service(ref right)) => match left.0.as_ref() {
-                TypeInner::Service(left) => {
-                    let mut left = left.clone();
-                    left.extend(right.clone());
-                    self.actor = Type(Rc::new(TypeInner::Class(class.to_vec(), Type(Rc::new(TypeInner::Service(left))))));
+            (TypeInner::Class(ref class, left), TypeInner::Service(ref right)) => {
+                match left.0.as_ref() {
+                    TypeInner::Service(left) => {
+                        let mut left = left.clone();
+                        left.extend(right.clone());
+                        self.actor = Type(Rc::new(TypeInner::Class(
+                            class.to_vec(),
+                            Type(Rc::new(TypeInner::Service(left))),
+                        )));
+                    }
+                    _ => {
+                        panic!("type {left:#?} is not a service")
+                    }
                 }
-                _ => {
-                    panic!("type {left:#?} is not a service")
+            }
+            (TypeInner::Service(left), TypeInner::Class(ref class, right)) => {
+                match right.0.as_ref() {
+                    TypeInner::Service(right) => {
+                        let mut left = left.clone();
+                        left.extend(right.clone());
+                        self.actor = Type(Rc::new(TypeInner::Class(
+                            class.to_vec(),
+                            Type(Rc::new(TypeInner::Service(left))),
+                        )));
+                    }
+                    _ => {
+                        panic!("type {right:#?} is not a service")
+                    }
                 }
-            },
-            (TypeInner::Service(left), TypeInner::Class(ref class, right)) => match right.0.as_ref() {
-                TypeInner::Service(right) => {
-                    let mut left = left.clone();
-                    left.extend(right.clone());
-                    self.actor = Type(Rc::new(TypeInner::Class(class.to_vec(), Type(Rc::new(TypeInner::Service(left))))));
-                }
-                _ => {
-                    panic!("type {right:#?} is not a service")
-                }
-            },
+            }
             (TypeInner::Service(left), TypeInner::Service(right)) => {
                 let mut left = left.clone();
                 left.extend(right.clone());
                 self.actor = Type(Rc::new(TypeInner::Service(left)));
-
             }
             (l @ TypeInner::Class(_, _), r @ TypeInner::Class(_, _)) => {
                 panic!("cannot merge two candid classes: self:\n{l:#?}\nother:\n{r:#?}")

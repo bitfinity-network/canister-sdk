@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use candid::Principal;
-use ic_agent::agent::EnvelopeContent;
 use ic_agent::agent::http_transport::ReqwestHttpReplicaV2Transport;
+use ic_agent::agent::EnvelopeContent;
 use ic_agent::identity::{BasicIdentity, Secp256k1Identity};
 use ic_agent::{Agent, Identity};
 
