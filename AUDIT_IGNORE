@@ -1,7 +1,0 @@
-# Crate:     webpki
-# Version:   0.22.0
-# Title:     webpki: CPU denial of service in certificate path building
-# Date:      2023-08-22
-# URL:       https://rustsec.org/advisories/RUSTSEC-2023-0052
-
-RUSTSEC-2023-0052
