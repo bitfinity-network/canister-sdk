@@ -1,8 +1,9 @@
 use std::fmt;
+use std::rc::Rc;
 
-use ic_exports::ic_cdk::export::candid;
-use ic_exports::ic_cdk::export::candid::types::internal::TypeContainer;
-use ic_exports::ic_cdk::export::candid::types::Type;
+use ic_exports::candid;
+use ic_exports::candid::types::internal::TypeContainer;
+use ic_exports::candid::types::{Type, TypeInner};
 
 pub struct Idl {
     pub env: TypeContainer,
@@ -25,29 +26,34 @@ impl Idl {
             env: self.env.env.merge(&other.env.env).unwrap().clone(),
         };
 
-        match (&mut self.actor, &other.actor) {
-            (Type::Class(ref class, left), Type::Service(ref right)) => match **left {
-                Type::Service(ref mut left) => {
+        match (self.actor.0.as_ref(), other.actor.0.as_ref()) {
+            (TypeInner::Class(ref class, left), TypeInner::Service(ref right)) => match left.0.as_ref() {
+                TypeInner::Service(left) => {
+                    let mut left = left.clone();
                     left.extend(right.clone());
-                    self.actor = Type::Class(class.to_vec(), Box::new(Type::Service(left.clone())));
+                    self.actor = Type(Rc::new(TypeInner::Class(class.to_vec(), Type(Rc::new(TypeInner::Service(left))))));
                 }
                 _ => {
                     panic!("type {left:#?} is not a service")
                 }
             },
-            (Type::Service(ref mut left), Type::Class(ref class, right)) => match **right {
-                Type::Service(ref right) => {
+            (TypeInner::Service(left), TypeInner::Class(ref class, right)) => match right.0.as_ref() {
+                TypeInner::Service(right) => {
+                    let mut left = left.clone();
                     left.extend(right.clone());
-                    self.actor = Type::Class(class.to_vec(), Box::new(Type::Service(left.clone())));
+                    self.actor = Type(Rc::new(TypeInner::Class(class.to_vec(), Type(Rc::new(TypeInner::Service(left))))));
                 }
                 _ => {
                     panic!("type {right:#?} is not a service")
                 }
             },
-            (Type::Service(left), Type::Service(right)) => {
+            (TypeInner::Service(left), TypeInner::Service(right)) => {
+                let mut left = left.clone();
                 left.extend(right.clone());
+                self.actor = Type(Rc::new(TypeInner::Service(left)));
+
             }
-            (l @ Type::Class(_, _), r @ Type::Class(_, _)) => {
+            (l @ TypeInner::Class(_, _), r @ TypeInner::Class(_, _)) => {
                 panic!("cannot merge two candid classes: self:\n{l:#?}\nother:\n{r:#?}")
             }
             (l, r) => {

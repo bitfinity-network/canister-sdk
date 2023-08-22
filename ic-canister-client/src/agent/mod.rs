@@ -61,7 +61,7 @@ impl CanisterClient for IcAgentClient {
 
         self.agent
             .query(&self.canister_id, method)
-            .with_arg(&args)
+            .with_arg(args)
             .call()
             .await
             .map_err(CanisterClientError::IcAgentError)
@@ -76,7 +76,7 @@ impl CanisterClient for IcAgentClient {
         let args = encode_args(args)?;
         self.agent
             .update(&self.canister_id, method)
-            .with_arg(&args)
+            .with_arg(args)
             .call_and_wait()
             .await
             .map_err(CanisterClientError::IcAgentError)

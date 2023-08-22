@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{log, Storable};
-use ic_exports::Principal;
+use ic_exports::candid::Principal;
 
 use crate::{Error, Memory, Result};
 

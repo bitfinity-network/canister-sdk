@@ -122,9 +122,9 @@ use std::mem::size_of;
 
 #[cfg(target_arch = "wasm32")]
 use ic_exports::ic_cdk::api::stable::{stable_bytes, stable_read, stable_size, StableWriter};
-use ic_exports::ic_cdk::export::candid::de::IDLDeserialize;
-use ic_exports::ic_cdk::export::candid::ser::IDLBuilder;
-use ic_exports::ic_cdk::export::candid::types::CandidType;
+use ic_exports::candid::de::IDLDeserialize;
+use ic_exports::candid::ser::IDLBuilder;
+use ic_exports::candid::types::CandidType;
 use serde::Deserialize;
 
 #[cfg(not(target_arch = "wasm32"))]

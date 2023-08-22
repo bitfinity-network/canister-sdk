@@ -521,9 +521,8 @@ use std::rc::Rc;
 
 pub use ic_canister_macros::*;
 use ic_exports::ic_cdk::api::call::{CallResult, RejectionCode};
-use ic_exports::ic_cdk::export::candid::utils::ArgumentDecoder;
-use ic_exports::ic_cdk::export::candid::{self, CandidType, Deserialize};
-use ic_exports::ic_cdk::export::Principal;
+use ic_exports::candid::utils::ArgumentDecoder;
+use ic_exports::candid::{self, CandidType, Deserialize, Principal};
 
 pub mod idl;
 pub use idl::*;

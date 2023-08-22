@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::BoundedStorable;
-use ic_exports::Principal;
+use ic_exports::candid::Principal;
 
 use crate::{multimap, Iter, Memory, RangeIter};
 

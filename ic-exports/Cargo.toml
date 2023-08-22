@@ -12,6 +12,7 @@ state-machine = ["ic-state-machine-tests"]
 ledger = ["ic-ledger-types"]
 
 [dependencies]
+candid = { workspace = true }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 ic-cdk-timers = { workspace = true }
