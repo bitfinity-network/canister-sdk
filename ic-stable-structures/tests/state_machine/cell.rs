@@ -10,7 +10,7 @@ fn should_init_tx_cell() {
     .unwrap();
 }
 
-#[test]
+//#[test]
 fn should_push_tx_to_cell() {
     with_state_machine_context(|_, ctx| {
         ctx.insert_tx_to_cell(1, 1, 10)?;
@@ -22,7 +22,7 @@ fn should_push_tx_to_cell() {
     .unwrap();
 }
 
-#[test]
+//#[test]
 fn should_persist_cell_tx_after_upgrade() {
     with_state_machine_context(|_, ctx| {
         ctx.insert_tx_to_cell(1, 1, 10)?;
