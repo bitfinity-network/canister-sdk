@@ -13,6 +13,8 @@ candid = { workspace = true }
 did = { path = "./tests/did" }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
-ic-exports = { path = "../ic-exports", features = ["ic-test-state-machine"] }
 once_cell = { workspace = true }
 serde = { workspace = true }
+
+[features]
+state-machine = ["ic-exports/ic-test-state-machine"]
