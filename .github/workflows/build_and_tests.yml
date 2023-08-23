@@ -82,4 +82,4 @@ jobs:
         run: |
           export WASMS_DIR="../target/wasm32-unknown-unknown/release/"
           cd ./ic-stable-structures
-          cargo test --features state-machine
+          cargo test --features ic-test-state-machine
