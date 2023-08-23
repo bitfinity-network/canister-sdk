@@ -108,7 +108,7 @@
 //! ```
 
 use candid::{CandidType, Deserialize, Nat, Principal};
-use ic_exports::ledger::AccountIdentifier;
+use ic_exports::ledger::{AccountIdentifier, Tokens};
 
 mod balances;
 pub mod error;
@@ -134,16 +134,16 @@ pub struct TokenConfiguration {
     pub principal: Principal,
 
     /// Transaction fee.
-    pub fee: Nat,
+    pub fee: Tokens,
 
     /// Token minting account.
     pub minting_account: AccountIdentifier,
 }
 
 impl TokenConfiguration {
-    pub(crate) fn get_fee(&self, from_acc: &AccountIdentifier, to_acc: &AccountIdentifier) -> Nat {
+    pub(crate) fn get_fee(&self, from_acc: &AccountIdentifier, to_acc: &AccountIdentifier) -> Tokens {
         if *from_acc == self.minting_account || *to_acc == self.minting_account {
-            0.into()
+            Tokens::from_e8s(0u64)
         } else {
             self.fee.clone()
         }

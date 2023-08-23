@@ -1,9 +1,8 @@
 use ic_canister::virtual_canister_call;
-use ic_exports::candid::{CandidType, Nat};
+use ic_exports::candid::{CandidType, Principal};
 
-use ic_exports::ledger::{AccountIdentifier, Subaccount, Memo, TransferArgs, TransferError, Timestamp};
-use ic_exports::serde::Deserialize;
-use ic_exports::Principal;
+use ic_exports::ledger::{AccountIdentifier, Subaccount, Memo, TransferArgs, TransferError, Timestamp, Tokens, DEFAULT_SUBACCOUNT};
+use serde::Deserialize;
 
 use crate::error::Result;
 use crate::{TokenConfiguration, TxId};
@@ -15,30 +14,30 @@ pub struct TokenTransferInfo {
     /// Principal of the transferred token.
     pub token_principal: Principal,
     /// Amount of tokens were transferred to the principal.
-    pub amount_transferred: Nat,
+    pub amount_transferred: Tokens,
 }
 
 /// Returns current balance of the `account` in the ICRC-1 `token` canister.
-pub async fn get_icrc1_balance(token: Principal, account: &AccountIdentifier) -> Result<Nat> {
-    Ok(virtual_canister_call!(token, "icrc1_balance_of", (account,), Nat).await?)
+pub async fn get_icrc1_balance(token: Principal, account: &AccountIdentifier) -> Result<Tokens> {
+    Ok(virtual_canister_call!(token, "icrc1_balance_of", (account,), Tokens).await?)
 }
 
 /// Requests a transfer in an ICRC-1 `token` canister.
 pub async fn transfer_icrc1(
     token: Principal,
     to: AccountIdentifier,
-    amount: Nat,
-    fee: Nat,
+    amount: Tokens,
+    fee: Tokens,
     from_subaccount: Option<Subaccount>,
     created_at_time: Option<Timestamp>,
-    memo: Memo,
+    memo: Option<Memo>,
 ) -> Result<TokenTransferInfo> {
     let args = TransferArgs {
         from_subaccount,
         to,
-        amount: amount.clone(),
-        fee: Some(fee),
-        memo,
+        amount,
+        fee,
+        memo: memo.unwrap_or_else(|| Memo(0)),
         created_at_time,
     };
 
@@ -58,10 +57,10 @@ pub async fn get_icrc1_configuration(token: Principal) -> Result<TokenConfigurat
     // ICRC-1 standard metadata doesn't include a minting account, so we have to do two requests
     // to get both fields, which is fine though since this is done once.
     let fee = get_icrc1_fee(token).await?;
-    let minting_account = get_icrc1_minting_account(token).await?.unwrap_or(Account {
-        owner: Principal::management_canister(),
-        subaccount: None,
-    });
+    let minting_account = get_icrc1_minting_account(token).await?.unwrap_or(AccountIdentifier::new(
+        &Principal::management_canister(),
+        &DEFAULT_SUBACCOUNT,
+    ));
 
     Ok(TokenConfiguration {
         principal: token,
@@ -71,8 +70,8 @@ pub async fn get_icrc1_configuration(token: Principal) -> Result<TokenConfigurat
 }
 
 /// Requests fee configuration from an ICRC-1 canister.
-pub async fn get_icrc1_fee(token: Principal) -> Result<Nat> {
-    Ok(virtual_canister_call!(token, "icrc1_fee", (), Nat).await?)
+pub async fn get_icrc1_fee(token: Principal) -> Result<Tokens> {
+    Ok(virtual_canister_call!(token, "icrc1_fee", (), Tokens).await?)
 }
 
 /// Requests minting account configuration from an ICRC-1 canister.

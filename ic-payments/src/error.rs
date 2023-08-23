@@ -1,6 +1,6 @@
-use candid::{CandidType, Deserialize, Nat};
+use candid::{CandidType, Deserialize};
 use ic_exports::ic_cdk::api::call::RejectionCode;
-use ic_exports::ledger::TransferError;
+use ic_exports::ledger::{TransferError, Tokens};
 use thiserror::Error;
 
 use crate::BalanceError;
@@ -51,7 +51,7 @@ pub enum PaymentError {
     /// Calling canister must adjust its configuration and then can attempt the same transfer
     /// again.
     #[error("transfer fee setting was not same as token fee configuration {0}")]
-    BadFee(Nat),
+    BadFee(Tokens),
 
     /// Unknown error happened while attempting the transfer. The terminal cannot be sure that the
     /// transaction was not executed by the token canister, so the transfer is added to the `for
@@ -77,7 +77,7 @@ pub enum RecoveryDetails {
 
     /// Second stage transfer returned `BadFee` error. The token terminal should update it's token
     /// configuration and attempt to recover the transfer.
-    BadFee(Nat),
+    BadFee(Tokens),
 }
 
 #[derive(Debug, Error, CandidType, Deserialize, PartialEq)]
@@ -86,7 +86,7 @@ pub enum InternalPaymentError {
     TransferFailed(TransferFailReason),
 
     #[error("wrong fee")]
-    WrongFee(Nat),
+    WrongFee(Tokens),
 
     #[error("maybe failed")]
     MaybeFailed,
@@ -104,7 +104,7 @@ pub enum ParametersError {
     #[error(
         "amount to transfer {actual} is smaller than minimum possible value {minimum_required}"
     )]
-    AmountTooSmall { minimum_required: Nat, actual: Nat },
+    AmountTooSmall { minimum_required: Tokens, actual: Tokens },
 
     #[error("target account cannot be equal to the source account")]
     TargetAccountInvalid,

@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-state-machine = ["ic-exports/state-machine"]
+state-machine = ["ic-exports/ic-test-state-machine"]
 
 [dependencies]
 ic-exports = { path = "../ic-exports", features = ["ledger"] }
