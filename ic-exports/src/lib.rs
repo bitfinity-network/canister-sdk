@@ -7,3 +7,6 @@ pub type BlockHeight = u64;
 pub mod ledger {
     pub use ic_ledger_types::*;
 }
+
+#[cfg(feature = "state-machine-test")]
+pub mod state_machine_test;
