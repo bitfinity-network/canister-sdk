@@ -188,7 +188,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
             &self.token_config,
             caller,
             to,
-            Some(DEFAULT_SUBACCOUNT.clone()),
+            Some(get_principal_subaccount(caller)),
             amount.clone(),
         )
         .with_operation(Operation::CreditOnSuccess)
@@ -495,5 +495,9 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
 /// Returns the interim account for deposit transfers. This account belongs to the `this` canister
 /// and has subaccount derived from the `principal` (for details see [`get_principal_subaccount`]).
 pub fn get_deposit_interim_account(principal: Principal) -> AccountIdentifier {
-    AccountIdentifier::new(&ic::id(), &DEFAULT_SUBACCOUNT)
+    AccountIdentifier::new(&ic::id(), &get_principal_subaccount(principal))
+}
+
+pub fn get_principal_subaccount(principal: Principal) -> Subaccount {
+    ic_exports::ledger::Subaccount::from(principal)
 }
