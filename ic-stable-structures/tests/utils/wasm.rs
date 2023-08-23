@@ -34,7 +34,7 @@ fn get_path_to_wasm(wasm_name: &str) -> PathBuf {
             return wasm_path;
         }
     } else {
-        const ARTIFACT_PATH: &str = ".artifact";
+        const ARTIFACT_PATH: &str = "/target/wasm32-unknown-unknown/release/";
         // Get to the root of the project
         let root_dir = get_workspace_root_dir();
         let wasm_path = root_dir.join(ARTIFACT_PATH).join(wasm_name);

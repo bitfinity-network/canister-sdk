@@ -14,4 +14,4 @@ service : () -> {
   push_tx_to_log : (Transaction) -> (nat64);
   push_tx_to_ring_buffer : (Transaction) -> (nat64);
   push_tx_to_vec : (Transaction) -> (nat64);
-};
+}
