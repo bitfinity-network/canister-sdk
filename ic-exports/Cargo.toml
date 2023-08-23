@@ -8,7 +8,7 @@ edition.workspace = true
 
 [features]
 default = []
-state-machine-test = ["flate2", "ic-test-state-machine-client", "log", "once_cell", "reqwest"]
+ic-test-state-machine = ["flate2", "ic-test-state-machine-client", "log", "once_cell", "reqwest"]
 ledger = ["ic-ledger-types"]
 
 [dependencies]

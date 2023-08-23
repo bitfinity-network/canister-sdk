@@ -3,6 +3,8 @@ use flate2::read::GzDecoder;
 use log::*;
 use once_cell::sync::OnceCell;
 
+pub use ic_test_state_machine_client::*;
+
 pub const IC_STATE_MACHINE_BINARY_HASH: &str = "cf4e446d1997dd94c7fee21c6daffafded2857de";
 
 /// Returns the path to the ic-test-state-machine binary.
