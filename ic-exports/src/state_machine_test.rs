@@ -32,8 +32,6 @@ fn download_binary(base_path: &str) -> String {
     let gz_file_name = format!("{output_file_name}.gz");
     let download_url = format!("https://download.dfinity.systems/ic/{IC_STATE_MACHINE_BINARY_HASH}/binaries/x86_64-{platform}/{gz_file_name}");
     
-    println!("{download_url}");
-
     let dest_path_name = format!("{}/{}", base_path, "ic_test_state_machine");
     let dest_dir_path = Path::new(&dest_path_name);
     let gz_dest_file_path = format!("{}/{}", dest_path_name, gz_file_name);
@@ -42,7 +40,7 @@ fn download_binary(base_path: &str) -> String {
     if !dest_dir_path.exists() {
         // Download file
         {
-            info!("ic-test-state-machine binarey not found, downloading it...");
+            info!("ic-test-state-machine binarey not found, downloading binary from: {download_url}");
 
             let response = reqwest::blocking::Client::builder()
                 .timeout(Duration::from_secs(120))
@@ -51,7 +49,7 @@ fn download_binary(base_path: &str) -> String {
                 .get(download_url)
                 .send()
                 .unwrap();
-            println!("{response:?}");
+
             create_dir_all(dest_dir_path).unwrap();
 
             let mut file = match File::create(&gz_dest_file_path) {
