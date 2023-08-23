@@ -28,7 +28,29 @@ pub struct StateMachineTestContext {
 }
 
 impl StateMachineTestContext {
-    pub fn update_call_as<Result>(
+    fn query_as<Result>(
+        &self,
+        sender: Principal,
+        canister_id: Principal,
+        method: &str,
+        payload: Vec<u8>,
+    ) -> Result
+    where
+        for<'a> Result: CandidType + Deserialize<'a>,
+    {
+        let res = match self
+            .env
+            .query_call(canister_id, sender, method, payload)
+            .unwrap()
+        {
+            WasmResult::Reply(bytes) => bytes,
+            WasmResult::Reject(e) => panic!("Unexpected reject: {:?}", e),
+        };
+
+        Decode!(&res, Result).expect("failed to decode item from candid")
+    }
+
+    fn update_call_as<Result>(
         &self,
         sender: Principal,
         canister_id: Principal,
@@ -52,7 +74,7 @@ impl StateMachineTestContext {
 
     pub fn get_tx_from_btreemap(&self, key: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&key).unwrap();
-        let res = self.update_call_as(
+        let res = self.query_as(
             ic::caller(),
             self.dummy_canister,
             "get_tx_from_btreemap",
@@ -76,7 +98,7 @@ impl StateMachineTestContext {
 
     pub fn get_tx_from_cell(&self) -> Result<Transaction> {
         let args = Encode!(&()).unwrap();
-        let res = self.update_call_as(
+        let res = self.query_as(
             ic::caller().into(),
             self.dummy_canister,
             "get_tx_from_cell",
@@ -100,7 +122,7 @@ impl StateMachineTestContext {
 
     pub fn get_tx_from_map(&self, key: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&key).unwrap();
-        let res = self.update_call_as(
+        let res = self.query_as(
             ic::caller().into(),
             self.dummy_canister,
             "get_tx_from_map",
@@ -124,7 +146,7 @@ impl StateMachineTestContext {
 
     pub fn get_tx_from_multimap(&self, key: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&key).unwrap();
-        let res = self.update_call_as(
+        let res = self.query_as(
             ic::caller().into(),
             self.dummy_canister,
             "get_tx_from_multimap",
@@ -148,7 +170,7 @@ impl StateMachineTestContext {
 
     pub fn get_tx_from_vec(&self, index: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&index).unwrap();
-        let res = self.update_call_as(
+        let res = self.query_as(
             ic::caller().into(),
             self.dummy_canister,
             "get_tx_from_vec",
@@ -172,7 +194,7 @@ impl StateMachineTestContext {
 
     pub fn get_tx_from_ring_buffer(&self, index: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&index).unwrap();
-        let res = self.update_call_as(
+        let res = self.query_as(
             ic::caller().into(),
             self.dummy_canister,
             "get_tx_from_ring_buffer",
@@ -196,7 +218,7 @@ impl StateMachineTestContext {
 
     pub fn get_tx_from_log(&self, index: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&index).unwrap();
-        let res = self.update_call_as(
+        let res = self.query_as(
             ic::caller().into(),
             self.dummy_canister,
             "get_tx_from_log",
