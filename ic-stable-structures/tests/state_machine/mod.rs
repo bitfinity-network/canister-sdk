@@ -1,13 +1,15 @@
 use std::sync::Mutex;
 
 use anyhow::Result;
-use candid::{Principal, CandidType, Deserialize};
+use candid::{CandidType, Deserialize, Principal};
 use candid::{Decode, Encode};
 use did::Transaction;
 use ic_exports::ic_kit::ic;
 use ic_exports::ic_kit::inject;
 use ic_exports::ic_kit::mock_principals::alice;
-use ic_exports::ic_test_state_machine::{StateMachine, get_ic_test_state_machine_client_path, WasmResult};
+use ic_exports::ic_test_state_machine::{
+    get_ic_test_state_machine_client_path, StateMachine, WasmResult,
+};
 use once_cell::sync::Lazy;
 
 use crate::utils::wasm::get_dummy_canister_bytecode;
@@ -26,7 +28,6 @@ pub struct StateMachineTestContext {
 }
 
 impl StateMachineTestContext {
-
     pub fn update_call_as<Result>(
         &self,
         sender: Principal,
@@ -48,7 +49,7 @@ impl StateMachineTestContext {
 
         Decode!(&res, Result).expect("failed to decode item from candid")
     }
-    
+
     pub fn get_tx_from_btreemap(&self, key: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&key).unwrap();
         let res = self.update_call_as(
@@ -266,7 +267,8 @@ pub fn reinstall_dummy_canister(ctx: &StateMachineTestContext) -> Result<()> {
     let dummy_wasm = get_dummy_canister_bytecode();
 
     ctx.env
-        .reinstall_canister(ctx.dummy_canister, dummy_wasm, args, None).unwrap();
+        .reinstall_canister(ctx.dummy_canister, dummy_wasm, args, None)
+        .unwrap();
 
     Ok(())
 }
@@ -277,7 +279,8 @@ pub fn upgrade_dummy_canister(ctx: &StateMachineTestContext) -> Result<()> {
     let dummy_wasm = get_dummy_canister_bytecode();
 
     ctx.env
-        .upgrade_canister(ctx.dummy_canister, dummy_wasm, args, None).unwrap();
+        .upgrade_canister(ctx.dummy_canister, dummy_wasm, args, None)
+        .unwrap();
 
     Ok(())
 }

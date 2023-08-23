@@ -1,7 +1,12 @@
-use std::{path::Path, time::Duration, fs::{create_dir_all, File}, io::*};
 use flate2::read::GzDecoder;
 use log::*;
 use once_cell::sync::OnceCell;
+use std::{
+    fs::{create_dir_all, File},
+    io::*,
+    path::Path,
+    time::Duration,
+};
 
 pub use ic_test_state_machine_client::*;
 
@@ -10,30 +15,27 @@ pub const IC_STATE_MACHINE_BINARY_HASH: &str = "cf4e446d1997dd94c7fee21c6daffafd
 /// Returns the path to the ic-test-state-machine binary.
 /// If the binary is not present, it downloads it.
 /// See: https://github.com/dfinity/test-state-machine-client
-/// 
+///
 /// It supports only linux and macos
-/// 
+///
 /// The search_path variable is the folder where to search for the binary
 /// or to download it if not present
 pub fn get_ic_test_state_machine_client_path(search_path: &str) -> String {
     static FILES: OnceCell<String> = OnceCell::new();
-    FILES.get_or_init(|| {
-        download_binary(search_path)
-    }).clone()
+    FILES.get_or_init(|| download_binary(search_path)).clone()
 }
 
 fn download_binary(base_path: &str) -> String {
-
     let platform = match std::env::consts::OS {
         "linux" => "linux",
         "macos" => "darwin",
-        _ => panic!("ic_test_state_machine_client requires linux or macos")
+        _ => panic!("ic_test_state_machine_client requires linux or macos"),
     };
 
     let output_file_name = "ic-test-state-machine";
     let gz_file_name = format!("{output_file_name}.gz");
     let download_url = format!("https://download.dfinity.systems/ic/{IC_STATE_MACHINE_BINARY_HASH}/binaries/x86_64-{platform}/{gz_file_name}");
-    
+
     let dest_path_name = format!("{}/{}", base_path, "ic_test_state_machine");
     let dest_dir_path = Path::new(&dest_path_name);
     let gz_dest_file_path = format!("{}/{}", dest_path_name, gz_file_name);
@@ -42,7 +44,9 @@ fn download_binary(base_path: &str) -> String {
     if !dest_dir_path.exists() {
         // Download file
         {
-            info!("ic-test-state-machine binarey not found, downloading binary from: {download_url}");
+            info!(
+                "ic-test-state-machine binarey not found, downloading binary from: {download_url}"
+            );
 
             let response = reqwest::blocking::Client::builder()
                 .timeout(Duration::from_secs(120))
@@ -79,19 +83,19 @@ fn download_binary(base_path: &str) -> String {
             output.write_all(&temp).unwrap();
             output.flush().unwrap();
 
-            #[cfg(target_family = "unix")] {
+            #[cfg(target_family = "unix")]
+            {
                 use std::os::unix::prelude::PermissionsExt;
-                let mut perms = std::fs::metadata(&output_dest_file_path).unwrap().permissions();
+                let mut perms = std::fs::metadata(&output_dest_file_path)
+                    .unwrap()
+                    .permissions();
                 perms.set_mode(0o770);
                 std::fs::set_permissions(&output_dest_file_path, perms).unwrap();
             }
-
         }
-
     }
     output_dest_file_path
 }
-
 
 #[test]
 fn should_get_ic_test_state_machine_client_path() {
