@@ -36,8 +36,9 @@ impl DummyCanister {
     }
 
     #[update]
-    pub async fn insert_tx_to_cell(&self, transaction: Transaction) {
-        Service::insert_tx_to_cell(transaction)
+    pub async fn insert_tx_to_cell(&self, transaction: Transaction) -> Transaction {
+        Service::insert_tx_to_cell(transaction.clone());
+        transaction
     }
 
     #[query]

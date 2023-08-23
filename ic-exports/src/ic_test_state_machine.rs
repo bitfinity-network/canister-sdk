@@ -10,7 +10,7 @@ use std::{
 
 pub use ic_test_state_machine_client::*;
 
-pub const IC_STATE_MACHINE_BINARY_HASH: &str = "cf4e446d1997dd94c7fee21c6daffafded2857de";
+pub const IC_STATE_MACHINE_BINARY_HASH: &str = "d33ce10e3896f223045bc44320c794308c32a13e";
 
 /// Returns the path to the ic-test-state-machine binary.
 /// If the binary is not present, it downloads it.

@@ -87,7 +87,7 @@ impl StateMachineTestContext {
     pub fn insert_tx_to_btreemap(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
         let res = self.update_call_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "insert_tx_to_btreemap",
             args,
@@ -99,7 +99,7 @@ impl StateMachineTestContext {
     pub fn get_tx_from_cell(&self) -> Result<Transaction> {
         let args = Encode!(&()).unwrap();
         let res = self.query_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_cell",
             args,
@@ -108,10 +108,10 @@ impl StateMachineTestContext {
         Ok(res)
     }
 
-    pub fn insert_tx_to_cell(&self, from: u8, to: u8, value: u8) -> Result<()> {
+    pub fn insert_tx_to_cell(&self, from: u8, to: u8, value: u8) -> Result<Transaction> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
         let res = self.update_call_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "insert_tx_to_cell",
             args,
@@ -123,7 +123,7 @@ impl StateMachineTestContext {
     pub fn get_tx_from_map(&self, key: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&key).unwrap();
         let res = self.query_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_map",
             args,
@@ -135,7 +135,7 @@ impl StateMachineTestContext {
     pub fn insert_tx_to_map(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
         let res = self.update_call_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "insert_tx_to_map",
             args,
@@ -147,7 +147,7 @@ impl StateMachineTestContext {
     pub fn get_tx_from_multimap(&self, key: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&key).unwrap();
         let res = self.query_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_multimap",
             args,
@@ -159,7 +159,7 @@ impl StateMachineTestContext {
     pub fn insert_tx_to_multimap(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
         let res = self.update_call_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "insert_tx_to_multimap",
             args,
@@ -171,7 +171,7 @@ impl StateMachineTestContext {
     pub fn get_tx_from_vec(&self, index: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&index).unwrap();
         let res = self.query_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_vec",
             args,
@@ -183,7 +183,7 @@ impl StateMachineTestContext {
     pub fn push_tx_to_vec(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
         let res = self.update_call_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "push_tx_to_vec",
             args,
@@ -195,7 +195,7 @@ impl StateMachineTestContext {
     pub fn get_tx_from_ring_buffer(&self, index: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&index).unwrap();
         let res = self.query_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_ring_buffer",
             args,
@@ -207,7 +207,7 @@ impl StateMachineTestContext {
     pub fn push_tx_to_ring_buffer(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
         let res = self.update_call_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "push_tx_to_ring_buffer",
             args,
@@ -219,7 +219,7 @@ impl StateMachineTestContext {
     pub fn get_tx_from_log(&self, index: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&index).unwrap();
         let res = self.query_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_log",
             args,
@@ -231,7 +231,7 @@ impl StateMachineTestContext {
     pub fn push_tx_to_log(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
         let res = self.update_call_as(
-            ic::caller().into(),
+            ic::caller(),
             self.dummy_canister,
             "push_tx_to_log",
             args,

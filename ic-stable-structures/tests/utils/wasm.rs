@@ -4,8 +4,6 @@ use std::path::{Path, PathBuf};
 
 use once_cell::sync::OnceCell;
 
-use super::get_workspace_root_dir;
-
 /// Returns the bytecode of the evmc canister
 pub fn get_dummy_canister_bytecode() -> Vec<u8> {
     static CANISTER_BYTECODE: OnceCell<Vec<u8>> = OnceCell::new();
