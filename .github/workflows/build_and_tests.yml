@@ -78,8 +78,8 @@ jobs:
           dfx build dummy_canister
       #     ic-payments/build_payments_canister.sh
 
-      # - name: Run integration tests
-      #   run: |
-      #     export WASMS_DIR="../target/wasm32-unknown-unknown/release/"
-      #     cd ./ic-stable-structures
-      #     cargo test --features state-machine
+      - name: Run integration tests
+        run: |
+          export WASMS_DIR="../target/wasm32-unknown-unknown/release/"
+          cd ./ic-stable-structures
+          cargo test --features state-machine
