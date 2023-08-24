@@ -23,6 +23,7 @@ members = [
     "ic-stable-structures/tests/dummy_canister",
     "ic-storage",
     "ic-storage/ic-storage-derive",
+    "ic-test-utils",
 ]
 
 [package]
@@ -56,9 +57,11 @@ async-recursion = "1.0.2"
 async-trait = "0.1"
 auto_ops = "0.3"
 crypto-bigint = { version = "0.5", features = ["serde"] }
+dirs = "5.0"
 env_logger = "0.10"
 flate2 = "1"
 futures = { version = "0.3", default-features = false }
+garcon = "0.2"
 getrandom = { version = "0.2", features = ["custom"] }
 hex = "0.4"
 humantime = "2.1"

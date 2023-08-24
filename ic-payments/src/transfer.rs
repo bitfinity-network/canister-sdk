@@ -165,7 +165,6 @@ impl Transfer {
     }
 
     pub(crate) fn id(&self) -> [u8; 32] {
-
         use sha2::{Digest, Sha224};
 
         let mut hash = Sha224::default();

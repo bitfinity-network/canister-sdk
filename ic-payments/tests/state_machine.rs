@@ -1,8 +1,8 @@
 #[cfg(feature = "state-machine")]
 mod tests {
     use candid::{CandidType, Decode, Deserialize, Encode, Nat, Principal};
-        use ic_exports::ic_kit::mock_principals::{alice, bob};
-    use ic_exports::ic_test_state_machine::{StateMachine, get_ic_test_state_machine_client_path};
+    use ic_exports::ic_kit::mock_principals::{alice, bob};
+    use ic_exports::ic_test_state_machine::{get_ic_test_state_machine_client_path, StateMachine};
     use ic_exports::icrc_types::icrc::generic_value::Value;
     use ic_exports::icrc_types::icrc1::account::Account;
     use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
@@ -40,11 +40,11 @@ mod tests {
 
     impl Default for ArchiveOptions {
         fn default() -> Self {
-        Self { 
-            controller_id: Principal::anonymous(),
-            ..Default::default()
+            Self {
+                controller_id: Principal::anonymous(),
+                ..Default::default()
+            }
         }
-    }
     }
 
     fn token_wasm() -> &'static [u8] {
