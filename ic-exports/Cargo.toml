@@ -8,6 +8,8 @@ edition.workspace = true
 
 [features]
 default = []
+ledger = ["ic-ledger-types"]
+icrc = ["icrc-ledger-types"]
 ic-test-state-machine = ["flate2", "ic-test-state-machine-client", "log", "once_cell", "reqwest"]
 
 [dependencies]
@@ -15,9 +17,10 @@ candid = { workspace = true }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 ic-cdk-timers = { workspace = true }
-ic-ledger-types = { workspace = true }
-icrc-ledger-types = { workspace = true }
 ic-stable-structures = { workspace = true }
+
+ic-ledger-types = { workspace = true, optional = true }
+icrc-ledger-types = { workspace = true, optional = true }
 
 ic-kit = { path = "../ic-kit" }
 

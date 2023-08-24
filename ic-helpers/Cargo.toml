@@ -9,14 +9,11 @@ candid = { workspace = true }
 num-traits = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_bytes = { workspace = true }
-serde_cbor = { workspace = true }
 thiserror = { workspace = true }
 k256 = { workspace = true }
 auto_ops = { workspace = true }
 crypto-bigint = { workspace = true }
 num-bigint = { workspace = true }
-binread = { workspace = true }
 
 ic-exports = { path = "../ic-exports" }
 ic-canister = { path = "../ic-canister/ic-canister" }
@@ -31,3 +28,5 @@ hex = { workspace = true }
 
 [features]
 default = []
+ledger = ["ic-exports/ledger"]
+management_canister = []
