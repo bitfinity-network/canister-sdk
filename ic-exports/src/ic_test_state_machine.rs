@@ -41,7 +41,7 @@ fn download_binary(base_path: &str) -> String {
     let gz_dest_file_path = format!("{}/{}", dest_path_name, gz_file_name);
     let output_dest_file_path = format!("{}/{}", dest_path_name, output_file_name);
 
-    if !dest_dir_path.exists() {
+    if !Path::new(&output_dest_file_path).exists() {
         // Download file
         {
             info!(
