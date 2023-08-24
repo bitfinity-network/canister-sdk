@@ -1,9 +1,10 @@
 use std::sync::atomic::AtomicU64;
 
 use async_recursion::async_recursion;
-use candid::Principal;
+use candid::{Nat, Principal};
 use ic_exports::ic_kit::ic;
-use ic_exports::ledger::{AccountIdentifier, TransferError, DEFAULT_SUBACCOUNT, Tokens, Memo};
+use ic_exports::icrc_types::icrc1::account::{Account, Subaccount, DEFAULT_SUBACCOUNT};
+use ic_exports::icrc_types::icrc1::transfer::TransferError;
 
 use crate::error::{InternalPaymentError, PaymentError, RecoveryDetails, TransferFailReason};
 use crate::icrc1::{self, get_icrc1_balance, get_icrc1_minting_account, TokenTransferInfo};
@@ -151,7 +152,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     ///
     /// The amount the caller will receive on their balance is `interim_account_balance -
     /// transfer_fee`, where `transfer_fee` is the fee set by the token canister.
-    pub async fn deposit_all(&mut self, caller: Principal) -> Result<(TxId, Tokens), PaymentError> {
+    pub async fn deposit_all(&mut self, caller: Principal) -> Result<(TxId, Nat), PaymentError> {
         let account = get_deposit_interim_account(caller);
         let balance = get_icrc1_balance(self.token_config.principal, &account).await?;
         self.deposit(caller, balance).await
@@ -179,16 +180,17 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     pub async fn deposit(
         &mut self,
         caller: Principal,
-        amount: Tokens,
-    ) -> Result<(TxId, Tokens), PaymentError> {
-        let to = AccountIdentifier::new(&ic::id(), &DEFAULT_SUBACCOUNT);
-        let memo = Memo(TX_COUNTER
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed));
+        amount: Nat,
+    ) -> Result<(TxId, Nat), PaymentError> {
+        let to = ic::id().into();
+        let memo = TX_COUNTER
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            .into();
         let transfer = Transfer::new(
             &self.token_config,
             caller,
             to,
-            Some(get_principal_subaccount(caller)),
+            get_principal_subaccount(&caller),
             amount.clone(),
         )
         .with_operation(Operation::CreditOnSuccess)
@@ -208,11 +210,12 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     pub async fn withdraw(
         &mut self,
         caller: Principal,
-        amount: Tokens,
-    ) -> Result<(TxId, Tokens), PaymentError> {
-        let to = AccountIdentifier::new(&caller, &DEFAULT_SUBACCOUNT);
-        let memo = Memo(TX_COUNTER
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed));
+        amount: Nat,
+    ) -> Result<(TxId, Nat), PaymentError> {
+        let to = caller.into();
+        let memo = TX_COUNTER
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            .into();
 
         let transfer = Transfer::new(&self.token_config, caller, to, None, amount)
             .double_step()
@@ -310,25 +313,25 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
     }
 
     /// Token transfer fee configured for the terminal.
-    pub fn fee(&self) -> Tokens {
+    pub fn fee(&self) -> Nat {
         self.token_config.fee.clone()
     }
 
     /// Token minting account configured for the terminal.
-    pub fn minting_account(&self) -> &AccountIdentifier {
+    pub fn minting_account(&self) -> &Account {
         &self.token_config.minting_account
     }
 
     /// Changes the token transfer fee configuration. This has effect on all new transfers as well
     /// as all transfers stored in the recovery list.
-    pub fn set_fee(&mut self, fee: Tokens) {
+    pub fn set_fee(&mut self, fee: Nat) {
         self.token_config.fee = fee;
         self.update_recovery_fees();
     }
 
     /// Changes the minting account of the token. This has effect on all new transfers as well as
     /// all transfer stored in the recovery list.
-    pub fn set_minting_account(&mut self, minting_account: AccountIdentifier) {
+    pub fn set_minting_account(&mut self, minting_account: Account) {
         self.token_config.minting_account = minting_account;
         self.update_recovery_fees();
     }
@@ -340,7 +343,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         }
     }
 
-    fn credit(&mut self, recipient: Principal, amount: Tokens) -> Result<Tokens, PaymentError> {
+    fn credit(&mut self, recipient: Principal, amount: Nat) -> Result<Nat, PaymentError> {
         Ok(self.balances.credit(recipient, amount)?)
     }
 
@@ -415,9 +418,12 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
                     .await
             }
             Err(InternalPaymentError::TransferFailed(TransferFailReason::Rejected(
-                TransferError::TxDuplicate { duplicate_of },
-            ))) => Ok(self.complete(transfer, duplicate_of.into(), n_retries).await?),
+                TransferError::Duplicate { duplicate_of },
+            ))) => Ok(self.complete(transfer, duplicate_of, n_retries).await?),
             Err(InternalPaymentError::MaybeFailed)
+            | Err(InternalPaymentError::TransferFailed(TransferFailReason::Rejected(
+                TransferError::TemporarilyUnavailable,
+            )))
             | Err(InternalPaymentError::TransferFailed(TransferFailReason::TokenPanic(_))) => {
                 self.retry(transfer, n_retries.saturating_sub(1)).await
             }
@@ -427,12 +433,12 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
 
     async fn update_config_and_retry(
         &mut self,
-        expected_fee: Tokens,
+        expected_fee: Nat,
         transfer: Transfer,
         n_retries: usize,
     ) -> Result<TxId, PaymentError> {
         match expected_fee {
-            v if v.e8s() == 0 => self.set_minting_account(self.get_minting_account(v).await?),
+            v if v == 0 => self.set_minting_account(self.get_minting_account(v).await?),
             v if v == self.token_config.fee => {
                 self.set_minting_account(self.get_minting_account(v).await?)
             }
@@ -450,18 +456,18 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         self.retry(transfer, n_retries).await
     }
 
-    async fn get_minting_account(&self, expected_fee: Tokens) -> Result<AccountIdentifier, PaymentError> {
+    async fn get_minting_account(&self, expected_fee: Nat) -> Result<Account, PaymentError> {
         match get_icrc1_minting_account(self.token_config.principal).await {
-            Ok(v) => Ok(v.unwrap_or(AccountIdentifier::new(
-                &Principal::management_canister(),
-                &DEFAULT_SUBACCOUNT,
-            ))),
+            Ok(v) => Ok(v.unwrap_or(Account {
+                owner: Principal::management_canister(),
+                subaccount: None,
+            })),
             Err(_e) => Err(PaymentError::BadFee(expected_fee)),
         }
     }
 
     fn can_deduplicate(&self, tx: &Transfer) -> bool {
-        ic::time().saturating_sub(tx.created_at().timestamp_nanos) < self.deduplication_period - TX_WINDOW
+        ic::time().saturating_sub(tx.created_at()) < self.deduplication_period - TX_WINDOW
     }
 
     async fn recover_old_tx(&mut self, tx: Transfer) -> Result<TxId, PaymentError> {
@@ -471,12 +477,12 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         let interim_balance = icrc1::get_icrc1_balance(self.token_config.principal, acc).await?;
 
         match stage {
-            Stage::First if interim_balance.e8s() == 0 => self.reject(
+            Stage::First if interim_balance == 0 => self.reject(
                 tx,
                 InternalPaymentError::TransferFailed(TransferFailReason::Unknown),
             ),
             Stage::First => self.complete(tx, UNKNOWN_TX_ID.into(), N_RETRIES).await,
-            Stage::Second if interim_balance.e8s() == 0 => {
+            Stage::Second if interim_balance == 0 => {
                 self.complete(tx, UNKNOWN_TX_ID.into(), N_RETRIES).await
             }
             Stage::Second => Ok(self
@@ -494,10 +500,20 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
 
 /// Returns the interim account for deposit transfers. This account belongs to the `this` canister
 /// and has subaccount derived from the `principal` (for details see [`get_principal_subaccount`]).
-pub fn get_deposit_interim_account(principal: Principal) -> AccountIdentifier {
-    AccountIdentifier::new(&ic::id(), &get_principal_subaccount(principal))
+pub fn get_deposit_interim_account(principal: Principal) -> Account {
+    Account {
+        owner: ic::id(),
+        subaccount: get_principal_subaccount(&principal),
+    }
 }
 
-pub fn get_principal_subaccount(principal: Principal) -> Subaccount {
-    ic_exports::ledger::Subaccount::from(principal)
+/// Returns the subaccount id for the `principal` for the deposit transfers. This subaccount is
+/// calculated as:
+/// ```pseudocode
+/// Bytes[0..1] = principal.len()
+/// Bytes[1..principal.len() + 1] = principal.bytes()
+/// Bytes[principal.len() + 1..32] = 0
+/// ```
+pub fn get_principal_subaccount(_principal: &Principal) -> Option<Subaccount> {
+    Some(DEFAULT_SUBACCOUNT.clone())
 }

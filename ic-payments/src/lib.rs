@@ -108,7 +108,6 @@
 //! ```
 
 use candid::{CandidType, Deserialize, Nat, Principal};
-use ic_exports::ledger::{AccountIdentifier, Tokens};
 
 mod balances;
 pub mod error;
@@ -119,10 +118,12 @@ mod transfer;
 
 pub use balances::*;
 pub use error::PaymentError;
+use ic_exports::icrc_types::icrc1::account::Account;
 pub use recovery_list::*;
 pub use token_terminal::*;
 pub use transfer::*;
 
+type Timestamp = u64;
 type TxId = Nat;
 
 /// Configuration of the token canister.
@@ -134,16 +135,16 @@ pub struct TokenConfiguration {
     pub principal: Principal,
 
     /// Transaction fee.
-    pub fee: Tokens,
+    pub fee: Nat,
 
     /// Token minting account.
-    pub minting_account: AccountIdentifier,
+    pub minting_account: Account,
 }
 
 impl TokenConfiguration {
-    pub(crate) fn get_fee(&self, from_acc: &AccountIdentifier, to_acc: &AccountIdentifier) -> Tokens {
+    pub(crate) fn get_fee(&self, from_acc: &Account, to_acc: &Account) -> Nat {
         if *from_acc == self.minting_account || *to_acc == self.minting_account {
-            Tokens::from_e8s(0u64)
+            0.into()
         } else {
             self.fee.clone()
         }

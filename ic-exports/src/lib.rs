@@ -9,7 +9,7 @@ pub mod ledger {
 }
 
 #[cfg(feature = "icrc")]
-pub mod icrc {
+pub mod icrc_types {
     pub use icrc_ledger_types::*;
 }
 

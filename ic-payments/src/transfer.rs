@@ -1,9 +1,10 @@
 use crate::error::{InternalPaymentError, ParametersError};
 use crate::icrc1::{self, TokenTransferInfo};
-use crate::{TokenConfiguration};
-use candid::{CandidType, Deserialize, Principal};
+use crate::{Timestamp, TokenConfiguration};
+use candid::{CandidType, Deserialize, Nat, Principal};
 use ic_exports::ic_kit::ic;
-use ic_exports::ledger::{AccountIdentifier, Subaccount, Timestamp, Memo, Tokens, DEFAULT_SUBACCOUNT};
+use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
+use ic_exports::icrc_types::icrc1::transfer::Memo;
 
 /// Transfer to be executed.
 #[derive(Debug, CandidType, Deserialize, Clone)]
@@ -19,14 +20,14 @@ pub struct Transfer {
     pub from: Option<Subaccount>,
 
     /// Account to transfer to.
-    pub to: AccountIdentifier,
+    pub to: Account,
 
     /// Amount to transfer. This amount includes the fee, so the actual value that will be received
     /// by the `to` account is `amount - fee`.
-    pub amount: Tokens,
+    pub amount: Nat,
 
     /// Transaction fee.
-    pub fee: Tokens,
+    pub fee: Nat,
 
     /// Operation to execute after the transfer finished.
     pub operation: Operation,
@@ -63,7 +64,7 @@ pub enum TransferType {
     SingleStep,
 
     /// Transfer through an interim account, given as the second parameter.
-    DoubleStep(Stage, AccountIdentifier),
+    DoubleStep(Stage, Account),
 }
 
 /// Current step of a double-step transfer.
@@ -95,15 +96,15 @@ impl Transfer {
     pub fn new(
         token_config: &TokenConfiguration,
         caller: Principal,
-        to: AccountIdentifier,
+        to: Account,
         from_subaccount: Option<Subaccount>,
-        amount: Tokens,
+        amount: Nat,
     ) -> Self {
         let fee = token_config.get_fee(
-            &AccountIdentifier::new(
-                &ic::id(),
-                &from_subaccount.unwrap_or(DEFAULT_SUBACCOUNT)
-            ),
+            &Account {
+                owner: ic::id(),
+                subaccount: from_subaccount,
+            },
             &to,
         );
         Self {
@@ -115,7 +116,7 @@ impl Transfer {
             fee,
             operation: Operation::None,
             r#type: TransferType::SingleStep,
-            created_at: Timestamp{ timestamp_nanos: ic::time() },
+            created_at: ic::time(),
             memo: None,
         }
     }
@@ -164,16 +165,17 @@ impl Transfer {
     }
 
     pub(crate) fn id(&self) -> [u8; 32] {
+
         use sha2::{Digest, Sha224};
 
         let mut hash = Sha224::default();
         hash.update(INTERMEDIATE_ACC_DOMAIN);
-        hash.update(&self.from.as_ref().unwrap_or(DEFAULT_SUBACCOUNT));
+        hash.update(&self.from.unwrap_or_default());
         hash.update(self.to.owner.as_slice());
         hash.update(self.to.effective_subaccount());
-        hash.update(&self.amount.e8s().to_le_bytes());
+        hash.update(&self.amount.0.to_bytes_le());
         hash.update(self.token.as_slice());
-        hash.update(&self.created_at.timestamp_nanos.to_le_bytes());
+        hash.update(&self.created_at.to_le_bytes());
 
         let hash_result: [u8; 28] = hash.finalize().into();
         let mut subaccount = [0; 32];
@@ -183,7 +185,7 @@ impl Transfer {
         subaccount
     }
 
-    pub(crate) fn from(&self) -> AccountIdentifier {
+    pub(crate) fn from(&self) -> Account {
         match &self.r#type {
             TransferType::SingleStep => self.from_acc(),
             TransferType::DoubleStep(Stage::First, _) => self.from_acc(),
@@ -192,12 +194,15 @@ impl Transfer {
     }
 
     /// Source account of the transfer.
-    pub fn from_acc(&self) -> AccountIdentifier {
-        AccountIdentifier::new(&ic::id(), &self.from.unwrap_or_else(|| DEFAULT_SUBACCOUNT.clone()))
+    pub fn from_acc(&self) -> Account {
+        Account {
+            owner: ic::id(),
+            subaccount: self.from,
+        }
     }
 
     /// Target account of the transfer.
-    pub fn to(&self) -> AccountIdentifier {
+    pub fn to(&self) -> Account {
         match &self.r#type {
             TransferType::SingleStep => self.to,
             TransferType::DoubleStep(Stage::First, acc) => *acc,
@@ -208,15 +213,18 @@ impl Transfer {
     /// Interim account of the transfer.
     ///
     /// Returns `None` if the transfer is single-step.
-    pub fn interim_acc(&self) -> Option<AccountIdentifier> {
+    pub fn interim_acc(&self) -> Option<Account> {
         match &self.r#type {
             TransferType::DoubleStep(_, acc) => Some(*acc),
             _ => None,
         }
     }
 
-    fn generate_interim_acc(&self) -> AccountIdentifier {
-        AccountIdentifier::new(&ic::id(), self.id())
+    fn generate_interim_acc(&self) -> Account {
+        Account {
+            owner: ic::id(),
+            subaccount: Some(self.id()),
+        }
     }
 
     pub(crate) fn validate(&self) -> Result<(), InternalPaymentError> {
@@ -245,31 +253,31 @@ impl Transfer {
     ///    is set to 0 according to ICRC-1 standard.
     /// 2. If the transfer is double-step, effective fee will be twice the configured amount, since
     ///    the transfer requires two transactions to be completed.
-    pub fn effective_fee(&self) -> Tokens {
+    pub fn effective_fee(&self) -> Nat {
         match self.r#type {
-            TransferType::DoubleStep(Stage::First, _) => Tokens::from_e8s(self.fee.e8s() * 2),
+            TransferType::DoubleStep(Stage::First, _) => self.fee.clone() * 2,
             _ => self.fee.clone(),
         }
     }
 
-    fn min_amount(&self) -> Tokens {
-        Tokens::from_e8s(self.effective_fee().e8s() + 1)
+    fn min_amount(&self) -> Nat {
+        self.effective_fee() + 1
     }
 
     /// Amount to be transferred.
-    pub fn amount(&self) -> Tokens {
+    pub fn amount(&self) -> Nat {
         self.amount.clone()
     }
 
-    pub(crate) fn amount_minus_fee(&self) -> Tokens {
+    pub(crate) fn amount_minus_fee(&self) -> Nat {
         match self.amount > self.fee {
             true => self.amount.clone() - self.fee.clone(),
-            false => Tokens::from_e8s(0),
+            false => 0.into(),
         }
     }
 
     /// Amount that `to` account will receive after the transfer is complete.
-    pub fn final_amount(&self) -> Result<Tokens, InternalPaymentError> {
+    pub fn final_amount(&self) -> Result<Nat, InternalPaymentError> {
         let effective_fee = self.effective_fee();
         match self.amount > effective_fee {
             true => Ok(self.amount.clone() - effective_fee),
@@ -300,7 +308,7 @@ impl Transfer {
     }
 
     /// Updates the fee amount configured for the transfer.
-    pub fn with_fee(self, fee: Tokens) -> Self {
+    pub fn with_fee(self, fee: Nat) -> Self {
         Self { fee, ..self }
     }
 

@@ -1,9 +1,8 @@
 #[cfg(feature = "state-machine")]
 mod tests {
     use candid::{CandidType, Decode, Deserialize, Encode, Nat, Principal};
-    use ic_exports::ic_base_types::{CanisterId, PrincipalId};
-    use ic_exports::ic_kit::mock_principals::{alice, bob};
-    use ic_exports::ic_state_machine_tests::StateMachine;
+        use ic_exports::ic_kit::mock_principals::{alice, bob};
+    use ic_exports::ic_test_state_machine::{StateMachine, get_ic_test_state_machine_client_path};
     use ic_exports::icrc_types::icrc::generic_value::Value;
     use ic_exports::icrc_types::icrc1::account::Account;
     use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
@@ -21,7 +20,7 @@ mod tests {
         pub archive_options: ArchiveOptions,
     }
 
-    #[derive(Deserialize, CandidType, Clone, Debug, PartialEq, Eq, Default)]
+    #[derive(Deserialize, CandidType, Clone, Debug, PartialEq, Eq)]
     pub struct ArchiveOptions {
         /// The number of blocks which, when exceeded, will trigger an archiving
         /// operation
@@ -30,13 +29,22 @@ mod tests {
         pub num_blocks_to_archive: usize,
         pub node_max_memory_size_bytes: Option<usize>,
         pub max_message_size_bytes: Option<usize>,
-        pub controller_id: PrincipalId,
+        pub controller_id: Principal,
         // cycles to use for the call to create a new archive canister
         #[serde(default)]
         pub cycles_for_archive_creation: Option<u64>,
         // Max transactions returned by the [get_transactions] endpoint
         #[serde(default)]
         pub max_transactions_per_response: Option<usize>,
+    }
+
+    impl Default for ArchiveOptions {
+        fn default() -> Self {
+        Self { 
+            controller_id: Principal::anonymous(),
+            ..Default::default()
+        }
+    }
     }
 
     fn token_wasm() -> &'static [u8] {
@@ -49,7 +57,7 @@ mod tests {
 
     const INIT_BALANCE: u128 = 10u128.pow(12);
 
-    fn init_token(env: &mut StateMachine) -> CanisterId {
+    fn init_token(env: &mut StateMachine) -> Principal {
         let args = InitArgs {
             minting_account: Account {
                 owner: alice(),
@@ -77,7 +85,7 @@ mod tests {
         principal
     }
 
-    fn init_payment(env: &mut StateMachine, token: Principal) -> CanisterId {
+    fn init_payment(env: &mut StateMachine, token: Principal) -> Principal {
         let args = Encode!(&token).unwrap();
         let principal = env
             .install_canister(payment_canister_wasm().into(), args, None)
@@ -89,7 +97,7 @@ mod tests {
 
     fn get_token_principal_balance(
         env: &StateMachine,
-        token: CanisterId,
+        token: Principal,
         of: Principal,
     ) -> Option<Nat> {
         let account = Account {
@@ -105,7 +113,7 @@ mod tests {
 
     #[test]
     fn terminal_operations() {
-        let mut env = StateMachine::new();
+        let mut env = StateMachine::new(&get_ic_test_state_machine_client_path("../target"), false);
         let token = init_token(&mut env);
         let payment = init_payment(&mut env, token.get().into());
         env.add_cycles(payment, 10u128.pow(15));

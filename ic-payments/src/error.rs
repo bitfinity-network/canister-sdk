@@ -1,6 +1,6 @@
-use candid::{CandidType, Deserialize};
+use candid::{CandidType, Deserialize, Nat};
 use ic_exports::ic_cdk::api::call::RejectionCode;
-use ic_exports::ledger::{TransferError, Tokens};
+use ic_exports::icrc_types::icrc1::transfer::TransferError;
 use thiserror::Error;
 
 use crate::BalanceError;
@@ -51,7 +51,7 @@ pub enum PaymentError {
     /// Calling canister must adjust its configuration and then can attempt the same transfer
     /// again.
     #[error("transfer fee setting was not same as token fee configuration {0}")]
-    BadFee(Tokens),
+    BadFee(Nat),
 
     /// Unknown error happened while attempting the transfer. The terminal cannot be sure that the
     /// transaction was not executed by the token canister, so the transfer is added to the `for
@@ -77,7 +77,7 @@ pub enum RecoveryDetails {
 
     /// Second stage transfer returned `BadFee` error. The token terminal should update it's token
     /// configuration and attempt to recover the transfer.
-    BadFee(Tokens),
+    BadFee(Nat),
 }
 
 #[derive(Debug, Error, CandidType, Deserialize, PartialEq)]
@@ -86,7 +86,7 @@ pub enum InternalPaymentError {
     TransferFailed(TransferFailReason),
 
     #[error("wrong fee")]
-    WrongFee(Tokens),
+    WrongFee(Nat),
 
     #[error("maybe failed")]
     MaybeFailed,
@@ -104,7 +104,7 @@ pub enum ParametersError {
     #[error(
         "amount to transfer {actual} is smaller than minimum possible value {minimum_required}"
     )]
-    AmountTooSmall { minimum_required: Tokens, actual: Tokens },
+    AmountTooSmall { minimum_required: Nat, actual: Nat },
 
     #[error("target account cannot be equal to the source account")]
     TargetAccountInvalid,
@@ -136,9 +136,12 @@ impl From<TransferError> for InternalPaymentError {
     fn from(err: TransferError) -> Self {
         match err {
             TransferError::InsufficientFunds { .. }
-            | TransferError::TxCreatedInFuture
-            | TransferError::TxDuplicate { .. }
-            | TransferError::TxTooOld { .. } => {
+            | TransferError::TooOld
+            | TransferError::BadBurn { .. }
+            | TransferError::CreatedInFuture { .. }
+            | TransferError::TemporarilyUnavailable
+            | TransferError::Duplicate { .. }
+            | TransferError::GenericError { .. } => {
                 Self::TransferFailed(TransferFailReason::Rejected(err))
             }
             TransferError::BadFee { expected_fee } => Self::WrongFee(expected_fee),
