@@ -9,8 +9,14 @@ pub mod ledger {
 }
 
 #[cfg(feature = "icrc")]
+mod icrc1_ledger;
+
+#[cfg(feature = "icrc")]
 pub mod icrc_types {
     pub use icrc_ledger_types::*;
+    pub mod icrc1_ledger {
+        pub use crate::icrc1_ledger::*;
+    }
 }
 
 #[cfg(feature = "ic-test-state-machine")]
