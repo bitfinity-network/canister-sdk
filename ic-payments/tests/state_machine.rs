@@ -2,7 +2,9 @@
 mod tests {
     use candid::{CandidType, Decode, Deserialize, Encode, Nat, Principal};
     use ic_exports::ic_kit::mock_principals::{alice, bob};
-    use ic_exports::ic_test_state_machine::{get_ic_test_state_machine_client_path, StateMachine, WasmResult};
+    use ic_exports::ic_test_state_machine::{
+        get_ic_test_state_machine_client_path, StateMachine, WasmResult,
+    };
     use ic_exports::icrc_types::icrc::generic_value::Value;
     use ic_exports::icrc_types::icrc1::account::Account;
     use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
@@ -78,8 +80,7 @@ mod tests {
         };
         let args = Encode!(&args, &Nat::from(1_000_000_000)).unwrap();
         let principal = env.create_canister(None);
-        env
-            .install_canister(principal, token_wasm().into(), args, None);
+        env.install_canister(principal, token_wasm().into(), args, None);
 
         eprintln!("Created token canister {principal}");
         principal
@@ -88,8 +89,7 @@ mod tests {
     fn init_payment(env: &mut StateMachine, token: Principal) -> Principal {
         let args = Encode!(&token).unwrap();
         let principal = env.create_canister(None);
-        env
-            .install_canister(principal, payment_canister_wasm().into(), args, None);
+        env.install_canister(principal, payment_canister_wasm().into(), args, None);
 
         eprintln!("Created payment canister {principal}");
         principal
@@ -184,8 +184,7 @@ mod tests {
         canister_id: Principal,
         method: &str,
         payload: Vec<u8>,
-    ) -> Vec<u8>
-    {
+    ) -> Vec<u8> {
         match env
             .update_call(canister_id, sender, method, payload)
             .unwrap()
@@ -194,5 +193,4 @@ mod tests {
             WasmResult::Reject(e) => panic!("Unexpected reject: {:?}", e),
         }
     }
-
 }

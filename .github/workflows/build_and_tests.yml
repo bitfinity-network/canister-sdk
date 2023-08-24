@@ -76,7 +76,7 @@ jobs:
           dfx start --background
           dfx canister create dummy_canister
           dfx build dummy_canister
-      #     ic-payments/build_payments_canister.sh
+          ic-payments/build_payments_canister.sh
 
       - name: Run integration tests
         run: |
