@@ -31,4 +31,3 @@ hex = { workspace = true }
 
 [features]
 default = []
-ledger = ["ic-exports/ledger"]

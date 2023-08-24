@@ -89,6 +89,7 @@ ic-agent = { version = "0.26" }
 ic-cdk = "0.10"
 ic-cdk-macros = "0.7"
 ic-cdk-timers = "0.4"
+icrc-ledger-types = "0.1.0"
 ic-ledger-types = "0.7"
 ic-stable-structures = "^0.5.6"
 ic-test-state-machine-client = "3"
