@@ -3,7 +3,7 @@ use std::sync::atomic::AtomicU64;
 use async_recursion::async_recursion;
 use candid::{Nat, Principal};
 use ic_exports::ic_kit::ic;
-use ic_exports::icrc_types::icrc1::account::{Account, Subaccount, DEFAULT_SUBACCOUNT};
+use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
 use ic_exports::icrc_types::icrc1::transfer::TransferError;
 
 use crate::error::{InternalPaymentError, PaymentError, RecoveryDetails, TransferFailReason};
@@ -514,6 +514,10 @@ pub fn get_deposit_interim_account(principal: Principal) -> Account {
 /// Bytes[1..principal.len() + 1] = principal.bytes()
 /// Bytes[principal.len() + 1..32] = 0
 /// ```
-pub fn get_principal_subaccount(_principal: &Principal) -> Option<Subaccount> {
-    Some(DEFAULT_SUBACCOUNT.clone())
+fn get_principal_subaccount(principal_id: &Principal) -> Option<Subaccount> {
+    let mut subaccount = [0; std::mem::size_of::<Subaccount>()];
+    let principal_id = principal_id.as_slice();
+    subaccount[0] = principal_id.len().try_into().unwrap();
+    subaccount[1..1 + principal_id.len()].copy_from_slice(principal_id);
+    Some(subaccount)
 }
