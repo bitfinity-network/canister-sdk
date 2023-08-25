@@ -136,17 +136,17 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
 
             #[cfg(not(target_arch = "wasm32"))]
             fn init_instance() -> Self {
-                let principal = ::ic_exports::ic_cdk::export::Principal::from_slice(&__next_id());
+                let principal = ::ic_exports::candid::Principal::from_slice(&__next_id());
                 Self::from_principal(principal)
             }
 
             #[cfg(target_arch = "wasm32")]
-            fn from_principal(principal: ::ic_exports::ic_cdk::export::Principal) -> Self {
+            fn from_principal(principal: ::ic_exports::candid::Principal) -> Self {
                 Self { #principal_field: principal #state_fields_wasm #default_fields }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            fn from_principal(principal: ::ic_exports::ic_cdk::export::Principal) -> Self {
+            fn from_principal(principal: ::ic_exports::candid::Principal) -> Self {
                 let curr_id = ::ic_exports::ic_kit::ic::id();
 
                 // We set the id in the mock context to be the one of new canister to initialize

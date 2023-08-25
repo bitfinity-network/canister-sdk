@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_exports::candid::{CandidType, Deserialize, Principal};
 use ic_exports::ic_kit::ic;
 use ic_helpers::tokens::Tokens128;
 use ic_metrics::Interval;

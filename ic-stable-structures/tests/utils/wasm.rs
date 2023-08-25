@@ -4,8 +4,6 @@ use std::path::{Path, PathBuf};
 
 use once_cell::sync::OnceCell;
 
-use super::get_workspace_root_dir;
-
 /// Returns the bytecode of the evmc canister
 pub fn get_dummy_canister_bytecode() -> Vec<u8> {
     static CANISTER_BYTECODE: OnceCell<Vec<u8>> = OnceCell::new();
@@ -34,12 +32,12 @@ fn get_path_to_wasm(wasm_name: &str) -> PathBuf {
             return wasm_path;
         }
     } else {
-        const ARTIFACT_PATH: &str = ".artifact";
+        const ARTIFACT_PATH: &str = "../target/wasm32-unknown-unknown/release/";
         // Get to the root of the project
-        let root_dir = get_workspace_root_dir();
-        let wasm_path = root_dir.join(ARTIFACT_PATH).join(wasm_name);
-        if wasm_path.as_path().exists() {
-            return wasm_path;
+        let wasm_path = format!("{}{}", ARTIFACT_PATH, wasm_name);
+        println!("path: {wasm_path:?}");
+        if Path::new(&wasm_path).exists() {
+            return wasm_path.into();
         }
     }
 

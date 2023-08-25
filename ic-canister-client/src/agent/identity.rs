@@ -2,6 +2,7 @@ use std::path::Path;
 
 use candid::Principal;
 use ic_agent::agent::http_transport::ReqwestHttpReplicaV2Transport;
+use ic_agent::agent::EnvelopeContent;
 use ic_agent::identity::{BasicIdentity, Secp256k1Identity};
 use ic_agent::{Agent, Identity};
 
@@ -31,7 +32,7 @@ impl Identity for GenericIdentity {
         }
     }
 
-    fn sign(&self, blob: &[u8]) -> std::result::Result<ic_agent::Signature, String> {
+    fn sign(&self, blob: &EnvelopeContent) -> std::result::Result<ic_agent::Signature, String> {
         match self {
             Self::BasicIdentity(identity) => identity.sign(blob),
             Self::Secp256k1Identity(identity) => identity.sign(blob),

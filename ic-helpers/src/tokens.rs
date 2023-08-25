@@ -1,8 +1,9 @@
 use std::fmt::{Display, Formatter};
 use std::mem::size_of;
+use std::rc::Rc;
 
 use auto_ops::impl_op_ex;
-use candid::types::{Serializer, Type, TypeId};
+use candid::types::{Serializer, Type, TypeId, TypeInner};
 use candid::{self, CandidType, Deserialize, Nat};
 use crypto_bigint::{CheckedAdd, CheckedMul, CheckedSub, Encoding, NonZero, U256};
 use num_bigint::BigUint;
@@ -27,7 +28,7 @@ pub struct Tokens128 {
 
 impl CandidType for Tokens128 {
     fn _ty() -> Type {
-        Type::Nat
+        Type(Rc::new(TypeInner::Nat))
     }
 
     fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
@@ -349,7 +350,7 @@ impl CandidType for Tokens256 {
         TypeId::of::<candid::Nat>()
     }
     fn _ty() -> Type {
-        Type::Nat
+        Type(Rc::new(TypeInner::Nat))
     }
 
     fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>

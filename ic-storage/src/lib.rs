@@ -124,7 +124,7 @@ macro_rules! generic_derive {
                 use ::std::rc::Rc;
                 use ::std::cell::RefCell;
                 use ::std::collections::HashMap;
-                use ::ic_exports::ic_cdk::export::candid::Principal;
+                use ::ic_exports::candid::Principal;
 
                 thread_local! {
                     static store: RefCell<HashMap<Principal, Rc<RefCell<$storage>>>> = RefCell::new(HashMap::default());

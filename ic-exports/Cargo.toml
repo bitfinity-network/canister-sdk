@@ -8,27 +8,39 @@ edition.workspace = true
 
 [features]
 default = []
-state-machine = ["ic-state-machine-tests"]
-ledger = ["ic-icrc1-ledger", "ic-ledger-canister-core", "icp-ledger", "icrc-ledger-types"]
+ledger = ["ic-ledger-types"]
+icrc = ["icrc-ledger-types"]
+ic-test-state-machine = ["flate2", "ic-test-state-machine-client", "log", "once_cell", "reqwest"]
 
 [dependencies]
+candid = { workspace = true }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 ic-cdk-timers = { workspace = true }
-
 ic-stable-structures = { workspace = true }
+serde = { workspace = true }
+
+ic-ledger-types = { workspace = true, optional = true }
+
+# Using our icrc-ledger-types fork until the one published on crates.io is updated
+# with the latest version of candid
+icrc-ledger-types = { path = "../icrc-ledger-types", optional = true }
+# icrc-ledger-types = { workspace = true, optional = true }
 
 ic-kit = { path = "../ic-kit" }
 
-ic-base-types = { workspace = true }
-ic-ic00-types = { workspace = true }
-
 # Do not remove: This fixes the getrandom deployment in wasm canisters
-ic-crypto-getrandom-for-wasm = { workspace = true }
+ic-crypto-getrandom-for-wasm = { path = "../ic-crypto-getrandom-for-wasm" }
 
-ic-icrc1-ledger = { workspace = true, optional = true }
-ic-ledger-canister-core = { workspace = true, optional = true }
-icp-ledger = { workspace = true, optional = true }
-icrc-ledger-types = { workspace = true, optional = true }
-
-ic-state-machine-tests = { workspace = true, optional = true }
+# dependencies for `state-machine-test` feature
+flate2 = { workspace = true, optional = true }
+ic-test-state-machine-client = { workspace = true, optional = true }
+log = { workspace = true, optional = true }
+once_cell = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true, features = [
+  "blocking",
+  "gzip",
+  "json",
+  "rustls-tls",
+  "trust-dns",
+] }

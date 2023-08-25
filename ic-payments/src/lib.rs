@@ -107,8 +107,7 @@
 //!
 //! ```
 
-use candid::{CandidType, Deserialize, Nat};
-use ic_exports::Principal;
+use candid::{CandidType, Deserialize, Nat, Principal};
 
 mod balances;
 pub mod error;

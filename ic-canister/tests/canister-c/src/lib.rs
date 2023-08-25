@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use ic_canister::{generate_idl, update, Canister, MethodType, PreUpdate};
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_exports::candid::{CandidType, Deserialize, Principal};
 use ic_metrics::{Metrics, MetricsStorage};
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;

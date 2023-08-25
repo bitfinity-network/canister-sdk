@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
+use ic_exports::candid::Principal;
 use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable, Vec};
-use ic_exports::Principal;
 
 use crate::{Memory, Result};
 

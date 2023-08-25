@@ -17,7 +17,7 @@ pub enum Error {
     AttemptedDowngrade,
 
     #[error("candid error: {0}")]
-    Candid(#[from] ic_exports::ic_cdk::export::candid::Error),
+    Candid(#[from] ic_exports::candid::Error),
 
     #[error("existing version is newer")]
     ExistingVersionIsNewer,

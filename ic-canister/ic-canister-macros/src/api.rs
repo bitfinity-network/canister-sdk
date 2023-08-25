@@ -464,7 +464,7 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         #[allow(non_camel_case_types)]
         #struct_vis struct #struct_name {
             #[id]
-            principal: ::ic_exports::ic_cdk::export::Principal,
+            principal: ::ic_exports::candid::Principal,
         }
 
         impl #trait_name for #struct_name {
@@ -558,7 +558,7 @@ fn store_candid_definitions(modes: &str, sig: &Signature) -> Result<(), syn::Err
 }
 
 pub(crate) fn generate_idl() -> TokenStream {
-    let candid = quote! { ::ic_exports::ic_cdk::export::candid };
+    let candid = quote! { ::ic_exports::candid };
 
     // Init
     let init = INIT.lock().unwrap().as_mut().map(|args| {
@@ -587,9 +587,9 @@ pub(crate) fn generate_idl() -> TokenStream {
             .map(|t| generate_arg(quote! { rets }, t))
             .collect::<Vec<_>>();
 
-        let modes = match modes.as_ref() {
-            "query" => quote! { vec![#candid::parser::types::FuncMode::Query] },
-            "oneway" => quote! { vec![#candid::parser::types::FuncMode::Oneway] },
+            let modes = match modes.as_ref() {
+            "query" => quote! { vec![#candid::types::FuncMode::Query] },
+            "oneway" => quote! { vec![#candid::types::FuncMode::Oneway] },
             "update" => quote! { vec![] },
             _ => unreachable!(),
         };
@@ -602,19 +602,19 @@ pub(crate) fn generate_idl() -> TokenStream {
                 #(#rets)*
                 let func = Function { args, rets, modes: #modes };
                 if cfg!(feature = "export-api") {
-                    service.push((#name.to_string(), Type::Func(func)));
+                    service.push((#name.to_string(), Type(std::rc::Rc::new(TypeInner::Func(func)))));
                 }
             }
         }
     });
 
     let service = quote! {
-        use #candid::types::{CandidType, Function, Type};
+        use #candid::types::*;
         let mut service = Vec::<(String, Type)>::new();
         let mut env = #candid::types::internal::TypeContainer::new();
         #(#gen_tys)*
         service.sort_unstable_by_key(|(name, _)| name.clone());
-        let ty = Type::Service(service);
+        let ty = Type(std::rc::Rc::new(TypeInner::Service(service)));
     };
 
     methods.clear();
@@ -622,7 +622,7 @@ pub(crate) fn generate_idl() -> TokenStream {
     let actor = match init {
         Some(init) => quote! {
             #init
-            let actor = Type::Class(init_args, Box::new(ty));
+            let actor = Type(std::rc::Rc::new(TypeInner::Class(init_args, ty)));
         },
         None => quote! { let actor = ty; },
     };

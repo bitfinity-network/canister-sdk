@@ -1,6 +1,6 @@
 #[cfg(feature = "auction")]
 pub use ic_auction;
-pub use ic_exports::ic_cdk::export::candid;
+pub use ic_exports::candid;
 pub use ic_exports::*;
 #[cfg(feature = "factory")]
 pub use ic_factory;

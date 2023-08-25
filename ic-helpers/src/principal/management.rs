@@ -8,21 +8,21 @@ use std::convert::{AsRef, From};
 
 use async_trait::async_trait;
 use ic_canister::virtual_canister_call;
-use ic_exports::ic_base_types::CanisterId;
+use ic_exports::candid::utils::ArgumentEncoder;
+use ic_exports::candid::{encode_args, CandidType, Nat, Principal};
 use ic_exports::ic_cdk::api::call::RejectionCode;
-use ic_exports::ic_cdk::export::candid::utils::ArgumentEncoder;
-use ic_exports::ic_cdk::export::candid::{encode_args, CandidType, Nat, Principal};
-use ic_exports::ic_ic00_types::{
-    DerivationPath, ECDSAPublicKeyArgs, ECDSAPublicKeyResponse, EcdsaCurve, EcdsaKeyId,
-    SignWithECDSAArgs, SignWithECDSAReply,
+
+use ic_exports::ic_cdk::api::management_canister::ecdsa::{
+    EcdsaCurve, EcdsaKeyId, EcdsaPublicKeyArgument, EcdsaPublicKeyResponse, SignWithEcdsaArgument,
+    SignWithEcdsaResponse,
 };
+use ic_exports::ic_cdk::api::management_canister::provisional::CanisterId;
 use ic_exports::ic_kit::ic;
 use serde::{Deserialize, Serialize};
 
 use super::private::Sealed;
 use crate::Pubkey;
 
-pub type CanisterID = Principal;
 pub type UserID = Principal;
 pub type WasmModule = Vec<u8>;
 
@@ -78,7 +78,7 @@ pub struct CreateCanisterInput {
 
 #[derive(CandidType, Deserialize, Debug)]
 pub struct CanisterIDArg {
-    pub canister_id: CanisterID,
+    pub canister_id: CanisterId,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -90,7 +90,7 @@ struct UpdateSettingsInput {
 #[derive(CandidType, Deserialize)]
 pub struct InstallCodeInput {
     pub mode: InstallCodeMode,
-    pub canister_id: CanisterID,
+    pub canister_id: CanisterId,
     pub wasm_module: WasmModule,
     pub arg: Vec<u8>,
 }
@@ -103,7 +103,7 @@ struct ProvisionalCreateCanisterWithCyclesInput {
 
 #[derive(CandidType, Deserialize)]
 struct ProvisionalTopUpCanisterInput {
-    pub canister_id: CanisterID,
+    pub canister_id: CanisterId,
     pub amount: Nat,
 }
 
@@ -119,13 +119,13 @@ pub trait ManagementPrincipalExt: Sealed {
         settings: Option<CanisterSettings>,
     ) -> Result<Principal, (RejectionCode, String)>;
     async fn get_ecdsa_pubkey(
-        canister_id: Option<CanisterId>,
+        canister_id: Option<Principal>,
         derivation_path: Vec<Vec<u8>>,
     ) -> Result<Pubkey, (RejectionCode, String)>;
     async fn sign_with_ecdsa(
         hash: &[u8; 32],
         derivation_path: Vec<Vec<u8>>,
-    ) -> Result<SignWithECDSAReply, (RejectionCode, String)>;
+    ) -> Result<SignWithEcdsaResponse, (RejectionCode, String)>;
     async fn update_settings(
         &self,
         settings: CanisterSettings,
@@ -195,9 +195,9 @@ impl ManagementPrincipalExt for Principal {
         canister_id: Option<CanisterId>,
         derivation_path: Vec<Vec<u8>>,
     ) -> Result<Pubkey, (RejectionCode, String)> {
-        let request = ECDSAPublicKeyArgs {
+        let request = EcdsaPublicKeyArgument {
             canister_id,
-            derivation_path: DerivationPath::new(derivation_path),
+            derivation_path,
             key_id: EcdsaKeyId {
                 curve: EcdsaCurve::Secp256k1,
                 name: Default::default(),
@@ -207,7 +207,7 @@ impl ManagementPrincipalExt for Principal {
             Principal::management_canister(),
             "ecdsa_public_key",
             (request,),
-            ECDSAPublicKeyResponse
+            EcdsaPublicKeyResponse
         )
         .await
         .map(|res| Pubkey::new(res.public_key))
@@ -216,20 +216,20 @@ impl ManagementPrincipalExt for Principal {
     async fn sign_with_ecdsa(
         hash: &[u8; 32],
         derivation_path: Vec<Vec<u8>>,
-    ) -> Result<SignWithECDSAReply, (RejectionCode, String)> {
-        let request = SignWithECDSAArgs {
+    ) -> Result<SignWithEcdsaResponse, (RejectionCode, String)> {
+        let request = SignWithEcdsaArgument {
             key_id: EcdsaKeyId {
                 curve: EcdsaCurve::Secp256k1,
                 name: Default::default(),
             },
-            message_hash: *hash,
-            derivation_path: DerivationPath::new(derivation_path),
+            message_hash: hash.to_vec(),
+            derivation_path,
         };
         virtual_canister_call!(
             Principal::management_canister(),
             "sign_with_ecdsa",
             (request,),
-            ic_exports::ic_ic00_types::SignWithECDSAReply
+            SignWithEcdsaResponse
         )
         .await
     }

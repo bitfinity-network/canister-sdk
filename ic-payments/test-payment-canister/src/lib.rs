@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use candid::Nat;
 use ic_canister::{init, update, Canister, PreUpdate};
-use ic_exports::ic_cdk::export::candid::{CandidType, Deserialize, Principal};
+use ic_exports::candid::{CandidType, Deserialize, Principal};
 use ic_exports::ic_kit::ic;
 use ic_exports::icrc_types::icrc1::account::Account;
 use ic_payments::error::PaymentError;

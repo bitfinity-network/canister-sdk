@@ -1,12 +1,15 @@
 use std::sync::Mutex;
 
 use anyhow::Result;
+use candid::{CandidType, Deserialize, Principal};
 use candid::{Decode, Encode};
 use did::Transaction;
 use ic_exports::ic_kit::ic;
 use ic_exports::ic_kit::inject;
 use ic_exports::ic_kit::mock_principals::alice;
-use ic_exports::ic_state_machine_tests::{CanisterId, Cycles, StateMachine};
+use ic_exports::ic_test_state_machine::{
+    get_ic_test_state_machine_client_path, StateMachine, WasmResult,
+};
 use once_cell::sync::Lazy;
 
 use crate::utils::wasm::get_dummy_canister_bytecode;
@@ -19,205 +22,182 @@ mod multimap;
 mod ring_buffer;
 mod vec;
 
-#[derive(Debug)]
 pub struct StateMachineTestContext {
     pub env: StateMachine,
-    pub dummy_canister: CanisterId,
+    pub dummy_canister: Principal,
 }
 
 impl StateMachineTestContext {
+    fn query_as<Result>(
+        &self,
+        sender: Principal,
+        canister_id: Principal,
+        method: &str,
+        payload: Vec<u8>,
+    ) -> Result
+    where
+        for<'a> Result: CandidType + Deserialize<'a>,
+    {
+        let res = match self
+            .env
+            .query_call(canister_id, sender, method, payload)
+            .unwrap()
+        {
+            WasmResult::Reply(bytes) => bytes,
+            WasmResult::Reject(e) => panic!("Unexpected reject: {:?}", e),
+        };
+
+        Decode!(&res, Result).expect("failed to decode item from candid")
+    }
+
+    fn update_call_as<Result>(
+        &self,
+        sender: Principal,
+        canister_id: Principal,
+        method: &str,
+        payload: Vec<u8>,
+    ) -> Result
+    where
+        for<'a> Result: CandidType + Deserialize<'a>,
+    {
+        let res = match self
+            .env
+            .update_call(canister_id, sender, method, payload)
+            .unwrap()
+        {
+            WasmResult::Reply(bytes) => bytes,
+            WasmResult::Reject(e) => panic!("Unexpected reject: {:?}", e),
+        };
+
+        Decode!(&res, Result).expect("failed to decode item from candid")
+    }
+
     pub fn get_tx_from_btreemap(&self, key: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&key).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
+        let res = self.query_as(
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_btreemap",
             args,
-        )?;
+        );
 
-        let tx = Decode!(&res.bytes(), Option<Transaction>)?;
-
-        Ok(tx)
+        Ok(res)
     }
 
     pub fn insert_tx_to_btreemap(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
+        let res = self.update_call_as(
+            ic::caller(),
             self.dummy_canister,
             "insert_tx_to_btreemap",
             args,
-        )?;
+        );
 
-        let key = Decode!(&res.bytes(), u64)?;
-
-        Ok(key)
+        Ok(res)
     }
 
     pub fn get_tx_from_cell(&self) -> Result<Transaction> {
         let args = Encode!(&()).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
-            self.dummy_canister,
-            "get_tx_from_cell",
-            args,
-        )?;
+        let res = self.query_as(ic::caller(), self.dummy_canister, "get_tx_from_cell", args);
 
-        let tx = Decode!(&res.bytes(), Transaction)?;
-
-        Ok(tx)
+        Ok(res)
     }
 
-    pub fn insert_tx_to_cell(&self, from: u8, to: u8, value: u8) -> Result<()> {
+    pub fn insert_tx_to_cell(&self, from: u8, to: u8, value: u8) -> Result<Transaction> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
-        self.env.execute_ingress_as(
-            ic::caller().into(),
-            self.dummy_canister,
-            "insert_tx_to_cell",
-            args,
-        )?;
+        let res = self.update_call_as(ic::caller(), self.dummy_canister, "insert_tx_to_cell", args);
 
-        Ok(())
+        Ok(res)
     }
 
     pub fn get_tx_from_map(&self, key: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&key).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
-            self.dummy_canister,
-            "get_tx_from_map",
-            args,
-        )?;
+        let res = self.query_as(ic::caller(), self.dummy_canister, "get_tx_from_map", args);
 
-        let tx = Decode!(&res.bytes(), Option<Transaction>)?;
-
-        Ok(tx)
+        Ok(res)
     }
 
     pub fn insert_tx_to_map(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
-            self.dummy_canister,
-            "insert_tx_to_map",
-            args,
-        )?;
+        let res = self.update_call_as(ic::caller(), self.dummy_canister, "insert_tx_to_map", args);
 
-        let key = Decode!(&res.bytes(), u64)?;
-
-        Ok(key)
+        Ok(res)
     }
 
     pub fn get_tx_from_multimap(&self, key: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&key).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
+        let res = self.query_as(
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_multimap",
             args,
-        )?;
+        );
 
-        let tx = Decode!(&res.bytes(), Option<Transaction>)?;
-
-        Ok(tx)
+        Ok(res)
     }
 
     pub fn insert_tx_to_multimap(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
+        let res = self.update_call_as(
+            ic::caller(),
             self.dummy_canister,
             "insert_tx_to_multimap",
             args,
-        )?;
+        );
 
-        let key = Decode!(&res.bytes(), u64)?;
-
-        Ok(key)
+        Ok(res)
     }
 
     pub fn get_tx_from_vec(&self, index: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&index).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
-            self.dummy_canister,
-            "get_tx_from_vec",
-            args,
-        )?;
+        let res = self.query_as(ic::caller(), self.dummy_canister, "get_tx_from_vec", args);
 
-        let tx = Decode!(&res.bytes(), Option<Transaction>)?;
-
-        Ok(tx)
+        Ok(res)
     }
 
     pub fn push_tx_to_vec(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
-            self.dummy_canister,
-            "push_tx_to_vec",
-            args,
-        )?;
+        let res = self.update_call_as(ic::caller(), self.dummy_canister, "push_tx_to_vec", args);
 
-        let key = Decode!(&res.bytes(), u64)?;
-
-        Ok(key)
+        Ok(res)
     }
 
     pub fn get_tx_from_ring_buffer(&self, index: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&index).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
+        let res = self.query_as(
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_ring_buffer",
             args,
-        )?;
+        );
 
-        let tx = Decode!(&res.bytes(), Option<Transaction>)?;
-
-        Ok(tx)
+        Ok(res)
     }
 
     pub fn push_tx_to_ring_buffer(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
+        let res = self.update_call_as(
+            ic::caller(),
             self.dummy_canister,
             "push_tx_to_ring_buffer",
             args,
-        )?;
+        );
 
-        let key = Decode!(&res.bytes(), u64)?;
-
-        Ok(key)
+        Ok(res)
     }
 
     pub fn get_tx_from_log(&self, index: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&index).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
-            self.dummy_canister,
-            "get_tx_from_log",
-            args,
-        )?;
+        let res = self.query_as(ic::caller(), self.dummy_canister, "get_tx_from_log", args);
 
-        let tx = Decode!(&res.bytes(), Option<Transaction>)?;
-
-        Ok(tx)
+        Ok(res)
     }
 
     pub fn push_tx_to_log(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
-        let res = self.env.execute_ingress_as(
-            ic::caller().into(),
-            self.dummy_canister,
-            "push_tx_to_log",
-            args,
-        )?;
+        let res = self.update_call_as(ic::caller(), self.dummy_canister, "push_tx_to_log", args);
 
-        let key = Decode!(&res.bytes(), u64)?;
-
-        Ok(key)
+        Ok(res)
     }
 }
 
@@ -231,7 +211,8 @@ where
         .inject();
 
     static TEST_CONTEXT: Lazy<Mutex<StateMachineTestContext>> = Lazy::new(|| {
-        let env = StateMachine::new();
+        let client_path = get_ic_test_state_machine_client_path("../target");
+        let env = StateMachine::new(&client_path, false);
         let dummy_canister = deploy_dummy_canister(&env).unwrap();
         StateMachineTestContext {
             env,
@@ -249,17 +230,15 @@ where
     Ok(())
 }
 
-fn deploy_dummy_canister(env: &StateMachine) -> Result<CanisterId> {
+fn deploy_dummy_canister(env: &StateMachine) -> Result<Principal> {
     let dummy_wasm = get_dummy_canister_bytecode();
     eprintln!("Creating dummy canister");
 
     let args = Encode!(&())?;
-    let canister = env.install_canister_with_cycles(
-        dummy_wasm.to_vec(),
-        args,
-        None,
-        Cycles::new(10_u128.pow(12)),
-    )?;
+
+    let canister = env.create_canister(None);
+    env.add_cycles(canister, 10_u128.pow(12));
+    env.install_canister(canister, dummy_wasm.to_vec(), args, None);
 
     Ok(canister)
 }
@@ -270,7 +249,8 @@ pub fn reinstall_dummy_canister(ctx: &StateMachineTestContext) -> Result<()> {
     let dummy_wasm = get_dummy_canister_bytecode();
 
     ctx.env
-        .reinstall_canister(ctx.dummy_canister, dummy_wasm, args)?;
+        .reinstall_canister(ctx.dummy_canister, dummy_wasm, args, None)
+        .unwrap();
 
     Ok(())
 }
@@ -281,7 +261,8 @@ pub fn upgrade_dummy_canister(ctx: &StateMachineTestContext) -> Result<()> {
     let dummy_wasm = get_dummy_canister_bytecode();
 
     ctx.env
-        .upgrade_canister(ctx.dummy_canister, dummy_wasm, args)?;
+        .upgrade_canister(ctx.dummy_canister, dummy_wasm, args, None)
+        .unwrap();
 
     Ok(())
 }

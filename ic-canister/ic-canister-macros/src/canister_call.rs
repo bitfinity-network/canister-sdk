@@ -180,19 +180,19 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
 
     let (decode, tuple_index) = if is_tuple {
         (
-            quote! { ::ic_exports::ic_cdk::export::candid::decode_args::<#response_type>(&result) },
+            quote! { ::ic_exports::candid::decode_args::<#response_type>(&result) },
             quote! {},
         )
     } else {
         (
-            quote! { ::ic_exports::ic_cdk::export::candid::decode_args::<(#response_type,)>(&result) },
+            quote! { ::ic_exports::candid::decode_args::<(#response_type,)>(&result) },
             quote! {.0},
         )
     };
 
     let responder_call = quote! {
         async {
-            let encoded_args = match ::ic_exports::ic_cdk::export::candid::encode_args((#args)) {
+            let encoded_args = match ::ic_exports::candid::encode_args((#args)) {
                 Ok(v) => v,
                 Err(e) => return Err((::ic_exports::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
             };
@@ -250,7 +250,7 @@ pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
 
     let responder_call = quote! {
         let notify_call = || -> ::std::result::Result<(), (::ic_exports::ic_cdk::api::call::RejectionCode, std::string::String)> {
-            let encoded_args = match ::ic_exports::ic_cdk::export::candid::encode_args((#args)) {
+            let encoded_args = match ::ic_exports::candid::encode_args((#args)) {
                 Ok(v) => v,
                 Err(e) => return Err((::ic_exports::ic_cdk::api::call::RejectionCode::Unknown, format!("failed to serialize arguments: {}", e))),
             };

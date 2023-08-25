@@ -2,7 +2,6 @@ use std::sync::atomic::AtomicU64;
 
 use async_recursion::async_recursion;
 use candid::{Nat, Principal};
-use ic_exports::ic_base_types::PrincipalId;
 use ic_exports::ic_kit::ic;
 use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
 use ic_exports::icrc_types::icrc1::transfer::TransferError;
@@ -191,7 +190,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
             &self.token_config,
             caller,
             to,
-            get_principal_subaccount(caller),
+            get_principal_subaccount(&caller),
             amount.clone(),
         )
         .with_operation(Operation::CreditOnSuccess)
@@ -504,7 +503,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
 pub fn get_deposit_interim_account(principal: Principal) -> Account {
     Account {
         owner: ic::id(),
-        subaccount: get_principal_subaccount(principal),
+        subaccount: get_principal_subaccount(&principal),
     }
 }
 
@@ -515,6 +514,10 @@ pub fn get_deposit_interim_account(principal: Principal) -> Account {
 /// Bytes[1..principal.len() + 1] = principal.bytes()
 /// Bytes[principal.len() + 1..32] = 0
 /// ```
-pub fn get_principal_subaccount(principal: Principal) -> Option<Subaccount> {
-    Some(ic_exports::ledger::Subaccount::from(&PrincipalId(principal)).0)
+fn get_principal_subaccount(principal_id: &Principal) -> Option<Subaccount> {
+    let mut subaccount = [0; std::mem::size_of::<Subaccount>()];
+    let principal_id = principal_id.as_slice();
+    subaccount[0] = principal_id.len().try_into().unwrap();
+    subaccount[1..1 + principal_id.len()].copy_from_slice(principal_id);
+    Some(subaccount)
 }
