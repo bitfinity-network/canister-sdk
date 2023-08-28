@@ -1,5 +1,4 @@
 use std::collections::{BTreeMap, HashMap};
-use std::collections::btree_map::Iter as BTreeIter;
 use std::collections::hash_map::Iter as HashMapIter;
 use std::hash::Hash;
 
@@ -74,8 +73,8 @@ where
     }
 
     /// Iterate over all currently stored key-value pairs.
-    pub fn iter(&self) -> BTreeIter<'_, K, V> {
-        self.0.iter()
+    pub fn iter(&self) -> impl Iterator<Item = (K, V)> + '_ {
+        self.0.iter().map(|(k, v)| (k.clone(), v.clone()))
     }
 
     /// Count of items in the map.
@@ -164,13 +163,17 @@ where
     }
 
     /// Iterator over all items in map.
-    pub fn iter(&self) -> HashMapIter<K1, V> {
-        unimplemented!("iter not implemented")
+    pub fn iter(&self) -> impl Iterator<Item = (K1, K2, V)> + '_ {
+        self.0.iter().flat_map(|i1| i1.1.iter().map(|i2| (i1.0.clone(), i2.0.clone(), i2.1.clone())))
     }
 
     /// Items count.
     pub fn len(&self) -> usize {
-        self.0.len()
+        let mut sum = 0;
+        for x in self.0.iter(){
+            sum+= x.1.len();
+        }
+        sum
     }
 
     /// Is map empty.
@@ -374,27 +377,29 @@ mod tests {
     use ic_exports::stable_structures::memory_manager::MemoryId;
 
     use super::StableUnboundedMap;
-    use crate::{test_utils, StableVec};
+    use crate::{test_utils, StableVec, StableBTreeMap, StableMultimap};
 
-    // #[test]
-    // fn btreemap_works() {
-    //     let mut map = StableBTreeMap::new(MemoryId::new(0));
-    //     assert!(map.is_empty());
+    #[test]
+    fn btreemap_works() {
+        let mut map = StableBTreeMap::new(MemoryId::new(0));
+        assert!(map.is_empty());
 
-    //     map.insert(0u32, 42u32);
-    //     map.insert(10, 100);
-    //     assert_eq!(map.get(&0), Some(42));
-    //     assert_eq!(map.get(&10), Some(100));
+        map.insert(0u32, 42u32);
+        map.insert(10, 100);
+        assert_eq!(map.get(&0), Some(42));
+        assert_eq!(map.get(&10), Some(100));
 
-    //     let mut iter = map.iter();
-    //     assert_eq!(iter.next(), Some((0, 42)));
-    //     assert_eq!(iter.next(), Some((10, 100)));
-    //     assert_eq!(iter.next(), None);
+        {
+            let mut iter = map.iter();
+            assert_eq!(iter.next(), Some((0, 42)));
+            assert_eq!(iter.next(), Some((10, 100)));
+            assert_eq!(iter.next(), None);
+        }
 
-    //     assert_eq!(map.remove(&10), Some(100));
+        assert_eq!(map.remove(&10), Some(100));
 
-    //     assert_eq!(map.len(), 1);
-    // }
+        assert_eq!(map.len(), 1);
+    }
 
     #[test]
     fn unbounded_map_works() {
@@ -421,42 +426,44 @@ mod tests {
         assert_eq!(map.len(), 2);
     }
 
-    // #[test]
-    // fn map_works() {
-    //     let mut map = StableMultimap::new(MemoryId::new(0));
-    //     assert!(map.is_empty());
+    #[test]
+    fn map_works() {
+        let mut map = StableMultimap::new(MemoryId::new(0));
+        assert!(map.is_empty());
 
-    //     map.insert(&0u32, &0u32, &42u32);
-    //     map.insert(&0u32, &1u32, &84u32);
+        map.insert(&0u32, &0u32, &42u32);
+        map.insert(&0u32, &1u32, &84u32);
 
-    //     map.insert(&1u32, &0u32, &10u32);
-    //     map.insert(&1u32, &1u32, &20u32);
+        map.insert(&1u32, &0u32, &10u32);
+        map.insert(&1u32, &1u32, &20u32);
 
-    //     assert_eq!(map.len(), 4);
-    //     assert_eq!(map.get(&0, &0), Some(42));
-    //     assert_eq!(map.get(&0, &1), Some(84));
-    //     assert_eq!(map.get(&1, &0), Some(10));
-    //     assert_eq!(map.get(&1, &1), Some(20));
+        assert_eq!(map.len(), 4);
+        assert_eq!(map.get(&0, &0), Some(42));
+        assert_eq!(map.get(&0, &1), Some(84));
+        assert_eq!(map.get(&1, &0), Some(10));
+        assert_eq!(map.get(&1, &1), Some(20));
 
-    //     let mut iter = map.iter();
-    //     assert_eq!(iter.next(), Some((0, 0, 42)));
-    //     assert_eq!(iter.next(), Some((0, 1, 84)));
-    //     assert_eq!(iter.next(), Some((1, 0, 10)));
-    //     assert_eq!(iter.next(), Some((1, 1, 20)));
-    //     assert_eq!(iter.next(), None);
+        {
+            let mut iter = map.iter();
+            assert_eq!(iter.next(), Some((0, 0, 42)));
+            assert_eq!(iter.next(), Some((0, 1, 84)));
+            assert_eq!(iter.next(), Some((1, 0, 10)));
+            assert_eq!(iter.next(), Some((1, 1, 20)));
+            assert_eq!(iter.next(), None);
+        }
 
-    //     let mut range = map.range(&0);
-    //     assert_eq!(range.next(), Some((0, 42)));
-    //     assert_eq!(range.next(), Some((1, 84)));
-    //     assert_eq!(range.next(), None);
+        let mut range = map.range(&0);
+        assert_eq!(range.next(), Some((0, 42)));
+        assert_eq!(range.next(), Some((1, 84)));
+        assert_eq!(range.next(), None);
 
-    //     map.remove_partial(&0);
-    //     assert_eq!(map.len(), 2);
+        map.remove_partial(&0);
+        assert_eq!(map.len(), 2);
 
-    //     assert_eq!(map.remove(&1, &0), Some(10));
-    //     assert_eq!(map.iter().next(), Some((1, 1, 20)));
-    //     assert_eq!(map.len(), 1);
-    // }
+        assert_eq!(map.remove(&1, &0), Some(10));
+        assert_eq!(map.iter().next(), Some((1, 1, 20)));
+        assert_eq!(map.len(), 1);
+    }
 
     #[test]
     fn vec_works() {
