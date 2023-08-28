@@ -1,12 +1,12 @@
-use std::collections::{BTreeMap, HashMap};
-use std::collections::hash_map::Iter as HashMapIter;
+use std::collections::btree_map::Iter as BTreeMapIter;
+use std::collections::BTreeMap;
 use std::hash::Hash;
 
-use ic_exports::stable_structures::{Storable, BoundedStorable, DefaultMemoryImpl};
 use ic_exports::stable_structures::memory_manager::MemoryId;
+use ic_exports::stable_structures::{BoundedStorable, DefaultMemoryImpl, Storable};
 
-use crate::unbounded::{self, SlicedStorable};
-use crate::{Error, Memory, Result, MemoryManager};
+use crate::unbounded::SlicedStorable;
+use crate::{Error, Memory, MemoryManager, Result};
 
 // Return memory by `MemoryId`.
 // Each instance of stable structures must have unique `MemoryId`;
@@ -93,31 +93,33 @@ where
     }
 }
 
-
 /// `StableMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
-pub struct StableMultimap<K1, K2, V>(HashMap<K1, HashMap<K2, V>>)
+pub struct StableMultimap<K1, K2, V>(BTreeMap<K1, BTreeMap<K2, V>>)
 where
-    K1: BoundedStorable + Clone + Hash + Eq + PartialEq,
-    K2: BoundedStorable + Clone + Hash + Eq + PartialEq,
+    K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone;
 
 impl<K1, K2, V> StableMultimap<K1, K2, V>
 where
-    K1: BoundedStorable + Clone + Hash + Eq + PartialEq,
-    K2: BoundedStorable + Clone + Hash + Eq + PartialEq,
+    K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
 {
     /// Create a new instance of a `StableMultimap`.
     /// All keys and values byte representations should be less then related `..._max_size` arguments.
     pub fn new(_memory_id: MemoryId) -> Self {
-        Self(HashMap::new())
+        Self(BTreeMap::new())
     }
 
     /// Get a value for the given keys.
     /// If byte representation length of any key exceeds max size, `None` will be returned.
     pub fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
-        self.0.get(first_key).and_then(|i| i.get(second_key)).cloned()
+        self.0
+            .get(first_key)
+            .and_then(|i| i.get(second_key))
+            .cloned()
     }
 
     /// Insert a new value into the map.
@@ -139,7 +141,9 @@ where
     ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
     ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
     pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V> {
-        self.0.get_mut(first_key).and_then(|entry| entry.remove(second_key))
+        self.0
+            .get_mut(first_key)
+            .and_then(|entry| entry.remove(second_key))
     }
 
     /// Remove all values for the partial key
@@ -158,20 +162,23 @@ where
     pub fn range(&self, first_key: &K1) -> Iter<K2, V> {
         match self.0.get(first_key) {
             Some(entry) => Iter(Some(entry.iter())),
-            None => Iter(None)
+            None => Iter(None),
         }
     }
 
     /// Iterator over all items in map.
     pub fn iter(&self) -> impl Iterator<Item = (K1, K2, V)> + '_ {
-        self.0.iter().flat_map(|i1| i1.1.iter().map(|i2| (i1.0.clone(), i2.0.clone(), i2.1.clone())))
+        self.0.iter().flat_map(|i1| {
+            i1.1.iter()
+                .map(|i2| (i1.0.clone(), i2.0.clone(), i2.1.clone()))
+        })
     }
 
     /// Items count.
     pub fn len(&self) -> usize {
         let mut sum = 0;
-        for x in self.0.iter(){
-            sum+= x.1.len();
+        for x in self.0.iter() {
+            sum += x.1.len();
         }
         sum
     }
@@ -187,7 +194,7 @@ where
     }
 }
 
-pub struct Iter<'a, K2, V>(Option<HashMapIter<'a, K2, V>>)
+pub struct Iter<'a, K2, V>(Option<BTreeMapIter<'a, K2, V>>)
 where
     K2: BoundedStorable + Clone,
     V: BoundedStorable + Clone;
@@ -204,7 +211,7 @@ where
             Some(item) => {
                 let it = item.next();
                 it.map(|(k, v)| (k.clone(), v.clone()))
-            },
+            }
             None => None,
         }
     }
@@ -227,8 +234,10 @@ impl<T: Storable + Clone> StableLog<T> {
 
     /// Updates value in stable memory.
     pub fn append(&mut self, value: T) -> Result<u64> {
-        self.0.as_mut().map(|i| i.push(value))
-        .ok_or("empty option")
+        self.0
+            .as_mut()
+            .map(|i| i.push(value))
+            .ok_or("empty option")
             .map_err(|_| Error::OutOfStableMemory)?;
         Ok(self.len())
     }
@@ -247,27 +256,25 @@ impl<T: Storable + Clone> StableLog<T> {
     pub fn clear(&mut self) {
         self.0 = Some(vec![]);
     }
-
 }
 
 /// Stores key-value data in stable memory.
-pub struct StableUnboundedMap<K, V>(unbounded::StableUnboundedMap<Memory, K, V>)
+pub struct StableUnboundedMap<K, V>(BTreeMap<K, V>)
 where
-    K: BoundedStorable,
-    V: SlicedStorable;
+    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    V: SlicedStorable + Clone;
 
 impl<K, V> StableUnboundedMap<K, V>
 where
-    K: BoundedStorable,
-    V: SlicedStorable,
+    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    V: SlicedStorable + Clone,
 {
     /// Create new instance of key-value storage.
     ///
     /// If a memory with the `memory_id` contains data of the map, the map reads it, and the instance
     /// will contain the data from the memory.
-    pub fn new(memory_id: MemoryId) -> Self {
-        let memory = crate::get_memory_by_id(memory_id);
-        Self(unbounded::StableUnboundedMap::new(memory))
+    pub fn new(_memory_id: MemoryId) -> Self {
+        Self(BTreeMap::new())
     }
 
     /// Returns a value associated with `key` from stable memory.
@@ -275,7 +282,7 @@ where
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn get(&self, key: &K) -> Option<V> {
-        self.0.get(key)
+        self.0.get(key).cloned()
     }
 
     /// Add or replace a value associated with `key` in stable memory.
@@ -284,7 +291,7 @@ where
     ///   - `key.to_bytes().len() <= K1::MAX_SIZE`
     ///   - `value.to_bytes().len() <= V::MAX_SIZE`
     pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
-        self.0.insert(key, value)
+        self.0.insert(key.clone(), value.clone())
     }
 
     /// Remove a value associated with `key` from stable memory.
@@ -296,13 +303,13 @@ where
     }
 
     /// List all currently stored key-value pairs.
-    pub fn iter(&self) -> unbounded::Iter<'_, Memory, K, V> {
+    pub fn iter(&self) -> BTreeMapIter<'_, K, V> {
         self.0.iter()
     }
 
     /// Number of items in the map.
     pub fn len(&self) -> u64 {
-        self.0.len()
+        self.0.len() as u64
     }
 
     // Returns true if there are no values in the map.
@@ -378,7 +385,7 @@ mod tests {
     use ic_exports::stable_structures::memory_manager::MemoryId;
 
     use super::StableUnboundedMap;
-    use crate::{test_utils, StableVec, StableBTreeMap, StableMultimap};
+    use crate::{test_utils, StableBTreeMap, StableMultimap, StableVec};
 
     #[test]
     fn btreemap_works() {
@@ -419,7 +426,11 @@ mod tests {
         assert_eq!(map.get(&5).as_ref(), Some(&short_str));
 
         let entries: HashMap<_, _> = map.iter().collect();
-        let expected = HashMap::from_iter([(0, long_str), (3, medium_str.clone()), (5, short_str)]);
+        let expected = HashMap::from_iter([
+            (&0u32, &long_str),
+            (&3u32, &medium_str),
+            (&5u32, &short_str),
+        ]);
         assert_eq!(entries, expected);
 
         assert_eq!(map.remove(&3), Some(medium_str));
