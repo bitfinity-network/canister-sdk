@@ -148,8 +148,8 @@ where
     ///
     /// # Preconditions:
     ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    pub fn remove_partial(&mut self, _first_key: &K1) {
-        //self.0.remove_partial(first_key)
+    pub fn remove_partial(&mut self, first_key: &K1) {
+        self.0.get_mut(first_key).map(|entry| entry.clear());
     }
 
     /// Get a range of key value pairs based on the root key.
