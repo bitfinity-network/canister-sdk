@@ -343,8 +343,9 @@ impl<T: BoundedStorable + Clone> StableVec<T> {
     }
 
     /// Sets the value at `index` to `item`
+    /// WARN: this panics if index out of range
     pub fn set(&mut self, index: u64, item: &T) -> Result<()> {
-        self.0.insert(index as usize, item.clone());
+        self.0[index as usize] = item.clone();
         Ok(())
     }
 
