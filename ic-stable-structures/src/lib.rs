@@ -2,11 +2,16 @@ mod multimap;
 mod ring_buffer;
 mod unbounded;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(feature = "heap-structures"), not(target_arch = "wasm32")))]
 mod storage;
 
+#[cfg(all(not(feature = "heap-structures"), target_arch = "wasm32"))]
 #[cfg(target_arch = "wasm32")]
 #[path = "storage_wasm.rs"]
+mod storage;
+
+#[cfg(feature = "heap-structures")]
+#[path = "storage_heap.rs"]
 mod storage;
 
 mod error;

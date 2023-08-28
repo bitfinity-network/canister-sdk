@@ -18,3 +18,4 @@ serde = { workspace = true }
 
 [features]
 state-machine = ["ic-exports/ic-test-state-machine"]
+heap-structures = []

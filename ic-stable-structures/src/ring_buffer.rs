@@ -80,14 +80,14 @@ impl BoundedStorable for Indices {
 
 /// Stable ring buffer implementation
 #[derive(Debug)]
-pub struct StableRingBuffer<T: BoundedStorable + 'static> {
+pub struct StableRingBuffer<T: BoundedStorable + Clone + 'static> {
     /// Vector with elements
     data: &'static LocalKey<RefCell<StableVec<T>>>,
     /// Indices that specify where are the first and last elements in the buffer
     indices: &'static LocalKey<RefCell<StableCell<Indices>>>,
 }
 
-impl<T: BoundedStorable + 'static> StableRingBuffer<T> {
+impl<T: BoundedStorable + Clone + 'static> StableRingBuffer<T> {
     /// Creates new ring buffer
     pub fn new(
         data: &'static LocalKey<RefCell<StableVec<T>>>,
@@ -309,7 +309,7 @@ mod tests {
         });
     }
 
-    fn check_buffer<T: BoundedStorable + Eq + Debug>(
+    fn check_buffer<T: BoundedStorable + Eq + Debug + Clone>(
         buffer: &StableRingBuffer<T>,
         expected: &Vec<T>,
     ) {
