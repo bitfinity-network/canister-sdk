@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use ic_exports::stable_structures::Storable;
 
-use crate::unbounded::SlicedStorable;
+use crate::structure::common::unbounded::SlicedStorable;
 use crate::ChunkSize;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -3,7 +3,7 @@ use std::cmp::min;
 use std::mem::size_of;
 use std::thread::LocalKey;
 
-use super::{StableCell, StableVec};
+use crate::{StableCell, StableVec};
 use crate::{BoundedStorable, Storable};
 
 /// Ring buffer indices state

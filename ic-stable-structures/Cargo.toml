@@ -18,4 +18,6 @@ serde = { workspace = true }
 
 [features]
 state-machine = ["ic-exports/ic-test-state-machine"]
-heap-structures = []
+# When this features is enabled, the default structures exported at root level
+# use the heap. Otherwise the stable storage is used
+default-heap-structures = []

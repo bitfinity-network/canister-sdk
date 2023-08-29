@@ -1,8 +1,24 @@
-use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::{btreemap, cell, log, vec, BoundedStorable, Storable};
+use std::cell::RefCell;
 
-use crate::unbounded::{self, SlicedStorable};
-use crate::{get_memory_by_id, multimap, Error, Iter, Memory, RangeIter, Result};
+use ic_exports::stable_structures::memory_manager::MemoryId;
+use ic_exports::stable_structures::{btreemap, cell, log, vec, BoundedStorable, Storable, DefaultMemoryImpl};
+
+use super::common::unbounded::{self, SlicedStorable};
+use super::common::multimap;
+use crate::{Error, Iter, Memory, RangeIter, Result, MemoryManager};
+
+thread_local! {
+    // The memory manager is used for simulating multiple memories. Given a `MemoryId` it can
+    // return a memory that can be used by stable structures.
+    static MANAGER: RefCell<MemoryManager> =
+        RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
+}
+
+// Return memory by `MemoryId`.
+// Each instance of stable structures must have unique `MemoryId`;
+pub fn get_memory_by_id(id: MemoryId) -> Memory {
+    MANAGER.with(|mng| mng.borrow_mut().get(id))
+}
 
 /// Stores value in stable memory, providing `get()/set()` API.
 pub struct StableCell<T: Storable>(cell::Cell<T, Memory>);
@@ -10,7 +26,7 @@ pub struct StableCell<T: Storable>(cell::Cell<T, Memory>);
 impl<T: Storable> StableCell<T> {
     /// Create new storage for values with `T` type.
     pub fn new(memory_id: MemoryId, value: T) -> Result<Self> {
-        let memory = super::get_memory_by_id(memory_id);
+        let memory = get_memory_by_id(memory_id);
         let cell = cell::Cell::init(memory, value)?;
         Ok(Self(cell))
     }

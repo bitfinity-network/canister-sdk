@@ -19,5 +19,5 @@ pub mod icrc_types {
     }
 }
 
-#[cfg(feature = "ic-test-state-machine")]
+cratee")]
 pub mod ic_test_state_machine;
