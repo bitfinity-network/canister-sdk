@@ -3,16 +3,10 @@ use std::collections::BTreeMap;
 use std::hash::Hash;
 
 use ic_stable_structures::memory_manager::MemoryId;
-use ic_stable_structures::{BoundedStorable, DefaultMemoryImpl, Storable};
+use ic_stable_structures::{BoundedStorable, Storable};
 
 use super::common::unbounded::SlicedStorable;
-use crate::{Error, Memory, MemoryManager, Result};
-
-// Return memory by `MemoryId`.
-// Each instance of stable structures must have unique `MemoryId`;
-pub fn get_memory_by_id(id: MemoryId) -> Memory {
-    MemoryManager::init(DefaultMemoryImpl::default()).get(id)
-}
+use crate::{Error, Result};
 
 /// Stores value in stable memory, providing `get()/set()` API.
 pub struct StableCell<T: Storable>(T);

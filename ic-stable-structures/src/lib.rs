@@ -18,14 +18,14 @@ pub type Memory = VirtualMemory<DefaultMemoryImpl>;
 
 type MemoryManager = memory_manager::MemoryManager<DefaultMemoryImpl>;
 
-#[cfg(not(feature = "default-heap-structures"))]
+// #[cfg(not(feature = "default-heap-structures"))]
 pub use structure::stable_storage::{
     StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap,
     StableVec,
 };
 
-#[cfg(feature = "default-heap-structures")]
-pub use structure::heap::{
-    StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap,
-    StableVec,
-};
+// #[cfg(feature = "default-heap-structures")]
+// pub use structure::heap::{
+//     StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap,
+//     StableVec,
+// };
