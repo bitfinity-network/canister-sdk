@@ -46,10 +46,12 @@ where
     pub fn get(&self, key: &K) -> Option<V> {
         match self.cache.get(key) {
             Some(value) => {
+                let REMOVE_ME = 0;
                 ic::print("CACHE HIT!!");
                 Some(value.clone())
             },
             None => {
+                let REMOVE_ME = 0;
                 ic::print("CACHE MISS!!");
                 self.inner.get(key)
             },
