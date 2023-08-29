@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-ic-stable-structures = { workspace = true }
+ic-exports = { path = "../ic-exports"}
 thiserror = { workspace = true }
 
 [dev-dependencies]

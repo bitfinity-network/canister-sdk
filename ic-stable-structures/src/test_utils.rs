@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use ic_stable_structures::Storable;
+use ic_exports::stable_structures::Storable;
 
 use crate::structure::common::unbounded::SlicedStorable;
 use crate::ChunkSize;

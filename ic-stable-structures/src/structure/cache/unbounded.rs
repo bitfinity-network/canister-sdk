@@ -1,7 +1,8 @@
 use std::collections::{VecDeque, HashMap};
 use std::hash::Hash;
 
-use ic_stable_structures::BoundedStorable;
+use ic_exports::ic_kit::ic;
+use ic_exports::stable_structures::BoundedStorable;
 
 use crate::{SlicedStorable, StableUnboundedMap, UnboundedIter, Memory};
 
@@ -43,7 +44,16 @@ where
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn get(&self, key: &K) -> Option<V> {
-        self.cache.get(key).cloned().or_else(|| self.inner.get(key))
+        match self.cache.get(key) {
+            Some(value) => {
+                ic::print("CACHE HIT!!");
+                Some(value.clone())
+            },
+            None => {
+                ic::print("CACHE MISS!!");
+                self.inner.get(key)
+            },
+        }
     }
 
     /// Add or replace a value associated with `key`.
@@ -104,7 +114,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use ic_stable_structures::DefaultMemoryImpl;
+    use ic_exports::stable_structures::DefaultMemoryImpl;
 
     fn ADD_CACHE_TESTS() {}
 

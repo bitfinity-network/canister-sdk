@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use ic_stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
+use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
 
 // Keys memory layout:
 //
@@ -427,7 +427,7 @@ where
 mod test {
     use std::borrow::Cow;
 
-    use ic_stable_structures::DefaultMemoryImpl;
+    use ic_exports::stable_structures::DefaultMemoryImpl;
 
     use super::*;
 

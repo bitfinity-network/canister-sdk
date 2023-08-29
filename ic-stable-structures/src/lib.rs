@@ -5,10 +5,10 @@ mod error;
 mod test_utils;
 
 pub use error::{Error, Result};
-pub use ic_stable_structures::memory_manager::MemoryId;
-use ic_stable_structures::memory_manager::{self, VirtualMemory};
-use ic_stable_structures::DefaultMemoryImpl;
-pub use ic_stable_structures::{BoundedStorable, Storable};
+pub use ic_exports::stable_structures::memory_manager::MemoryId;
+use ic_exports::stable_structures::memory_manager::{self, VirtualMemory};
+use ic_exports::stable_structures::DefaultMemoryImpl;
+pub use ic_exports::stable_structures::{BoundedStorable, Storable};
 pub use structure::common::multimap::{Iter, RangeIter};
 pub use structure::common::ring_buffer::{Indices as StableRingBufferIndices, StableRingBuffer};
 pub use structure::stable_storage::get_memory_by_id;

@@ -2,8 +2,8 @@ use std::collections::btree_map::Iter as BTreeMapIter;
 use std::collections::BTreeMap;
 use std::hash::Hash;
 
-use ic_stable_structures::memory_manager::MemoryId;
-use ic_stable_structures::{BoundedStorable, Storable};
+use ic_exports::stable_structures::memory_manager::MemoryId;
+use ic_exports::stable_structures::{BoundedStorable, Storable};
 
 use super::common::unbounded::SlicedStorable;
 use crate::{Error, Result};
@@ -376,7 +376,7 @@ impl<T: BoundedStorable + Clone> StableVec<T> {
 mod tests {
     use std::collections::HashMap;
 
-    use ic_stable_structures::memory_manager::MemoryId;
+    use ic_exports::stable_structures::memory_manager::MemoryId;
 
     use super::StableUnboundedMap;
     use crate::{test_utils, StableBTreeMap, StableMultimap, StableVec};
