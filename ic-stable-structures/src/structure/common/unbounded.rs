@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
-use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
+use ic_stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
 
 pub type ChunkSize = u16;
 
@@ -376,7 +376,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use ic_exports::stable_structures::DefaultMemoryImpl;
+    use ic_stable_structures::DefaultMemoryImpl;
 
     use super::StableUnboundedMap;
     use crate::test_utils;

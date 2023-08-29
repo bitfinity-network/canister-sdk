@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-ic-exports = { path = "../ic-exports" }
+ic-stable-structures = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
@@ -13,11 +13,13 @@ candid = { workspace = true }
 did = { path = "./tests/did" }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
+ic-exports = { path = "../ic-exports", features = ["ic-test-state-machine"]}
 once_cell = { workspace = true }
 serde = { workspace = true }
 
 [features]
-state-machine = ["ic-exports/ic-test-state-machine"]
 # When this features is enabled, the default structures exported at root level
 # use the heap. Otherwise the stable storage is used
 default-heap-structures = []
+# Enables the integration tests based on ic-test-state-machine
+state-machine = []

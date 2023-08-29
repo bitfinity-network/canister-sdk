@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
-use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::{btreemap, cell, log, vec, BoundedStorable, Storable, DefaultMemoryImpl};
+use ic_stable_structures::memory_manager::MemoryId;
+use ic_stable_structures::{btreemap, cell, log, vec, BoundedStorable, Storable, DefaultMemoryImpl};
 
 use super::common::unbounded::{self, SlicedStorable};
 use super::common::multimap;
@@ -376,7 +376,7 @@ impl<T: BoundedStorable> StableVec<T> {
 mod tests {
     use std::collections::HashMap;
 
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use ic_stable_structures::memory_manager::MemoryId;
 
     use super::{StableBTreeMap, StableMultimap, StableUnboundedMap};
     use crate::{test_utils, StableVec};
