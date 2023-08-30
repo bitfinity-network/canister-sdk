@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::{VecDeque, HashMap};
 use std::hash::Hash;
 
@@ -15,9 +16,19 @@ where
     V: SlicedStorable + Clone,
 {
     inner: StableUnboundedMap<K, V>,
+    cache: RefCell<Cache<K, V>>,
+}
+
+struct Cache<K, V> {
     cache: HashMap<K, V>,
     cache_keys: VecDeque<K>,
-    cache_items: usize,
+    cache_max_items: usize,
+}
+
+impl <K, V> Cache<K, V> {
+    fn new(cache_max_items: usize) -> Self {
+        Self { cache_max_items, cache: Default::default(), cache_keys: Default::default() }
+    }
 }
 
 impl<K, V> CachedUnboundedMap<K, V>
@@ -32,9 +43,7 @@ where
     pub fn new( inner: StableUnboundedMap<K, V>, cache_items: usize) -> Self {
         Self {
             inner,
-            cache: Default::default(),
-            cache_keys: Default::default(),
-            cache_items,
+            cache: RefCell::new(Default::default())
         }
     }
 
@@ -43,13 +52,41 @@ where
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn get(&self, key: &K) -> Option<V> {
-        match self.cache.get(key) {
+        match self.cache.borrow().cache.get(key) {
             Some(value) => {
                 Some(value.clone())
             },
             None => {
-                self.inner.get(key)
+                match self.inner.get(key) {
+                    Some(value) => {
+                        {
+                            let mut cache = self.cache.borrow_mut();
+                            cache.cache.insert(key.clone(), value.clone());
+                            cache.cache_keys.push_back(key.clone());
+                            self.remove_oldest_from_cache(&mut cache);
+                        }
+                        Some(value)
+                    },
+                    None => None,
+                }
             },
+        }
+    }
+
+    #[inline]
+    fn remove_oldest_from_cache(&self, cache: &mut Cache<K, V>) {
+        if cache.cache.len() > cache.cache_max_items {
+            let mut done = false;
+            // cache_keys could contain data not present in the cache.
+            // This happens when the `remove` method is called
+            while !done {
+                match cache.cache_keys.pop_front() {
+                    Some(key) => {
+                        done = cache.cache.remove(&key).is_some();
+                    },
+                    None => done = true,
+                };
+            }
         }
     }
 
@@ -58,30 +95,16 @@ where
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
-        self.remove_oldest_from_cache();
-        self.cache_keys.push_back(key.clone());
-        self.cache.insert(key.clone(), value.clone());
         self.inner.insert(key, value)
     }
 
-    #[inline]
-    fn remove_oldest_from_cache(&mut self) {
-        if self.cache.len() >= self.cache_items {
-            match self.cache_keys.pop_front() {
-                Some(key) => {
-                    self.cache.remove(&key);
-                },
-                None => (),
-            };
-        }
-    }
 
     /// Remove a value associated with `key`.
     ///
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        self.cache.remove(key);
+        self.cache.borrow_mut().cache.remove(key);
         self.inner.remove(key)
     }
 
@@ -102,7 +125,11 @@ where
 
     /// Remove all entries from the map.
     pub fn clear(&mut self) {
-        self.cache.clear();
+        {
+            let mut cache = self.cache.borrow_mut();
+            cache.cache.clear();
+            cache.cache_keys.clear();
+        }
         self.inner.clear()
     }
 }
