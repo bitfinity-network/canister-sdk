@@ -43,7 +43,7 @@ where
     pub fn new( inner: StableUnboundedMap<K, V>, cache_items: usize) -> Self {
         Self {
             inner,
-            cache: RefCell::new(Default::default())
+            cache: RefCell::new(Cache::new(cache_items))
         }
     }
 
