@@ -52,11 +52,13 @@ where
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn get(&self, key: &K) -> Option<V> {
-        match self.cache.borrow().cache.get(key) {
+        let cache = self.cache.borrow();
+        match cache.cache.get(key) {
             Some(value) => {
                 Some(value.clone())
             },
             None => {
+                drop(cache);
                 match self.inner.get(key) {
                     Some(value) => {
                         {
@@ -138,12 +140,49 @@ where
 
 #[cfg(test)]
 mod tests {
-    use ic_exports::stable_structures::DefaultMemoryImpl;
+    use ic_exports::stable_structures::{DefaultMemoryImpl, memory_manager::MemoryId};
 
     fn ADD_CACHE_TESTS() {}
 
-//     use super::CachedUnboundedMap;
-//     use crate::test_utils;
+    use super::CachedUnboundedMap;
+    use crate::{test_utils::{self, StringValue}, StableUnboundedMap};
+
+    #[test]
+    fn should_get_and_insert() {
+        let cache_items = 2;
+        let mut map = CachedUnboundedMap::<u32, StringValue>::new(StableUnboundedMap::new(MemoryId::new(123)), cache_items);
+
+        assert!(map.get(&1).is_none());
+        assert!(map.get(&2).is_none());
+        assert!(map.get(&3).is_none());
+        assert!(map.get(&4).is_none());
+
+        assert_eq!(None, map.insert(&1, &StringValue("one".to_string())));
+        assert_eq!(None, map.insert(&2, &StringValue("two".to_string())));
+        assert_eq!(None, map.insert(&3, &StringValue("three".to_string())));
+
+        assert_eq!(Some(StringValue("one".to_string())), map.get(&1));
+        assert_eq!(Some(StringValue("two".to_string())), map.get(&2));
+        assert_eq!(Some(StringValue("three".to_string())), map.get(&3));
+        assert!(map.get(&4).is_none());
+
+        assert_eq!(Some(StringValue("one".to_string())), map.insert(&1, &StringValue("one_2".to_string())));
+        assert_eq!(Some(StringValue("two".to_string())), map.insert(&2, &StringValue("two_2".to_string())));
+
+        assert_eq!(Some(StringValue("one_2".to_string())), map.get(&1));
+        assert_eq!(Some(StringValue("two_2".to_string())), map.get(&2));
+        assert_eq!(Some(StringValue("three".to_string())), map.get(&3));
+        assert!(map.get(&4).is_none());
+
+        assert_eq!(Some(StringValue("one_2".to_string())), map.remove(&1));
+        assert_eq!(None, map.remove(&1));
+
+        assert_eq!(None, map.get(&1));
+        assert_eq!(Some(StringValue("two_2".to_string())), map.get(&2));
+        assert_eq!(Some(StringValue("three".to_string())), map.get(&3));
+        assert!(map.get(&4).is_none());
+
+    }
 
 //     #[test]
 //     fn insert_get_test() {
