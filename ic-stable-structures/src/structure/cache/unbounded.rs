@@ -1,7 +1,6 @@
 use std::collections::{VecDeque, HashMap};
 use std::hash::Hash;
 
-use ic_exports::ic_kit::ic;
 use ic_exports::stable_structures::BoundedStorable;
 
 use crate::{SlicedStorable, StableUnboundedMap, UnboundedIter, Memory};
@@ -46,13 +45,9 @@ where
     pub fn get(&self, key: &K) -> Option<V> {
         match self.cache.get(key) {
             Some(value) => {
-                let REMOVE_ME = 0;
-                ic::print("CACHE HIT!!");
                 Some(value.clone())
             },
             None => {
-                let REMOVE_ME = 0;
-                ic::print("CACHE MISS!!");
                 self.inner.get(key)
             },
         }
