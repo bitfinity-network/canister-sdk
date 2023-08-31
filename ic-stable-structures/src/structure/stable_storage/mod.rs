@@ -42,6 +42,7 @@ impl<T: Storable> StableCell<T> {
         Ok(())
     }
 }
+
 /// Stores key-value data in stable memory.
 pub struct StableBTreeMap<K, V>(btreemap::BTreeMap<K, V, Memory>)
 where

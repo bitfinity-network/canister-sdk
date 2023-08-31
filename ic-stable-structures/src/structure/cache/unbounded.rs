@@ -4,7 +4,9 @@ use std::hash::Hash;
 
 use ic_exports::stable_structures::BoundedStorable;
 
-use crate::{SlicedStorable, StableUnboundedMap, UnboundedIter, Memory};
+use crate::Memory;
+use crate::structure::common::unbounded::{Iter as UnboundedIter, SlicedStorable};
+use crate::structure::stable_storage::StableUnboundedMap;
 
 /// Map that allows to store values with arbitrary size in stable memory.
 ///
@@ -77,18 +79,10 @@ where
 
     #[inline]
     fn remove_oldest_from_cache(&self, cache: &mut Cache<K, V>) {
-        if cache.cache.len() > cache.cache_max_items {
-            let mut done = false;
-            // cache_keys could contain data not present in the cache.
-            // This happens when the `remove` method is called
-            while !done {
-                match cache.cache_keys.pop_front() {
-                    Some(key) => {
-                        done = cache.cache.remove(&key).is_some();
-                    },
-                    None => done = true,
-                };
-            }
+        if cache.cache_keys.len() > cache.cache_max_items {
+            if let Some(key) = cache.cache_keys.pop_front() {
+                cache.cache.remove(&key);
+            };
         }
     }
 
@@ -106,7 +100,14 @@ where
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        self.cache.borrow_mut().cache.remove(key);
+        {
+            let mut cache = self.cache.borrow_mut();
+            if cache.cache.remove(key).is_some() {
+                if let Some(pos) = cache.cache_keys.iter().position(|k| k == key) {
+                    cache.cache_keys.remove(pos);
+                }
+            }
+        }
         self.inner.remove(key)
     }
 

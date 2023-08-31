@@ -4,7 +4,7 @@ use std::cell::RefCell;
 
 use ic_exports::stable_structures::BoundedStorable;
 
-use crate::StableMultimap;
+use crate::structure::stable_storage::StableMultimap;
 use crate::structure::heap;
 
 // Keys memory layout:
