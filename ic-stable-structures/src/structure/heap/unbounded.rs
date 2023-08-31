@@ -1,6 +1,6 @@
-use std::{collections::BTreeMap, hash::Hash};
+use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
 use std::collections::btree_map::Iter as BTreeMapIter;
-use ic_exports::stable_structures::{BoundedStorable, memory_manager::MemoryId};
+use std::{collections::BTreeMap, hash::Hash};
 
 use crate::SlicedStorable;
 
@@ -106,5 +106,4 @@ mod tests {
 
         assert_eq!(map.len(), 2);
     }
-
 }

@@ -1,59 +1,59 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use ic_stable_structures::{StableMultimap, MemoryId, StableUnboundedMap};
+use ic_stable_structures::{MemoryId, StableMultimap, StableUnboundedMap};
 use rand::distributions::{Alphanumeric, DistString};
 use types::StringValue;
 
 fn multimap_benchmark(c: &mut Criterion) {
-
     let mut map = StableMultimap::new(MemoryId::new(0));
 
     let key1_count = 100u128;
     let key2_count = 100u128;
 
-    c.bench_function("multimap_benchmark", |b| b.iter(|| {
-        for k1 in 0..key1_count {
-            for k2 in 0..key2_count {
-                //let value = Alphanumeric.sample_string(&mut rand::thread_rng(), 16).;
-                let value: u128 = rand::random();
-                map.insert(&k1, &k2, &value);          
+    c.bench_function("multimap_benchmark", |b| {
+        b.iter(|| {
+            for k1 in 0..key1_count {
+                for k2 in 0..key2_count {
+                    //let value = Alphanumeric.sample_string(&mut rand::thread_rng(), 16).;
+                    let value: u128 = rand::random();
+                    map.insert(&k1, &k2, &value);
+                }
             }
-        }
-        for k1 in 0..key1_count {
-            for k2 in 0..key2_count { 
-                assert!(map.get(&k1, &k2).is_some())
+            for k1 in 0..key1_count {
+                for k2 in 0..key2_count {
+                    assert!(map.get(&k1, &k2).is_some())
+                }
             }
-        }
-    }));
+        })
+    });
 }
 
 fn unboundedmap_benchmark(c: &mut Criterion) {
-
     let mut map = StableUnboundedMap::new(MemoryId::new(0));
 
     let key1_count = 10000u128;
 
-    c.bench_function("multimap_benchmark", |b| b.iter(|| {
-        for k1 in 0..key1_count {
+    c.bench_function("multimap_benchmark", |b| {
+        b.iter(|| {
+            for k1 in 0..key1_count {
                 let value = StringValue(Alphanumeric.sample_string(&mut rand::thread_rng(), 16));
-                map.insert(&k1, &value);          
-
-        }
-        for k1 in 0..key1_count {
-            assert!(map.get(&k1).is_some())
-        }
-    }));
+                map.insert(&k1, &value);
+            }
+            for k1 in 0..key1_count {
+                assert!(map.get(&k1).is_some())
+            }
+        })
+    });
 }
 
 criterion_group!(benches, multimap_benchmark, unboundedmap_benchmark);
 criterion_main!(benches);
-
 
 mod types {
 
     use std::borrow::Cow;
 
     use ic_exports::stable_structures::Storable;
-    use ic_stable_structures::{SlicedStorable, ChunkSize};
+    use ic_stable_structures::{ChunkSize, SlicedStorable};
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct StringValue(pub String);
@@ -71,5 +71,4 @@ mod types {
     impl SlicedStorable for StringValue {
         const CHUNK_SIZE: ChunkSize = 64;
     }
-
 }

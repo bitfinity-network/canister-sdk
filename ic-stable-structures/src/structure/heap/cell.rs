@@ -7,7 +7,6 @@ use crate::Result;
 pub struct HeapCell<T: Storable>(T);
 
 impl<T: Storable> HeapCell<T> {
-
     /// Create new storage for values with `T` type.
     pub fn new(_memory_id: MemoryId, value: T) -> Result<Self> {
         Ok(Self(value))
@@ -23,6 +22,4 @@ impl<T: Storable> HeapCell<T> {
         self.0 = value;
         Ok(())
     }
-
 }
-

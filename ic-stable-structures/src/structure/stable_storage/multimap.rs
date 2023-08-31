@@ -1,7 +1,9 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use ic_exports::stable_structures::{btreemap, BoundedStorable, StableBTreeMap, Storable, memory_manager::MemoryId};
+use ic_exports::stable_structures::{
+    btreemap, memory_manager::MemoryId, BoundedStorable, StableBTreeMap, Storable,
+};
 
 use crate::Memory;
 
@@ -608,5 +610,4 @@ mod test {
         assert_eq!(map.iter().next(), Some((1, 1, 20)));
         assert_eq!(map.len(), 1);
     }
-
 }

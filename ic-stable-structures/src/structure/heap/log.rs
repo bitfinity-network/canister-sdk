@@ -1,14 +1,12 @@
-use ic_exports::stable_structures::{Storable, memory_manager::MemoryId};
+use ic_exports::stable_structures::{memory_manager::MemoryId, Storable};
 
 use crate::Result;
-
 
 /// Stores list of immutable values in heap memory.
 /// Provides only `append()` and `get()` operations.
 pub struct HeapLog<T: Storable + Clone>(Vec<T>);
 
 impl<T: Storable + Clone> HeapLog<T> {
-
     /// Create new storage for values with `T` type.
     pub fn new(_index_memory_id: MemoryId, _data_memory_id: MemoryId) -> Result<Self> {
         Ok(Self(vec![]))
@@ -39,6 +37,4 @@ impl<T: Storable + Clone> HeapLog<T> {
     pub fn clear(&mut self) {
         self.0.clear()
     }
-
 }
-

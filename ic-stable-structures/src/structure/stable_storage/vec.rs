@@ -1,8 +1,8 @@
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{vec, BoundedStorable};
 
-use crate::{Memory, Result};
 use super::get_memory_by_id;
+use crate::{Memory, Result};
 
 pub struct StableVec<T: BoundedStorable>(vec::Vec<T, Memory>, MemoryId);
 
@@ -63,8 +63,8 @@ impl<T: BoundedStorable> StableVec<T> {
 #[cfg(test)]
 mod tests {
 
-    use ic_exports::stable_structures::memory_manager::MemoryId;
     use super::*;
+    use ic_exports::stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn vec_works() {

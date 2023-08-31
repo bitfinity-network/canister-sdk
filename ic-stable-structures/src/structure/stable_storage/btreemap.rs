@@ -1,9 +1,8 @@
-
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{btreemap, BoundedStorable};
 
-use crate::Memory;
 use super::get_memory_by_id;
+use crate::Memory;
 
 /// Stores key-value data in stable memory.
 pub struct StableBTreeMap<K, V>(btreemap::BTreeMap<K, V, Memory>)
@@ -72,9 +71,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+
     use super::*;
+    use ic_exports::stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn btreemap_works() {
@@ -95,6 +94,4 @@ mod tests {
 
         assert_eq!(map.len(), 1);
     }
-
-
 }

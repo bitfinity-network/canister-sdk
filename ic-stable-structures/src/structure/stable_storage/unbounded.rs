@@ -3,7 +3,9 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
-use ic_exports::stable_structures::{btreemap, BoundedStorable, StableBTreeMap, Storable, memory_manager::MemoryId};
+use ic_exports::stable_structures::{
+    btreemap, memory_manager::MemoryId, BoundedStorable, StableBTreeMap, Storable,
+};
 
 use crate::Memory;
 
@@ -473,6 +475,4 @@ mod tests {
 
         assert_eq!(map.len(), 2);
     }
-
 }
-

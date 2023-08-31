@@ -1,10 +1,10 @@
 use std::cell::RefCell;
-use std::collections::{VecDeque, HashMap};
+use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
 
 use ic_exports::stable_structures::BoundedStorable;
 
-use crate::structure::stable_storage::{StableUnboundedMap, StableUnboundedIter, SlicedStorable};
+use crate::structure::stable_storage::{SlicedStorable, StableUnboundedIter, StableUnboundedMap};
 
 /// Map that allows to store values with arbitrary size in stable memory.
 ///
@@ -25,9 +25,13 @@ struct Cache<K, V> {
     cache_max_items: usize,
 }
 
-impl <K, V> Cache<K, V> {
+impl<K, V> Cache<K, V> {
     fn new(cache_max_items: usize) -> Self {
-        Self { cache_max_items, cache: Default::default(), cache_keys: Default::default() }
+        Self {
+            cache_max_items,
+            cache: Default::default(),
+            cache_keys: Default::default(),
+        }
     }
 }
 
@@ -40,10 +44,10 @@ where
     ///
     /// If the `memory` contains data of the map, the map reads it, and the instance
     /// will contain the data from the `memory`.
-    pub fn new( inner: StableUnboundedMap<K, V>, cache_items: usize) -> Self {
+    pub fn new(inner: StableUnboundedMap<K, V>, cache_items: usize) -> Self {
         Self {
             inner,
-            cache: RefCell::new(Cache::new(cache_items))
+            cache: RefCell::new(Cache::new(cache_items)),
         }
     }
 
@@ -54,9 +58,7 @@ where
     pub fn get(&self, key: &K) -> Option<V> {
         let cache = self.cache.borrow();
         match cache.cache.get(key) {
-            Some(value) => {
-                Some(value.clone())
-            },
+            Some(value) => Some(value.clone()),
             None => {
                 drop(cache);
                 match self.inner.get(key) {
@@ -68,10 +70,10 @@ where
                             self.remove_oldest_from_cache(&mut cache);
                         }
                         Some(value)
-                    },
+                    }
                     None => None,
                 }
-            },
+            }
         }
     }
 
@@ -91,7 +93,6 @@ where
     pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
         self.inner.insert(key, value)
     }
-
 
     /// Remove a value associated with `key`.
     ///
@@ -135,8 +136,6 @@ where
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use ic_exports::stable_structures::memory_manager::MemoryId;
@@ -147,7 +146,10 @@ mod tests {
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        let mut map = CachedUnboundedMap::<u32, StringValue>::new(StableUnboundedMap::new(MemoryId::new(123)), cache_items);
+        let mut map = CachedUnboundedMap::<u32, StringValue>::new(
+            StableUnboundedMap::new(MemoryId::new(123)),
+            cache_items,
+        );
 
         assert!(map.get(&1).is_none());
         assert!(map.get(&2).is_none());
@@ -163,8 +165,14 @@ mod tests {
         assert_eq!(Some(StringValue("three".to_string())), map.get(&3));
         assert!(map.get(&4).is_none());
 
-        assert_eq!(Some(StringValue("one".to_string())), map.insert(&1, &StringValue("one_2".to_string())));
-        assert_eq!(Some(StringValue("two".to_string())), map.insert(&2, &StringValue("two_2".to_string())));
+        assert_eq!(
+            Some(StringValue("one".to_string())),
+            map.insert(&1, &StringValue("one_2".to_string()))
+        );
+        assert_eq!(
+            Some(StringValue("two".to_string())),
+            map.insert(&2, &StringValue("two_2".to_string()))
+        );
 
         assert_eq!(Some(StringValue("one_2".to_string())), map.get(&1));
         assert_eq!(Some(StringValue("two_2".to_string())), map.get(&2));
@@ -178,75 +186,74 @@ mod tests {
         assert_eq!(Some(StringValue("two_2".to_string())), map.get(&2));
         assert_eq!(Some(StringValue("three".to_string())), map.get(&3));
         assert!(map.get(&4).is_none());
-
     }
 
-//     #[test]
-//     fn insert_get_test() {
-//         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
-//         assert!(map.is_empty());
+    //     #[test]
+    //     fn insert_get_test() {
+    //         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
+    //         assert!(map.is_empty());
 
-//         let long_str = test_utils::str_val(50000);
-//         let medium_str = test_utils::str_val(5000);
-//         let short_str = test_utils::str_val(50);
+    //         let long_str = test_utils::str_val(50000);
+    //         let medium_str = test_utils::str_val(5000);
+    //         let short_str = test_utils::str_val(50);
 
-//         map.insert(&0u32, &long_str);
-//         map.insert(&3u32, &medium_str);
-//         map.insert(&5u32, &short_str);
+    //         map.insert(&0u32, &long_str);
+    //         map.insert(&3u32, &medium_str);
+    //         map.insert(&5u32, &short_str);
 
-//         assert_eq!(map.get(&0).as_ref(), Some(&long_str));
-//         assert_eq!(map.get(&3).as_ref(), Some(&medium_str));
-//         assert_eq!(map.get(&5).as_ref(), Some(&short_str));
-//     }
+    //         assert_eq!(map.get(&0).as_ref(), Some(&long_str));
+    //         assert_eq!(map.get(&3).as_ref(), Some(&medium_str));
+    //         assert_eq!(map.get(&5).as_ref(), Some(&short_str));
+    //     }
 
-//     #[test]
-//     fn insert_should_replace_previous_value() {
-//         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
-//         assert!(map.is_empty());
+    //     #[test]
+    //     fn insert_should_replace_previous_value() {
+    //         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
+    //         assert!(map.is_empty());
 
-//         let long_str = test_utils::str_val(50000);
-//         let short_str = test_utils::str_val(50);
+    //         let long_str = test_utils::str_val(50000);
+    //         let short_str = test_utils::str_val(50);
 
-//         assert!(map.insert(&0u32, &long_str).is_none());
-//         let prev = map.insert(&0u32, &short_str).unwrap();
+    //         assert!(map.insert(&0u32, &long_str).is_none());
+    //         let prev = map.insert(&0u32, &short_str).unwrap();
 
-//         assert_eq!(&prev, &long_str);
-//         assert_eq!(map.get(&0).as_ref(), Some(&short_str));
-//     }
+    //         assert_eq!(&prev, &long_str);
+    //         assert_eq!(map.get(&0).as_ref(), Some(&short_str));
+    //     }
 
-//     #[test]
-//     fn remove_test() {
-//         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
+    //     #[test]
+    //     fn remove_test() {
+    //         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
 
-//         let long_str = test_utils::str_val(50000);
-//         let medium_str = test_utils::str_val(5000);
-//         let short_str = test_utils::str_val(50);
+    //         let long_str = test_utils::str_val(50000);
+    //         let medium_str = test_utils::str_val(5000);
+    //         let short_str = test_utils::str_val(50);
 
-//         map.insert(&0u32, &long_str);
-//         map.insert(&3u32, &medium_str);
-//         map.insert(&5u32, &short_str);
+    //         map.insert(&0u32, &long_str);
+    //         map.insert(&3u32, &medium_str);
+    //         map.insert(&5u32, &short_str);
 
-//         assert_eq!(map.remove(&3), Some(medium_str));
+    //         assert_eq!(map.remove(&3), Some(medium_str));
 
-//         assert_eq!(map.get(&0).as_ref(), Some(&long_str));
-//         assert_eq!(map.get(&5).as_ref(), Some(&short_str));
-//         assert_eq!(map.len(), 2);
-//     }
+    //         assert_eq!(map.get(&0).as_ref(), Some(&long_str));
+    //         assert_eq!(map.get(&5).as_ref(), Some(&short_str));
+    //         assert_eq!(map.len(), 2);
+    //     }
 
-//     #[test]
-//     fn iter_test() {
-//         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
+    //     #[test]
+    //     fn iter_test() {
+    //         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
 
-//         let strs = [
-//             test_utils::str_val(50),
-//             test_utils::str_val(5000),
-//             test_utils::str_val(50000),
-//         ];
+    //         let strs = [
+    //             test_utils::str_val(50),
+    //             test_utils::str_val(5000),
+    //             test_utils::str_val(50000),
+    //         ];
 
-//         for i in 0..100u32 {
-//             map.insert(&i, &strs[i as usize % strs.len()]);
-//         }
+    //         for i in 0..100u32 {
+    //             map.insert(&i, &strs[i as usize % strs.len()]);
+    //         }
 
-//         assert!(map.iter().all(|(k, v)| v == strs[k as usize % strs.len()]))
-//     }
+    //         assert!(map.iter().all(|(k, v)| v == strs[k as usize % strs.len()]))
+    //     }
 }

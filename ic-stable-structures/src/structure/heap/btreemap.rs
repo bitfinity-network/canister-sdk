@@ -64,8 +64,8 @@ where
 #[cfg(test)]
 mod tests {
 
-    use ic_exports::stable_structures::memory_manager::MemoryId;
     use super::*;
+    use ic_exports::stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn btreemap_works() {
@@ -88,6 +88,4 @@ mod tests {
 
         assert_eq!(map.len(), 1);
     }
-
-
 }

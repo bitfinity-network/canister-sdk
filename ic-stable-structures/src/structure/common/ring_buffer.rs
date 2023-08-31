@@ -3,8 +3,8 @@ use std::cmp::min;
 use std::mem::size_of;
 use std::thread::LocalKey;
 
-use crate::{StableCell, StableVec};
 use crate::{BoundedStorable, Storable};
+use crate::{StableCell, StableVec};
 
 /// Ring buffer indices state
 #[derive(Clone, Debug, PartialEq, Eq)]

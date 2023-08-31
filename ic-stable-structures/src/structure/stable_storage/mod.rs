@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 
+use crate::{Memory, MemoryManager};
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::DefaultMemoryImpl;
-use crate::{Memory, MemoryManager};
 
 mod btreemap;
 mod cell;
@@ -15,7 +15,7 @@ pub use btreemap::StableBTreeMap;
 pub use cell::StableCell;
 pub use log::StableLog;
 pub use multimap::{StableMultimap, StableMultimapIter, StableMultimapRangeIter};
-pub use unbounded::{ChunkSize, StableUnboundedMap, SlicedStorable, StableUnboundedIter};
+pub use unbounded::{ChunkSize, SlicedStorable, StableUnboundedIter, StableUnboundedMap};
 pub use vec::StableVec;
 
 thread_local! {

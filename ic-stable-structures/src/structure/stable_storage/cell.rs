@@ -1,9 +1,8 @@
-
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{cell, Storable};
 
-use crate::{Memory, Result};
 use super::get_memory_by_id;
+use crate::{Memory, Result};
 
 /// Stores value in stable memory, providing `get()/set()` API.
 pub struct StableCell<T: Storable>(cell::Cell<T, Memory>);

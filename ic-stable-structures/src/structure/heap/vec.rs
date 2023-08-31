@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{BoundedStorable, memory_manager::MemoryId};
+use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
 
 use crate::Result;
 
@@ -60,8 +60,8 @@ impl<T: BoundedStorable + Clone> HeapVec<T> {
 #[cfg(test)]
 mod tests {
 
-    use ic_exports::stable_structures::memory_manager::MemoryId;
     use super::*;
+    use ic_exports::stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn vec_works() {

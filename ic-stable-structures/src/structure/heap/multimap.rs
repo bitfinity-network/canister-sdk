@@ -1,7 +1,7 @@
-use std::{collections::BTreeMap, hash::Hash};
 use std::collections::btree_map::Iter as BTreeMapIter;
+use std::{collections::BTreeMap, hash::Hash};
 
-use ic_exports::stable_structures::{BoundedStorable, memory_manager::MemoryId};
+use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
 
 /// `HeapMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
@@ -17,9 +17,10 @@ impl<K1, K2, V> Default for HeapMultimap<K1, K2, V>
 where
     K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone {
-        fn default() -> Self {
-            Self(Default::default())
+    V: BoundedStorable + Clone,
+{
+    fn default() -> Self {
+        Self(Default::default())
     }
 }
 
@@ -141,8 +142,8 @@ where
 #[cfg(test)]
 mod tests {
 
-    use ic_exports::stable_structures::memory_manager::MemoryId;
     use super::*;
+    use ic_exports::stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn multimap_works() {
@@ -182,5 +183,4 @@ mod tests {
         assert_eq!(map.iter().next(), Some((1, 1, 20)));
         assert_eq!(map.len(), 1);
     }
-
 }
