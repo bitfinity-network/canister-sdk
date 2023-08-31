@@ -2,14 +2,14 @@ use std::{cell::RefCell, hash::Hash, collections::{HashMap, VecDeque}};
 
 use ic_exports::stable_structures::BoundedStorable;
 
-use crate::structure::heap::StableBTreeMap;
+use crate::structure::heap::HeapBTreeMap;
 
 pub struct CachedStableBTreeMap<K, V>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
 {
-    inner: StableBTreeMap<K, V>,
+    inner: HeapBTreeMap<K, V>,
     cache: RefCell<Cache<K, V>>,
 }
 
@@ -31,7 +31,7 @@ K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
 V: BoundedStorable + Clone,
 {
     /// Create new instance of key-value storage.
-    pub fn new(inner: StableBTreeMap<K, V>, cache_items: usize) -> Self {
+    pub fn new(inner: HeapBTreeMap<K, V>, cache_items: usize) -> Self {
         Self {
             inner,
             cache: RefCell::new(Cache::new(cache_items))
@@ -157,7 +157,7 @@ mod tests {
         #[test]
         fn should_get_and_insert() {
             let cache_items = 2;
-            let mut map = CachedStableBTreeMap::<u32, Array<2>>::new(StableBTreeMap::new(MemoryId::new(123)), cache_items);
+            let mut map = CachedStableBTreeMap::<u32, Array<2>>::new(HeapBTreeMap::new(MemoryId::new(123)), cache_items);
     
             assert_eq!(None, map.get(&1));
             assert_eq!(None, map.get(&2));

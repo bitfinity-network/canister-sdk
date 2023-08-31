@@ -45,7 +45,7 @@ where
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
      {
-        cache: heap::StableMultimap<K1, K2, V>,
+        cache: heap::HeapMultimap<K1, K2, V>,
         cache_keys: VecDeque<(K1, K2)>,
         cache_max_items: usize,
     }
