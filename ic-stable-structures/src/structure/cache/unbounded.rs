@@ -141,12 +141,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use ic_exports::stable_structures::{DefaultMemoryImpl, memory_manager::MemoryId};
+    use ic_exports::stable_structures::memory_manager::MemoryId;
 
-    fn ADD_CACHE_TESTS() {}
-
-    use super::CachedUnboundedMap;
-    use crate::{test_utils::{self, StringValue}, StableUnboundedMap};
+    use super::*;
+    use crate::{test_utils::StringValue, StableUnboundedMap};
 
     #[test]
     fn should_get_and_insert() {

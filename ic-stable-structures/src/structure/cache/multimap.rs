@@ -185,7 +185,7 @@ V: BoundedStorable + Clone,
 mod test {
     use std::borrow::Cow;
 
-    use ic_exports::stable_structures::{DefaultMemoryImpl, Storable, memory_manager::MemoryId};
+    use ic_exports::stable_structures::{Storable, memory_manager::MemoryId};
 
     use super::*;
 
