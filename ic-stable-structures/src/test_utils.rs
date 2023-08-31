@@ -2,8 +2,7 @@ use std::borrow::Cow;
 
 use ic_exports::stable_structures::Storable;
 
-use crate::structure::common::unbounded::SlicedStorable;
-use crate::ChunkSize;
+use crate::structure::stable_storage::{ChunkSize, SlicedStorable};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StringValue(pub String);

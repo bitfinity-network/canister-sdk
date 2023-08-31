@@ -15,7 +15,7 @@ pub use btreemap::StableBTreeMap;
 pub use cell::StableCell;
 pub use log::StableLog;
 pub use multimap::{StableMultimap, StableMultimapIter, StableMultimapRangeIter};
-pub use unbounded::StableUnboundedMap;
+pub use unbounded::{ChunkSize, StableUnboundedMap, SlicedStorable, StableUnboundedIter};
 pub use vec::StableVec;
 
 thread_local! {

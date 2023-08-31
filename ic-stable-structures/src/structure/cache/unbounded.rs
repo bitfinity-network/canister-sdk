@@ -4,9 +4,7 @@ use std::hash::Hash;
 
 use ic_exports::stable_structures::BoundedStorable;
 
-use crate::Memory;
-use crate::structure::common::unbounded::{Iter as UnboundedIter, SlicedStorable};
-use crate::structure::stable_storage::StableUnboundedMap;
+use crate::structure::stable_storage::{StableUnboundedMap, StableUnboundedIter, SlicedStorable};
 
 /// Map that allows to store values with arbitrary size in stable memory.
 ///
@@ -112,7 +110,7 @@ where
     }
 
     /// Iterator for all stored key-value pairs.
-    pub fn iter(&self) -> UnboundedIter<'_, Memory, K, V> {
+    pub fn iter(&self) -> StableUnboundedIter<'_, K, V> {
         self.inner.iter()
     }
 
