@@ -14,7 +14,7 @@ mod vec;
 pub use btreemap::StableBTreeMap;
 pub use cell::StableCell;
 pub use log::StableLog;
-pub use multimap::StableMultimap;
+pub use multimap::{StableMultimap, StableMultimapIter, StableMultimapRangeIter};
 pub use unbounded::StableUnboundedMap;
 pub use vec::StableVec;
 

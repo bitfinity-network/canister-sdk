@@ -137,7 +137,7 @@ where
     }
 }
 
-pub(crate) struct KeyPair<K1, K2> {
+struct KeyPair<K1, K2> {
     encoded: Vec<u8>,
     first_key_len: usize,
     _p: PhantomData<(K1, K2)>,
