@@ -24,6 +24,8 @@ pub use structure::stable_storage::{
     StableVec,
 };
 
+pub use structure::cache::btreemap::CachedStableBTreeMap;
+
 // #[cfg(feature = "default-heap-structures")]
 // pub use structure::heap::{
 //     StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap,
