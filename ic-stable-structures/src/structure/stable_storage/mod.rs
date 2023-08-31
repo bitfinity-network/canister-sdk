@@ -160,7 +160,7 @@ where
     ///
     /// # Preconditions:
     ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    pub fn remove_partial(&mut self, first_key: &K1) {
+    pub fn remove_partial(&mut self, first_key: &K1) -> bool {
         self.0.remove_partial(first_key)
     }
 
@@ -455,7 +455,8 @@ mod tests {
         assert_eq!(range.next(), Some((1, 84)));
         assert_eq!(range.next(), None);
 
-        map.remove_partial(&0);
+        assert!(map.remove_partial(&0));
+        assert!(!map.remove_partial(&0));
         assert_eq!(map.len(), 2);
 
         assert_eq!(map.remove(&1, &0), Some(10));

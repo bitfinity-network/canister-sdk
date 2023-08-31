@@ -84,7 +84,7 @@ where
     ///
     /// # Preconditions:
     ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    pub fn remove_partial(&mut self, first_key: &K1) {
+    pub fn remove_partial(&mut self, first_key: &K1) -> bool {
         let min_key = KeyPair::<K1, K2>::min_key(first_key);
         let max_key = KeyPair::<K1, K2>::max_key(first_key);
 
@@ -94,9 +94,11 @@ where
             .map(|(keys, _)| keys)
             .collect();
 
+        let mut found = false;
         for k in keys {
-            let _ = self.0.remove(&k);
+            found = self.0.remove(&k).is_some() || found;
         }
+        found
     }
 
     /// Get a range of key value pairs based on the root key.
@@ -134,7 +136,7 @@ where
     }
 }
 
-struct KeyPair<K1, K2> {
+pub(crate) struct KeyPair<K1, K2> {
     encoded: Vec<u8>,
     first_key_len: usize,
     _p: PhantomData<(K1, K2)>,
@@ -535,7 +537,8 @@ mod test {
         let val = Array([123, 200u8, 200, 100, 100, 255]);
         mm.insert(&k1, &k2, &val);
 
-        mm.remove_partial(&k1);
+        assert!(mm.remove_partial(&k1));
+        assert!(!mm.remove_partial(&k1));
         assert!(mm.is_empty());
     }
 

@@ -89,11 +89,22 @@ where
 
 /// `StableMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
+
 pub struct StableMultimap<K1, K2, V>(BTreeMap<K1, BTreeMap<K2, V>>)
 where
     K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone;
+
+impl<K1, K2, V> Default for StableMultimap<K1, K2, V>
+where
+    K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    V: BoundedStorable + Clone {
+        fn default() -> Self {
+            Self(Default::default())
+    }
+}
 
 impl<K1, K2, V> StableMultimap<K1, K2, V>
 where
@@ -145,8 +156,8 @@ where
     ///
     /// # Preconditions:
     ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    pub fn remove_partial(&mut self, first_key: &K1) {
-        self.0.get_mut(first_key).map(|entry| entry.clear());
+    pub fn remove_partial(&mut self, first_key: &K1) -> bool {
+        self.0.remove(first_key).is_some()
     }
 
     /// Get a range of key value pairs based on the root key.
