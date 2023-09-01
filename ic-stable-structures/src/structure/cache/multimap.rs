@@ -59,6 +59,20 @@ where
             };
         }
     }
+
+    #[inline]
+    fn remove_from_cache_by_keys(&self, first_key: &K1, second_key: &K2, cache: &mut Cache<K1, K2, V>) {
+        if cache.cache.remove(first_key, second_key).is_some() {
+            if let Some(pos) = cache
+                .cache_keys
+                .iter()
+                .position(|(k1, k2)| k1 == first_key && k2 == second_key)
+            {
+                cache.cache_keys.remove(pos);
+            }
+        }
+    }
+
 }
 
 impl<K1, K2, V> MultimapStructure<K1, K2, V> for CachedStableMultimap<K1, K2, V>
@@ -68,7 +82,13 @@ where
     V: BoundedStorable + Clone,
 {
     fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
-        self.inner.insert(first_key, second_key, value)
+        match self.inner.insert(first_key, second_key, value) {
+            Some(old_value) => {
+                self.remove_from_cache_by_keys(first_key, second_key, &mut self.cache.borrow_mut());
+                Some(old_value)
+            },
+            None => None,
+        }
     }
 
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
@@ -96,19 +116,13 @@ where
     }
 
     fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V> {
-        {
-            let mut cache = self.cache.borrow_mut();
-            if cache.cache.remove(first_key, second_key).is_some() {
-                if let Some(pos) = cache
-                    .cache_keys
-                    .iter()
-                    .position(|(k1, k2)| k1 == first_key && k2 == second_key)
-                {
-                    cache.cache_keys.remove(pos);
-                }
-            }
+        match self.inner.remove(first_key, second_key) {
+            Some(old_value) => {
+                self.remove_from_cache_by_keys(first_key, second_key, &mut self.cache.borrow_mut());
+                Some(old_value)
+            },
+            None => None,
         }
-        self.inner.remove(first_key, second_key)
     }
 
     fn remove_partial(&mut self, first_key: &K1) -> bool {
@@ -141,47 +155,11 @@ where
 
 #[cfg(test)]
 mod test {
-    use std::borrow::Cow;
 
     use ic_exports::stable_structures::{memory_manager::MemoryId, Storable};
+    use crate::test_utils::Array;
 
     use super::*;
-
-    /// New type pattern used to implement `Storable` trait for all arrays.
-    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-    struct Array<const N: usize>(pub [u8; N]);
-
-    impl<const N: usize> Storable for Array<N> {
-        fn to_bytes(&self) -> Cow<'_, [u8]> {
-            Cow::Owned(self.0.to_vec())
-        }
-
-        fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
-            let mut buf = [0u8; N];
-            buf.copy_from_slice(&bytes);
-            Array(buf)
-        }
-    }
-
-    impl<const N: usize> BoundedStorable for Array<N> {
-        const MAX_SIZE: u32 = N as _;
-        const IS_FIXED_SIZE: bool = true;
-    }
-
-    // fn make_map() -> CachedStableMultimap<DefaultMemoryImpl, Array<2>, Array<3>, Array<6>> {
-    //     let mut mm = CachedStableMultimap::new(DefaultMemoryImpl::default());
-    //     let k1 = Array([1u8, 2]);
-    //     let k2 = Array([11u8, 12, 13]);
-    //     let val = Array([200u8, 200, 200, 100, 100, 123]);
-    //     mm.insert(&k1, &k2, &val);
-
-    //     let k1 = Array([10u8, 20]);
-    //     let k2 = Array([21u8, 22, 23]);
-    //     let val = Array([123, 200u8, 200, 100, 100, 255]);
-    //     mm.insert(&k1, &k2, &val);
-
-    //     mm
-    // }
 
     #[test]
     fn should_get_and_insert() {

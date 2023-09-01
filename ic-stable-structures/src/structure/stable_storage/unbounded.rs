@@ -7,9 +7,8 @@ use ic_exports::stable_structures::{
     btreemap, memory_manager::MemoryId, BoundedStorable, StableBTreeMap, Storable,
 };
 
-use crate::{structure::UnboundedMapStructure, Memory};
+use crate::{structure::UnboundedMapStructure, Memory, SlicedStorable};
 
-pub type ChunkSize = u16;
 type ChunkIndex = u16;
 const CHUNK_INDEX_LEN: usize = mem::size_of::<ChunkIndex>();
 
@@ -36,7 +35,7 @@ where
     /// If the `memory` contains data of the map, the map reads it, and the instance
     /// will contain the data from the `memory`.
     pub fn new(memory_id: MemoryId) -> Self {
-        let memory = crate::get_memory_by_id(memory_id);
+        let memory = super::get_memory_by_id(memory_id);
         Self {
             inner: StableBTreeMap::init(memory),
             items_count: 0,
@@ -135,18 +134,6 @@ where
         }
         self.items_count = 0;
     }
-}
-
-/// Provide information about the length of the value slice.
-///
-/// If value size is greater than `chunk_size()`, value will be split to several chunks,
-/// and store each as particular entry in inner data structures.
-///
-/// More chunks count leads to more memory allocation operations.
-/// But with big `chunk_size()` we lose space for small values,
-/// because `chunk_size()` is a least allocation unit for any value.
-pub trait SlicedStorable: Storable {
-    const CHUNK_SIZE: ChunkSize;
 }
 
 /// Wrapper for the key.

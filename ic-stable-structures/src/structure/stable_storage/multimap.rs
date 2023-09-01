@@ -44,7 +44,7 @@ where
     /// Create a new instance of a `StableMultimap`.
     /// All keys and values byte representations should be less then related `..._max_size` arguments.
     pub fn new(memory_id: MemoryId) -> Self {
-        let memory = crate::get_memory_by_id(memory_id);
+        let memory = super::get_memory_by_id(memory_id);
         Self(StableBTreeMap::init(memory))
     }
 
@@ -405,32 +405,10 @@ where
 
 #[cfg(test)]
 mod test {
-    use std::borrow::Cow;
 
     use ic_exports::stable_structures::memory_manager::MemoryId;
-
+    use crate::test_utils::Array;
     use super::*;
-
-    /// New type pattern used to implement `Storable` trait for all arrays.
-    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-    struct Array<const N: usize>(pub [u8; N]);
-
-    impl<const N: usize> Storable for Array<N> {
-        fn to_bytes(&self) -> Cow<'_, [u8]> {
-            Cow::Owned(self.0.to_vec())
-        }
-
-        fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
-            let mut buf = [0u8; N];
-            buf.copy_from_slice(&bytes);
-            Array(buf)
-        }
-    }
-
-    impl<const N: usize> BoundedStorable for Array<N> {
-        const MAX_SIZE: u32 = N as _;
-        const IS_FIXED_SIZE: bool = true;
-    }
 
     fn make_map(memory_id: MemoryId) -> StableMultimap<Array<2>, Array<3>, Array<6>> {
         let mut mm = StableMultimap::new(memory_id);

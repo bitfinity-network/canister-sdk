@@ -2,6 +2,7 @@ use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{log, Storable};
 
 use crate::structure::LogStructure;
+use crate::structure::stable_storage::get_memory_by_id;
 use crate::{Error, Memory, Result};
 
 /// Stores list of immutable values in stable memory.
@@ -16,8 +17,8 @@ impl<T: Storable> StableLog<T> {
         // Index and data should be stored in different memories.
         assert_ne!(index_memory_id, data_memory_id);
 
-        let index_memory = crate::get_memory_by_id(index_memory_id);
-        let data_memory = crate::get_memory_by_id(data_memory_id);
+        let index_memory = get_memory_by_id(index_memory_id);
+        let data_memory = get_memory_by_id(data_memory_id);
 
         let inner = log::Log::init(index_memory, data_memory)?;
         Ok(Self(Some(inner)))

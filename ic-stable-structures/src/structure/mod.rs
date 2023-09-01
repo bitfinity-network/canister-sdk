@@ -5,17 +5,23 @@ mod common;
 mod heap;
 mod stable_storage;
 
-// #[cfg(not(feature = "default-heap-structures"))]
 pub use cache::*;
 pub use common::*;
 pub use heap::*;
+
+#[cfg(not(feature = "always-heap"))]
 pub use stable_storage::*;
 
-// #[cfg(feature = "default-heap-structures")]
-// pub use structure::heap::{
-//     StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap,
-//     StableVec,
-// };
+#[cfg(feature = "always-heap")]
+pub use heap::{
+     HeapBTreeMap as StableBTreeMap, 
+     HeapCell as StableCell, 
+     HeapLog as StableLog, 
+     HeapMultimap as StableMultimap, 
+     HeapMultimapIter as StableMultimapIter,
+     HeapUnboundedMap as StableUnboundedMap,
+     HeapVec as StableVec,
+};
 
 pub trait BTreeMapStructure<K, V> {
     /// Return value associated with `key` from stable memory.

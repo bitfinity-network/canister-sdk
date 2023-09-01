@@ -24,8 +24,9 @@ name = "stable_storage_benchmark"
 harness = false
 
 [features]
-# When this features is enabled, the default structures exported at root level
-# use the heap. Otherwise the stable storage is used
-default-heap-structures = []
+# When this features is enabled, ALL stable structures will use the heap so the data will
+# be stored NOT permanently. Usefull only for testing.
+# Do not enable this in production
+always-heap = []
 # Enables the integration tests based on ic-test-state-machine
 state-machine = []

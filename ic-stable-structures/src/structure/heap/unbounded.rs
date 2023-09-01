@@ -3,7 +3,7 @@ use std::collections::btree_map::Iter as BTreeMapIter;
 use std::{collections::BTreeMap, hash::Hash};
 
 use crate::structure::UnboundedMapStructure;
-use crate::SlicedStorable;
+use crate::structure::common::SlicedStorable;
 
 /// Stores key-value data in heap memory.
 pub struct HeapUnboundedMap<K, V>(BTreeMap<K, V>)

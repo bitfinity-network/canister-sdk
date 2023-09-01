@@ -59,6 +59,16 @@ where
             };
         }
     }
+
+    #[inline]
+    fn remove_from_cache_by_key(&self, key: &K, cache: &mut Cache<K, V>) {
+        if cache.cache.remove(key).is_some() {
+            if let Some(pos) = cache.cache_keys.iter().position(|k| k == key) {
+                cache.cache_keys.remove(pos);
+            }
+        }
+    }
+
 }
 
 impl<K, V> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V>
@@ -89,19 +99,23 @@ where
     }
 
     fn insert(&mut self, key: &K, value: &V) -> Option<V> {
-        self.inner.insert(key, value)
+        match self.inner.insert(key, value) {
+            Some(old_value) => {
+                self.remove_from_cache_by_key(key, &mut self.cache.borrow_mut());
+                Some(old_value)
+            },
+            None => None,
+        }
     }
 
     fn remove(&mut self, key: &K) -> Option<V> {
-        {
-            let mut cache = self.cache.borrow_mut();
-            if cache.cache.remove(key).is_some() {
-                if let Some(pos) = cache.cache_keys.iter().position(|k| k == key) {
-                    cache.cache_keys.remove(pos);
-                }
-            }
+        match self.inner.remove(key) {
+            Some(old_value) => {
+                self.remove_from_cache_by_key(key, &mut self.cache.borrow_mut());
+                Some(old_value)
+            },
+            None => None,
         }
-        self.inner.remove(key)
     }
 
     fn len(&self) -> u64 {
@@ -127,7 +141,7 @@ mod tests {
     use ic_exports::stable_structures::memory_manager::MemoryId;
 
     use super::*;
-    use crate::test_utils::StringValue;
+    use crate::test_utils::{StringValue, Array};
 
     #[test]
     fn should_get_and_insert() {
@@ -172,72 +186,131 @@ mod tests {
         assert!(map.get(&4).is_none());
     }
 
-    //     #[test]
-    //     fn insert_get_test() {
-    //         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
-    //         assert!(map.is_empty());
+    #[test]
+    fn should_get_insert_and_replace() {
+        let cache_items = 2;
+        let mut map: CachedStableUnboundedMap<u32, Array<2>> =
+        CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(123), cache_items);
 
-    //         let long_str = test_utils::str_val(50000);
-    //         let medium_str = test_utils::str_val(5000);
-    //         let short_str = test_utils::str_val(50);
+        check_cache(&map, [].into());
 
-    //         map.insert(&0u32, &long_str);
-    //         map.insert(&3u32, &medium_str);
-    //         map.insert(&5u32, &short_str);
+        assert_eq!(None, map.get(&1));
+        assert_eq!(None, map.get(&2));
+        assert_eq!(None, map.get(&3));
+        assert_eq!(None, map.get(&4));
 
-    //         assert_eq!(map.get(&0).as_ref(), Some(&long_str));
-    //         assert_eq!(map.get(&3).as_ref(), Some(&medium_str));
-    //         assert_eq!(map.get(&5).as_ref(), Some(&short_str));
-    //     }
+        check_cache(&map, [].into());
 
-    //     #[test]
-    //     fn insert_should_replace_previous_value() {
-    //         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
-    //         assert!(map.is_empty());
+        assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
+        assert_eq!(None, map.insert(&2, &Array([2u8, 1])));
+        assert_eq!(None, map.insert(&3, &Array([3u8, 1])));
+        assert_eq!(3, map.len());
 
-    //         let long_str = test_utils::str_val(50000);
-    //         let short_str = test_utils::str_val(50);
+        check_cache(&map, [].into());
 
-    //         assert!(map.insert(&0u32, &long_str).is_none());
-    //         let prev = map.insert(&0u32, &short_str).unwrap();
+        assert_eq!(Some(Array([1u8, 1])), map.get(&1));
+        check_cache(&map, [
+            (1, Array([1u8, 1])),
+        ].into());
 
-    //         assert_eq!(&prev, &long_str);
-    //         assert_eq!(map.get(&0).as_ref(), Some(&short_str));
-    //     }
+        assert_eq!(Some(Array([2u8, 1])), map.get(&2));
+        check_cache(&map, [
+            (1, Array([1u8, 1])),
+            (2, Array([2u8, 1])),
+        ].into());
 
-    //     #[test]
-    //     fn remove_test() {
-    //         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
+        assert_eq!(Some(Array([3u8, 1])), map.get(&3));
+        check_cache(&map, [
+            (2, Array([2u8, 1])),
+            (3, Array([3u8, 1])),
+        ].into());
 
-    //         let long_str = test_utils::str_val(50000);
-    //         let medium_str = test_utils::str_val(5000);
-    //         let short_str = test_utils::str_val(50);
+        assert_eq!(None, map.get(&4));
+        check_cache(&map, [
+            (2, Array([2u8, 1])),
+            (3, Array([3u8, 1])),
+        ].into());
 
-    //         map.insert(&0u32, &long_str);
-    //         map.insert(&3u32, &medium_str);
-    //         map.insert(&5u32, &short_str);
+        assert_eq!(Some(Array([1u8, 1])), map.insert(&1, &Array([1u8, 10])));
+        assert_eq!(Some(Array([2u8, 1])), map.insert(&2, &Array([2u8, 10])));
+        assert_eq!(3, map.len());
+        check_cache(&map, [
+            (3, Array([3u8, 1])),
+        ].into());
 
-    //         assert_eq!(map.remove(&3), Some(medium_str));
+        assert_eq!(Some(Array([2u8, 10])), map.get(&2));
+        check_cache(&map, [
+            (3, Array([3u8, 1])),
+            (2, Array([2u8, 10])),
+        ].into());
 
-    //         assert_eq!(map.get(&0).as_ref(), Some(&long_str));
-    //         assert_eq!(map.get(&5).as_ref(), Some(&short_str));
-    //         assert_eq!(map.len(), 2);
-    //     }
+        assert_eq!(Some(Array([1u8, 10])), map.get(&1));
+        check_cache(&map, [
+            (2, Array([2u8, 10])),
+            (1, Array([1u8, 10])),
+        ].into());
 
-    //     #[test]
-    //     fn iter_test() {
-    //         let mut map = CachedUnboundedMap::new(DefaultMemoryImpl::default());
+        assert_eq!(Some(Array([3u8, 1])), map.get(&3));
+        check_cache(&map, [
+            (1, Array([1u8, 10])),
+            (3, Array([3u8, 1])),
+        ].into());
 
-    //         let strs = [
-    //             test_utils::str_val(50),
-    //             test_utils::str_val(5000),
-    //             test_utils::str_val(50000),
-    //         ];
+        assert_eq!(None, map.get(&4));
+        check_cache(&map, [
+            (1, Array([1u8, 10])),
+            (3, Array([3u8, 1])),
+        ].into());
 
-    //         for i in 0..100u32 {
-    //             map.insert(&i, &strs[i as usize % strs.len()]);
-    //         }
+        assert_eq!(Some(Array([1u8, 10])), map.remove(&1));
+        assert_eq!(None, map.remove(&1));
+        check_cache(&map, [
+            (3, Array([3u8, 1])),
+            ].into());
+            assert_eq!(None, map.get(&1));
 
-    //         assert!(map.iter().all(|(k, v)| v == strs[k as usize % strs.len()]))
-    //     }
+        assert_eq!(Some(Array([2u8, 10])), map.remove(&2));
+        assert_eq!(None, map.remove(&2));
+        check_cache(&map, [
+            (3, Array([3u8, 1])),
+            ].into());
+            assert_eq!(None, map.get(&2));
+
+        assert_eq!(None, map.get(&2));
+        assert_eq!(Some(Array([3u8, 1])), map.get(&3));
+        assert_eq!(None, map.get(&4));
+    }
+
+    #[test]
+    fn should_clear() {
+        let cache_items = 2;
+        let mut map: CachedStableUnboundedMap<u32, Array<2>> =
+        CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(123), cache_items);
+
+        assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
+        assert_eq!(None, map.insert(&2, &Array([2u8, 1])));
+        assert_eq!(None, map.insert(&3, &Array([3u8, 1])));
+
+        assert_eq!(Some(Array([1u8, 1])), map.get(&1));
+        assert_eq!(Some(Array([2u8, 1])), map.get(&2));
+        check_cache(&map, [
+            (1, Array([1u8, 1])),
+            (2, Array([2u8, 1])),
+        ].into());
+
+        map.clear();
+        
+        assert_eq!(0, map.len());
+
+        check_cache(&map, [].into());
+
+    }
+
+    fn check_cache(map: &CachedStableUnboundedMap<u32, Array<2>>, expected_cache: HashMap<u32, Array<2>>) {
+        let cache = map.cache.borrow();
+        assert_eq!(cache.cache, expected_cache);
+        assert_eq!(cache.cache.len(), cache.cache_keys.len());
+        assert!(cache.cache.len() <= cache.cache_max_items)
+    }
 }
+
