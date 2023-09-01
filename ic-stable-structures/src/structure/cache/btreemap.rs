@@ -6,14 +6,16 @@ use std::{
 
 use ic_exports::stable_structures::BoundedStorable;
 
-use crate::structure::{stable_storage::StableBTreeMap, BTreeMapStructure};
+use crate::structure::BTreeMapStructure;
 
-pub struct CachedStableBTreeMap<K, V>
+/// A LRU Cache for BTreeMapStructures
+pub struct CachedBTreeMap<K, V, MAP>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
+    MAP: BTreeMapStructure<K, V>,
 {
-    inner: StableBTreeMap<K, V>,
+    inner: MAP,
     cache: RefCell<Cache<K, V>>,
 }
 
@@ -33,21 +35,37 @@ impl<K, V> Cache<K, V> {
     }
 }
 
-impl<K, V> CachedStableBTreeMap<K, V>
+impl<K, V, MAP> CachedBTreeMap<K, V, MAP>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
+    MAP: BTreeMapStructure<K, V>,
 {
-    /// Create new instance of key-value storage.
-    pub fn new(inner: StableBTreeMap<K, V>, cache_items: usize) -> Self {
+    /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
+    pub fn new(inner: MAP, max_cache_items: usize) -> Self {
         Self {
             inner,
-            cache: RefCell::new(Cache::new(cache_items)),
+            cache: RefCell::new(Cache::new(max_cache_items)),
         }
     }
 
-    /// Return value associated with `key` from stable memory.
-    pub fn get(&self, key: &K) -> Option<V> {
+    #[inline]
+    fn remove_oldest_from_cache(&self, cache: &mut Cache<K, V>) {
+        if cache.cache_keys.len() > cache.cache_max_items {
+            if let Some(key) = cache.cache_keys.pop_front() {
+                cache.cache.remove(&key);
+            };
+        }
+    }
+}
+
+impl<K, V, MAP> BTreeMapStructure<K, V> for CachedBTreeMap<K, V, MAP>
+where
+    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    V: BoundedStorable + Clone,
+    MAP: BTreeMapStructure<K, V>,
+{
+    fn get(&self, key: &K) -> Option<V> {
         let cache = self.cache.borrow();
         match cache.cache.get(key) {
             Some(value) => Some(value.clone()),
@@ -69,29 +87,11 @@ where
         }
     }
 
-    #[inline]
-    fn remove_oldest_from_cache(&self, cache: &mut Cache<K, V>) {
-        if cache.cache_keys.len() > cache.cache_max_items {
-            if let Some(key) = cache.cache_keys.pop_front() {
-                cache.cache.remove(&key);
-            };
-        }
-    }
-
-    /// Add or replace value associated with `key` in stable memory.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+    fn insert(&mut self, key: K, value: V) -> Option<V> {
         self.inner.insert(key, value)
     }
 
-    /// Remove value associated with `key` from stable memory.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn remove(&mut self, key: &K) -> Option<V> {
+    fn remove(&mut self, key: &K) -> Option<V> {
         {
             let mut cache = self.cache.borrow_mut();
             if cache.cache.remove(key).is_some() {
@@ -103,23 +103,15 @@ where
         self.inner.remove(key)
     }
 
-    // /// Iterate over all currently stored key-value pairs.
-    // pub fn iter(&self) -> btreemap::Iter<'_, K, V, Memory> {
-    //     self.0.iter()
-    // }
-
-    /// Count of items in the map.
-    pub fn len(&self) -> u64 {
+    fn len(&self) -> u64 {
         self.inner.len()
     }
 
-    /// Is the map empty.
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
 
-    /// Remove all entries from the map.
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         {
             let mut cache = self.cache.borrow_mut();
             cache.cache.clear();
@@ -131,6 +123,8 @@ where
 
 #[cfg(test)]
 mod tests {
+
+    use crate::StableBTreeMap;
 
     use super::*;
     use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable, Storable};
@@ -160,7 +154,7 @@ mod tests {
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        let mut map = CachedStableBTreeMap::<u32, Array<2>>::new(
+        let mut map = CachedBTreeMap::<u32, Array<2>, _>::new(
             StableBTreeMap::new(MemoryId::new(123)),
             cache_items,
         );

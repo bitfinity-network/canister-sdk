@@ -40,12 +40,11 @@ where
     V: SlicedStorable + Clone,
     MAP: UnboundedMapStructure<K, V>,
 {
-    /// Create new instance of the map with a fixed number of max cached elements.
-    ///
-    pub fn new(inner: MAP, cache_items: usize) -> Self {
+    /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
+    pub fn new(inner: MAP, max_cache_items: usize) -> Self {
         Self {
             inner,
-            cache: RefCell::new(Cache::new(cache_items)),
+            cache: RefCell::new(Cache::new(max_cache_items)),
         }
     }
 

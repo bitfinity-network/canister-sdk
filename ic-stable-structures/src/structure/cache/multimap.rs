@@ -36,8 +36,7 @@ where
     V: BoundedStorable + Clone,
     MAP: MultimapStructure<K1, K2, V>,
 {
-    /// Create a new instance of a `StableMultimap`.
-    /// All keys and values byte representations should be less then related `..._max_size` arguments.
+    /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
     pub fn new(inner: MAP, cache_max_items: usize) -> Self {
         Self {
             inner,
