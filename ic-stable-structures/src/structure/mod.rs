@@ -16,7 +16,8 @@ pub use stable_storage::*;
 pub use heap::{
     HeapBTreeMap as StableBTreeMap, HeapCell as StableCell, HeapLog as StableLog,
     HeapMultimap as StableMultimap, HeapMultimapIter as StableMultimapIter,
-    HeapUnboundedMap as StableUnboundedMap, HeapVec as StableVec,
+    HeapUnboundedIter as StableUnboundedIter, HeapUnboundedMap as StableUnboundedMap,
+    HeapVec as StableVec,
 };
 
 pub trait BTreeMapStructure<K, V> {

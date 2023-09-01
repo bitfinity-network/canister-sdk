@@ -25,8 +25,8 @@ where
     }
 
     /// List all currently stored key-value pairs.
-    pub fn iter(&self) -> BTreeMapIter<'_, K, V> {
-        self.0.iter()
+    pub fn iter(&self) -> HeapUnboundedIter<'_, K, V> {
+        HeapUnboundedIter(self.0.iter())
     }
 }
 
@@ -60,6 +60,25 @@ where
     }
 }
 
+/// Iterator over values in unbounded map.
+/// Constructs a value from chunks on each `next()` call.
+pub struct HeapUnboundedIter<'a, K, V>(BTreeMapIter<'a, K, V>)
+where
+    K: BoundedStorable + Clone,
+    V: SlicedStorable + Clone;
+
+impl<'a, K, V> Iterator for HeapUnboundedIter<'a, K, V>
+where
+    K: BoundedStorable + Clone,
+    V: SlicedStorable + Clone,
+{
+    type Item = (K, V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(k, v)| (k.clone(), v.clone()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -87,9 +106,9 @@ mod tests {
 
         let entries: HashMap<_, _> = map.iter().collect();
         let expected = HashMap::from_iter([
-            (&0u32, &long_str),
-            (&3u32, &medium_str),
-            (&5u32, &short_str),
+            (0u32, long_str),
+            (3u32, medium_str.clone()),
+            (5u32, short_str),
         ]);
         assert_eq!(entries, expected);
 
