@@ -1,6 +1,5 @@
 use std::{
     cell::RefCell,
-    collections::{HashMap, VecDeque},
     hash::Hash,
 };
 
@@ -105,90 +104,46 @@ mod tests {
     fn should_get_and_insert() {
         let cache_items = 2;
         let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(123), cache_items);
-
-        check_cache(&map, [].into());
+            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(100), cache_items);
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));
         assert_eq!(None, map.get(&3));
         assert_eq!(None, map.get(&4));
 
-        check_cache(&map, [].into());
-
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
         assert_eq!(None, map.insert(3, Array([3u8, 1])));
         assert_eq!(3, map.len());
 
-        check_cache(&map, [].into());
-
         assert_eq!(Some(Array([1u8, 1])), map.get(&1));
-        check_cache(&map, [
-            (1, Array([1u8, 1])),
-        ].into());
 
         assert_eq!(Some(Array([2u8, 1])), map.get(&2));
-        check_cache(&map, [
-            (1, Array([1u8, 1])),
-            (2, Array([2u8, 1])),
-        ].into());
 
         assert_eq!(Some(Array([3u8, 1])), map.get(&3));
-        check_cache(&map, [
-            (2, Array([2u8, 1])),
-            (3, Array([3u8, 1])),
-        ].into());
 
         assert_eq!(None, map.get(&4));
-        check_cache(&map, [
-            (2, Array([2u8, 1])),
-            (3, Array([3u8, 1])),
-        ].into());
 
         assert_eq!(Some(Array([1u8, 1])), map.insert(1, Array([1u8, 10])));
         assert_eq!(Some(Array([2u8, 1])), map.insert(2, Array([2u8, 10])));
         assert_eq!(3, map.len());
-        check_cache(&map, [
-            (3, Array([3u8, 1])),
-        ].into());
 
         assert_eq!(Some(Array([2u8, 10])), map.get(&2));
-        check_cache(&map, [
-            (3, Array([3u8, 1])),
-            (2, Array([2u8, 10])),
-        ].into());
 
         assert_eq!(Some(Array([1u8, 10])), map.get(&1));
-        check_cache(&map, [
-            (2, Array([2u8, 10])),
-            (1, Array([1u8, 10])),
-        ].into());
 
         assert_eq!(Some(Array([3u8, 1])), map.get(&3));
-        check_cache(&map, [
-            (1, Array([1u8, 10])),
-            (3, Array([3u8, 1])),
-        ].into());
 
         assert_eq!(None, map.get(&4));
-        check_cache(&map, [
-            (1, Array([1u8, 10])),
-            (3, Array([3u8, 1])),
-        ].into());
 
         assert_eq!(Some(Array([1u8, 10])), map.remove(&1));
         assert_eq!(None, map.remove(&1));
-        check_cache(&map, [
-            (3, Array([3u8, 1])),
-            ].into());
+
             assert_eq!(None, map.get(&1));
 
         assert_eq!(Some(Array([2u8, 10])), map.remove(&2));
         assert_eq!(None, map.remove(&2));
-        check_cache(&map, [
-            (3, Array([3u8, 1])),
-            ].into());
+
             assert_eq!(None, map.get(&2));
 
         assert_eq!(None, map.get(&2));
@@ -200,7 +155,7 @@ mod tests {
     fn should_clear() {
         let cache_items = 2;
         let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(123), cache_items);
+            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(101), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
@@ -208,16 +163,13 @@ mod tests {
 
         assert_eq!(Some(Array([1u8, 1])), map.get(&1));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2));
-        check_cache(&map, [
-            (1, Array([1u8, 1])),
-            (2, Array([2u8, 1])),
-        ].into());
 
         map.clear();
         
         assert_eq!(0, map.len());
 
-        check_cache(&map, [].into());
+        assert_eq!(None, map.get(&1));
+        assert_eq!(None, map.get(&2));
 
     }
 
@@ -225,8 +177,7 @@ mod tests {
     fn should_replace_old_value() {
         let cache_items = 2;
         let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(123), cache_items);
-
+            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(102), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
@@ -236,69 +187,13 @@ mod tests {
         assert_eq!(Some(Array([1u8, 1])), map.get(&1));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2));
 
-        check_cache(&map, [
-            (1, Array([1u8, 1])),
-            (2, Array([2u8, 1])),
-        ].into());
-
         assert_eq!(Some(Array([1u8, 1])), map.insert(1, Array([1u8, 10])));
         assert_eq!(Some(Array([3u8, 1])), map.insert(3, Array([3u8, 10])));
-        check_cache(&map, [
-            (2, Array([2u8, 1])),
-        ].into());
 
         assert_eq!(Some(Array([1u8, 10])), map.get(&1));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2));
         assert_eq!(Some(Array([3u8, 10])), map.get(&3));
-        check_cache(&map, [
-            (2, Array([2u8, 1])),
-            (3, Array([3u8, 10])),
-        ].into());
 
     }
 
-    #[test]
-    fn should_cache_least_accessed_element() {
-        let cache_items = 3;
-        let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(123), cache_items);
-
-        assert_eq!(None, map.insert(1, Array([1u8, 1])));
-        assert_eq!(None, map.insert(2, Array([2u8, 1])));
-        assert_eq!(None, map.insert(3, Array([3u8, 1])));
-        assert_eq!(None, map.insert(4, Array([4u8, 1])));
-        assert_eq!(None, map.insert(5, Array([5u8, 1])));
-
-        map.get(&1);
-        map.get(&2);
-        map.get(&3);
-        map.get(&1);
-
-        for _ in 0..100 {
-            map.get(&5);
-        }
-
-        check_cache(&map, [
-            (1, Array([1u8, 1])),
-            (3, Array([3u8, 1])),
-            (5, Array([5u8, 1])),
-        ].into());
-
-
-    }
-
-    fn check_cache(map: &CachedStableBTreeMap<u32, Array<2>>, expected_cache: HashMap<u32, Array<2>>) {
-        // let cache = map.cache.borrow();
-
-        // println!("------------------------------------");
-        // let mut count = 0;
-        // for (k, v) in cache.iter() {
-        //     println!("Found in cache: [{k}, {v:?}]");
-        //     count += 1;
-        //     // assert_eq!(Some(v), expected_cache.get(k));
-        // }
-
-        // assert_eq!(count, expected_cache.len());
-        
-    }
 }
