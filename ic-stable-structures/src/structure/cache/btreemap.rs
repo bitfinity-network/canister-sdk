@@ -4,18 +4,16 @@ use std::{
     hash::Hash,
 };
 
-use ic_exports::stable_structures::BoundedStorable;
+use crate::structure::*;
+use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
 
-use crate::structure::BTreeMapStructure;
-
-/// A LRU Cache for BTreeMapStructures
-pub struct CachedBTreeMap<K, V, MAP>
+/// A LRU Cache for StableBTreeMap
+pub struct CachedStableBTreeMap<K, V>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
-    MAP: BTreeMapStructure<K, V>,
 {
-    inner: MAP,
+    inner: StableBTreeMap<K, V>,
     cache: RefCell<Cache<K, V>>,
 }
 
@@ -35,14 +33,18 @@ impl<K, V> Cache<K, V> {
     }
 }
 
-impl<K, V, MAP> CachedBTreeMap<K, V, MAP>
+impl<K, V> CachedStableBTreeMap<K, V>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
-    MAP: BTreeMapStructure<K, V>,
 {
     /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
-    pub fn new(inner: MAP, max_cache_items: usize) -> Self {
+    pub fn new(memory_id: MemoryId, max_cache_items: usize) -> Self {
+        Self::with_map(StableBTreeMap::new(memory_id), max_cache_items)
+    }
+
+    /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
+    pub fn with_map(inner: StableBTreeMap<K, V>, max_cache_items: usize) -> Self {
         Self {
             inner,
             cache: RefCell::new(Cache::new(max_cache_items)),
@@ -59,11 +61,10 @@ where
     }
 }
 
-impl<K, V, MAP> BTreeMapStructure<K, V> for CachedBTreeMap<K, V, MAP>
+impl<K, V> BTreeMapStructure<K, V> for CachedStableBTreeMap<K, V>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
-    MAP: BTreeMapStructure<K, V>,
 {
     fn get(&self, key: &K) -> Option<V> {
         let cache = self.cache.borrow();
@@ -124,8 +125,6 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::StableBTreeMap;
-
     use super::*;
     use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable, Storable};
     use std::borrow::Cow;
@@ -154,10 +153,8 @@ mod tests {
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        let mut map = CachedBTreeMap::<u32, Array<2>, _>::new(
-            StableBTreeMap::new(MemoryId::new(123)),
-            cache_items,
-        );
+        let mut map: CachedStableBTreeMap<u32, Array<2>> =
+            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(123), cache_items);
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));

@@ -2,19 +2,18 @@ use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
 
+use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::BoundedStorable;
 
-use crate::structure::stable_storage::SlicedStorable;
-use crate::structure::UnboundedMapStructure;
+use crate::structure::*;
 
-/// A LRU Cache for UnboundedStructures
-pub struct CachedUnboundedMap<K, V, MAP>
+/// A LRU Cache for StableUnboundedMaps
+pub struct CachedStableUnboundedMap<K, V>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
-    MAP: UnboundedMapStructure<K, V>,
 {
-    inner: MAP,
+    inner: StableUnboundedMap<K, V>,
     cache: RefCell<Cache<K, V>>,
 }
 
@@ -34,14 +33,18 @@ impl<K, V> Cache<K, V> {
     }
 }
 
-impl<K, V, MAP> CachedUnboundedMap<K, V, MAP>
+impl<K, V> CachedStableUnboundedMap<K, V>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
-    MAP: UnboundedMapStructure<K, V>,
 {
-    /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
-    pub fn new(inner: MAP, max_cache_items: usize) -> Self {
+    /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
+    pub fn new(memory_id: MemoryId, max_cache_items: usize) -> Self {
+        Self::with_map(StableUnboundedMap::new(memory_id), max_cache_items)
+    }
+
+    /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
+    pub fn with_map(inner: StableUnboundedMap<K, V>, max_cache_items: usize) -> Self {
         Self {
             inner,
             cache: RefCell::new(Cache::new(max_cache_items)),
@@ -58,11 +61,10 @@ where
     }
 }
 
-impl<K, V, MAP> UnboundedMapStructure<K, V> for CachedUnboundedMap<K, V, MAP>
+impl<K, V> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
-    MAP: UnboundedMapStructure<K, V>,
 {
     fn get(&self, key: &K) -> Option<V> {
         let cache = self.cache.borrow();
@@ -125,15 +127,13 @@ mod tests {
     use ic_exports::stable_structures::memory_manager::MemoryId;
 
     use super::*;
-    use crate::{test_utils::StringValue, StableUnboundedMap};
+    use crate::test_utils::StringValue;
 
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        let mut map = CachedUnboundedMap::<u32, StringValue, _>::new(
-            StableUnboundedMap::new(MemoryId::new(123)),
-            cache_items,
-        );
+        let mut map =
+            CachedStableUnboundedMap::<u32, StringValue>::new(MemoryId::new(123), cache_items);
 
         assert!(map.get(&1).is_none());
         assert!(map.get(&2).is_none());

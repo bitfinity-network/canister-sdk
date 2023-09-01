@@ -2,19 +2,18 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::hash::Hash;
 
-use ic_exports::stable_structures::BoundedStorable;
+use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
 
-use crate::structure::{heap, MultimapStructure};
+use crate::structure::*;
 
-/// A LRU Cache for MultimapStructures
-pub struct CachedMultimap<K1, K2, V, MAP>
+/// A LRU Cache for StableMultimaps
+pub struct CachedStableMultimap<K1, K2, V>
 where
     K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
-    MAP: MultimapStructure<K1, K2, V>,
 {
-    inner: MAP,
+    inner: StableMultimap<K1, K2, V>,
     cache: RefCell<Cache<K1, K2, V>>,
 }
 
@@ -29,15 +28,19 @@ where
     cache_max_items: usize,
 }
 
-impl<K1, K2, V, MAP> CachedMultimap<K1, K2, V, MAP>
+impl<K1, K2, V> CachedStableMultimap<K1, K2, V>
 where
     K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
-    MAP: MultimapStructure<K1, K2, V>,
 {
-    /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
-    pub fn new(inner: MAP, cache_max_items: usize) -> Self {
+    /// Create new instance of the CachedStableMultimap with a fixed number of max cached elements.
+    pub fn new(memory_id: MemoryId, max_cache_items: usize) -> Self {
+        Self::with_map(StableMultimap::new(memory_id), max_cache_items)
+    }
+
+    /// Create new instance of the CachedStableMultimap with a fixed number of max cached elements.
+    pub fn with_map(inner: StableMultimap<K1, K2, V>, cache_max_items: usize) -> Self {
         Self {
             inner,
             cache: RefCell::new(Cache {
@@ -58,12 +61,11 @@ where
     }
 }
 
-impl<K1, K2, V, MAP> MultimapStructure<K1, K2, V> for CachedMultimap<K1, K2, V, MAP>
+impl<K1, K2, V> MultimapStructure<K1, K2, V> for CachedStableMultimap<K1, K2, V>
 where
     K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
-    MAP: MultimapStructure<K1, K2, V>,
 {
     fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
         self.inner.insert(first_key, second_key, value)
@@ -143,8 +145,6 @@ mod test {
 
     use ic_exports::stable_structures::{memory_manager::MemoryId, Storable};
 
-    use crate::StableMultimap;
-
     use super::*;
 
     /// New type pattern used to implement `Storable` trait for all arrays.
@@ -186,10 +186,8 @@ mod test {
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        let mut map = CachedMultimap::<u32, u32, Array<2>, _>::new(
-            StableMultimap::new(MemoryId::new(123)),
-            cache_items,
-        );
+        let mut map =
+            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(123), cache_items);
 
         assert_eq!(None, map.get(&1, &1));
         assert_eq!(None, map.get(&1, &2));
