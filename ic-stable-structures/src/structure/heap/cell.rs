@@ -1,6 +1,7 @@
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::Storable;
 
+use crate::structure::CellStructure;
 use crate::Result;
 
 /// Stores value in heap memory, providing `get()/set()` API.
@@ -11,14 +12,14 @@ impl<T: Storable> HeapCell<T> {
     pub fn new(_memory_id: MemoryId, value: T) -> Result<Self> {
         Ok(Self(value))
     }
+}
 
-    /// Returns reference to value stored in stable memory.
-    pub fn get(&self) -> &T {
+impl<T: Storable> CellStructure<T> for HeapCell<T> {
+    fn get(&self) -> &T {
         &self.0
     }
 
-    /// Updates value in stable memory.
-    pub fn set(&mut self, value: T) -> Result<()> {
+    fn set(&mut self, value: T) -> Result<()> {
         self.0 = value;
         Ok(())
     }

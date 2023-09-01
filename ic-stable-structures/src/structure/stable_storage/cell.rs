@@ -2,6 +2,7 @@ use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{cell, Storable};
 
 use super::get_memory_by_id;
+use crate::structure::CellStructure;
 use crate::{Memory, Result};
 
 /// Stores value in stable memory, providing `get()/set()` API.
@@ -14,14 +15,14 @@ impl<T: Storable> StableCell<T> {
         let cell = cell::Cell::init(memory, value)?;
         Ok(Self(cell))
     }
+}
 
-    /// Returns reference to value stored in stable memory.
-    pub fn get(&self) -> &T {
+impl<T: Storable> CellStructure<T> for StableCell<T> {
+    fn get(&self) -> &T {
         self.0.get()
     }
 
-    /// Updates value in stable memory.
-    pub fn set(&mut self, value: T) -> Result<()> {
+    fn set(&mut self, value: T) -> Result<()> {
         self.0.set(value)?;
         Ok(())
     }

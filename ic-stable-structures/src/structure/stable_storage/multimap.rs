@@ -5,7 +5,7 @@ use ic_exports::stable_structures::{
     btreemap, memory_manager::MemoryId, BoundedStorable, StableBTreeMap, Storable,
 };
 
-use crate::Memory;
+use crate::{structure::MultimapStructure, Memory};
 
 // Keys memory layout:
 //
@@ -48,62 +48,6 @@ where
         Self(StableBTreeMap::init(memory))
     }
 
-    /// Insert a new value into the map.
-    /// Inserting a value with the same keys as an existing value
-    /// will result in the old value being overwritten.
-    ///
-    /// # Preconditions:
-    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
-    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
-    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
-        let key = KeyPair::new(first_key, second_key);
-        self.0.insert(key, value.into()).map(|v| v.into_inner())
-    }
-
-    /// Get a value for the given keys.
-    /// If byte representation length of any key exceeds max size, `None` will be returned.
-    ///
-    /// # Preconditions:
-    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
-    pub fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
-        let key = KeyPair::new(first_key, second_key);
-        self.0.get(&key).map(|v| v.into_inner())
-    }
-
-    /// Remove a specific value and return it.
-    ///
-    /// # Preconditions:
-    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
-    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V> {
-        let key = KeyPair::new(first_key, second_key);
-
-        self.0.remove(&key).map(Value::into_inner)
-    }
-
-    /// Remove all values for the partial key
-    ///
-    /// # Preconditions:
-    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    pub fn remove_partial(&mut self, first_key: &K1) -> bool {
-        let min_key = KeyPair::<K1, K2>::min_key(first_key);
-        let max_key = KeyPair::<K1, K2>::max_key(first_key);
-
-        let keys: Vec<_> = self
-            .0
-            .range(min_key..=max_key)
-            .map(|(keys, _)| keys)
-            .collect();
-
-        let mut found = false;
-        for k in keys {
-            found = self.0.remove(&k).is_some() || found;
-        }
-        found
-    }
-
     /// Get a range of key value pairs based on the root key.
     ///
     /// # Preconditions:
@@ -120,18 +64,56 @@ where
     pub fn iter(&self) -> StableMultimapIter<K1, K2, V> {
         StableMultimapIter::new(self.0.iter())
     }
+}
 
-    /// Item count.
-    pub fn len(&self) -> usize {
+impl<K1, K2, V> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V>
+where
+    K1: BoundedStorable,
+    K2: BoundedStorable,
+    V: BoundedStorable,
+{
+    fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
+        let key = KeyPair::new(first_key, second_key);
+        self.0.insert(key, value.into()).map(|v| v.into_inner())
+    }
+
+    fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
+        let key = KeyPair::new(first_key, second_key);
+        self.0.get(&key).map(|v| v.into_inner())
+    }
+
+    fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V> {
+        let key = KeyPair::new(first_key, second_key);
+
+        self.0.remove(&key).map(Value::into_inner)
+    }
+
+    fn remove_partial(&mut self, first_key: &K1) -> bool {
+        let min_key = KeyPair::<K1, K2>::min_key(first_key);
+        let max_key = KeyPair::<K1, K2>::max_key(first_key);
+
+        let keys: Vec<_> = self
+            .0
+            .range(min_key..=max_key)
+            .map(|(keys, _)| keys)
+            .collect();
+
+        let mut found = false;
+        for k in keys {
+            found = self.0.remove(&k).is_some() || found;
+        }
+        found
+    }
+
+    fn len(&self) -> usize {
         self.0.len() as usize
     }
 
-    /// Is the map empty.
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         let keys: Vec<_> = self.0.iter().map(|(k, _)| k).collect();
         for key in keys {
             self.0.remove(&key);

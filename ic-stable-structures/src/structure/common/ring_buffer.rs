@@ -3,19 +3,20 @@ use std::cmp::min;
 use std::mem::size_of;
 use std::thread::LocalKey;
 
+use crate::structure::{CellStructure, VecStructure};
 use crate::{BoundedStorable, Storable};
 use crate::{StableCell, StableVec};
 
 /// Ring buffer indices state
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Indices {
+pub struct StableRingBufferIndices {
     /// Index after the latest element in the buffer
     pub(crate) latest: u64,
     /// Capacity of the buffer
     pub(crate) capacity: u64,
 }
 
-impl Indices {
+impl StableRingBufferIndices {
     /// Create a new Indices with the provided capacity
     pub fn new(capacity: u64) -> Self {
         Self {
@@ -52,7 +53,7 @@ impl Indices {
     }
 }
 
-impl Storable for Indices {
+impl Storable for StableRingBufferIndices {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         let mut buf = Vec::with_capacity(Self::MAX_SIZE as _);
         buf.extend_from_slice(&self.latest.to_le_bytes());
@@ -72,7 +73,7 @@ impl Storable for Indices {
     }
 }
 
-impl BoundedStorable for Indices {
+impl BoundedStorable for StableRingBufferIndices {
     const MAX_SIZE: u32 = 2 * (size_of::<u64>() as u32);
 
     const IS_FIXED_SIZE: bool = true;
@@ -84,14 +85,14 @@ pub struct StableRingBuffer<T: BoundedStorable + Clone + 'static> {
     /// Vector with elements
     data: &'static LocalKey<RefCell<StableVec<T>>>,
     /// Indices that specify where are the first and last elements in the buffer
-    indices: &'static LocalKey<RefCell<StableCell<Indices>>>,
+    indices: &'static LocalKey<RefCell<StableCell<StableRingBufferIndices>>>,
 }
 
 impl<T: BoundedStorable + Clone + 'static> StableRingBuffer<T> {
     /// Creates new ring buffer
     pub fn new(
         data: &'static LocalKey<RefCell<StableVec<T>>>,
-        indices: &'static LocalKey<RefCell<StableCell<Indices>>>,
+        indices: &'static LocalKey<RefCell<StableCell<StableRingBufferIndices>>>,
     ) -> Self {
         Self { data, indices }
     }
@@ -190,14 +191,17 @@ impl<T: BoundedStorable + Clone + 'static> StableRingBuffer<T> {
         self.data.with(|data| data.borrow().get(index))
     }
 
-    fn with_indices<R>(&self, f: impl Fn(&Indices) -> R) -> R {
+    fn with_indices<R>(&self, f: impl Fn(&StableRingBufferIndices) -> R) -> R {
         self.indices.with(|i| {
             let indices = i.borrow();
             f(indices.get())
         })
     }
 
-    fn with_indices_data_mut<R>(&mut self, f: impl Fn(&mut Indices, &mut StableVec<T>) -> R) -> R {
+    fn with_indices_data_mut<R>(
+        &mut self,
+        f: impl Fn(&mut StableRingBufferIndices, &mut StableVec<T>) -> R,
+    ) -> R {
         self.indices.with(|i| {
             let mut indices = i.borrow().get().clone();
             let result = self.data.with(|d| {
@@ -235,7 +239,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn next_should_panic_on_zero_capacity() {
-        let indices = Indices {
+        let indices = StableRingBufferIndices {
             capacity: 0,
             latest: 0,
         };
@@ -244,7 +248,7 @@ mod tests {
 
     #[test]
     fn next_should_work() {
-        let indices = Indices {
+        let indices = StableRingBufferIndices {
             capacity: 5,
             latest: 0,
         };
@@ -258,20 +262,20 @@ mod tests {
 
     #[test]
     fn get_index_from_end_should_end() {
-        let indices = Indices {
+        let indices = StableRingBufferIndices {
             capacity: 0,
             latest: 0,
         };
         assert_eq!(None, indices.index_from_end(0));
 
-        let indices = Indices {
+        let indices = StableRingBufferIndices {
             latest: 0,
             capacity: 1,
         };
         assert_eq!(Some(0), indices.index_from_end(0));
         assert_eq!(None, indices.index_from_end(1));
 
-        let indices = Indices {
+        let indices = StableRingBufferIndices {
             latest: 0,
             capacity: 2,
         };
@@ -279,7 +283,7 @@ mod tests {
         assert_eq!(Some(1), indices.index_from_end(1));
         assert_eq!(None, indices.index_from_end(2));
 
-        let indices = Indices {
+        let indices = StableRingBufferIndices {
             latest: 1,
             capacity: 2,
         };
@@ -287,7 +291,7 @@ mod tests {
         assert_eq!(Some(0), indices.index_from_end(1));
         assert_eq!(None, indices.index_from_end(2));
 
-        let indices = Indices {
+        let indices = StableRingBufferIndices {
             latest: 0,
             capacity: 3,
         };
@@ -299,11 +303,11 @@ mod tests {
 
     #[test]
     fn indices_should_be_storable() {
-        test_storable_roundtrip(&Indices {
+        test_storable_roundtrip(&StableRingBufferIndices {
             capacity: 1,
             latest: 0,
         });
-        test_storable_roundtrip(&Indices {
+        test_storable_roundtrip(&StableRingBufferIndices {
             capacity: 3,
             latest: 2,
         });
@@ -330,7 +334,7 @@ mod tests {
 
     thread_local! {
         static TEST_DATA: RefCell<StableVec<u64>> = RefCell::new(StableVec::new(TEST_DATA_MEMORY).unwrap());
-        static TEST_INDICES: RefCell<StableCell<Indices>> = RefCell::new(StableCell::new(TEST_INDICES_MEMORY, Indices { capacity: 2, latest: 0}).unwrap());
+        static TEST_INDICES: RefCell<StableCell<StableRingBufferIndices>> = RefCell::new(StableCell::new(TEST_INDICES_MEMORY, StableRingBufferIndices { capacity: 2, latest: 0}).unwrap());
     }
 
     fn with_buffer(capacity: u64, f: impl Fn(&mut StableRingBuffer<u64>)) {

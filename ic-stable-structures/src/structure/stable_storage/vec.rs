@@ -2,6 +2,7 @@ use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{vec, BoundedStorable};
 
 use super::get_memory_by_id;
+use crate::structure::VecStructure;
 use crate::{Memory, Result};
 
 pub struct StableVec<T: BoundedStorable>(vec::Vec<T, Memory>, MemoryId);
@@ -17,46 +18,41 @@ impl<T: BoundedStorable> StableVec<T> {
         ))
     }
 
-    /// Returns if vector is empty
-    pub fn is_empty(&self) -> bool {
+    /// Returns iterator over the elements in the vector
+    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
+        self.0.iter()
+    }
+}
+
+impl<T: BoundedStorable> VecStructure<T> for StableVec<T> {
+    fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    /// Removes al the values from the vector
-    pub fn clear(&mut self) -> Result<()> {
+    fn clear(&mut self) -> Result<()> {
         self.0 = vec::Vec::<T, Memory>::new(get_memory_by_id(self.1))?;
         Ok(())
     }
 
-    /// Returns the number of elements in the vector
-    pub fn len(&self) -> u64 {
+    fn len(&self) -> u64 {
         self.0.len()
     }
 
-    /// Sets the value at `index` to `item`
-    pub fn set(&mut self, index: u64, item: &T) -> Result<()> {
+    fn set(&mut self, index: u64, item: &T) -> Result<()> {
         self.0.set(index, item);
         Ok(())
     }
 
-    /// Returns the value at `index`
-    pub fn get(&self, index: u64) -> Option<T> {
+    fn get(&self, index: u64) -> Option<T> {
         self.0.get(index)
     }
 
-    /// Appends new value to the vector
-    pub fn push(&mut self, item: &T) -> Result<()> {
+    fn push(&mut self, item: &T) -> Result<()> {
         self.0.push(item).map_err(Into::into)
     }
 
-    /// Pops the last value from the vector
-    pub fn pop(&mut self) -> Option<T> {
+    fn pop(&mut self) -> Option<T> {
         self.0.pop()
-    }
-
-    /// Returns iterator over the elements in the vector
-    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
-        self.0.iter()
     }
 }
 

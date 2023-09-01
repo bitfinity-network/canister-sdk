@@ -1,6 +1,7 @@
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{log, Storable};
 
+use crate::structure::LogStructure;
 use crate::{Error, Memory, Result};
 
 /// Stores list of immutable values in stable memory.
@@ -22,40 +23,37 @@ impl<T: Storable> StableLog<T> {
         Ok(Self(Some(inner)))
     }
 
-    /// Returns reference to value stored in stable memory.
-    pub fn get(&self, index: u64) -> Option<T> {
-        self.get_inner().get(index)
-    }
-
-    /// Updates value in stable memory.
-    pub fn append(&mut self, value: T) -> Result<u64> {
-        self.mut_inner()
-            .append(&value)
-            .map_err(|_| Error::OutOfStableMemory)
-    }
-
-    /// Number of values in the log.
-    pub fn len(&self) -> u64 {
-        self.get_inner().len()
-    }
-
-    // Returns true, if the Log doesn't contain any values.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Remove all items from the log.
-    pub fn clear(&mut self) {
-        let inner = self.0.take().expect("inner log is always present");
-        let (index_mem, data_mem) = inner.into_memories();
-        self.0 = Some(log::Log::new(index_mem, data_mem));
-    }
-
     fn get_inner(&self) -> &log::Log<T, Memory, Memory> {
         self.0.as_ref().expect("inner log is always present")
     }
 
     fn mut_inner(&mut self) -> &mut log::Log<T, Memory, Memory> {
         self.0.as_mut().expect("inner log is always present")
+    }
+}
+
+impl<T: Storable> LogStructure<T> for StableLog<T> {
+    fn get(&self, index: u64) -> Option<T> {
+        self.get_inner().get(index)
+    }
+
+    fn append(&mut self, value: T) -> Result<u64> {
+        self.mut_inner()
+            .append(&value)
+            .map_err(|_| Error::OutOfStableMemory)
+    }
+
+    fn len(&self) -> u64 {
+        self.get_inner().len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    fn clear(&mut self) {
+        let inner = self.0.take().expect("inner log is always present");
+        let (index_mem, data_mem) = inner.into_memories();
+        self.0 = Some(log::Log::new(index_mem, data_mem));
     }
 }

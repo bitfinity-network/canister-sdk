@@ -2,6 +2,7 @@ use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
 use std::collections::btree_map::Iter as BTreeMapIter;
 use std::{collections::BTreeMap, hash::Hash};
 
+use crate::structure::UnboundedMapStructure;
 use crate::SlicedStorable;
 
 /// Stores key-value data in heap memory.
@@ -23,48 +24,38 @@ where
         Self(BTreeMap::new())
     }
 
-    /// Returns a value associated with `key` from heap memory.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn get(&self, key: &K) -> Option<V> {
-        self.0.get(key).cloned()
-    }
-
-    /// Add or replace a value associated with `key` in stable memory.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K1::MAX_SIZE`
-    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
-    pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
-        self.0.insert(key.clone(), value.clone())
-    }
-
-    /// Remove a value associated with `key` from stable memory.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K1::MAX_SIZE`
-    pub fn remove(&mut self, key: &K) -> Option<V> {
-        self.0.remove(key)
-    }
-
     /// List all currently stored key-value pairs.
     pub fn iter(&self) -> BTreeMapIter<'_, K, V> {
         self.0.iter()
     }
+}
 
-    /// Number of items in the map.
-    pub fn len(&self) -> u64 {
+impl<K, V> UnboundedMapStructure<K, V> for HeapUnboundedMap<K, V>
+where
+    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    V: SlicedStorable + Clone,
+{
+    fn get(&self, key: &K) -> Option<V> {
+        self.0.get(key).cloned()
+    }
+
+    fn insert(&mut self, key: &K, value: &V) -> Option<V> {
+        self.0.insert(key.clone(), value.clone())
+    }
+
+    fn remove(&mut self, key: &K) -> Option<V> {
+        self.0.remove(key)
+    }
+
+    fn len(&self) -> u64 {
         self.0.len() as u64
     }
 
-    // Returns true if there are no values in the map.
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    /// Remove all entries from the map.
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.0.clear()
     }
 }
@@ -75,7 +66,7 @@ mod tests {
 
     use ic_exports::stable_structures::memory_manager::MemoryId;
 
-    use super::HeapUnboundedMap;
+    use super::*;
     use crate::test_utils;
 
     #[test]

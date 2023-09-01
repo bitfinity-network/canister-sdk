@@ -4,18 +4,17 @@ use std::hash::Hash;
 
 use ic_exports::stable_structures::BoundedStorable;
 
-use crate::structure::stable_storage::{SlicedStorable, StableUnboundedIter, StableUnboundedMap};
+use crate::structure::stable_storage::SlicedStorable;
+use crate::structure::UnboundedMapStructure;
 
-/// Map that allows to store values with arbitrary size in stable memory.
-///
-/// Current implementation stores values in chunks with fixed size.
-/// Size of chunk should be set using the [`SlicedStorable`] trait.
-pub struct CachedUnboundedMap<K, V>
+/// A LRU Cache for UnboundedStructures
+pub struct CachedUnboundedMap<K, V, MAP>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
+    MAP: UnboundedMapStructure<K, V>,
 {
-    inner: StableUnboundedMap<K, V>,
+    inner: MAP,
     cache: RefCell<Cache<K, V>>,
 }
 
@@ -35,27 +34,38 @@ impl<K, V> Cache<K, V> {
     }
 }
 
-impl<K, V> CachedUnboundedMap<K, V>
+impl<K, V, MAP> CachedUnboundedMap<K, V, MAP>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
+    MAP: UnboundedMapStructure<K, V>,
 {
-    /// Create new instance of the map.
+    /// Create new instance of the map with a fixed number of max cached elements.
     ///
-    /// If the `memory` contains data of the map, the map reads it, and the instance
-    /// will contain the data from the `memory`.
-    pub fn new(inner: StableUnboundedMap<K, V>, cache_items: usize) -> Self {
+    pub fn new(inner: MAP, cache_items: usize) -> Self {
         Self {
             inner,
             cache: RefCell::new(Cache::new(cache_items)),
         }
     }
 
-    /// Return a value associated with `key`.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn get(&self, key: &K) -> Option<V> {
+    #[inline]
+    fn remove_oldest_from_cache(&self, cache: &mut Cache<K, V>) {
+        if cache.cache_keys.len() > cache.cache_max_items {
+            if let Some(key) = cache.cache_keys.pop_front() {
+                cache.cache.remove(&key);
+            };
+        }
+    }
+}
+
+impl<K, V, MAP> UnboundedMapStructure<K, V> for CachedUnboundedMap<K, V, MAP>
+where
+    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    V: SlicedStorable + Clone,
+    MAP: UnboundedMapStructure<K, V>,
+{
+    fn get(&self, key: &K) -> Option<V> {
         let cache = self.cache.borrow();
         match cache.cache.get(key) {
             Some(value) => Some(value.clone()),
@@ -77,28 +87,11 @@ where
         }
     }
 
-    #[inline]
-    fn remove_oldest_from_cache(&self, cache: &mut Cache<K, V>) {
-        if cache.cache_keys.len() > cache.cache_max_items {
-            if let Some(key) = cache.cache_keys.pop_front() {
-                cache.cache.remove(&key);
-            };
-        }
-    }
-
-    /// Add or replace a value associated with `key`.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
+    fn insert(&mut self, key: &K, value: &V) -> Option<V> {
         self.inner.insert(key, value)
     }
 
-    /// Remove a value associated with `key`.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn remove(&mut self, key: &K) -> Option<V> {
+    fn remove(&mut self, key: &K) -> Option<V> {
         {
             let mut cache = self.cache.borrow_mut();
             if cache.cache.remove(key).is_some() {
@@ -110,23 +103,15 @@ where
         self.inner.remove(key)
     }
 
-    /// Iterator for all stored key-value pairs.
-    pub fn iter(&self) -> StableUnboundedIter<'_, K, V> {
-        self.inner.iter()
-    }
-
-    /// Count of items in the map.
-    pub fn len(&self) -> u64 {
+    fn len(&self) -> u64 {
         self.inner.len()
     }
 
-    /// Is the map empty.
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
 
-    /// Remove all entries from the map.
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         {
             let mut cache = self.cache.borrow_mut();
             cache.cache.clear();
@@ -146,7 +131,7 @@ mod tests {
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        let mut map = CachedUnboundedMap::<u32, StringValue>::new(
+        let mut map = CachedUnboundedMap::<u32, StringValue, _>::new(
             StableUnboundedMap::new(MemoryId::new(123)),
             cache_items,
         );

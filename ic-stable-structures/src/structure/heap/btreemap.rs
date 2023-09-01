@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
 
+use crate::structure::BTreeMapStructure;
+
 /// Stores key-value data in heap memory.
 pub struct HeapBTreeMap<K, V>(BTreeMap<K, V>)
 where
@@ -18,45 +20,38 @@ where
         Self(BTreeMap::new())
     }
 
-    /// Return value associated with `key` from stable memory.
-    pub fn get(&self, key: &K) -> Option<V> {
-        self.0.get(key).cloned()
-    }
-
-    /// Add or replace value associated with `key` in stable memory.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        self.0.insert(key, value)
-    }
-
-    /// Remove value associated with `key` from stable memory.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn remove(&mut self, key: &K) -> Option<V> {
-        self.0.remove(key)
-    }
-
     /// Iterate over all currently stored key-value pairs.
     pub fn iter(&self) -> impl Iterator<Item = (K, V)> + '_ {
         self.0.iter().map(|(k, v)| (k.clone(), v.clone()))
     }
+}
 
-    /// Count of items in the map.
-    pub fn len(&self) -> u64 {
+impl<K, V> BTreeMapStructure<K, V> for HeapBTreeMap<K, V>
+where
+    K: BoundedStorable + Ord + Clone,
+    V: BoundedStorable + Clone,
+{
+    fn get(&self, key: &K) -> Option<V> {
+        self.0.get(key).cloned()
+    }
+
+    fn insert(&mut self, key: K, value: V) -> Option<V> {
+        self.0.insert(key, value)
+    }
+
+    fn remove(&mut self, key: &K) -> Option<V> {
+        self.0.remove(key)
+    }
+
+    fn len(&self) -> u64 {
         self.0.len() as u64
     }
 
-    /// Is the map empty.
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    /// Remove all entries from the map.
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.0.clear();
     }
 }

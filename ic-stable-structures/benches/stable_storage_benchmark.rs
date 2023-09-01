@@ -1,13 +1,13 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use ic_stable_structures::{MemoryId, StableMultimap, StableUnboundedMap};
+use ic_stable_structures::*;
 use rand::distributions::{Alphanumeric, DistString};
 use types::StringValue;
 
 fn multimap_benchmark(c: &mut Criterion) {
     let mut map = StableMultimap::new(MemoryId::new(0));
 
-    let key1_count = 100u128;
-    let key2_count = 100u128;
+    let key1_count = 100u64;
+    let key2_count = 100u64;
 
     c.bench_function("multimap_benchmark", |b| {
         b.iter(|| {
@@ -28,14 +28,14 @@ fn multimap_benchmark(c: &mut Criterion) {
 }
 
 fn unboundedmap_benchmark(c: &mut Criterion) {
-    let mut map = StableUnboundedMap::new(MemoryId::new(0));
+    let mut map = StableUnboundedMap::new(MemoryId::new(1));
 
-    let key1_count = 10000u128;
+    let key1_count = 10000u64;
 
-    c.bench_function("multimap_benchmark", |b| {
+    c.bench_function("unboundedmap_benchmark", |b| {
         b.iter(|| {
             for k1 in 0..key1_count {
-                let value = StringValue(Alphanumeric.sample_string(&mut rand::thread_rng(), 16));
+                let value = StringValue(Alphanumeric.sample_string(&mut rand::thread_rng(), 128));
                 map.insert(&k1, &value);
             }
             for k1 in 0..key1_count {

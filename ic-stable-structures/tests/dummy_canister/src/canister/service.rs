@@ -1,7 +1,4 @@
-use ic_stable_structures::{
-    MemoryId, StableBTreeMap, StableCell, StableLog, StableMultimap, StableRingBuffer,
-    StableRingBufferIndices, StableUnboundedMap, StableVec,
-};
+use ic_stable_structures::*;
 use std::cell::RefCell;
 
 use did::Transaction;

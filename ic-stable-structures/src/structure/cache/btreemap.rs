@@ -6,7 +6,7 @@ use std::{
 
 use ic_exports::stable_structures::BoundedStorable;
 
-use crate::structure::stable_storage::StableBTreeMap;
+use crate::structure::{stable_storage::StableBTreeMap, BTreeMapStructure};
 
 pub struct CachedStableBTreeMap<K, V>
 where

@@ -1,6 +1,6 @@
 use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
 
-use crate::Result;
+use crate::{structure::VecStructure, Result};
 
 pub struct HeapVec<T: BoundedStorable + Clone>(Vec<T>);
 
@@ -12,48 +12,42 @@ impl<T: BoundedStorable + Clone> HeapVec<T> {
         Ok(Self(vec![]))
     }
 
-    /// Returns if vector is empty
-    pub fn is_empty(&self) -> bool {
+    /// Returns iterator over the elements in the vector
+    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
+        self.0.iter().cloned()
+    }
+}
+
+impl<T: BoundedStorable + Clone> VecStructure<T> for HeapVec<T> {
+    fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    /// Removes al the values from the vector
-    pub fn clear(&mut self) -> Result<()> {
+    fn clear(&mut self) -> Result<()> {
         self.0.clear();
         Ok(())
     }
 
-    /// Returns the number of elements in the vector
-    pub fn len(&self) -> u64 {
+    fn len(&self) -> u64 {
         self.0.len() as u64
     }
 
-    /// Sets the value at `index` to `item`
-    /// WARN: this panics if index out of range
-    pub fn set(&mut self, index: u64, item: &T) -> Result<()> {
+    fn set(&mut self, index: u64, item: &T) -> Result<()> {
         self.0[index as usize] = item.clone();
         Ok(())
     }
 
-    /// Returns the value at `index`
-    pub fn get(&self, index: u64) -> Option<T> {
+    fn get(&self, index: u64) -> Option<T> {
         self.0.get(index as usize).cloned()
     }
 
-    /// Appends new value to the vector
-    pub fn push(&mut self, item: &T) -> Result<()> {
+    fn push(&mut self, item: &T) -> Result<()> {
         self.0.push(item.clone());
         Ok(())
     }
 
-    /// Pops the last value from the vector
-    pub fn pop(&mut self) -> Option<T> {
+    fn pop(&mut self) -> Option<T> {
         self.0.pop()
-    }
-
-    /// Returns iterator over the elements in the vector
-    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
-        self.0.iter().cloned()
     }
 }
 

@@ -3,6 +3,8 @@ use std::{collections::BTreeMap, hash::Hash};
 
 use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
 
+use crate::structure::MultimapStructure;
+
 /// `HeapMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
 /// The data is stored in the heap memory.
@@ -36,47 +38,6 @@ where
         Self(BTreeMap::new())
     }
 
-    /// Get a value for the given keys.
-    /// If byte representation length of any key exceeds max size, `None` will be returned.
-    pub fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
-        self.0
-            .get(first_key)
-            .and_then(|i| i.get(second_key))
-            .cloned()
-    }
-
-    /// Insert a new value into the map.
-    /// Inserting a value with the same keys as an existing value
-    /// will result in the old value being overwritten.
-    ///
-    /// # Preconditions:
-    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
-    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
-    pub fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
-        let entry = self.0.entry(first_key.clone()).or_default();
-        entry.insert(second_key.clone(), value.clone())
-    }
-
-    /// Remove a specific value and return it.
-    ///BTreeMapIter
-    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
-    pub fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V> {
-        self.0
-            .get_mut(first_key)
-            .and_then(|entry| entry.remove(second_key))
-    }
-
-    /// Remove all values for the partial key
-    ///
-    ///
-    /// # Preconditions:
-    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    pub fn remove_partial(&mut self, first_key: &K1) -> bool {
-        self.0.remove(first_key).is_some()
-    }
-
     /// Get a range of key value pairs based on the root key.
     ///
     /// # Preconditions:
@@ -95,9 +56,37 @@ where
                 .map(|i2| (i1.0.clone(), i2.0.clone(), i2.1.clone()))
         })
     }
+}
 
-    /// Items count.
-    pub fn len(&self) -> usize {
+impl<K1, K2, V> MultimapStructure<K1, K2, V> for HeapMultimap<K1, K2, V>
+where
+    K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    V: BoundedStorable + Clone,
+{
+    fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
+        self.0
+            .get(first_key)
+            .and_then(|i| i.get(second_key))
+            .cloned()
+    }
+
+    fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
+        let entry = self.0.entry(first_key.clone()).or_default();
+        entry.insert(second_key.clone(), value.clone())
+    }
+
+    fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V> {
+        self.0
+            .get_mut(first_key)
+            .and_then(|entry| entry.remove(second_key))
+    }
+
+    fn remove_partial(&mut self, first_key: &K1) -> bool {
+        self.0.remove(first_key).is_some()
+    }
+
+    fn len(&self) -> usize {
         let mut sum = 0;
         for x in self.0.iter() {
             sum += x.1.len();
@@ -105,13 +94,11 @@ where
         sum
     }
 
-    /// Is map empty.
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    /// Remove all entries from the map.
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.0.clear()
     }
 }

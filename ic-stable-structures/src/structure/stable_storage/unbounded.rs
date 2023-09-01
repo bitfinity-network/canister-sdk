@@ -7,7 +7,7 @@ use ic_exports::stable_structures::{
     btreemap, memory_manager::MemoryId, BoundedStorable, StableBTreeMap, Storable,
 };
 
-use crate::Memory;
+use crate::{structure::UnboundedMapStructure, Memory};
 
 pub type ChunkSize = u16;
 type ChunkIndex = u16;
@@ -43,11 +43,31 @@ where
         }
     }
 
-    /// Return a value associated with `key`.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn get(&self, key: &K) -> Option<V> {
+    fn insert_data(&mut self, key: &mut Key<K>, value: &V) {
+        let value_bytes = value.to_bytes();
+        let chunks = value_bytes.chunks(V::CHUNK_SIZE as _);
+
+        for chunk in chunks {
+            let chunk = Chunk::new(chunk.to_vec());
+            self.inner.insert(key.clone(), chunk);
+            key.increase_chunk_index();
+        }
+
+        self.items_count += 1;
+    }
+
+    /// Iterator for all stored key-value pairs.
+    pub fn iter(&self) -> StableUnboundedIter<'_, K, V> {
+        StableUnboundedIter(self.inner.iter().peekable())
+    }
+}
+
+impl<K, V> UnboundedMapStructure<K, V> for StableUnboundedMap<K, V>
+where
+    K: BoundedStorable,
+    V: SlicedStorable,
+{
+    fn get(&self, key: &K) -> Option<V> {
         let first_chunk_key = Key::new(key);
         let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
         let mut value_data = Vec::new();
@@ -65,11 +85,7 @@ where
         Some(V::from_bytes(value_data.into()))
     }
 
-    /// Add or replace a value associated with `key`.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
+    fn insert(&mut self, key: &K, value: &V) -> Option<V> {
         // remove old data before insert new();
         let previous_value = self.remove(key);
 
@@ -78,24 +94,7 @@ where
         previous_value
     }
 
-    fn insert_data(&mut self, key: &mut Key<K>, value: &V) {
-        let value_bytes = value.to_bytes();
-        let chunks = value_bytes.chunks(V::CHUNK_SIZE as _);
-
-        for chunk in chunks {
-            let chunk = Chunk::new(chunk.to_vec());
-            self.inner.insert(key.clone(), chunk);
-            key.increase_chunk_index();
-        }
-
-        self.items_count += 1;
-    }
-
-    /// Remove a value associated with `key`.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn remove(&mut self, key: &K) -> Option<V> {
+    fn remove(&mut self, key: &K) -> Option<V> {
         let first_chunk_key = Key::new(key);
         let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
         let keys: Vec<Key<K>> = self
@@ -121,23 +120,15 @@ where
         Some(V::from_bytes(value_bytes.into()))
     }
 
-    /// Iterator for all stored key-value pairs.
-    pub fn iter(&self) -> StableUnboundedIter<'_, K, V> {
-        StableUnboundedIter(self.inner.iter().peekable())
-    }
-
-    /// Count of items in the map.
-    pub fn len(&self) -> u64 {
+    fn len(&self) -> u64 {
         self.items_count
     }
 
-    /// Is the map empty.
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.items_count == 0
     }
 
-    /// Remove all entries from the map.
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         let keys: Vec<_> = self.inner.iter().map(|(k, _)| k).collect();
         for key in keys {
             self.inner.remove(&key);
@@ -379,7 +370,7 @@ mod tests {
 
     use ic_exports::stable_structures::memory_manager::MemoryId;
 
-    use super::StableUnboundedMap;
+    use super::*;
     use crate::test_utils;
 
     #[test]
