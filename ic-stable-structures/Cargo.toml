@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 ic-exports = { path = "../ic-exports"}
+mini-moka = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
