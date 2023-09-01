@@ -31,10 +31,13 @@ where
     pub fn with_map(inner: StableUnboundedMap<K, V>, max_cache_items: u64) -> Self {
         Self {
             inner,
-            cache: RefCell::new(CacheBuilder::default().max_capacity(max_cache_items).build()),
+            cache: RefCell::new(
+                CacheBuilder::default()
+                    .max_capacity(max_cache_items)
+                    .build(),
+            ),
         }
     }
-
 }
 
 impl<K, V> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V>
@@ -46,15 +49,13 @@ where
         let mut cache = self.cache.borrow_mut();
         match cache.get(key) {
             Some(value) => Some(value.clone()),
-            None => {
-                match self.inner.get(key) {
-                    Some(value) => {
-                        cache.insert(key.clone(), value.clone());
-                        Some(value)
-                    }
-                    None => None,
+            None => match self.inner.get(key) {
+                Some(value) => {
+                    cache.insert(key.clone(), value.clone());
+                    Some(value)
                 }
-            }
+                None => None,
+            },
         }
     }
 
@@ -63,7 +64,7 @@ where
             Some(old_value) => {
                 self.cache.borrow_mut().invalidate(key);
                 Some(old_value)
-            },
+            }
             None => None,
         }
     }
@@ -73,7 +74,7 @@ where
             Some(old_value) => {
                 self.cache.borrow_mut().invalidate(key);
                 Some(old_value)
-            },
+            }
             None => None,
         }
     }
@@ -97,7 +98,7 @@ mod tests {
     use ic_exports::stable_structures::memory_manager::MemoryId;
 
     use super::*;
-    use crate::test_utils::{StringValue, Array};
+    use crate::test_utils::{Array, StringValue};
 
     #[test]
     fn should_get_and_insert() {
@@ -146,7 +147,7 @@ mod tests {
     fn should_get_insert_and_replace() {
         let cache_items = 2;
         let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-        CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(120), cache_items);
+            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(120), cache_items);
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));
@@ -181,12 +182,12 @@ mod tests {
         assert_eq!(Some(Array([1u8, 10])), map.remove(&1));
         assert_eq!(None, map.remove(&1));
 
-            assert_eq!(None, map.get(&1));
+        assert_eq!(None, map.get(&1));
 
         assert_eq!(Some(Array([2u8, 10])), map.remove(&2));
         assert_eq!(None, map.remove(&2));
 
-            assert_eq!(None, map.get(&2));
+        assert_eq!(None, map.get(&2));
 
         assert_eq!(None, map.get(&2));
         assert_eq!(Some(Array([3u8, 1])), map.get(&3));
@@ -197,7 +198,7 @@ mod tests {
     fn should_clear() {
         let cache_items = 2;
         let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-        CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(121), cache_items);
+            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(121), cache_items);
 
         assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &Array([2u8, 1])));
@@ -207,19 +208,18 @@ mod tests {
         assert_eq!(Some(Array([2u8, 1])), map.get(&2));
 
         map.clear();
-        
+
         assert_eq!(0, map.len());
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));
-
     }
 
     #[test]
     fn should_replace_old_value() {
         let cache_items = 2;
         let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-        CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(122), cache_items);
+            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(122), cache_items);
 
         assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &Array([2u8, 1])));
@@ -235,7 +235,5 @@ mod tests {
         assert_eq!(Some(Array([1u8, 10])), map.get(&1));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2));
         assert_eq!(Some(Array([3u8, 10])), map.get(&3));
-
     }
-
 }

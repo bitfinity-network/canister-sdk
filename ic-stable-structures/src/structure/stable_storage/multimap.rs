@@ -406,9 +406,9 @@ where
 #[cfg(test)]
 mod test {
 
-    use ic_exports::stable_structures::memory_manager::MemoryId;
-    use crate::test_utils::Array;
     use super::*;
+    use crate::test_utils::Array;
+    use ic_exports::stable_structures::memory_manager::MemoryId;
 
     fn make_map(memory_id: MemoryId) -> StableMultimap<Array<2>, Array<3>, Array<6>> {
         let mut mm = StableMultimap::new(memory_id);

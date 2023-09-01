@@ -14,13 +14,9 @@ pub use stable_storage::*;
 
 #[cfg(feature = "always-heap")]
 pub use heap::{
-     HeapBTreeMap as StableBTreeMap, 
-     HeapCell as StableCell, 
-     HeapLog as StableLog, 
-     HeapMultimap as StableMultimap, 
-     HeapMultimapIter as StableMultimapIter,
-     HeapUnboundedMap as StableUnboundedMap,
-     HeapVec as StableVec,
+    HeapBTreeMap as StableBTreeMap, HeapCell as StableCell, HeapLog as StableLog,
+    HeapMultimap as StableMultimap, HeapMultimapIter as StableMultimapIter,
+    HeapUnboundedMap as StableUnboundedMap, HeapVec as StableVec,
 };
 
 pub trait BTreeMapStructure<K, V> {

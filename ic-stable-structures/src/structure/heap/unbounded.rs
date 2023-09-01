@@ -2,8 +2,8 @@ use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
 use std::collections::btree_map::Iter as BTreeMapIter;
 use std::{collections::BTreeMap, hash::Hash};
 
-use crate::structure::UnboundedMapStructure;
 use crate::structure::common::SlicedStorable;
+use crate::structure::UnboundedMapStructure;
 
 /// Stores key-value data in heap memory.
 pub struct HeapUnboundedMap<K, V>(BTreeMap<K, V>)

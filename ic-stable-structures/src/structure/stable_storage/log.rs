@@ -1,8 +1,8 @@
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{log, Storable};
 
-use crate::structure::LogStructure;
 use crate::structure::stable_storage::get_memory_by_id;
+use crate::structure::LogStructure;
 use crate::{Error, Memory, Result};
 
 /// Stores list of immutable values in stable memory.

@@ -1,7 +1,4 @@
-use std::{
-    cell::RefCell,
-    hash::Hash,
-};
+use std::{cell::RefCell, hash::Hash};
 
 use crate::structure::*;
 use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
@@ -31,10 +28,13 @@ where
     pub fn with_map(inner: StableBTreeMap<K, V>, max_cache_items: u64) -> Self {
         Self {
             inner,
-            cache: RefCell::new(CacheBuilder::default().max_capacity(max_cache_items).build()),
+            cache: RefCell::new(
+                CacheBuilder::default()
+                    .max_capacity(max_cache_items)
+                    .build(),
+            ),
         }
     }
-
 }
 
 impl<K, V> BTreeMapStructure<K, V> for CachedStableBTreeMap<K, V>
@@ -46,15 +46,13 @@ where
         let mut cache = self.cache.borrow_mut();
         match cache.get(key) {
             Some(value) => Some(value.clone()),
-            None => {
-                match self.inner.get(key) {
-                    Some(value) => {
-                        cache.insert(key.clone(), value.clone());
-                        Some(value)
-                    }
-                    None => None,
+            None => match self.inner.get(key) {
+                Some(value) => {
+                    cache.insert(key.clone(), value.clone());
+                    Some(value)
                 }
-            }
+                None => None,
+            },
         }
     }
 
@@ -63,7 +61,7 @@ where
             Some(old_value) => {
                 self.cache.borrow_mut().invalidate(&key);
                 Some(old_value)
-            },
+            }
             None => None,
         }
     }
@@ -73,7 +71,7 @@ where
             Some(old_value) => {
                 self.cache.borrow_mut().invalidate(key);
                 Some(old_value)
-            },
+            }
             None => None,
         }
     }
@@ -139,12 +137,12 @@ mod tests {
         assert_eq!(Some(Array([1u8, 10])), map.remove(&1));
         assert_eq!(None, map.remove(&1));
 
-            assert_eq!(None, map.get(&1));
+        assert_eq!(None, map.get(&1));
 
         assert_eq!(Some(Array([2u8, 10])), map.remove(&2));
         assert_eq!(None, map.remove(&2));
 
-            assert_eq!(None, map.get(&2));
+        assert_eq!(None, map.get(&2));
 
         assert_eq!(None, map.get(&2));
         assert_eq!(Some(Array([3u8, 1])), map.get(&3));
@@ -165,12 +163,11 @@ mod tests {
         assert_eq!(Some(Array([2u8, 1])), map.get(&2));
 
         map.clear();
-        
+
         assert_eq!(0, map.len());
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));
-
     }
 
     #[test]
@@ -193,7 +190,5 @@ mod tests {
         assert_eq!(Some(Array([1u8, 10])), map.get(&1));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2));
         assert_eq!(Some(Array([3u8, 10])), map.get(&3));
-
     }
-
 }
