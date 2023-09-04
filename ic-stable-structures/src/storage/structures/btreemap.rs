@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::RangeBounds;
 
 use ic_exports::candid::Principal;
 use ic_exports::ic_kit::ic;
@@ -68,6 +69,18 @@ where
         self.get_inner().iter()
     }
 
+    /// Returns an iterator over the entries in the map where keys
+    /// belong to the specified range.
+    pub fn range(&self, key_range: impl RangeBounds<K>) -> btreemap::Iter<'_, K, V, Memory> {
+        self.get_inner().range(key_range)
+    }
+
+    /// Returns an iterator pointing to the first element below the given bound.
+    /// Returns an empty iterator if there are no keys below the given bound.
+    pub fn iter_upper_bound(&self, bound: &K) -> btreemap::Iter<'_, K, V, Memory> {
+        self.get_inner().iter_upper_bound(bound)
+    }
+
     /// Count of items in the map.
     pub fn len(&self) -> u64 {
         self.get_inner().len()
@@ -122,6 +135,13 @@ mod tests {
         assert_eq!(iter.next(), Some((0, 42)));
         assert_eq!(iter.next(), Some((10, 100)));
         assert_eq!(iter.next(), None);
+
+        let mut iter = map.range(1..11);
+        assert_eq!(iter.next(), Some((10, 100)));
+        assert_eq!(iter.next(), None);
+
+        let mut iter = map.iter_upper_bound(&5);
+        assert_eq!(iter.next(), Some((0, 42)));
 
         assert_eq!(map.remove(&10), Some(100));
 
