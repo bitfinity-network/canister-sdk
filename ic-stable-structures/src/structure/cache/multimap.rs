@@ -91,7 +91,7 @@ where
     }
 
     fn len(&self) -> usize {
-        self.inner.len() as usize
+        self.inner.len()
     }
 
     fn is_empty(&self) -> bool {
