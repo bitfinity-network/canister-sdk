@@ -4,17 +4,30 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-ic-exports = { path = "../ic-exports" }
+ic-exports = { path = "../ic-exports"}
+mini-moka = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
 anyhow = "1"
 candid = { workspace = true }
+criterion = { workspace = true }
 did = { path = "./tests/did" }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
+ic-exports = { path = "../ic-exports", features = ["ic-test-state-machine"]}
 once_cell = { workspace = true }
+rand = { workspace = true }
 serde = { workspace = true }
 
+[[bench]]
+name = "stable_storage_benchmark"
+harness = false
+
 [features]
-state-machine = ["ic-exports/ic-test-state-machine"]
+# When this features is enabled, ALL stable structures will use the heap so the data will
+# be stored NOT permanently. Usefull only for testing.
+# Do not enable this in production
+always-heap = []
+# Enables the integration tests based on ic-test-state-machine
+state-machine = []

@@ -3,7 +3,7 @@ use std::cell::RefCell;
 
 use candid::Encode;
 use ic_stable_structures::{
-    BoundedStorable, MemoryId, SlicedStorable, StableUnboundedMap, Storable,
+    BoundedStorable, MemoryId, SlicedStorable, StableUnboundedMap, Storable, UnboundedMapStructure,
 };
 
 use crate::Transfer;
@@ -19,7 +19,7 @@ thread_local! {
         RefCell::new(None);
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct TransferKey([u8; 32]);
 
 impl TransferKey {
@@ -45,6 +45,7 @@ impl BoundedStorable for TransferKey {
     const IS_FIXED_SIZE: bool = true;
 }
 
+#[derive(Clone)]
 struct TransferValue(Transfer);
 
 impl Storable for TransferValue {

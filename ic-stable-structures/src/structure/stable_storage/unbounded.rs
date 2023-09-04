@@ -3,31 +3,30 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
-use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
+use ic_exports::stable_structures::{
+    btreemap, memory_manager::MemoryId, BoundedStorable, StableBTreeMap, Storable,
+};
 
-pub type ChunkSize = u16;
+use crate::{structure::UnboundedMapStructure, Memory, SlicedStorable};
 
 type ChunkIndex = u16;
-
 const CHUNK_INDEX_LEN: usize = mem::size_of::<ChunkIndex>();
 
 /// Map that allows to store values with arbitrary size in stable memory.
 ///
 /// Current implementation stores values in chunks with fixed size.
 /// Size of chunk should be set using the [`SlicedStorable`] trait.
-pub struct StableUnboundedMap<M, K, V>
+pub struct StableUnboundedMap<K, V>
 where
-    M: Memory + Clone,
     K: BoundedStorable,
     V: SlicedStorable,
 {
-    inner: StableBTreeMap<Key<K>, Chunk<V>, M>,
+    inner: StableBTreeMap<Key<K>, Chunk<V>, Memory>,
     items_count: u64,
 }
 
-impl<M, K, V> StableUnboundedMap<M, K, V>
+impl<K, V> StableUnboundedMap<K, V>
 where
-    M: Memory + Clone,
     K: BoundedStorable,
     V: SlicedStorable,
 {
@@ -35,18 +34,39 @@ where
     ///
     /// If the `memory` contains data of the map, the map reads it, and the instance
     /// will contain the data from the `memory`.
-    pub fn new(memory: M) -> Self {
+    pub fn new(memory_id: MemoryId) -> Self {
+        let memory = super::get_memory_by_id(memory_id);
         Self {
             inner: StableBTreeMap::init(memory),
             items_count: 0,
         }
     }
 
-    /// Return a value associated with `key`.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn get(&self, key: &K) -> Option<V> {
+    fn insert_data(&mut self, key: &mut Key<K>, value: &V) {
+        let value_bytes = value.to_bytes();
+        let chunks = value_bytes.chunks(V::CHUNK_SIZE as _);
+
+        for chunk in chunks {
+            let chunk = Chunk::new(chunk.to_vec());
+            self.inner.insert(key.clone(), chunk);
+            key.increase_chunk_index();
+        }
+
+        self.items_count += 1;
+    }
+
+    /// Iterator for all stored key-value pairs.
+    pub fn iter(&self) -> StableUnboundedIter<'_, K, V> {
+        StableUnboundedIter(self.inner.iter().peekable())
+    }
+}
+
+impl<K, V> UnboundedMapStructure<K, V> for StableUnboundedMap<K, V>
+where
+    K: BoundedStorable,
+    V: SlicedStorable,
+{
+    fn get(&self, key: &K) -> Option<V> {
         let first_chunk_key = Key::new(key);
         let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
         let mut value_data = Vec::new();
@@ -64,11 +84,7 @@ where
         Some(V::from_bytes(value_data.into()))
     }
 
-    /// Add or replace a value associated with `key`.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn insert(&mut self, key: &K, value: &V) -> Option<V> {
+    fn insert(&mut self, key: &K, value: &V) -> Option<V> {
         // remove old data before insert new();
         let previous_value = self.remove(key);
 
@@ -77,24 +93,7 @@ where
         previous_value
     }
 
-    fn insert_data(&mut self, key: &mut Key<K>, value: &V) {
-        let value_bytes = value.to_bytes();
-        let chunks = value_bytes.chunks(V::CHUNK_SIZE as _);
-
-        for chunk in chunks {
-            let chunk = Chunk::new(chunk.to_vec());
-            self.inner.insert(key.clone(), chunk);
-            key.increase_chunk_index();
-        }
-
-        self.items_count += 1;
-    }
-
-    /// Remove a value associated with `key`.
-    ///
-    /// # Preconditions:
-    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
-    pub fn remove(&mut self, key: &K) -> Option<V> {
+    fn remove(&mut self, key: &K) -> Option<V> {
         let first_chunk_key = Key::new(key);
         let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
         let keys: Vec<Key<K>> = self
@@ -120,41 +119,21 @@ where
         Some(V::from_bytes(value_bytes.into()))
     }
 
-    /// Iterator for all stored key-value pairs.
-    pub fn iter(&self) -> Iter<'_, M, K, V> {
-        Iter(self.inner.iter().peekable())
-    }
-
-    /// Count of items in the map.
-    pub fn len(&self) -> u64 {
+    fn len(&self) -> u64 {
         self.items_count
     }
 
-    /// Is the map empty.
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.items_count == 0
     }
 
-    /// Remove all entries from the map.
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         let keys: Vec<_> = self.inner.iter().map(|(k, _)| k).collect();
         for key in keys {
             self.inner.remove(&key);
         }
         self.items_count = 0;
     }
-}
-
-/// Provide information about the length of the value slice.
-///
-/// If value size is greater than `chunk_size()`, value will be split to several chunks,
-/// and store each as particular entry in inner data structures.
-///
-/// More chunks count leads to more memory allocation operations.
-/// But with big `chunk_size()` we lose space for small values,
-/// because `chunk_size()` is a least allocation unit for any value.
-pub trait SlicedStorable: Storable {
-    const CHUNK_SIZE: ChunkSize;
 }
 
 /// Wrapper for the key.
@@ -340,15 +319,13 @@ impl<V: SlicedStorable> BoundedStorable for Chunk<V> {
 
 /// Iterator over values in unbounded map.
 /// Constructs a value from chunks on each `next()` call.
-pub struct Iter<'a, M, K, V>(Peekable<btreemap::Iter<'a, Key<K>, Chunk<V>, M>>)
+pub struct StableUnboundedIter<'a, K, V>(Peekable<btreemap::Iter<'a, Key<K>, Chunk<V>, Memory>>)
 where
-    M: Memory + Clone,
     K: BoundedStorable,
     V: SlicedStorable;
 
-impl<'a, M, K, V> Iterator for Iter<'a, M, K, V>
+impl<'a, K, V> Iterator for StableUnboundedIter<'a, K, V>
 where
-    M: Memory + Clone,
     K: BoundedStorable,
     V: SlicedStorable,
 {
@@ -376,14 +353,16 @@ where
 
 #[cfg(test)]
 mod tests {
-    use ic_exports::stable_structures::DefaultMemoryImpl;
+    use std::collections::HashMap;
 
-    use super::StableUnboundedMap;
+    use ic_exports::stable_structures::memory_manager::MemoryId;
+
+    use super::*;
     use crate::test_utils;
 
     #[test]
     fn insert_get_test() {
-        let mut map = StableUnboundedMap::new(DefaultMemoryImpl::default());
+        let mut map = StableUnboundedMap::new(MemoryId::new(30));
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);
@@ -401,7 +380,7 @@ mod tests {
 
     #[test]
     fn insert_should_replace_previous_value() {
-        let mut map = StableUnboundedMap::new(DefaultMemoryImpl::default());
+        let mut map = StableUnboundedMap::new(MemoryId::new(31));
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);
@@ -416,7 +395,7 @@ mod tests {
 
     #[test]
     fn remove_test() {
-        let mut map = StableUnboundedMap::new(DefaultMemoryImpl::default());
+        let mut map = StableUnboundedMap::new(MemoryId::new(32));
 
         let long_str = test_utils::str_val(50000);
         let medium_str = test_utils::str_val(5000);
@@ -435,7 +414,7 @@ mod tests {
 
     #[test]
     fn iter_test() {
-        let mut map = StableUnboundedMap::new(DefaultMemoryImpl::default());
+        let mut map = StableUnboundedMap::new(MemoryId::new(33));
 
         let strs = [
             test_utils::str_val(50),
@@ -448,5 +427,30 @@ mod tests {
         }
 
         assert!(map.iter().all(|(k, v)| v == strs[k as usize % strs.len()]))
+    }
+
+    #[test]
+    fn unbounded_map_works() {
+        let mut map = StableUnboundedMap::new(MemoryId::new(34));
+        assert!(map.is_empty());
+
+        let long_str = test_utils::str_val(50000);
+        let medium_str = test_utils::str_val(5000);
+        let short_str = test_utils::str_val(50);
+
+        map.insert(&0u32, &long_str);
+        map.insert(&3u32, &medium_str);
+        map.insert(&5u32, &short_str);
+        assert_eq!(map.get(&0).as_ref(), Some(&long_str));
+        assert_eq!(map.get(&3).as_ref(), Some(&medium_str));
+        assert_eq!(map.get(&5).as_ref(), Some(&short_str));
+
+        let entries: HashMap<_, _> = map.iter().collect();
+        let expected = HashMap::from_iter([(0, long_str), (3, medium_str.clone()), (5, short_str)]);
+        assert_eq!(entries, expected);
+
+        assert_eq!(map.remove(&3), Some(medium_str));
+
+        assert_eq!(map.len(), 2);
     }
 }

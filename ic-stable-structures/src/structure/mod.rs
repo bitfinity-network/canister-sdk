@@ -1,0 +1,164 @@
+use crate::Result;
+
+mod cache;
+mod common;
+mod heap;
+mod stable_storage;
+
+pub use cache::*;
+pub use common::*;
+pub use heap::*;
+
+#[cfg(not(feature = "always-heap"))]
+pub use stable_storage::*;
+
+#[cfg(feature = "always-heap")]
+pub use heap::{
+    HeapBTreeMap as StableBTreeMap, HeapCell as StableCell, HeapLog as StableLog,
+    HeapMultimap as StableMultimap, HeapMultimapIter as StableMultimapIter,
+    HeapUnboundedIter as StableUnboundedIter, HeapUnboundedMap as StableUnboundedMap,
+    HeapVec as StableVec,
+};
+
+pub trait BTreeMapStructure<K, V> {
+    /// Return value associated with `key` from stable memory.
+    fn get(&self, key: &K) -> Option<V>;
+
+    /// Add or replace value associated with `key` in stable memory.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
+    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
+    fn insert(&mut self, key: K, value: V) -> Option<V>;
+
+    /// Remove value associated with `key` from stable memory.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
+    fn remove(&mut self, key: &K) -> Option<V>;
+
+    /// Count of items in the map.
+    fn len(&self) -> u64;
+
+    /// Is the map empty.
+    fn is_empty(&self) -> bool;
+
+    /// Remove all entries from the map.
+    fn clear(&mut self);
+}
+
+pub trait CellStructure<T> {
+    /// Returns reference to value stored in stable memory.
+    fn get(&self) -> &T;
+
+    /// Updates value in stable memory.
+    fn set(&mut self, value: T) -> Result<()>;
+}
+
+pub trait LogStructure<T> {
+    /// Returns reference to value stored in stable memory.
+    fn get(&self, index: u64) -> Option<T>;
+
+    /// Updates value in stable memory.
+    fn append(&mut self, value: T) -> Result<u64>;
+
+    /// Number of values in the log.
+    fn len(&self) -> u64;
+
+    // Returns true, if the Log doesn't contain any values.
+    fn is_empty(&self) -> bool;
+
+    /// Remove all items from the log.
+    fn clear(&mut self);
+}
+
+pub trait MultimapStructure<K1, K2, V> {
+    /// Get a value for the given keys.
+    /// If byte representation length of any key exceeds max size, `None` will be returned.
+    fn get(&self, first_key: &K1, second_key: &K2) -> Option<V>;
+
+    /// Insert a new value into the map.
+    /// Inserting a value with the same keys as an existing value
+    /// will result in the old value being overwritten.
+    ///
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
+    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
+    fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V>;
+
+    /// Remove a specific value and return it.
+    ///
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
+    fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V>;
+
+    /// Remove all values for the partial key
+    ///
+    /// # Preconditions:
+    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
+    fn remove_partial(&mut self, first_key: &K1) -> bool;
+
+    /// Items count.
+    fn len(&self) -> usize;
+
+    /// Is map empty.
+    fn is_empty(&self) -> bool;
+
+    /// Remove all entries from the map.
+    fn clear(&mut self);
+}
+
+pub trait UnboundedMapStructure<K, V> {
+    /// Returns a value associated with `key` from heap memory.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K::MAX_SIZE`
+    fn get(&self, key: &K) -> Option<V>;
+
+    /// Add or replace a value associated with `key` in stable memory.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K1::MAX_SIZE`
+    ///   - `value.to_bytes().len() <= V::MAX_SIZE`
+    fn insert(&mut self, key: &K, value: &V) -> Option<V>;
+
+    /// Remove a value associated with `key` from stable memory.
+    ///
+    /// # Preconditions:
+    ///   - `key.to_bytes().len() <= K1::MAX_SIZE`
+    fn remove(&mut self, key: &K) -> Option<V>;
+
+    /// Number of items in the map.
+    fn len(&self) -> u64;
+
+    // Returns true if there are no values in the map.
+    fn is_empty(&self) -> bool;
+
+    /// Remove all entries from the map.
+    fn clear(&mut self);
+}
+
+pub trait VecStructure<T> {
+    /// Returns if vector is empty
+    fn is_empty(&self) -> bool;
+
+    /// Removes al the values from the vector
+    fn clear(&mut self) -> Result<()>;
+
+    /// Returns the number of elements in the vector
+    fn len(&self) -> u64;
+
+    /// Sets the value at `index` to `item`
+    /// WARN: this panics if index out of range
+    fn set(&mut self, index: u64, item: &T) -> Result<()>;
+
+    /// Returns the value at `index`
+    fn get(&self, index: u64) -> Option<T>;
+
+    /// Appends new value to the vector
+    fn push(&mut self, item: &T) -> Result<()>;
+
+    /// Pops the last value from the vector
+    fn pop(&mut self) -> Option<T>;
+}

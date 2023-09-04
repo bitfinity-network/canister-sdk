@@ -1,15 +1,22 @@
 use std::cell::RefCell;
 
+use crate::{Memory, MemoryManager};
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::DefaultMemoryImpl;
-pub use structures::{
-    StableBTreeMap, StableCell, StableLog, StableMultimap, StableUnboundedMap, StableVec,
-};
 
-use crate::{Memory, MemoryManager};
+mod btreemap;
+mod cell;
+mod log;
+mod multimap;
+mod unbounded;
+mod vec;
 
-#[path = "storage_wasm/structures_wasm.rs"]
-mod structures;
+pub use btreemap::StableBTreeMap;
+pub use cell::StableCell;
+pub use log::StableLog;
+pub use multimap::{StableMultimap, StableMultimapIter, StableMultimapRangeIter};
+pub use unbounded::{StableUnboundedIter, StableUnboundedMap};
+pub use vec::StableVec;
 
 thread_local! {
     // The memory manager is used for simulating multiple memories. Given a `MemoryId` it can
