@@ -46,13 +46,11 @@ where
         let mut cache = self.cache.borrow_mut();
         match cache.get(key) {
             Some(value) => Some(value.clone()),
-            None => match self.inner.get(key) {
-                Some(value) => {
-                    cache.insert(key.clone(), value.clone());
-                    Some(value)
-                }
-                None => None,
-            },
+            None => {
+                let value = self.inner.get(key)?;
+                cache.insert(key.clone(), value.clone());
+                Some(value)
+            }
         }
     }
 

@@ -13,7 +13,6 @@ fn multimap_benchmark(c: &mut Criterion) {
         b.iter(|| {
             for k1 in 0..key1_count {
                 for k2 in 0..key2_count {
-                    //let value = Alphanumeric.sample_string(&mut rand::thread_rng(), 16).;
                     let value: u128 = rand::random();
                     map.insert(&k1, &k2, &value);
                 }

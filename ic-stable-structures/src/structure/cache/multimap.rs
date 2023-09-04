@@ -53,13 +53,11 @@ where
 
         match cache.get(&key) {
             Some(value) => Some(value.clone()),
-            None => match self.inner.get(first_key, second_key) {
-                Some(value) => {
-                    cache.insert(key, value.clone());
-                    Some(value)
-                }
-                None => None,
-            },
+            None => {
+                let value = self.inner.get(first_key, second_key)?;
+                cache.insert(key, value.clone());
+                Some(value)
+            }
         }
     }
 
