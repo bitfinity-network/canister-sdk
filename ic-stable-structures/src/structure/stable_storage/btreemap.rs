@@ -1,3 +1,5 @@
+use std::ops::RangeBounds;
+
 use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_exports::stable_structures::{btreemap, BoundedStorable};
 
@@ -25,6 +27,18 @@ where
     /// Iterate over all currently stored key-value pairs.
     pub fn iter(&self) -> btreemap::Iter<'_, K, V, Memory> {
         self.0.iter()
+    }
+
+    /// Returns an iterator over the entries in the map where keys
+    /// belong to the specified range.
+    pub fn range(&self, key_range: impl RangeBounds<K>) -> btreemap::Iter<'_, K, V, Memory> {
+        self.0.range(key_range)
+    }
+
+    /// Returns an iterator pointing to the first element below the given bound.
+    /// Returns an empty iterator if there are no keys below the given bound.
+    pub fn iter_upper_bound(&self, bound: &K) -> btreemap::Iter<'_, K, V, Memory> {
+        self.0.iter_upper_bound(bound)
     }
 }
 
@@ -83,6 +97,13 @@ mod tests {
         assert_eq!(iter.next(), Some((0, 42)));
         assert_eq!(iter.next(), Some((10, 100)));
         assert_eq!(iter.next(), None);
+
+        let mut iter = map.range(1..11);
+        assert_eq!(iter.next(), Some((10, 100)));
+        assert_eq!(iter.next(), None);
+
+        let mut iter = map.iter_upper_bound(&5);
+        assert_eq!(iter.next(), Some((0, 42)));
 
         assert_eq!(map.remove(&10), Some(100));
 
