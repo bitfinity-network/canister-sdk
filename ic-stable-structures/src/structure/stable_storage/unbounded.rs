@@ -59,6 +59,25 @@ where
     pub fn iter(&self) -> StableUnboundedIter<'_, K, V> {
         StableUnboundedIter(self.inner.iter().peekable())
     }
+
+    /// Returns an iterator pointing to the first element below the given bound.
+    /// Returns an empty iterator if there are no keys below the given bound.
+    pub fn iter_upper_bound(&self, bound: &K) -> StableUnboundedIter<'_, K, V> {
+        let mut iter = self.inner.iter_upper_bound(&Key::new(bound));
+        match iter.next() {
+            Some((mut key, _)) => {
+                key.set_chunk_index(1);
+                StableUnboundedIter(self.inner.iter_upper_bound(&key).peekable())
+            }
+            None => {
+                // Note: here we rely on the fact that the `StableBtreeMap::Iterator` implementation
+                // allows calling next after `None` value is returned. Unfortunately `null` method
+                // has insufficient visibility and `Clone` isn't implemented by the iterator type.
+                // That's why we have this efficient implementation and cover this case in unit test.
+                StableUnboundedIter(iter.peekable())
+            }
+        }
+    }
 }
 
 impl<K, V> UnboundedMapStructure<K, V> for StableUnboundedMap<K, V>
@@ -234,6 +253,12 @@ impl<K: BoundedStorable> Key<K> {
         chunk_index_bytes.copy_from_slice(&(chunk_index + 1).to_be_bytes())
     }
 
+    pub fn set_chunk_index(&mut self, chunk_index: u16) {
+        let data_len = self.data.len();
+        let chunk_index_bytes = &mut self.data[(data_len - CHUNK_INDEX_LEN)..];
+        chunk_index_bytes.copy_from_slice(&chunk_index.to_be_bytes())
+    }
+
     /// Prefix of key data, which is same for all chunks of the same value.
     pub fn prefix(&self) -> &[u8] {
         &self.data[..self.data.len() - CHUNK_INDEX_LEN]
@@ -361,6 +386,30 @@ mod tests {
     use crate::test_utils;
 
     #[test]
+    fn set_new_chunk_index_test() {
+        let mut key = Key::new(&42u64);
+        let get_chunk_index = |key: &Key<_>| {
+            let data_len = key.data.len();
+
+            let chunk_index_bytes = &key.data[(data_len - CHUNK_INDEX_LEN)..];
+
+            let chunk_index_arr = chunk_index_bytes
+                .try_into()
+                .expect("the slice is always CHUNK_INDEX_LEN length");
+
+            ChunkIndex::from_be_bytes(chunk_index_arr)
+        };
+
+        assert_eq!(get_chunk_index(&key), 0);
+        key.increase_chunk_index();
+        assert_eq!(get_chunk_index(&key), 1);
+        key.set_chunk_index(10);
+        assert_eq!(get_chunk_index(&key), 10);
+        key = key.with_max_chunk_index();
+        assert_eq!(get_chunk_index(&key), u16::MAX);
+    }
+
+    #[test]
     fn insert_get_test() {
         let mut map = StableUnboundedMap::new(MemoryId::new(30));
         assert!(map.is_empty());
@@ -427,6 +476,32 @@ mod tests {
         }
 
         assert!(map.iter().all(|(k, v)| v == strs[k as usize % strs.len()]))
+    }
+
+    #[test]
+    fn upper_bound_test() {
+        let mut map = StableUnboundedMap::new(MemoryId::new(33));
+
+        let strs = [
+            test_utils::str_val(50),
+            test_utils::str_val(5000),
+            test_utils::str_val(50000),
+        ];
+
+        for i in 0..100u32 {
+            map.insert(&i, &strs[i as usize % strs.len()]);
+        }
+
+        for i in 1..100u32 {
+            let mut iter = map.iter_upper_bound(&i);
+            assert_eq!(
+                iter.next(),
+                Some((i - 1, strs[(i - 1) as usize % strs.len()].clone()))
+            );
+        }
+
+        let mut iter = map.iter_upper_bound(&0);
+        assert_eq!(iter.next(), None);
     }
 
     #[test]
