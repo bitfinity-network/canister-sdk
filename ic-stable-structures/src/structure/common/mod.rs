@@ -1,6 +1,6 @@
 pub mod ring_buffer;
 
-use ic_exports::stable_structures::Storable;
+use dfinity_stable_structures::Storable;
 pub use ring_buffer::{StableRingBuffer, StableRingBufferIndices};
 
 pub type ChunkSize = u16;

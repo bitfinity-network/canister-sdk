@@ -1,7 +1,7 @@
 use std::{cell::RefCell, hash::Hash};
 
 use crate::structure::*;
-use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 /// A LRU Cache for StableBTreeMap
@@ -94,7 +94,7 @@ mod tests {
     use crate::test_utils::Array;
 
     use super::*;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn should_get_and_insert() {

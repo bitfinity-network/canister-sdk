@@ -1,5 +1,5 @@
-use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::{vec, BoundedStorable};
+use dfinity_stable_structures::memory_manager::MemoryId;
+use dfinity_stable_structures::{vec, BoundedStorable};
 
 use super::get_memory_by_id;
 use crate::structure::VecStructure;
@@ -60,7 +60,7 @@ impl<T: BoundedStorable> VecStructure<T> for StableVec<T> {
 mod tests {
 
     use super::*;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn vec_works() {

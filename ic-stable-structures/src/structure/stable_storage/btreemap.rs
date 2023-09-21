@@ -1,7 +1,7 @@
 use std::ops::RangeBounds;
 
-use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::{btreemap, BoundedStorable};
+use dfinity_stable_structures::memory_manager::MemoryId;
+use dfinity_stable_structures::{btreemap, BoundedStorable};
 
 use super::get_memory_by_id;
 use crate::structure::BTreeMapStructure;
@@ -81,7 +81,7 @@ where
 mod tests {
 
     use super::*;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn btreemap_works() {

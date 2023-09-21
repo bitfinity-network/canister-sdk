@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 
-use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 use crate::structure::*;
@@ -108,7 +108,7 @@ where
 mod test {
 
     use crate::test_utils::Array;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::memory_manager::MemoryId;
 
     use super::*;
 

@@ -1,7 +1,7 @@
 use std::collections::btree_map::Iter as BTreeMapIter;
 use std::{collections::BTreeMap, hash::Hash};
 
-use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
 
 use crate::structure::MultimapStructure;
 
@@ -130,7 +130,7 @@ where
 mod tests {
 
     use super::*;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn multimap_works() {

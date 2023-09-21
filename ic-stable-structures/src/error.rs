@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{btreemap, cell, log, vec, GrowFailed};
+use dfinity_stable_structures::{btreemap, cell, log, vec, GrowFailed};
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
