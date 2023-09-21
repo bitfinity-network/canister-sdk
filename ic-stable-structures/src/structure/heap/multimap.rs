@@ -136,7 +136,8 @@ where
                     {
                         Some((k2, v)) => break Some(((*k1).clone(), k2.clone(), v.clone())),
                         None => {
-                            self.second_iter = self.first_iter.next().map(|(_, map)| map.iter());
+                            self.first_iter.next();
+                            self.second_iter = self.first_iter.peek().map(|(_, map)| map.iter());
                             continue;
                         }
                     }
