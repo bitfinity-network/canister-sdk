@@ -47,23 +47,6 @@ where
         let memory = super::get_memory_by_id(memory_id);
         Self(StableBTreeMap::init(memory))
     }
-
-    /// Get a range of key value pairs based on the root key.
-    ///
-    /// # Preconditions:
-    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    pub fn range(&self, first_key: &K1) -> StableMultimapRangeIter<K1, K2, V> {
-        let min_key = KeyPair::<K1, K2>::min_key(first_key);
-        let max_key = KeyPair::<K1, K2>::max_key(first_key);
-
-        let inner = self.0.range(min_key..=max_key);
-        StableMultimapRangeIter::new(inner)
-    }
-
-    /// Iterator over all items in the map.
-    pub fn iter(&self) -> StableMultimapIter<K1, K2, V> {
-        StableMultimapIter::new(self.0.iter())
-    }
 }
 
 impl<K1, K2, V> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V>
@@ -72,6 +55,10 @@ where
     K2: BoundedStorable,
     V: BoundedStorable,
 {
+    type Iterator<'a> = StableMultimapIter<'a, K1, K2, V> where Self: 'a;
+
+    type RangeIterator<'a> = StableMultimapRangeIter<'a, K1, K2, V> where Self: 'a;
+
     fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
         let key = KeyPair::new(first_key, second_key);
         self.0.insert(key, value.into()).map(|v| v.into_inner())
@@ -118,6 +105,18 @@ where
         for key in keys {
             self.0.remove(&key);
         }
+    }
+
+    fn range(&self, first_key: &K1) -> Self::RangeIterator<'_> {
+        let min_key = KeyPair::<K1, K2>::min_key(first_key);
+        let max_key = KeyPair::<K1, K2>::max_key(first_key);
+
+        let inner = self.0.range(min_key..=max_key);
+        StableMultimapRangeIter::new(inner)
+    }
+
+    fn iter(&self) -> Self::Iterator<'_> {
+        StableMultimapIter::new(self.0.iter())
     }
 }
 
@@ -533,6 +532,7 @@ mod test {
         assert!(iter.next().is_some());
         assert!(iter.next().is_none());
     }
+
     #[test]
     fn multimap_works() {
         let mut map = StableMultimap::new(MemoryId::new(0));

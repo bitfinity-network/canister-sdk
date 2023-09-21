@@ -1,3 +1,5 @@
+use std::ops::RangeBounds;
+
 use crate::Result;
 
 mod cache;
@@ -47,6 +49,22 @@ pub trait BTreeMapStructure<K, V> {
     fn clear(&mut self);
 }
 
+/// Map that supports ordered iterator
+pub trait IterableSortedMapStructure<K, V> {
+    /// Map iterator type
+    type Iterator<'a>: Iterator<Item = (K, V)>
+    where
+        Self: 'a;
+
+    /// Returns an iterator over the entries in the map where keys
+    /// belong to the specified range.
+    fn range(&self, key_range: impl RangeBounds<K>) -> Self::Iterator<'_>;
+
+    /// Returns an iterator pointing to the first element below the given bound.
+    /// Returns an empty iterator if there are no keys below the given bound.
+    fn iter_upper_bound(&self, bound: &K) -> Self::Iterator<'_>;
+}
+
 pub trait CellStructure<T> {
     /// Returns reference to value stored in stable memory.
     fn get(&self) -> &T;
@@ -73,6 +91,16 @@ pub trait LogStructure<T> {
 }
 
 pub trait MultimapStructure<K1, K2, V> {
+    /// iterator over the whole map
+    type Iterator<'a>: Iterator<Item = (K1, K2, V)>
+    where
+        Self: 'a;
+
+    /// Iterator over the values that correspond to some `K1` key
+    type RangeIterator<'a>: Iterator<Item = (K2, V)>
+    where
+        Self: 'a;
+
     /// Get a value for the given keys.
     /// If byte representation length of any key exceeds max size, `None` will be returned.
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V>;
@@ -104,6 +132,12 @@ pub trait MultimapStructure<K1, K2, V> {
 
     /// Is map empty.
     fn is_empty(&self) -> bool;
+
+    /// Iterator over all the entries that korrespond to the `first_key`
+    fn range(&self, first_key: &K1) -> Self::RangeIterator<'_>;
+
+    /// Iterator over all items in the map.
+    fn iter(&self) -> Self::Iterator<'_>;
 
     /// Remove all entries from the map.
     fn clear(&mut self);

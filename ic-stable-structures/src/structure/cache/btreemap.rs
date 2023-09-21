@@ -1,6 +1,6 @@
 use std::{cell::RefCell, hash::Hash};
 
-use crate::structure::*;
+use crate::{structure::*, Memory};
 use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
 use mini_moka::unsync::{Cache, CacheBuilder};
 
@@ -85,6 +85,22 @@ where
     fn clear(&mut self) {
         self.cache.borrow_mut().invalidate_all();
         self.inner.clear()
+    }
+}
+
+impl<K, V> IterableSortedMapStructure<K, V> for CachedStableBTreeMap<K, V>
+where
+    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    V: BoundedStorable + Clone,
+{
+    type Iterator<'a> = ic_exports::stable_structures::btreemap::Iter<'a, K, V, Memory> where Self: 'a;
+
+    fn range(&self, key_range: impl RangeBounds<K>) -> Self::Iterator<'_> {
+        self.inner.range(key_range)
+    }
+
+    fn iter_upper_bound(&self, bound: &K) -> Self::Iterator<'_> {
+        self.inner.iter_upper_bound(bound)
     }
 }
 
