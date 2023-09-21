@@ -72,6 +72,10 @@ where
 {
     type Iterator<'a> = btreemap::Iter<'a, K, V, Memory> where Self: 'a;
 
+    fn iter(&self) -> Self::Iterator<'_> {
+        self.0.iter()
+    }
+
     fn range(&self, key_range: impl RangeBounds<K>) -> Self::Iterator<'_> {
         self.0.range(key_range)
     }

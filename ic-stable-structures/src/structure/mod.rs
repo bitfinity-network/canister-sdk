@@ -56,6 +56,9 @@ pub trait IterableSortedMapStructure<K, V> {
     where
         Self: 'a;
 
+    /// Returns iterator over the whole collection
+    fn iter(&self) -> Self::Iterator<'_>;
+
     /// Returns an iterator over the entries in the map where keys
     /// belong to the specified range.
     fn range(&self, key_range: impl RangeBounds<K>) -> Self::Iterator<'_>;
