@@ -93,7 +93,7 @@ where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
 {
-    type Iterator<'a> = ic_exports::stable_structures::btreemap::Iter<'a, K, V, Memory> where Self: 'a;
+    type Iterator<'a> = dfinity_stable_structures::btreemap::Iter<'a, K, V, Memory> where Self: 'a;
 
     fn iter(&self) -> Self::Iterator<'_> {
         self.inner.iter()
