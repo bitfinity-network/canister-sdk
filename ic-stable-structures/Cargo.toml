@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 ic-exports = { path = "../ic-exports"}
+memmap2 = { workspace = true, optional = true }
 mini-moka = { workspace = true }
 thiserror = { workspace = true }
 
@@ -19,6 +20,7 @@ ic-exports = { path = "../ic-exports", features = ["ic-test-state-machine"]}
 once_cell = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
+tempfile = { workspace = true }
 
 [[bench]]
 name = "stable_storage_benchmark"
@@ -31,3 +33,4 @@ harness = false
 always-heap = []
 # Enables the integration tests based on ic-test-state-machine
 state-machine = []
+memory-mapped-files = ["memmap2"]

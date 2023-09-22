@@ -1,6 +1,8 @@
 mod structure;
 
 mod error;
+#[cfg(feature = "memory-mapped-files")]
+mod memory_mapped_files;
 #[cfg(test)]
 mod test_utils;
 
