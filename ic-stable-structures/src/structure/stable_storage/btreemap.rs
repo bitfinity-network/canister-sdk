@@ -5,7 +5,7 @@ use ic_exports::stable_structures::{btreemap, BoundedStorable};
 
 use super::get_memory_by_id;
 use crate::structure::BTreeMapStructure;
-use crate::Memory;
+use crate::{IterableSortedMapStructure, Memory};
 
 /// Stores key-value data in stable memory.
 pub struct StableBTreeMap<K, V>(btreemap::BTreeMap<K, V, Memory>)
@@ -27,18 +27,6 @@ where
     /// Iterate over all currently stored key-value pairs.
     pub fn iter(&self) -> btreemap::Iter<'_, K, V, Memory> {
         self.0.iter()
-    }
-
-    /// Returns an iterator over the entries in the map where keys
-    /// belong to the specified range.
-    pub fn range(&self, key_range: impl RangeBounds<K>) -> btreemap::Iter<'_, K, V, Memory> {
-        self.0.range(key_range)
-    }
-
-    /// Returns an iterator pointing to the first element below the given bound.
-    /// Returns an empty iterator if there are no keys below the given bound.
-    pub fn iter_upper_bound(&self, bound: &K) -> btreemap::Iter<'_, K, V, Memory> {
-        self.0.iter_upper_bound(bound)
     }
 }
 
@@ -74,6 +62,26 @@ where
         for key in keys {
             inner.remove(&key);
         }
+    }
+}
+
+impl<K, V> IterableSortedMapStructure<K, V> for StableBTreeMap<K, V>
+where
+    K: BoundedStorable + Ord + Clone,
+    V: BoundedStorable,
+{
+    type Iterator<'a> = btreemap::Iter<'a, K, V, Memory> where Self: 'a;
+
+    fn iter(&self) -> Self::Iterator<'_> {
+        self.0.iter()
+    }
+
+    fn range(&self, key_range: impl RangeBounds<K>) -> Self::Iterator<'_> {
+        self.0.range(key_range)
+    }
+
+    fn iter_upper_bound(&self, bound: &K) -> Self::Iterator<'_> {
+        self.0.iter_upper_bound(bound)
     }
 }
 

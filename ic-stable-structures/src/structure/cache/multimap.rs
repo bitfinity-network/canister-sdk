@@ -47,6 +47,10 @@ where
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
 {
+    type Iterator<'a> = <StableMultimap<K1, K2, V> as MultimapStructure<K1, K2, V>>::Iterator<'a> where Self: 'a;
+
+    type RangeIterator<'a> = <StableMultimap<K1, K2, V> as MultimapStructure<K1, K2, V>>::RangeIterator<'a> where Self: 'a;
+
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
         let mut cache = self.cache.borrow_mut();
         let key = (first_key.clone(), second_key.clone());
@@ -101,6 +105,14 @@ where
     fn clear(&mut self) {
         self.cache.borrow_mut().invalidate_all();
         self.inner.clear()
+    }
+
+    fn range(&self, first_key: &K1) -> Self::RangeIterator<'_> {
+        self.inner.range(first_key)
+    }
+
+    fn iter(&self) -> Self::Iterator<'_> {
+        self.inner.iter()
     }
 }
 
@@ -190,5 +202,44 @@ mod test {
         assert_eq!(Some(Array([1u8, 10])), map.get(&1, &1));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2, &1));
         assert_eq!(Some(Array([3u8, 10])), map.get(&3, &1));
+    }
+
+    #[test]
+    fn iter() {
+        let cache_items = 2;
+        let mut map: CachedStableMultimap<u32, u32, Array<2>> =
+            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(102), cache_items);
+
+        map.insert(&1, &1, &Array([1u8, 1]));
+        map.insert(&1, &2, &Array([2u8, 1]));
+        map.insert(&3, &1, &Array([3u8, 1]));
+
+        let mut iter = map.iter();
+        assert_eq!(iter.next(), Some((1, 1, Array([1u8, 1]))));
+        assert_eq!(iter.next(), Some((1, 2, Array([2u8, 1]))));
+        assert_eq!(iter.next(), Some((3, 1, Array([3u8, 1]))));
+    }
+
+    #[test]
+    fn range_iter() {
+        let cache_items = 2;
+        let mut map: CachedStableMultimap<u32, u32, Array<2>> =
+            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(102), cache_items);
+
+        map.insert(&1, &1, &Array([1u8, 1]));
+        map.insert(&1, &2, &Array([2u8, 1]));
+        map.insert(&3, &1, &Array([3u8, 1]));
+
+        let mut iter = map.range(&1);
+        assert_eq!(iter.next(), Some((1, Array([1u8, 1]))));
+        assert_eq!(iter.next(), Some((2, Array([2u8, 1]))));
+        assert_eq!(iter.next(), None);
+
+        let mut iter = map.range(&2);
+        assert_eq!(iter.next(), None);
+
+        let mut iter = map.range(&3);
+        assert_eq!(iter.next(), Some((1, Array([3u8, 1]))));
+        assert_eq!(iter.next(), None);
     }
 }

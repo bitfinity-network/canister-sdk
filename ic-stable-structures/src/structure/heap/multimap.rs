@@ -1,4 +1,5 @@
 use std::collections::btree_map::Iter as BTreeMapIter;
+use std::iter::Peekable;
 use std::{collections::BTreeMap, hash::Hash};
 
 use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
@@ -37,25 +38,6 @@ where
     pub fn new(_memory_id: MemoryId) -> Self {
         Self(BTreeMap::new())
     }
-
-    /// Get a range of key value pairs based on the root key.
-    ///
-    /// # Preconditions:
-    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    pub fn range(&self, first_key: &K1) -> HeapMultimapIter<K2, V> {
-        match self.0.get(first_key) {
-            Some(entry) => HeapMultimapIter(Some(entry.iter())),
-            None => HeapMultimapIter(None),
-        }
-    }
-
-    /// Iterator over all items in map.
-    pub fn iter(&self) -> impl Iterator<Item = (K1, K2, V)> + '_ {
-        self.0.iter().flat_map(|i1| {
-            i1.1.iter()
-                .map(|i2| (i1.0.clone(), i2.0.clone(), i2.1.clone()))
-        })
-    }
 }
 
 impl<K1, K2, V> MultimapStructure<K1, K2, V> for HeapMultimap<K1, K2, V>
@@ -64,6 +46,10 @@ where
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
 {
+    type Iterator<'a> = MultimapIter<'a, K1, K2, V> where Self: 'a;
+
+    type RangeIterator<'a> = HeapMultimapIter<'a, K2, V> where Self: 'a;
+
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
         self.0
             .get(first_key)
@@ -100,6 +86,65 @@ where
 
     fn clear(&mut self) {
         self.0.clear()
+    }
+
+    fn range(&self, first_key: &K1) -> Self::RangeIterator<'_> {
+        match self.0.get(first_key) {
+            Some(entry) => HeapMultimapIter(Some(entry.iter())),
+            None => HeapMultimapIter(None),
+        }
+    }
+
+    fn iter(&self) -> Self::Iterator<'_> {
+        MultimapIter::new(&self.0)
+    }
+}
+
+pub struct MultimapIter<'a, K1, K2, V> {
+    first_iter: Peekable<BTreeMapIter<'a, K1, BTreeMap<K2, V>>>,
+    second_iter: Option<BTreeMapIter<'a, K2, V>>,
+}
+
+impl<'a, K1, K2, V> MultimapIter<'a, K1, K2, V> {
+    fn new(map: &'a BTreeMap<K1, BTreeMap<K2, V>>) -> Self {
+        let mut first_iter = map.iter().peekable();
+        let second_iter = first_iter.peek().map(|(_, map)| map.iter());
+        Self {
+            first_iter,
+            second_iter,
+        }
+    }
+}
+
+impl<'a, K1, K2, V> Iterator for MultimapIter<'a, K1, K2, V>
+where
+    K1: Clone,
+    K2: Clone,
+    V: Clone,
+{
+    type Item = (K1, K2, V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.first_iter.peek() {
+                Some((k1, _)) => {
+                    match self
+                        .second_iter
+                        .as_mut()
+                        .expect("should not be None if first iter has a value")
+                        .next()
+                    {
+                        Some((k2, v)) => break Some(((*k1).clone(), k2.clone(), v.clone())),
+                        None => {
+                            self.first_iter.next();
+                            self.second_iter = self.first_iter.peek().map(|(_, map)| map.iter());
+                            continue;
+                        }
+                    }
+                }
+                None => break None,
+            }
+        }
     }
 }
 
