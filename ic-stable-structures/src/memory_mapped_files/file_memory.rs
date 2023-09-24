@@ -1,16 +1,18 @@
-use std::fs::{File, OpenOptions};
+use std::{fs::{File, OpenOptions}, cell::RefCell};
 
+use ic_exports::ic_cdk::api::stable::WASM_PAGE_SIZE_IN_BYTES;
+use ic_exports::stable_structures::Memory;
 use memmap2::{MmapMut, MmapOptions};
 
 use super::{error::{MemMapError, MemMapResult}, constant::{CHUNK_SIZE, MEM_MAP_RESERVED_LENGTH}};
 
-pub(super) struct FileMemory {
+pub(super) struct MemoryMappedFile {
     file: File,
     length: u64,
     mapping: MmapMut
 }
 
-impl FileMemory {
+impl MemoryMappedFile {
     /// Preconditions: file under the `path` should not be modified from any other place
     /// in this or different process.
     pub fn new(path: &str) -> MemMapResult<Self> {
@@ -31,9 +33,9 @@ impl FileMemory {
         self.length
     }
 
-    pub fn resize(&mut self, new_length: u64) -> MemMapResult<()> {
+    pub fn resize(&mut self, new_length: u64) -> MemMapResult<u64> {
         if new_length < self.length {
-            return Ok(())
+            return Ok(self.length)
         }
 
         if new_length > MEM_MAP_RESERVED_LENGTH {
@@ -44,7 +46,7 @@ impl FileMemory {
         self.file.set_len(new_length)?;
         self.length = new_length;
 
-        Ok(())
+        Ok(self.length)
     }
 
     pub fn read(&self, offset: u64, dst: &mut [u8]) -> MemMapResult<()> {
@@ -74,7 +76,29 @@ impl FileMemory {
     }
 }
 
-impl Drop for FileMemory {
+struct MemoryMappedFileMemory(RefCell<MemoryMappedFile>);
+
+impl Memory for MemoryMappedFileMemory {
+    fn size(&self) -> u64 {
+        self.0.borrow().len()
+    }
+
+    fn grow(&self, pages: u64) -> i64 {
+        let mut memory = self.0.borrow_mut();
+        let old_size = memory.len();
+        memory.resize(old_size + pages * (WASM_PAGE_SIZE_IN_BYTES as u64)).expect("failed to resize memory-mapped file") as _
+    }
+
+    fn read(&self, offset: u64, dst: &mut [u8]) {
+        self.0.borrow().read(offset, dst).expect("invalid memory-mapped file read")
+    }
+
+    fn write(&self, offset: u64, src: &[u8]) {
+        self.0.borrow_mut().write(offset, src).expect("invalid memory-mapped file write")
+    }
+}
+
+impl Drop for MemoryMappedFile {
     fn drop(&mut self) {
         self.flush().expect("failed to flush data to file")
     }
@@ -98,7 +122,7 @@ mod tests {
     #[test]
     fn should_create_flush_memory_file() {
         with_temp_file(|path| {
-            let file_memory = FileMemory::new(path).unwrap();
+            let file_memory = MemoryMappedFile::new(path).unwrap();
             file_memory.flush().unwrap();
         })
     }
@@ -106,7 +130,7 @@ mod tests {
     #[test]
     fn should_read_write_first_chunk() {
         with_temp_file(|path| {
-            let mut file_memory = FileMemory::new(path).unwrap();
+            let mut file_memory = MemoryMappedFile::new(path).unwrap();
 
             let slice = &mut [1, 2, 3];
             file_memory.write(0, slice).unwrap();
@@ -128,7 +152,7 @@ mod tests {
     #[test]
     fn should_read_with_offset() {
         with_temp_file(|path| {
-            let mut file_memory = FileMemory::new(path).unwrap();
+            let mut file_memory = MemoryMappedFile::new(path).unwrap();
 
             file_memory.write(0, &[1,2, 3, 4, 5]).unwrap();
 
@@ -149,7 +173,7 @@ mod tests {
     #[test]
     fn read_out_of_bounds_should_return_error() {
         with_temp_file(|path| {
-            let file_memory = FileMemory::new(path).unwrap();
+            let file_memory = MemoryMappedFile::new(path).unwrap();
 
             assert!(matches!(file_memory.read(0, &mut [0; CHUNK_SIZE as usize + 1]), Err(MemMapError::AccessOutOfBounds)));
             assert!(matches!(file_memory.read(1, &mut [0; CHUNK_SIZE as usize]), Err(MemMapError::AccessOutOfBounds)));
@@ -160,7 +184,7 @@ mod tests {
     #[test]
     fn write_out_of_bounds_should_return_error() {
         with_temp_file(|path| {
-            let mut file_memory = FileMemory::new(path).unwrap();
+            let mut file_memory = MemoryMappedFile::new(path).unwrap();
 
             assert!(matches!(file_memory.write(0, &[0; CHUNK_SIZE as usize + 1]), Err(MemMapError::AccessOutOfBounds)));
             assert!(matches!(file_memory.write(1, &[0; CHUNK_SIZE as usize]), Err(MemMapError::AccessOutOfBounds)));
@@ -171,7 +195,7 @@ mod tests {
     #[test]
     fn should_expand() {
         with_temp_file(|path| {
-            let mut file_memory = FileMemory::new(path).unwrap();
+            let mut file_memory = MemoryMappedFile::new(path).unwrap();
             assert_eq!(file_memory.len(), CHUNK_SIZE);
 
             // Fill first chunk
@@ -198,7 +222,7 @@ mod tests {
     #[test]
     fn should_flush() {
         with_temp_file(|path| {
-            let mut file_memory = FileMemory::new(path).unwrap();
+            let mut file_memory = MemoryMappedFile::new(path).unwrap();
 
             let slice = &mut [0; CHUNK_SIZE as _];
             for i in 0..CHUNK_SIZE {
