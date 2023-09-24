@@ -82,6 +82,8 @@ impl Drop for FileMemory {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Read;
+
     use tempfile::NamedTempFile;
 
     use super::*;
@@ -145,6 +147,28 @@ mod tests {
     }
 
     #[test]
+    fn read_out_of_bounds_should_return_error() {
+        with_temp_file(|path| {
+            let file_memory = FileMemory::new(path).unwrap();
+
+            assert!(matches!(file_memory.read(0, &mut [0; CHUNK_SIZE as usize + 1]), Err(MemMapError::AccessOutOfBounds)));
+            assert!(matches!(file_memory.read(1, &mut [0; CHUNK_SIZE as usize]), Err(MemMapError::AccessOutOfBounds)));
+            assert!(matches!(file_memory.read(CHUNK_SIZE, &mut [0; 1]), Err(MemMapError::AccessOutOfBounds)));
+        })
+    }
+
+    #[test]
+    fn write_out_of_bounds_should_return_error() {
+        with_temp_file(|path| {
+            let mut file_memory = FileMemory::new(path).unwrap();
+
+            assert!(matches!(file_memory.write(0, &[0; CHUNK_SIZE as usize + 1]), Err(MemMapError::AccessOutOfBounds)));
+            assert!(matches!(file_memory.write(1, &[0; CHUNK_SIZE as usize]), Err(MemMapError::AccessOutOfBounds)));
+            assert!(matches!(file_memory.write(CHUNK_SIZE, &[0; 1]), Err(MemMapError::AccessOutOfBounds)));
+        })
+    }
+
+    #[test]
     fn should_expand() {
         with_temp_file(|path| {
             let mut file_memory = FileMemory::new(path).unwrap();
@@ -169,5 +193,27 @@ mod tests {
 
             assert_eq!(slice, &[[42; CHUNK_SIZE as _], [43; CHUNK_SIZE as _]].concat()[..])
         })
+    }
+
+    #[test]
+    fn should_flush() {
+        with_temp_file(|path| {
+            let mut file_memory = FileMemory::new(path).unwrap();
+
+            let slice = &mut [0; CHUNK_SIZE as _];
+            for i in 0..CHUNK_SIZE {
+                slice[i as  usize] = (i % u8::MAX as u64) as _;
+            }
+            file_memory.write(0, slice).unwrap();
+
+            file_memory.flush().unwrap();
+
+            let mut file = File::open(path).unwrap();
+            slice.fill(0);
+            file.read_exact(slice).unwrap();
+            for i in 0..CHUNK_SIZE {
+                assert_eq!(slice[i as  usize], (i % u8::MAX as u64) as u8);
+            }
+        });
     }
 }
