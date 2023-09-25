@@ -411,7 +411,7 @@ mod tests {
 
     #[test]
     fn insert_get_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(30));
+        let mut map = StableUnboundedMap::new(MemoryId::new(210));
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);
@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn insert_should_replace_previous_value() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(31));
+        let mut map = StableUnboundedMap::new(MemoryId::new(211));
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);
@@ -444,7 +444,7 @@ mod tests {
 
     #[test]
     fn remove_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(32));
+        let mut map = StableUnboundedMap::new(MemoryId::new(212));
 
         let long_str = test_utils::str_val(50000);
         let medium_str = test_utils::str_val(5000);
@@ -463,7 +463,7 @@ mod tests {
 
     #[test]
     fn iter_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(33));
+        let mut map = StableUnboundedMap::new(MemoryId::new(213));
 
         let strs = [
             test_utils::str_val(50),
@@ -480,7 +480,7 @@ mod tests {
 
     #[test]
     fn upper_bound_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(33));
+        let mut map = StableUnboundedMap::new(MemoryId::new(214));
 
         let strs = [
             test_utils::str_val(50),
@@ -506,7 +506,7 @@ mod tests {
 
     #[test]
     fn unbounded_map_works() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(34));
+        let mut map = StableUnboundedMap::new(MemoryId::new(215));
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);

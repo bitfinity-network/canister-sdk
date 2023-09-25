@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn multimap_works() {
-        let mut map = HeapMultimap::new(MemoryId::new(0));
+        let mut map = HeapMultimap::new(MemoryId::new(160));
         assert!(map.is_empty());
 
         map.insert(&0u32, &0u32, &42u32);

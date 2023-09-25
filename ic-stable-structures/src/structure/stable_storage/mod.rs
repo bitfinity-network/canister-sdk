@@ -1,8 +1,7 @@
 use std::cell::RefCell;
 
-use crate::{Memory, MemoryManager};
+use crate::{Memory, MemoryManager, DefaultMemoryType};
 use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::DefaultMemoryImpl;
 
 mod btreemap;
 mod cell;
@@ -22,7 +21,7 @@ thread_local! {
     // The memory manager is used for simulating multiple memories. Given a `MemoryId` it can
     // return a memory that can be used by stable structures.
     static MANAGER: RefCell<MemoryManager> =
-        RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
+        RefCell::new(MemoryManager::init(DefaultMemoryType::default()));
 }
 
 // Return memory by `MemoryId`.

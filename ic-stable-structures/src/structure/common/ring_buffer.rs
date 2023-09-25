@@ -328,8 +328,8 @@ mod tests {
         assert_eq!(None, buffer.get_value_from_end(buffer.len()));
     }
 
-    const TEST_DATA_MEMORY: MemoryId = MemoryId::new(203);
-    const TEST_INDICES_MEMORY: MemoryId = MemoryId::new(204);
+    const TEST_DATA_MEMORY: MemoryId = MemoryId::new(140);
+    const TEST_INDICES_MEMORY: MemoryId = MemoryId::new(141);
 
     thread_local! {
         static TEST_DATA: RefCell<StableVec<u64>> = RefCell::new(StableVec::new(TEST_DATA_MEMORY).unwrap());

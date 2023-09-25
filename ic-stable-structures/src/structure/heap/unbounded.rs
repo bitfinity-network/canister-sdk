@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn unbounded_map_works() {
-        let mut map = HeapUnboundedMap::new(MemoryId::new(0));
+        let mut map = HeapUnboundedMap::new(MemoryId::new(170));
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);

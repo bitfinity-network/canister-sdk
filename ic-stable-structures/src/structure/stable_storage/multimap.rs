@@ -426,7 +426,7 @@ mod test {
 
     #[test]
     fn inserts() {
-        let mut mm = StableMultimap::new(MemoryId::new(20));
+        let mut mm = StableMultimap::new(MemoryId::new(200));
         for i in 0..10 {
             let k1 = Array([i; 1]);
             let k2 = Array([i * 10; 2]);
@@ -439,7 +439,7 @@ mod test {
 
     #[test]
     fn insert_should_replace_old_value() {
-        let mut mm = make_map(MemoryId::new(21));
+        let mut mm = make_map(MemoryId::new(201));
 
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
@@ -454,7 +454,7 @@ mod test {
 
     #[test]
     fn get() {
-        let mm = make_map(MemoryId::new(22));
+        let mm = make_map(MemoryId::new(202));
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = mm.get(&k1, &k2).unwrap();
@@ -465,7 +465,7 @@ mod test {
 
     #[test]
     fn remove() {
-        let mut mm = make_map(MemoryId::new(23));
+        let mut mm = make_map(MemoryId::new(203));
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = mm.remove(&k1, &k2).unwrap();
@@ -482,7 +482,7 @@ mod test {
 
     #[test]
     fn remove_partial() {
-        let mut mm = StableMultimap::new(MemoryId::new(24));
+        let mut mm = StableMultimap::new(MemoryId::new(204));
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
@@ -499,7 +499,7 @@ mod test {
 
     #[test]
     fn clear() {
-        let mut mm = StableMultimap::new(MemoryId::new(25));
+        let mut mm = StableMultimap::new(MemoryId::new(205));
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
@@ -517,7 +517,7 @@ mod test {
 
     #[test]
     fn iter() {
-        let mm = make_map(MemoryId::new(26));
+        let mm = make_map(MemoryId::new(206));
         let mut iter = mm.into_iter();
         assert!(iter.next().is_some());
         assert!(iter.next().is_some());
@@ -527,7 +527,7 @@ mod test {
     #[test]
     fn range_iter() {
         let k1 = Array([1u8, 2]);
-        let mm = make_map(MemoryId::new(27));
+        let mm = make_map(MemoryId::new(207));
         let mut iter = mm.range(&k1);
         assert!(iter.next().is_some());
         assert!(iter.next().is_none());
@@ -535,7 +535,7 @@ mod test {
 
     #[test]
     fn multimap_works() {
-        let mut map = StableMultimap::new(MemoryId::new(0));
+        let mut map = StableMultimap::new(MemoryId::new(208));
         assert!(map.is_empty());
 
         map.insert(&0u32, &0u32, &42u32);

@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn vec_works() {
-        let mut vec = StableVec::<u64>::new(MemoryId::new(0)).unwrap();
+        let mut vec = StableVec::<u64>::new(MemoryId::new(220)).unwrap();
 
         assert!(vec.is_empty());
         assert_eq!(vec.len(), 0);

@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn btreemap_works() {
-        let mut map = StableBTreeMap::new(MemoryId::new(0));
+        let mut map = StableBTreeMap::new(MemoryId::new(190));
         assert!(map.is_empty());
 
         map.insert(0u32, 42u32);

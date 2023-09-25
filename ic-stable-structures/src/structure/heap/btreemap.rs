@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn btreemap_works() {
-        let mut map = HeapBTreeMap::new(MemoryId::new(0));
+        let mut map = HeapBTreeMap::new(MemoryId::new(150));
         assert!(map.is_empty());
 
         map.insert(0u32, 42u32);

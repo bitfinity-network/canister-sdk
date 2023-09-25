@@ -120,7 +120,7 @@ mod tests {
     fn should_get_and_insert() {
         let cache_items = 2;
         let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(100), cache_items);
+            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(110), cache_items);
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));
@@ -171,7 +171,7 @@ mod tests {
     fn should_clear() {
         let cache_items = 2;
         let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(101), cache_items);
+            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(111), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
@@ -192,7 +192,7 @@ mod tests {
     fn should_replace_old_value() {
         let cache_items = 2;
         let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(102), cache_items);
+            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(112), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
@@ -214,7 +214,7 @@ mod tests {
     fn should_iterate() {
         let cache_items = 2;
         let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(102), cache_items);
+            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(113), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
@@ -231,7 +231,7 @@ mod tests {
     fn should_iterate_over_range() {
         let cache_items = 2;
         let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(102), cache_items);
+            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(114), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
@@ -247,7 +247,7 @@ mod tests {
     fn should_iterate_upper_bound() {
         let cache_items = 2;
         let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(102), cache_items);
+            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(115), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));

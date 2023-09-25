@@ -59,7 +59,7 @@ mod tests {
 
     #[test]
     fn vec_works() {
-        let mut vec = HeapVec::<u64>::new(MemoryId::new(0)).unwrap();
+        let mut vec = HeapVec::<u64>::new(MemoryId::new(180)).unwrap();
 
         assert!(vec.is_empty());
         assert_eq!(vec.len(), 0);

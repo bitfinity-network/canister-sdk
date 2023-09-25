@@ -102,7 +102,7 @@ mod tests {
     fn should_get_and_insert() {
         let cache_items = 2;
         let mut map =
-            CachedStableUnboundedMap::<u32, StringValue>::new(MemoryId::new(123), cache_items);
+            CachedStableUnboundedMap::<u32, StringValue>::new(MemoryId::new(130), cache_items);
 
         assert!(map.get(&1).is_none());
         assert!(map.get(&2).is_none());
@@ -145,7 +145,7 @@ mod tests {
     fn should_get_insert_and_replace() {
         let cache_items = 2;
         let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(120), cache_items);
+            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(131), cache_items);
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));
@@ -196,7 +196,7 @@ mod tests {
     fn should_clear() {
         let cache_items = 2;
         let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(121), cache_items);
+            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(132), cache_items);
 
         assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &Array([2u8, 1])));
@@ -217,7 +217,7 @@ mod tests {
     fn should_replace_old_value() {
         let cache_items = 2;
         let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(122), cache_items);
+            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(133), cache_items);
 
         assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &Array([2u8, 1])));

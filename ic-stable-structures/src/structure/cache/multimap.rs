@@ -128,7 +128,7 @@ mod test {
     fn should_get_and_insert() {
         let cache_items = 2;
         let mut map =
-            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(123), cache_items);
+            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(120), cache_items);
 
         assert_eq!(None, map.get(&1, &1));
         assert_eq!(None, map.get(&1, &2));
@@ -165,7 +165,7 @@ mod test {
     fn should_clear() {
         let cache_items = 2;
         let mut map: CachedStableMultimap<u32, u32, Array<2>> =
-            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(101), cache_items);
+            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(121), cache_items);
 
         assert_eq!(None, map.insert(&1, &1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &1, &Array([2u8, 1])));
@@ -186,7 +186,7 @@ mod test {
     fn should_replace_old_value() {
         let cache_items = 2;
         let mut map: CachedStableMultimap<u32, u32, Array<2>> =
-            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(102), cache_items);
+            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(122), cache_items);
 
         assert_eq!(None, map.insert(&1, &1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &1, &Array([2u8, 1])));
@@ -208,7 +208,7 @@ mod test {
     fn iter() {
         let cache_items = 2;
         let mut map: CachedStableMultimap<u32, u32, Array<2>> =
-            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(102), cache_items);
+            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(123), cache_items);
 
         map.insert(&1, &1, &Array([1u8, 1]));
         map.insert(&1, &2, &Array([2u8, 1]));
@@ -224,7 +224,7 @@ mod test {
     fn range_iter() {
         let cache_items = 2;
         let mut map: CachedStableMultimap<u32, u32, Array<2>> =
-            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(102), cache_items);
+            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(124), cache_items);
 
         map.insert(&1, &1, &Array([1u8, 1]));
         map.insert(&1, &2, &Array([2u8, 1]));
