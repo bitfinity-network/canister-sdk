@@ -12,6 +12,9 @@ use ic_exports::stable_structures::memory_manager::{self, VirtualMemory};
 pub use ic_exports::stable_structures::{BoundedStorable, Storable};
 
 #[cfg(feature = "memory-mapped-files")]
+pub use memory_mapped_files::DEFAULT_MEMORY_MAP_FILE_PATH;
+
+#[cfg(feature = "memory-mapped-files")]
 pub type DefaultMemoryType = std::rc::Rc<memory_mapped_files::GlobalMemoryMappedFileMemory>;
 #[cfg(not(feature = "memory-mapped-files"))]
 pub type DefaultMemoryType = ic_exports::stable_structures::DefaultMemoryImpl;

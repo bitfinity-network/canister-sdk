@@ -1,6 +1,7 @@
 use std::{
     cell::RefCell,
-    fs::{remove_file, File, OpenOptions},
+    fs::{copy, remove_file, File, OpenOptions},
+    path::Path,
 };
 
 use ic_exports::ic_cdk::api::stable::WASM_PAGE_SIZE_IN_BYTES;
@@ -19,6 +20,12 @@ const PAGE_SIZE: u64 = 4096;
 /// but allows skip remapping/flushing when the file size grows.
 const MEM_MAP_RESERVED_LENGTH: u64 = 1 << 40;
 
+/// Default memory map file path.
+pub const DEFAULT_MEMORY_MAP_FILE_PATH: &str = "stable_data";
+
+/// Memory mapped file implementation.
+/// If `is_permanent` flag is true then after the
+/// structure is dropped all the changes are saved to file.
 pub(super) struct MemoryMappedFile {
     file: File,
     path: String,
@@ -32,7 +39,7 @@ impl MemoryMappedFile {
     /// in this or different process.
     pub fn new(path: String, is_permanent: bool) -> MemMapResult<Self> {
         if !is_permanent {
-            _ =  remove_file(&path);
+            _ = remove_file(&path);
         }
 
         let file = OpenOptions::new()
@@ -44,6 +51,7 @@ impl MemoryMappedFile {
         let length = file.metadata()?.len();
 
         let mut mmap_opts = MmapOptions::new();
+        // Safety: function preconditions should guarantee the safetry of the operation
         let mapping = unsafe { mmap_opts.len(MEM_MAP_RESERVED_LENGTH as _).map_mut(&file) }?;
 
         Ok(Self {
@@ -55,12 +63,19 @@ impl MemoryMappedFile {
         })
     }
 
+    /// Returns the current length in bytes
     pub fn len(&self) -> u64 {
         self.length
     }
 
+    /// Resize the memory mapped file.
+    /// `new_length` should be `PAGE_SIZE` multiple.
+    /// If `new_length` is less or equal than the current length
+    /// nothing happens.
     pub fn resize(&mut self, new_length: u64) -> MemMapResult<u64> {
-        assert!(new_length % PAGE_SIZE == 0);
+        if new_length % PAGE_SIZE != 0 {
+            return Err(MemMapError::SizeShouldBePageSizeMultiple);
+        }
 
         if new_length < self.length {
             return Ok(self.length);
@@ -80,6 +95,7 @@ impl MemoryMappedFile {
         Ok(self.length)
     }
 
+    /// Read data starting at `offset` to the given buffer.
     pub fn read(&self, offset: u64, dst: &mut [u8]) -> MemMapResult<()> {
         if offset + dst.len() as u64 > self.len() {
             return Err(MemMapError::AccessOutOfBounds);
@@ -90,6 +106,7 @@ impl MemoryMappedFile {
         Ok(())
     }
 
+    /// Write data from `src` to the memory starting at `offset`.
     pub fn write(&mut self, offset: u64, src: &[u8]) -> MemMapResult<()> {
         if offset + src.len() as u64 > self.len() {
             return Err(MemMapError::AccessOutOfBounds);
@@ -100,6 +117,7 @@ impl MemoryMappedFile {
         Ok(())
     }
 
+    /// Fill range with zeros.
     pub fn zero_range(&mut self, offset: u64, count: u64) -> MemMapResult<()> {
         if offset + count > self.length {
             return Err(MemMapError::AccessOutOfBounds);
@@ -110,12 +128,22 @@ impl MemoryMappedFile {
         Ok(())
     }
 
+    /// Flush all the changes to the underlying file.
     pub fn flush(&self) -> MemMapResult<()> {
         self.mapping.flush()?;
 
         Ok(())
     }
 
+    /// Save the copy to a file at the specified path.
+    pub fn save_copy(&self, path: impl AsRef<Path>) -> MemMapResult<()> {
+        self.flush()?;
+        copy(&self.path, path)?;
+
+        Ok(())
+    }
+
+    /// Set `is_permanent` flag.
     pub fn set_is_permanent(&mut self, is_permanent: bool) {
         self.is_permanent = is_permanent;
     }
@@ -134,16 +162,22 @@ impl Drop for MemoryMappedFile {
 thread_local! {
     static MEMORY_MAPPED_FILE_RESOURCE: RefCell<MemoryMappedFile> = {
         let is_permanent = if cfg!(test) { false } else { true };
-        RefCell::new(MemoryMappedFile::new("stable_data".to_string(), is_permanent).expect("failed to init memory file"))
+        RefCell::new(MemoryMappedFile::new("DEFAULT_MEMORY_MAP_FILE_PATH".to_string(), is_permanent).expect("failed to init memory file"))
     };
 }
 
 #[derive(Default)]
-pub struct GlobalMemoryMappedFileMemory{}
+pub struct GlobalMemoryMappedFileMemory {}
 
 impl GlobalMemoryMappedFileMemory {
-    pub fn set_is_permanent(is_permanent: bool) {
+    /// Set is permanent flag
+    pub fn set_is_permanent(&self, is_permanent: bool) {
         MEMORY_MAPPED_FILE_RESOURCE.with(|m| m.borrow_mut().set_is_permanent(is_permanent));
+    }
+
+    /// Save copy to a separate flag
+    pub fn save_copy(&self, path: impl AsRef<Path>) -> MemMapResult<()> {
+        MEMORY_MAPPED_FILE_RESOURCE.with(|m| m.borrow().save_copy(path))
     }
 }
 
@@ -170,7 +204,8 @@ impl Memory for GlobalMemoryMappedFileMemory {
 
     fn read(&self, offset: u64, dst: &mut [u8]) {
         MEMORY_MAPPED_FILE_RESOURCE.with(|memory| {
-            memory.borrow()
+            memory
+                .borrow()
                 .read(offset, dst)
                 .expect("invalid memory-mapped file read")
         })
@@ -178,7 +213,10 @@ impl Memory for GlobalMemoryMappedFileMemory {
 
     fn write(&self, offset: u64, src: &[u8]) {
         MEMORY_MAPPED_FILE_RESOURCE.with(|memory| {
-            memory.borrow_mut().write(offset, src).expect("invalid memory-mapped file write")
+            memory
+                .borrow_mut()
+                .write(offset, src)
+                .expect("invalid memory-mapped file write")
         })
     }
 }
@@ -325,26 +363,63 @@ mod tests {
         })
     }
 
+    fn create_data() -> Vec<u8> {
+        (0..PAGE_SIZE).map(|i| (i % u8::MAX as u64) as u8).collect()
+    }
+
+    fn check_data(data: &[u8]) {
+        for i in 0..data.len() {
+            assert_eq!(data[i as usize], (i % u8::MAX as usize) as u8);
+        }
+    }
+
     #[test]
     fn should_flush() {
         with_temp_file(|path| {
             let mut file_memory = MemoryMappedFile::new(path.clone(), true).unwrap();
             file_memory.resize(PAGE_SIZE).unwrap();
 
-            let slice = &mut [0; PAGE_SIZE as _];
-            for i in 0..PAGE_SIZE {
-                slice[i as usize] = (i % u8::MAX as u64) as _;
-            }
-            file_memory.write(0, slice).unwrap();
+            let mut data = create_data();
+            file_memory.write(0, &data).unwrap();
 
             file_memory.flush().unwrap();
 
             let mut file = File::open(&path).unwrap();
-            slice.fill(0);
-            file.read_exact(slice).unwrap();
-            for i in 0..PAGE_SIZE {
-                assert_eq!(slice[i as usize], (i % u8::MAX as u64) as u8);
-            }
+            data.fill(0);
+            file.read_exact(&mut data).unwrap();
+            check_data(&data);
+        });
+    }
+
+    #[test]
+    fn should_copy_file() {
+        with_temp_file(|path| {
+            let mut file_memory = MemoryMappedFile::new(path.clone(), true).unwrap();
+            file_memory.resize(PAGE_SIZE).unwrap();
+
+            let mut data = create_data();
+            file_memory.write(0, &data).unwrap();
+
+            let file = NamedTempFile::new().unwrap();
+            let path = file.into_temp_path();
+            file_memory.save_copy(&path).unwrap();
+
+            let mut file = File::open(&path).unwrap();
+            data.fill(0);
+            file.read_exact(&mut data).unwrap();
+            check_data(&data);
+        });
+    }
+
+    #[test]
+    fn should_remove_file_for_non_permanent() {
+        with_temp_file(|path| {
+            let mut file_memory = MemoryMappedFile::new(path.clone(), false).unwrap();
+            file_memory.resize(PAGE_SIZE).unwrap();
+
+            drop(file_memory);
+
+            assert!(!Path::new(&path).exists());
         });
     }
 }

@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use crate::{Memory, MemoryManager, DefaultMemoryType};
+use crate::{DefaultMemoryType, Memory, MemoryManager};
 use ic_exports::stable_structures::memory_manager::MemoryId;
 
 mod btreemap;
