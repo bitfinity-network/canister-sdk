@@ -1,7 +1,7 @@
 use std::{cell::RefCell, hash::Hash};
 
 use crate::{structure::*, Memory};
-use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 /// A LRU Cache for StableBTreeMap
@@ -93,7 +93,7 @@ where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
 {
-    type Iterator<'a> = ic_exports::stable_structures::btreemap::Iter<'a, K, V, Memory> where Self: 'a;
+    type Iterator<'a> = dfinity_stable_structures::btreemap::Iter<'a, K, V, Memory> where Self: 'a;
 
     fn iter(&self) -> Self::Iterator<'_> {
         self.inner.iter()
@@ -114,7 +114,7 @@ mod tests {
     use crate::test_utils::Array;
 
     use super::*;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn should_get_and_insert() {

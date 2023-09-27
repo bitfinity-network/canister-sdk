@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use ic_exports::stable_structures::{BoundedStorable, Storable};
+use dfinity_stable_structures::{BoundedStorable, Storable};
 
 use crate::structure::{ChunkSize, SlicedStorable};
 

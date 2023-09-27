@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{memory_manager::MemoryId, Storable};
+use dfinity_stable_structures::{memory_manager::MemoryId, Storable};
 
 use crate::{structure::LogStructure, Result};
 

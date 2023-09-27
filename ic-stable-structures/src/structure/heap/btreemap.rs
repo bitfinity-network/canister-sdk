@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
 
 use crate::structure::BTreeMapStructure;
 
@@ -60,7 +60,7 @@ where
 mod tests {
 
     use super::*;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn btreemap_works() {
