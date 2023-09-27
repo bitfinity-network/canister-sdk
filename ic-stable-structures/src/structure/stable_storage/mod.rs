@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 
 use crate::{Memory, MemoryManager};
-use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::DefaultMemoryImpl;
+use dfinity_stable_structures::memory_manager::MemoryId;
+use dfinity_stable_structures::DefaultMemoryImpl;
 
 mod btreemap;
 mod cell;

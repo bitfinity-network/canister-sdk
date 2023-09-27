@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
-use ic_exports::stable_structures::{
+use dfinity_stable_structures::{
     btreemap, memory_manager::MemoryId, BoundedStorable, StableBTreeMap, Storable,
 };
 
@@ -380,7 +380,7 @@ where
 mod tests {
     use std::collections::HashMap;
 
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::memory_manager::MemoryId;
 
     use super::*;
     use crate::test_utils;

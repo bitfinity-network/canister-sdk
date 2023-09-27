@@ -1,5 +1,5 @@
-use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::Storable;
+use dfinity_stable_structures::memory_manager::MemoryId;
+use dfinity_stable_structures::Storable;
 
 use crate::structure::CellStructure;
 use crate::Result;
