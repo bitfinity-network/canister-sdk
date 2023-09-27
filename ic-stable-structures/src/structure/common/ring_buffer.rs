@@ -3,6 +3,8 @@ use std::cmp::min;
 use std::mem::size_of;
 use std::thread::LocalKey;
 
+use ic_exports::stable_structures::Memory;
+
 use crate::structure::{CellStructure, StableCell, StableVec, VecStructure};
 use crate::{BoundedStorable, Storable};
 
@@ -80,18 +82,18 @@ impl BoundedStorable for StableRingBufferIndices {
 
 /// Stable ring buffer implementation
 #[derive(Debug)]
-pub struct StableRingBuffer<T: BoundedStorable + Clone + 'static> {
+pub struct StableRingBuffer<T: BoundedStorable + Clone + 'static, M: Memory + 'static> {
     /// Vector with elements
-    data: &'static LocalKey<RefCell<StableVec<T>>>,
+    data: &'static LocalKey<RefCell<StableVec<T, M>>>,
     /// Indices that specify where are the first and last elements in the buffer
-    indices: &'static LocalKey<RefCell<StableCell<StableRingBufferIndices>>>,
+    indices: &'static LocalKey<RefCell<StableCell<StableRingBufferIndices, M>>>,
 }
 
-impl<T: BoundedStorable + Clone + 'static> StableRingBuffer<T> {
+impl<T: BoundedStorable + Clone + 'static, M: Memory + 'static> StableRingBuffer<T, M> {
     /// Creates new ring buffer
     pub fn new(
-        data: &'static LocalKey<RefCell<StableVec<T>>>,
-        indices: &'static LocalKey<RefCell<StableCell<StableRingBufferIndices>>>,
+        data: &'static LocalKey<RefCell<StableVec<T, M>>>,
+        indices: &'static LocalKey<RefCell<StableCell<StableRingBufferIndices, M>>>,
     ) -> Self {
         Self { data, indices }
     }
@@ -199,7 +201,7 @@ impl<T: BoundedStorable + Clone + 'static> StableRingBuffer<T> {
 
     fn with_indices_data_mut<R>(
         &mut self,
-        f: impl Fn(&mut StableRingBufferIndices, &mut StableVec<T>) -> R,
+        f: impl Fn(&mut StableRingBufferIndices, &mut StableVec<T, M>) -> R,
     ) -> R {
         self.indices.with(|i| {
             let mut indices = i.borrow().get().clone();

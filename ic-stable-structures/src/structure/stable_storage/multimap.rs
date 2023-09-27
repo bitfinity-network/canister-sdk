@@ -2,10 +2,10 @@ use std::borrow::Cow;
 use std::marker::PhantomData;
 
 use ic_exports::stable_structures::{
-    btreemap, memory_manager::MemoryId, BoundedStorable, StableBTreeMap, Storable,
+    btreemap, BoundedStorable, StableBTreeMap, Storable, Memory,
 };
 
-use crate::{structure::MultimapStructure, Memory};
+use crate::structure::MultimapStructure;
 
 // Keys memory layout:
 //
@@ -29,35 +29,37 @@ use crate::{structure::MultimapStructure, Memory};
 
 /// `StableMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
-pub struct StableMultimap<K1, K2, V>(StableBTreeMap<KeyPair<K1, K2>, Value<V>, Memory>)
-where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable;
-
-impl<K1, K2, V> StableMultimap<K1, K2, V>
+pub struct StableMultimap<K1, K2, V, M>(StableBTreeMap<KeyPair<K1, K2>, Value<V>, M>)
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory;
+
+impl<K1, K2, V, M> StableMultimap<K1, K2, V, M>
+where
+    K1: BoundedStorable,
+    K2: BoundedStorable,
+    V: BoundedStorable,
+    M: Memory,
 {
     /// Create a new instance of a `StableMultimap`.
     /// All keys and values byte representations should be less then related `..._max_size` arguments.
-    pub fn new(memory_id: MemoryId) -> Self {
-        let memory = super::get_memory_by_id(memory_id);
+    pub fn new(memory: M) -> Self {
         Self(StableBTreeMap::init(memory))
     }
 }
 
-impl<K1, K2, V> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V>
+impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
-    type Iterator<'a> = StableMultimapIter<'a, K1, K2, V> where Self: 'a;
+    type Iterator<'a> = StableMultimapIter<'a, K1, K2, V, M> where Self: 'a;
 
-    type RangeIterator<'a> = StableMultimapRangeIter<'a, K1, K2, V> where Self: 'a;
+    type RangeIterator<'a> = StableMultimapRangeIter<'a, K1, K2, V, M> where Self: 'a;
 
     fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
         let key = KeyPair::new(first_key, second_key);
@@ -315,22 +317,24 @@ impl<V: BoundedStorable> BoundedStorable for Value<V> {
 }
 
 /// Range iterator
-pub struct StableMultimapRangeIter<'a, K1, K2, V>
+pub struct StableMultimapRangeIter<'a, K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
-    inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, Memory>,
+    inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>,
 }
 
-impl<'a, K1, K2, V> StableMultimapRangeIter<'a, K1, K2, V>
+impl<'a, K1, K2, V, M> StableMultimapRangeIter<'a, K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
-    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, Memory>) -> Self {
+    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
         Self { inner }
     }
 }
@@ -338,11 +342,12 @@ where
 // -----------------------------------------------------------------------------
 //     - Range Iterator impl -
 // -----------------------------------------------------------------------------
-impl<'a, K1, K2, V> Iterator for StableMultimapRangeIter<'a, K1, K2, V>
+impl<'a, K1, K2, V, M> Iterator for StableMultimapRangeIter<'a, K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
     type Item = (K2, V);
 
@@ -353,28 +358,31 @@ where
     }
 }
 
-pub struct StableMultimapIter<'a, K1, K2, V>(btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, Memory>)
-where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable;
-
-impl<'a, K1, K2, V> StableMultimapIter<'a, K1, K2, V>
+pub struct StableMultimapIter<'a, K1, K2, V, M>(btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>)
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory;
+
+impl<'a, K1, K2, V, M> StableMultimapIter<'a, K1, K2, V, M>
+where
+    K1: BoundedStorable,
+    K2: BoundedStorable,
+    V: BoundedStorable,
+    M: Memory,
 {
-    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, Memory>) -> Self {
+    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
         Self(inner)
     }
 }
 
-impl<'a, K1, K2, V> Iterator for StableMultimapIter<'a, K1, K2, V>
+impl<'a, K1, K2, V, M> Iterator for StableMultimapIter<'a, K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
     type Item = (K1, K2, V);
 
@@ -387,15 +395,16 @@ where
     }
 }
 
-impl<'a, K1, K2, V> IntoIterator for &'a StableMultimap<K1, K2, V>
+impl<'a, K1, K2, V, M> IntoIterator for &'a StableMultimap<K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
     type Item = (K1, K2, V);
 
-    type IntoIter = StableMultimapIter<'a, K1, K2, V>;
+    type IntoIter = StableMultimapIter<'a, K1, K2, V, M>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()

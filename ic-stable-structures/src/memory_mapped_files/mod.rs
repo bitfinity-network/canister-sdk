@@ -1,4 +1,5 @@
 mod error;
-mod file_memory;
+mod memory;
+mod memory_mapped_file;
 
-pub use file_memory::{GlobalMemoryMappedFileMemory, DEFAULT_MEMORY_MAP_FILE_PATH};
+pub use memory::MemoryMappedFileMemory;

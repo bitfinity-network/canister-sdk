@@ -1,35 +1,37 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 
-use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable, Memory};
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 use crate::structure::*;
 
 /// A LRU Cache for StableMultimaps
-pub struct CachedStableMultimap<K1, K2, V>
+pub struct CachedStableMultimap<K1, K2, V, M>
 where
     K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
+    M: Memory,
 {
-    inner: StableMultimap<K1, K2, V>,
+    inner: StableMultimap<K1, K2, V, M>,
     cache: RefCell<Cache<(K1, K2), V>>,
 }
 
-impl<K1, K2, V> CachedStableMultimap<K1, K2, V>
+impl<K1, K2, V, M> CachedStableMultimap<K1, K2, V, M>
 where
     K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
+    M: Memory,
 {
     /// Create new instance of the CachedStableMultimap with a fixed number of max cached elements.
-    pub fn new(memory_id: MemoryId, max_cache_items: u64) -> Self {
-        Self::with_map(StableMultimap::new(memory_id), max_cache_items)
+    pub fn new(memory: M, max_cache_items: u64) -> Self {
+        Self::with_map(StableMultimap::new(memory), max_cache_items)
     }
 
     /// Create new instance of the CachedStableMultimap with a fixed number of max cached elements.
-    pub fn with_map(inner: StableMultimap<K1, K2, V>, max_cache_items: u64) -> Self {
+    pub fn with_map(inner: StableMultimap<K1, K2, V, M>, max_cache_items: u64) -> Self {
         Self {
             inner,
             cache: RefCell::new(
@@ -41,15 +43,16 @@ where
     }
 }
 
-impl<K1, K2, V> MultimapStructure<K1, K2, V> for CachedStableMultimap<K1, K2, V>
+impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for CachedStableMultimap<K1, K2, V, M>
 where
     K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
+    M: Memory,
 {
-    type Iterator<'a> = <StableMultimap<K1, K2, V> as MultimapStructure<K1, K2, V>>::Iterator<'a> where Self: 'a;
+    type Iterator<'a> = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::Iterator<'a> where Self: 'a;
 
-    type RangeIterator<'a> = <StableMultimap<K1, K2, V> as MultimapStructure<K1, K2, V>>::RangeIterator<'a> where Self: 'a;
+    type RangeIterator<'a> = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::RangeIterator<'a> where Self: 'a;
 
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
         let mut cache = self.cache.borrow_mut();

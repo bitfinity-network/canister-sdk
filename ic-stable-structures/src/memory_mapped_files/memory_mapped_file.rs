@@ -4,7 +4,6 @@ use std::{
     path::Path,
 };
 
-use ic_exports::ic_cdk::api::stable::WASM_PAGE_SIZE_IN_BYTES;
 use ic_exports::stable_structures::Memory;
 use memmap2::{MmapMut, MmapOptions};
 
@@ -19,9 +18,6 @@ const PAGE_SIZE: u64 = 4096;
 /// This doesn't allocate any resources (except of address space which is not a problem for x64)
 /// but allows skip remapping/flushing when the file size grows.
 const MEM_MAP_RESERVED_LENGTH: u64 = 1 << 40;
-
-/// Default memory map file path.
-pub const DEFAULT_MEMORY_MAP_FILE_PATH: &str = "stable_data";
 
 /// Memory mapped file implementation.
 /// If `is_permanent` flag is true then after the
@@ -156,68 +152,6 @@ impl Drop for MemoryMappedFile {
         } else {
             _ = remove_file(&self.path);
         }
-    }
-}
-
-thread_local! {
-    static MEMORY_MAPPED_FILE_RESOURCE: RefCell<MemoryMappedFile> = {
-        let is_permanent = if cfg!(test) { false } else { true };
-        RefCell::new(MemoryMappedFile::new("DEFAULT_MEMORY_MAP_FILE_PATH".to_string(), is_permanent).expect("failed to init memory file"))
-    };
-}
-
-#[derive(Default)]
-pub struct GlobalMemoryMappedFileMemory {}
-
-impl GlobalMemoryMappedFileMemory {
-    /// Set is permanent flag
-    pub fn set_is_permanent(&self, is_permanent: bool) {
-        MEMORY_MAPPED_FILE_RESOURCE.with(|m| m.borrow_mut().set_is_permanent(is_permanent));
-    }
-
-    /// Save copy to a separate flag
-    pub fn save_copy(&self, path: impl AsRef<Path>) -> MemMapResult<()> {
-        MEMORY_MAPPED_FILE_RESOURCE.with(|m| m.borrow().save_copy(path))
-    }
-}
-
-impl Memory for GlobalMemoryMappedFileMemory {
-    fn size(&self) -> u64 {
-        MEMORY_MAPPED_FILE_RESOURCE.with(|m| m.borrow().len() / WASM_PAGE_SIZE_IN_BYTES as u64)
-    }
-
-    fn grow(&self, pages: u64) -> i64 {
-        MEMORY_MAPPED_FILE_RESOURCE.with(|memory| {
-            let mut memory = memory.borrow_mut();
-            let old_size = memory.len();
-            let bytes_to_add = pages * (WASM_PAGE_SIZE_IN_BYTES as u64);
-            let new_length = memory
-                .resize(old_size + bytes_to_add)
-                .expect("failed to resize memory-mapped file");
-            memory
-                .zero_range(old_size, bytes_to_add)
-                .expect("should succeed to zero new memory");
-
-            (new_length / WASM_PAGE_SIZE_IN_BYTES as u64) as i64
-        })
-    }
-
-    fn read(&self, offset: u64, dst: &mut [u8]) {
-        MEMORY_MAPPED_FILE_RESOURCE.with(|memory| {
-            memory
-                .borrow()
-                .read(offset, dst)
-                .expect("invalid memory-mapped file read")
-        })
-    }
-
-    fn write(&self, offset: u64, src: &[u8]) {
-        MEMORY_MAPPED_FILE_RESOURCE.with(|memory| {
-            memory
-                .borrow_mut()
-                .write(offset, src)
-                .expect("invalid memory-mapped file write")
-        })
     }
 }
 

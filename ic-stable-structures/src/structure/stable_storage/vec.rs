@@ -1,58 +1,63 @@
-use ic_exports::stable_structures::memory_manager::MemoryId;
-use ic_exports::stable_structures::{vec, BoundedStorable};
+use ic_exports::stable_structures::{vec, BoundedStorable, Memory};
 
-use super::get_memory_by_id;
 use crate::structure::VecStructure;
-use crate::{Memory, Result};
+use crate::Result;
 
-pub struct StableVec<T: BoundedStorable>(vec::Vec<T, Memory>, MemoryId);
+pub struct StableVec<T: BoundedStorable, M: Memory>(Option<vec::Vec<T, M>>);
 
 /// A stable analogue of the `std::vec::Vec`:
 /// integer-indexed collection of mutable values that is able to grow.
-impl<T: BoundedStorable> StableVec<T> {
+impl<T: BoundedStorable, M: Memory> StableVec<T, M> {
     /// Creates new `StableVec`
-    pub fn new(memory_id: MemoryId) -> Result<Self> {
-        Ok(Self(
-            vec::Vec::<T, Memory>::init(get_memory_by_id(memory_id))?,
-            memory_id,
-        ))
+    pub fn new(memory: M) -> Result<Self> {
+        Ok(Self(Some(
+            vec::Vec::init(memory)?)))
     }
 
     /// Returns iterator over the elements in the vector
     pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
-        self.0.iter()
+        self.get_inner().iter()
+    }
+
+    fn mut_inner(&mut self) -> &mut vec::Vec<T, M> {
+        self.0.as_mut().expect("vector is always initialized")
+    }
+
+    fn get_inner(&self) -> & vec::Vec<T, M> {
+        self.0.as_ref().expect("vector is always initialized")
     }
 }
 
-impl<T: BoundedStorable> VecStructure<T> for StableVec<T> {
+impl<T: BoundedStorable, M: Memory> VecStructure<T> for StableVec<T, M> {
     fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.get_inner().is_empty()
     }
 
     fn clear(&mut self) -> Result<()> {
-        self.0 = vec::Vec::<T, Memory>::new(get_memory_by_id(self.1))?;
+        let memory = self.0.take().expect("vector is alway initialized").into_memory();
+        self.0 = Some(vec::Vec::new(memory)?);
         Ok(())
     }
 
     fn len(&self) -> u64 {
-        self.0.len()
+        self.get_inner().len()
     }
 
     fn set(&mut self, index: u64, item: &T) -> Result<()> {
-        self.0.set(index, item);
+        self.mut_inner().set(index, item);
         Ok(())
     }
 
     fn get(&self, index: u64) -> Option<T> {
-        self.0.get(index)
+        self.get_inner().get(index)
     }
 
     fn push(&mut self, item: &T) -> Result<()> {
-        self.0.push(item).map_err(Into::into)
+        self.mut_inner().push(item).map_err(Into::into)
     }
 
     fn pop(&mut self) -> Option<T> {
-        self.0.pop()
+        self.mut_inner().pop()
     }
 }
 

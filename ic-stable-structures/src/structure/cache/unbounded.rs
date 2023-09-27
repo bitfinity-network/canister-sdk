@@ -1,34 +1,36 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 
-use ic_exports::stable_structures::memory_manager::MemoryId;
+use ic_exports::stable_structures::{memory_manager::MemoryId, Memory};
 use ic_exports::stable_structures::BoundedStorable;
 
 use crate::structure::*;
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 /// A LRU Cache for StableUnboundedMaps
-pub struct CachedStableUnboundedMap<K, V>
+pub struct CachedStableUnboundedMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
+    M: Memory
 {
-    inner: StableUnboundedMap<K, V>,
+    inner: StableUnboundedMap<K, V, M>,
     cache: RefCell<Cache<K, V>>,
 }
 
-impl<K, V> CachedStableUnboundedMap<K, V>
+impl<K, V, M> CachedStableUnboundedMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
+    M: Memory,
 {
     /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
-    pub fn new(memory_id: MemoryId, max_cache_items: u64) -> Self {
-        Self::with_map(StableUnboundedMap::new(memory_id), max_cache_items)
+    pub fn new(memory: M, max_cache_items: u64) -> Self {
+        Self::with_map(StableUnboundedMap::new(memory), max_cache_items)
     }
 
     /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
-    pub fn with_map(inner: StableUnboundedMap<K, V>, max_cache_items: u64) -> Self {
+    pub fn with_map(inner: StableUnboundedMap<K, V, M>, max_cache_items: u64) -> Self {
         Self {
             inner,
             cache: RefCell::new(
@@ -40,10 +42,11 @@ where
     }
 }
 
-impl<K, V> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V>
+impl<K, V, M> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
+    M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
         let mut cache = self.cache.borrow_mut();
