@@ -264,7 +264,7 @@ impl Tokens256 {
 
     /// Rounded square root of the value.
     pub fn sqrt(&self) -> Self {
-        Self(self.0.sqrt_vartime())
+        Self(self.0.sqrt())
     }
 
     /// Returns true if the value equals zero.

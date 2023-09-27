@@ -9,6 +9,7 @@ description = "Client for interacting with an IC Canister"
 [features]
 default = []
 ic-agent-client = ["dep:ic-agent"]
+state-machine-tests-client = ["dep:tokio"]
 
 [dependencies]
 candid = { workspace = true }
@@ -19,3 +20,4 @@ serde_json = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 async-trait = { workspace = true }
+tokio = { workspace = true, optional = true, features = ["sync"] }

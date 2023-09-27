@@ -1,4 +1,5 @@
 use ic_exports::ic_cdk::api::call::RejectionCode;
+use ic_exports::ic_test_state_machine::UserError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -12,6 +13,17 @@ pub enum CanisterClientError {
     #[cfg(feature = "ic-agent-client")]
     #[error("ic agent error: {0}")]
     IcAgentError(#[from] ic_agent::agent::AgentError),
+
+    #[cfg(feature = "state-machine-tests-client")]
+    #[error("state machine test error: {0}")]
+    StateMachineTestError(UserError),
+}
+
+#[cfg(feature = "state-machine-tests-client")]
+impl From<UserError> for CanisterClientError {
+    fn from(error: UserError) -> Self {
+        CanisterClientError::StateMachineTestError(error)
+    }
 }
 
 pub type CanisterClientResult<T> = Result<T, CanisterClientError>;
