@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::path::Path;
 
-use ic_exports::ic_cdk::api::stable::WASM_PAGE_SIZE_IN_BYTES;
-use ic_exports::stable_structures::Memory;
+use dfinity_stable_structures::Memory;
+use ic_cdk::api::stable::WASM_PAGE_SIZE_IN_BYTES;
 
 use super::error::MemMapResult;
 use super::memory_mapped_file::MemoryMappedFile;

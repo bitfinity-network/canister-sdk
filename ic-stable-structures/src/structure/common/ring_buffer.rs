@@ -3,7 +3,7 @@ use std::cmp::min;
 use std::mem::size_of;
 use std::thread::LocalKey;
 
-use ic_exports::stable_structures::Memory;
+use dfinity_stable_structures::Memory;
 
 use crate::structure::{CellStructure, StableCell, StableVec, VecStructure};
 use crate::{BoundedStorable, Storable};
@@ -225,7 +225,8 @@ mod tests {
 
     use crate::BoundedStorable;
     use candid::Principal;
-    use ic_exports::{ic_kit::MockContext, stable_structures::VectorMemory};
+    use dfinity_stable_structures::VectorMemory;
+    use ic_exports::ic_kit::MockContext;
 
     use super::*;
 

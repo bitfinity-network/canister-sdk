@@ -412,9 +412,10 @@ where
 #[cfg(test)]
 mod test {
 
+    use dfinity_stable_structures::VectorMemory;
+
     use super::*;
     use crate::test_utils::Array;
-    use dfinity_stable_structures::memory_manager::MemoryId;
 
     fn make_map() -> StableMultimap<Array<2>, Array<3>, Array<6>, VectorMemory> {
         let mut mm = StableMultimap::new(VectorMemory::default());

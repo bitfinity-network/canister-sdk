@@ -1,10 +1,8 @@
 use std::{
-    cell::RefCell,
     fs::{copy, remove_file, File, OpenOptions},
     path::Path,
 };
 
-use ic_exports::stable_structures::Memory;
 use memmap2::{MmapMut, MmapOptions};
 
 use super::error::{MemMapError, MemMapResult};

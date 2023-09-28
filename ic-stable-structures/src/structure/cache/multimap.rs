@@ -122,7 +122,7 @@ where
 #[cfg(test)]
 mod test {
 
-    use ic_exports::stable_structures::VectorMemory;
+    use dfinity_stable_structures::VectorMemory;
 
     use crate::test_utils::Array;
 

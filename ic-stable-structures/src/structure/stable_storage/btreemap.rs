@@ -88,7 +88,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use ic_exports::stable_structures::VectorMemory;
+    use dfinity_stable_structures::VectorMemory;
 
     use super::*;
 
