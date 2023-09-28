@@ -15,7 +15,7 @@ impl<K, V, M> StableBTreeMap<K, V, M>
 where
     K: BoundedStorable + Ord + Clone,
     V: BoundedStorable,
-    M: Memory
+    M: Memory,
 {
     /// Create new instance of key-value storage.
     pub fn new(memory: M) -> Self {

@@ -131,8 +131,10 @@ mod test {
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        let mut map =
-            CachedStableMultimap::<u32, u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
+            VectorMemory::default(),
+            cache_items,
+        );
 
         assert_eq!(None, map.get(&1, &1));
         assert_eq!(None, map.get(&1, &2));
@@ -168,8 +170,10 @@ mod test {
     #[test]
     fn should_clear() {
         let cache_items = 2;
-        let mut map =
-            CachedStableMultimap::<u32, u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
+            VectorMemory::default(),
+            cache_items,
+        );
 
         assert_eq!(None, map.insert(&1, &1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &1, &Array([2u8, 1])));
@@ -189,8 +193,10 @@ mod test {
     #[test]
     fn should_replace_old_value() {
         let cache_items = 2;
-        let mut map =
-            CachedStableMultimap::<u32, u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
+            VectorMemory::default(),
+            cache_items,
+        );
 
         assert_eq!(None, map.insert(&1, &1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &1, &Array([2u8, 1])));
@@ -211,8 +217,10 @@ mod test {
     #[test]
     fn iter() {
         let cache_items = 2;
-        let mut map =
-            CachedStableMultimap::<u32, u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
+            VectorMemory::default(),
+            cache_items,
+        );
 
         map.insert(&1, &1, &Array([1u8, 1]));
         map.insert(&1, &2, &Array([2u8, 1]));
@@ -227,8 +235,10 @@ mod test {
     #[test]
     fn range_iter() {
         let cache_items = 2;
-        let mut map =
-            CachedStableMultimap::<u32, u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
+            VectorMemory::default(),
+            cache_items,
+        );
 
         map.insert(&1, &1, &Array([1u8, 1]));
         map.insert(&1, &2, &Array([2u8, 1]));

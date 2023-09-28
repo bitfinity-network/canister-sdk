@@ -223,7 +223,7 @@ mod tests {
     use std::cell::RefCell;
     use std::fmt::Debug;
 
-    use crate::{BoundedStorable, MemoryId};
+    use crate::BoundedStorable;
     use candid::Principal;
     use ic_exports::{ic_kit::MockContext, stable_structures::VectorMemory};
 

@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 
-use ic_exports::stable_structures::Memory;
 use ic_exports::stable_structures::BoundedStorable;
+use ic_exports::stable_structures::Memory;
 
 use crate::structure::*;
 use mini_moka::unsync::{Cache, CacheBuilder};
@@ -12,7 +12,7 @@ pub struct CachedStableUnboundedMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
-    M: Memory
+    M: Memory,
 {
     inner: StableUnboundedMap<K, V, M>,
     cache: RefCell<Cache<K, V>>,
@@ -104,8 +104,10 @@ mod tests {
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        let mut map =
-            CachedStableUnboundedMap::<u32, StringValue, _>::new(VectorMemory::default(), cache_items);
+        let mut map = CachedStableUnboundedMap::<u32, StringValue, _>::new(
+            VectorMemory::default(),
+            cache_items,
+        );
 
         assert!(map.get(&1).is_none());
         assert!(map.get(&2).is_none());

@@ -1,9 +1,7 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use ic_exports::stable_structures::{
-    btreemap, BoundedStorable, StableBTreeMap, Storable, Memory,
-};
+use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
 
 use crate::structure::MultimapStructure;
 

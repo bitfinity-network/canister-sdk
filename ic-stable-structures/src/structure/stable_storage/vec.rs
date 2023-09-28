@@ -10,8 +10,7 @@ pub struct StableVec<T: BoundedStorable, M: Memory>(Option<vec::Vec<T, M>>);
 impl<T: BoundedStorable, M: Memory> StableVec<T, M> {
     /// Creates new `StableVec`
     pub fn new(memory: M) -> Result<Self> {
-        Ok(Self(Some(
-            vec::Vec::init(memory)?)))
+        Ok(Self(Some(vec::Vec::init(memory)?)))
     }
 
     /// Returns iterator over the elements in the vector
@@ -23,7 +22,7 @@ impl<T: BoundedStorable, M: Memory> StableVec<T, M> {
         self.0.as_mut().expect("vector is always initialized")
     }
 
-    fn get_inner(&self) -> & vec::Vec<T, M> {
+    fn get_inner(&self) -> &vec::Vec<T, M> {
         self.0.as_ref().expect("vector is always initialized")
     }
 }
@@ -34,7 +33,11 @@ impl<T: BoundedStorable, M: Memory> VecStructure<T> for StableVec<T, M> {
     }
 
     fn clear(&mut self) -> Result<()> {
-        let memory = self.0.take().expect("vector is alway initialized").into_memory();
+        let memory = self
+            .0
+            .take()
+            .expect("vector is alway initialized")
+            .into_memory();
         self.0 = Some(vec::Vec::new(memory)?);
         Ok(())
     }

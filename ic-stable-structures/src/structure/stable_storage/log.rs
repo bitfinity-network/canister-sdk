@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{log, Storable, Memory};
+use ic_exports::stable_structures::{log, Memory, Storable};
 
 use crate::structure::LogStructure;
 use crate::{Error, Result};
@@ -43,7 +43,11 @@ impl<T: Storable, M: Memory> LogStructure<T> for StableLog<T, M> {
     }
 
     fn clear(&mut self) {
-        let (index_mem, data_mem) = self.0.take().expect("inner log is laways present").into_memories();
+        let (index_mem, data_mem) = self
+            .0
+            .take()
+            .expect("inner log is laways present")
+            .into_memories();
         self.0 = Some(log::Log::new(index_mem, data_mem));
     }
 }

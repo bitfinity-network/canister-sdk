@@ -1,5 +1,5 @@
-use std::path::Path;
 use std::cell::RefCell;
+use std::path::Path;
 
 use ic_exports::ic_cdk::api::stable::WASM_PAGE_SIZE_IN_BYTES;
 use ic_exports::stable_structures::Memory;
@@ -11,7 +11,10 @@ pub struct MemoryMappedFileMemory(RefCell<MemoryMappedFile>);
 
 impl MemoryMappedFileMemory {
     pub fn new(path: String, is_permanent: bool) -> MemMapResult<Self> {
-        Ok(Self(RefCell::new(MemoryMappedFile::new(path, is_permanent)?)))
+        Ok(Self(RefCell::new(MemoryMappedFile::new(
+            path,
+            is_permanent,
+        )?)))
     }
 
     pub fn set_is_permanent(&self, is_permanent: bool) {
@@ -23,7 +26,7 @@ impl MemoryMappedFileMemory {
     }
 }
 
-impl Memory for MemoryMappedFileMemory{
+impl Memory for MemoryMappedFileMemory {
     fn size(&self) -> u64 {
         self.0.borrow().len() / WASM_PAGE_SIZE_IN_BYTES as u64
     }
@@ -44,15 +47,15 @@ impl Memory for MemoryMappedFileMemory{
 
     fn read(&self, offset: u64, dst: &mut [u8]) {
         self.0
-                .borrow()
-                .read(offset, dst)
-                .expect("invalid memory-mapped file read")
+            .borrow()
+            .read(offset, dst)
+            .expect("invalid memory-mapped file read")
     }
 
     fn write(&self, offset: u64, src: &[u8]) {
         self.0
-                .borrow_mut()
-                .write(offset, src)
-                .expect("invalid memory-mapped file write")
+            .borrow_mut()
+            .write(offset, src)
+            .expect("invalid memory-mapped file write")
     }
 }
