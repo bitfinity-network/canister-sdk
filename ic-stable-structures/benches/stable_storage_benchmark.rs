@@ -50,7 +50,7 @@ mod types {
 
     use std::borrow::Cow;
 
-    use ic_exports::stable_structures::Storable;
+    use ic_stable_structures::stable_structures::Storable;
     use ic_stable_structures::{ChunkSize, SlicedStorable};
 
     #[derive(Debug, Clone, PartialEq, Eq)]

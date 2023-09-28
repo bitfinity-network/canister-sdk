@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
 
 use crate::{structure::VecStructure, Result};
 
@@ -55,7 +55,7 @@ impl<T: BoundedStorable + Clone> VecStructure<T> for HeapVec<T> {
 mod tests {
 
     use super::*;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn vec_works() {

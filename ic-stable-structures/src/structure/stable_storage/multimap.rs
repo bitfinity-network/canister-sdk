@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
+use dfinity_stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
 
 use crate::structure::MultimapStructure;
 
@@ -414,7 +414,7 @@ mod test {
 
     use super::*;
     use crate::test_utils::Array;
-    use ic_exports::stable_structures::VectorMemory;
+    use dfinity_stable_structures::memory_manager::MemoryId;
 
     fn make_map() -> StableMultimap<Array<2>, Array<3>, Array<6>, VectorMemory> {
         let mut mm = StableMultimap::new(VectorMemory::default());

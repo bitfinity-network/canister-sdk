@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
-use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
+use dfinity_stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
 
 use crate::{structure::UnboundedMapStructure, SlicedStorable};
 
@@ -382,7 +382,7 @@ where
 mod tests {
     use std::collections::HashMap;
 
-    use ic_exports::stable_structures::VectorMemory;
+    use dfinity_stable_structures::VectorMemory;
 
     use super::*;
     use crate::test_utils;

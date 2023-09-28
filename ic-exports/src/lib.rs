@@ -1,5 +1,5 @@
 pub use candid; // this is needed for candid-derive macro exports
-pub use {ic_cdk, ic_cdk_macros, ic_cdk_timers, ic_kit, ic_stable_structures as stable_structures};
+pub use {ic_cdk, ic_cdk_macros, ic_cdk_timers, ic_kit};
 
 pub type BlockHeight = u64;
 

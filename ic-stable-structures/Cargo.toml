@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-ic-exports = { path = "../ic-exports"}
+dfinity-stable-structures = { workspace = true }
 memmap2 = { workspace = true, optional = true }
 mini-moka = { workspace = true }
 thiserror = { workspace = true }

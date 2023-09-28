@@ -6,9 +6,10 @@ mod memory_mapped_files;
 #[cfg(test)]
 mod test_utils;
 
+pub use dfinity_stable_structures as stable_structures;
+
 pub use error::{Error, Result};
-pub use ic_exports::stable_structures::memory_manager::MemoryId;
-pub use ic_exports::stable_structures::{BoundedStorable, Storable};
+pub use stable_structures::{BoundedStorable, Storable};
 
 #[cfg(feature = "memory-mapped-files")]
 pub use memory_mapped_files::MemoryMappedFileMemory;

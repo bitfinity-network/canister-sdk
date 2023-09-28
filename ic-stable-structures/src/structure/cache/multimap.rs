@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 
-use ic_exports::stable_structures::{BoundedStorable, Memory};
+use dfinity_stable_structures::{BoundedStorable, Memory};
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 use crate::structure::*;

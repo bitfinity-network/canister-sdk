@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{cell, Memory, Storable};
+use dfinity_stable_structures::{cell, Memory, Storable};
 
 use crate::structure::CellStructure;
 use crate::Result;

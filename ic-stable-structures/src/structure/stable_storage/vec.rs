@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{vec, BoundedStorable, Memory};
+use dfinity_stable_structures::{vec, BoundedStorable, Memory};
 
 use crate::structure::VecStructure;
 use crate::Result;
@@ -68,7 +68,7 @@ impl<T: BoundedStorable, M: Memory> VecStructure<T> for StableVec<T, M> {
 mod tests {
 
     use super::*;
-    use ic_exports::stable_structures::VectorMemory;
+    use dfinity_stable_structures::VectorMemory;
 
     #[test]
     fn vec_works() {

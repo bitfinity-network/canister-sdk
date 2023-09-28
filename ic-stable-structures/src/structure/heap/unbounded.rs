@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
 use std::collections::btree_map::Iter as BTreeMapIter;
 use std::{collections::BTreeMap, hash::Hash};
 
@@ -83,7 +83,7 @@ where
 mod tests {
     use std::collections::HashMap;
 
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::memory_manager::MemoryId;
 
     use super::*;
     use crate::test_utils;

@@ -1,4 +1,4 @@
-use ic_exports::stable_structures::{log, Memory, Storable};
+use dfinity_stable_structures::{log, Memory, Storable};
 
 use crate::structure::LogStructure;
 use crate::{Error, Result};

@@ -1,6 +1,6 @@
 use std::ops::RangeBounds;
 
-use ic_exports::stable_structures::{btreemap, BoundedStorable, Memory};
+use dfinity_stable_structures::{btreemap, BoundedStorable, Memory};
 
 use crate::structure::BTreeMapStructure;
 use crate::IterableSortedMapStructure;
