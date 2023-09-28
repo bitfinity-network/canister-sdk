@@ -88,12 +88,13 @@ where
 #[cfg(test)]
 mod tests {
 
+    use ic_exports::stable_structures::VectorMemory;
+
     use super::*;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn btreemap_works() {
-        let mut map = StableBTreeMap::new(MemoryId::new(190));
+        let mut map = StableBTreeMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         map.insert(0u32, 42u32);

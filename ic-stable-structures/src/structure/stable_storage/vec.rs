@@ -65,11 +65,11 @@ impl<T: BoundedStorable, M: Memory> VecStructure<T> for StableVec<T, M> {
 mod tests {
 
     use super::*;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use ic_exports::stable_structures::VectorMemory;
 
     #[test]
     fn vec_works() {
-        let mut vec = StableVec::<u64>::new(MemoryId::new(220)).unwrap();
+        let mut vec = StableVec::<u64, _>::new(VectorMemory::default()).unwrap();
 
         assert!(vec.is_empty());
         assert_eq!(vec.len(), 0);

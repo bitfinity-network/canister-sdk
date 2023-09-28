@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 
-use ic_exports::stable_structures::{memory_manager::MemoryId, BoundedStorable, Memory};
+use ic_exports::stable_structures::{BoundedStorable, Memory};
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 use crate::structure::*;
@@ -122,8 +122,9 @@ where
 #[cfg(test)]
 mod test {
 
+    use ic_exports::stable_structures::VectorMemory;
+
     use crate::test_utils::Array;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
 
     use super::*;
 
@@ -131,7 +132,7 @@ mod test {
     fn should_get_and_insert() {
         let cache_items = 2;
         let mut map =
-            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(120), cache_items);
+            CachedStableMultimap::<u32, u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.get(&1, &1));
         assert_eq!(None, map.get(&1, &2));
@@ -167,8 +168,8 @@ mod test {
     #[test]
     fn should_clear() {
         let cache_items = 2;
-        let mut map: CachedStableMultimap<u32, u32, Array<2>> =
-            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(121), cache_items);
+        let mut map =
+            CachedStableMultimap::<u32, u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(&1, &1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &1, &Array([2u8, 1])));
@@ -188,8 +189,8 @@ mod test {
     #[test]
     fn should_replace_old_value() {
         let cache_items = 2;
-        let mut map: CachedStableMultimap<u32, u32, Array<2>> =
-            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(122), cache_items);
+        let mut map =
+            CachedStableMultimap::<u32, u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(&1, &1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &1, &Array([2u8, 1])));
@@ -210,8 +211,8 @@ mod test {
     #[test]
     fn iter() {
         let cache_items = 2;
-        let mut map: CachedStableMultimap<u32, u32, Array<2>> =
-            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(123), cache_items);
+        let mut map =
+            CachedStableMultimap::<u32, u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         map.insert(&1, &1, &Array([1u8, 1]));
         map.insert(&1, &2, &Array([2u8, 1]));
@@ -226,8 +227,8 @@ mod test {
     #[test]
     fn range_iter() {
         let cache_items = 2;
-        let mut map: CachedStableMultimap<u32, u32, Array<2>> =
-            CachedStableMultimap::<u32, u32, Array<2>>::new(MemoryId::new(124), cache_items);
+        let mut map =
+            CachedStableMultimap::<u32, u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         map.insert(&1, &1, &Array([1u8, 1]));
         map.insert(&1, &2, &Array([2u8, 1]));

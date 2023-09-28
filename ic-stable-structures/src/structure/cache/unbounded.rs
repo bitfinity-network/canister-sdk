@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 
-use ic_exports::stable_structures::{memory_manager::MemoryId, Memory};
+use ic_exports::stable_structures::Memory;
 use ic_exports::stable_structures::BoundedStorable;
 
 use crate::structure::*;
@@ -96,7 +96,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use ic_exports::stable_structures::VectorMemory;
 
     use super::*;
     use crate::test_utils::{Array, StringValue};
@@ -105,7 +105,7 @@ mod tests {
     fn should_get_and_insert() {
         let cache_items = 2;
         let mut map =
-            CachedStableUnboundedMap::<u32, StringValue>::new(MemoryId::new(130), cache_items);
+            CachedStableUnboundedMap::<u32, StringValue, _>::new(VectorMemory::default(), cache_items);
 
         assert!(map.get(&1).is_none());
         assert!(map.get(&2).is_none());
@@ -147,8 +147,8 @@ mod tests {
     #[test]
     fn should_get_insert_and_replace() {
         let cache_items = 2;
-        let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(131), cache_items);
+        let mut map =
+            CachedStableUnboundedMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));
@@ -198,8 +198,8 @@ mod tests {
     #[test]
     fn should_clear() {
         let cache_items = 2;
-        let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(132), cache_items);
+        let mut map =
+            CachedStableUnboundedMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &Array([2u8, 1])));
@@ -219,8 +219,8 @@ mod tests {
     #[test]
     fn should_replace_old_value() {
         let cache_items = 2;
-        let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(133), cache_items);
+        let mut map =
+            CachedStableUnboundedMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &Array([2u8, 1])));

@@ -384,7 +384,7 @@ where
 mod tests {
     use std::collections::HashMap;
 
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use ic_exports::stable_structures::{memory_manager::MemoryId, VectorMemory};
 
     use super::*;
     use crate::test_utils;
@@ -415,7 +415,7 @@ mod tests {
 
     #[test]
     fn insert_get_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(210));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);
@@ -433,7 +433,7 @@ mod tests {
 
     #[test]
     fn insert_should_replace_previous_value() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(211));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);
@@ -448,7 +448,7 @@ mod tests {
 
     #[test]
     fn remove_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(212));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
 
         let long_str = test_utils::str_val(50000);
         let medium_str = test_utils::str_val(5000);
@@ -467,7 +467,7 @@ mod tests {
 
     #[test]
     fn iter_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(213));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
 
         let strs = [
             test_utils::str_val(50),
@@ -484,7 +484,7 @@ mod tests {
 
     #[test]
     fn upper_bound_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(214));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
 
         let strs = [
             test_utils::str_val(50),
@@ -510,7 +510,7 @@ mod tests {
 
     #[test]
     fn unbounded_map_works() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(215));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);

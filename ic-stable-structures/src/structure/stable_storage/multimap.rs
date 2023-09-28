@@ -416,10 +416,10 @@ mod test {
 
     use super::*;
     use crate::test_utils::Array;
-    use ic_exports::stable_structures::memory_manager::MemoryId;
+    use ic_exports::stable_structures::VectorMemory;
 
-    fn make_map(memory_id: MemoryId) -> StableMultimap<Array<2>, Array<3>, Array<6>> {
-        let mut mm = StableMultimap::new(memory_id);
+    fn make_map() -> StableMultimap<Array<2>, Array<3>, Array<6>, VectorMemory> {
+        let mut mm = StableMultimap::new(VectorMemory::default());
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
@@ -435,7 +435,7 @@ mod test {
 
     #[test]
     fn inserts() {
-        let mut mm = StableMultimap::new(MemoryId::new(200));
+        let mut mm = StableMultimap::new(VectorMemory::default());
         for i in 0..10 {
             let k1 = Array([i; 1]);
             let k2 = Array([i * 10; 2]);
@@ -448,7 +448,7 @@ mod test {
 
     #[test]
     fn insert_should_replace_old_value() {
-        let mut mm = make_map(MemoryId::new(201));
+        let mut mm = make_map();
 
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
@@ -463,7 +463,7 @@ mod test {
 
     #[test]
     fn get() {
-        let mm = make_map(MemoryId::new(202));
+        let mm = make_map();
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = mm.get(&k1, &k2).unwrap();
@@ -474,7 +474,7 @@ mod test {
 
     #[test]
     fn remove() {
-        let mut mm = make_map(MemoryId::new(203));
+        let mut mm = make_map();
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = mm.remove(&k1, &k2).unwrap();
@@ -491,7 +491,7 @@ mod test {
 
     #[test]
     fn remove_partial() {
-        let mut mm = StableMultimap::new(MemoryId::new(204));
+        let mut mm = StableMultimap::new(VectorMemory::default());
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
@@ -508,7 +508,7 @@ mod test {
 
     #[test]
     fn clear() {
-        let mut mm = StableMultimap::new(MemoryId::new(205));
+        let mut mm = StableMultimap::new(VectorMemory::default());
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
@@ -526,7 +526,7 @@ mod test {
 
     #[test]
     fn iter() {
-        let mm = make_map(MemoryId::new(206));
+        let mm = make_map();
         let mut iter = mm.into_iter();
         assert!(iter.next().is_some());
         assert!(iter.next().is_some());
@@ -536,7 +536,7 @@ mod test {
     #[test]
     fn range_iter() {
         let k1 = Array([1u8, 2]);
-        let mm = make_map(MemoryId::new(207));
+        let mm = make_map();
         let mut iter = mm.range(&k1);
         assert!(iter.next().is_some());
         assert!(iter.next().is_none());
@@ -544,7 +544,7 @@ mod test {
 
     #[test]
     fn multimap_works() {
-        let mut map = StableMultimap::new(MemoryId::new(208));
+        let mut map = StableMultimap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         map.insert(&0u32, &0u32, &42u32);

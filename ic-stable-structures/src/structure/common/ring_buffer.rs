@@ -225,7 +225,7 @@ mod tests {
 
     use crate::{BoundedStorable, MemoryId};
     use candid::Principal;
-    use ic_exports::ic_kit::MockContext;
+    use ic_exports::{ic_kit::MockContext, stable_structures::VectorMemory};
 
     use super::*;
 
@@ -314,8 +314,8 @@ mod tests {
         });
     }
 
-    fn check_buffer<T: BoundedStorable + Eq + Debug + Clone>(
-        buffer: &StableRingBuffer<T>,
+    fn check_buffer<T: BoundedStorable + Eq + Debug + Clone, M: Memory>(
+        buffer: &StableRingBuffer<T, M>,
         expected: &Vec<T>,
     ) {
         assert_eq!(buffer.len(), expected.len() as u64);
@@ -330,15 +330,12 @@ mod tests {
         assert_eq!(None, buffer.get_value_from_end(buffer.len()));
     }
 
-    const TEST_DATA_MEMORY: MemoryId = MemoryId::new(140);
-    const TEST_INDICES_MEMORY: MemoryId = MemoryId::new(141);
-
     thread_local! {
-        static TEST_DATA: RefCell<StableVec<u64>> = RefCell::new(StableVec::new(TEST_DATA_MEMORY).unwrap());
-        static TEST_INDICES: RefCell<StableCell<StableRingBufferIndices>> = RefCell::new(StableCell::new(TEST_INDICES_MEMORY, StableRingBufferIndices { capacity: 2, latest: 0}).unwrap());
+        static TEST_DATA: RefCell<StableVec<u64, VectorMemory>> = RefCell::new(StableVec::new(VectorMemory::default()).unwrap());
+        static TEST_INDICES: RefCell<StableCell<StableRingBufferIndices, VectorMemory>> = RefCell::new(StableCell::new(VectorMemory::default(), StableRingBufferIndices { capacity: 2, latest: 0}).unwrap());
     }
 
-    fn with_buffer(capacity: u64, f: impl Fn(&mut StableRingBuffer<u64>)) {
+    fn with_buffer(capacity: u64, f: impl Fn(&mut StableRingBuffer<u64, VectorMemory>)) {
         let mock_canister_id = Principal::from_slice(&[42; 29]);
         MockContext::new()
             .with_id(mock_canister_id)

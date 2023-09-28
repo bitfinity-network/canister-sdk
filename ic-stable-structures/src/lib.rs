@@ -5,7 +5,6 @@ mod error;
 mod memory_mapped_files;
 #[cfg(test)]
 mod test_utils;
-pub mod virtual_memory;
 
 pub use error::{Error, Result};
 pub use ic_exports::stable_structures::memory_manager::MemoryId;
