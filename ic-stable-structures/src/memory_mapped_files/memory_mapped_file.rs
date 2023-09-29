@@ -45,7 +45,8 @@ impl MemoryMappedFile {
         let length = file.metadata()?.len();
 
         let mut mmap_opts = MmapOptions::new();
-        // Safety: function preconditions should guarantee the safetry of the operation
+        // Safety: function preconditions should guarantee the safetry of the operation:
+        // mapping to a file is safe if the file isn't modified concurrently by this and other processes.
         let mapping = unsafe { mmap_opts.len(MEM_MAP_RESERVED_LENGTH as _).map_mut(&file) }?;
 
         Ok(Self {
