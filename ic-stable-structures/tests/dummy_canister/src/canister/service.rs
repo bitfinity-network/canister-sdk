@@ -14,40 +14,41 @@ const TX_RING_BUFFER_INDICES_MEMORY_ID: MemoryId = MemoryId::new(8);
 const TX_RING_BUFFER_VEC_MEMORY_ID: MemoryId = MemoryId::new(9);
 
 thread_local! {
+    static MEMORY_MANAGER: DefaultMemoryManager = DefaultMemoryManager::init(DefaultMemoryResourceType::default());
 
-    static TX_BTREEMAP: RefCell<StableBTreeMap<u64, Transaction>> = {
-        RefCell::new(StableBTreeMap::new(TX_BTREEMAP_MEMORY_ID))
+    static TX_BTREEMAP: RefCell<StableBTreeMap<u64, Transaction, DefaultMemoryType>> = {
+        RefCell::new(StableBTreeMap::new(get_memory_by_id(&MEMORY_MANAGER, TX_BTREEMAP_MEMORY_ID)))
     };
 
-    static TX_CELL: RefCell<StableCell<Transaction>> = {
-        RefCell::new(StableCell::new(TX_CELL_MEMORY_ID, Transaction::default()).expect("failed to create stable cell"))
+    static TX_CELL: RefCell<StableCell<Transaction, DefaultMemoryType>> = {
+        RefCell::new(StableCell::new(get_memory_by_id(&MEMORY_MANAGER, TX_CELL_MEMORY_ID), Transaction::default()).expect("failed to create stable cell"))
     };
 
-    static TX_LOG: RefCell<StableLog<Transaction>> = {
-        RefCell::new(StableLog::new(TX_LOG_INDEX_MEMORY_ID, TX_LOG_MEMORY_ID).expect("failed to create stable log"))
+    static TX_LOG: RefCell<StableLog<Transaction, DefaultMemoryType>> = {
+        RefCell::new(StableLog::new(get_memory_by_id(&MEMORY_MANAGER, TX_LOG_INDEX_MEMORY_ID), get_memory_by_id(&MEMORY_MANAGER, TX_LOG_MEMORY_ID)).expect("failed to create stable log"))
     };
 
-    static TX_MAP: RefCell<StableUnboundedMap<u64, Transaction>> = {
-        RefCell::new(StableUnboundedMap::new(TX_MAP_MEMORY_ID))
+    static TX_MAP: RefCell<StableUnboundedMap<u64, Transaction, DefaultMemoryType>> = {
+        RefCell::new(StableUnboundedMap::new(get_memory_by_id(&MEMORY_MANAGER, TX_MAP_MEMORY_ID)))
     };
 
-    static TX_MULTIMAP: RefCell<StableMultimap<u64, u64, Transaction>> = {
-        RefCell::new(StableMultimap::new(TX_MULTIMAP_MEMORY_ID))
+    static TX_MULTIMAP: RefCell<StableMultimap<u64, u64, Transaction, DefaultMemoryType>> = {
+        RefCell::new(StableMultimap::new(get_memory_by_id(&MEMORY_MANAGER, TX_MULTIMAP_MEMORY_ID)))
     };
 
-    static TX_VEC: RefCell<StableVec<Transaction>> = {
-        RefCell::new(StableVec::new(TX_VEC_MEMORY_ID).expect("failed to create stable vec"))
+    static TX_VEC: RefCell<StableVec<Transaction, DefaultMemoryType>> = {
+        RefCell::new(StableVec::new(get_memory_by_id(&MEMORY_MANAGER, TX_VEC_MEMORY_ID)).expect("failed to create stable vec"))
     };
 
-    static TX_RING_BUFFER_DATA: RefCell<StableVec<Transaction>> = {
-        RefCell::new(StableVec::new(TX_RING_BUFFER_VEC_MEMORY_ID).expect("failed to create stable vec"))
+    static TX_RING_BUFFER_DATA: RefCell<StableVec<Transaction, DefaultMemoryType>> = {
+        RefCell::new(StableVec::new(get_memory_by_id(&MEMORY_MANAGER, TX_RING_BUFFER_VEC_MEMORY_ID)).expect("failed to create stable vec"))
     };
 
-    static TX_RING_BUFFER_INDICES: RefCell<StableCell<StableRingBufferIndices>> = {
-        RefCell::new(StableCell::new(TX_RING_BUFFER_INDICES_MEMORY_ID, StableRingBufferIndices::new(4)).expect("failed to create stable cell"))
+    static TX_RING_BUFFER_INDICES: RefCell<StableCell<StableRingBufferIndices, DefaultMemoryType>> = {
+        RefCell::new(StableCell::new(get_memory_by_id(&MEMORY_MANAGER, TX_RING_BUFFER_INDICES_MEMORY_ID), StableRingBufferIndices::new(4)).expect("failed to create stable cell"))
     };
 
-    static TX_RING_BUFFER: RefCell<StableRingBuffer<Transaction>> = {
+    static TX_RING_BUFFER: RefCell<StableRingBuffer<Transaction, DefaultMemoryType>> = {
         RefCell::new(StableRingBuffer::new(&TX_RING_BUFFER_DATA, &TX_RING_BUFFER_INDICES))
     };
 

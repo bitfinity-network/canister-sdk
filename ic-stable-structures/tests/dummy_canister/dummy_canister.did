@@ -8,7 +8,7 @@ service : () -> {
   get_tx_from_ring_buffer : (nat64) -> (opt Transaction) query;
   get_tx_from_vec : (nat64) -> (opt Transaction) query;
   insert_tx_to_btreemap : (Transaction) -> (nat64);
-  insert_tx_to_cell : (Transaction) -> ();
+  insert_tx_to_cell : (Transaction) -> (Transaction);
   insert_tx_to_map : (Transaction) -> (nat64);
   insert_tx_to_multimap : (Transaction) -> (nat64);
   push_tx_to_log : (Transaction) -> (nat64);
