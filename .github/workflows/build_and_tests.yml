@@ -81,5 +81,6 @@ jobs:
       - name: Run integration tests
         run: |
           export WASMS_DIR="../target/wasm32-unknown-unknown/release/"
+          ./scripts/build.sh
           cd ./ic-stable-structures
           cargo test --features state-machine
