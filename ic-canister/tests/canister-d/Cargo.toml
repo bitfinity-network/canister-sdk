@@ -3,9 +3,6 @@ name = "canister-d"
 version.workspace = true
 edition.workspace = true
 
-[lib]
-crate-type = ["lib", "cdylib"]
-
 [features]
 default = []
 export-api = []
