@@ -57,7 +57,7 @@ jobs:
 
       - name: Generate code coverage
         run: |
-          cargo +nightly tarpaulin --features "state-machine,memory-mapped-files-memory" --verbose --timeout 120 --out xml --workspace  --exclude canister-a --exclude canister-b --exclude canister-c --exclude canister-d --exclude canister-e --exclude test-payment-canister
+          cargo +nightly tarpaulin --features memory-mapped-files-memory --verbose --timeout 120 --out xml --workspace  --exclude canister-a --exclude canister-b --exclude canister-c --exclude canister-d --exclude canister-e --exclude test-payment-canister
 
   integration-test:
     name: Integration tests
