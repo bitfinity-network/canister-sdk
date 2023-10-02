@@ -84,3 +84,4 @@ jobs:
           ./scripts/build.sh
           cd ./ic-stable-structures
           cargo test --features state-machine
+          cargo test --features memory-mapped-files-memory

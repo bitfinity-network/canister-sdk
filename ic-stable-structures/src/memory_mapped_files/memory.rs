@@ -10,15 +10,15 @@ use super::memory_mapped_file::MemoryMappedFile;
 pub struct MemoryMappedFileMemory(RefCell<MemoryMappedFile>);
 
 impl MemoryMappedFileMemory {
-    pub fn new(path: String, is_permanent: bool) -> MemMapResult<Self> {
+    pub fn new(path: String, is_persistent: bool) -> MemMapResult<Self> {
         Ok(Self(RefCell::new(MemoryMappedFile::new(
             path,
-            is_permanent,
+            is_persistent,
         )?)))
     }
 
-    pub fn set_is_permanent(&self, is_permanent: bool) {
-        self.0.borrow_mut().set_is_permanent(is_permanent)
+    pub fn set_is_persistent(&self, is_persistent: bool) {
+        self.0.borrow_mut().set_is_persistent(is_persistent)
     }
 
     pub fn save_copy(&self, path: impl AsRef<Path>) -> MemMapResult<()> {

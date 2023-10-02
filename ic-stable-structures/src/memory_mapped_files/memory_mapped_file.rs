@@ -18,21 +18,21 @@ const PAGE_SIZE: u64 = 4096;
 const MEM_MAP_RESERVED_LENGTH: u64 = 1 << 40;
 
 /// Memory mapped file implementation.
-/// If `is_permanent` flag is true then after the
+/// If `is_persistent` flag is true then after the
 /// structure is dropped all the changes are saved to file.
 pub(super) struct MemoryMappedFile {
     file: File,
     path: String,
     length: u64,
-    is_permanent: bool,
+    is_persistent: bool,
     mapping: MmapMut,
 }
 
 impl MemoryMappedFile {
     /// Preconditions: file under the `path` should not be modified from any other place
     /// in this or different process.
-    pub fn new(path: String, is_permanent: bool) -> MemMapResult<Self> {
-        if !is_permanent {
+    pub fn new(path: String, is_persistent: bool) -> MemMapResult<Self> {
+        if !is_persistent {
             _ = remove_file(&path);
         }
 
@@ -45,14 +45,14 @@ impl MemoryMappedFile {
         let length = file.metadata()?.len();
 
         let mut mmap_opts = MmapOptions::new();
-        // Safety: function preconditions should guarantee the safetry of the operation:
+        // Safety: function preconditions should guarantee the safety of the operation:
         // mapping to a file is safe if the file isn't modified concurrently by this and other processes.
         let mapping = unsafe { mmap_opts.len(MEM_MAP_RESERVED_LENGTH as _).map_mut(&file) }?;
 
         Ok(Self {
             file,
             path,
-            is_permanent,
+            is_persistent,
             length,
             mapping,
         })
@@ -138,15 +138,15 @@ impl MemoryMappedFile {
         Ok(())
     }
 
-    /// Set `is_permanent` flag.
-    pub fn set_is_permanent(&mut self, is_permanent: bool) {
-        self.is_permanent = is_permanent;
+    /// Set `is_persistent` flag.
+    pub fn set_is_persistent(&mut self, is_persistent: bool) {
+        self.is_persistent = is_persistent;
     }
 }
 
 impl Drop for MemoryMappedFile {
     fn drop(&mut self) {
-        if self.is_permanent {
+        if self.is_persistent {
             self.flush().expect("failed to flush data to file")
         } else {
             _ = remove_file(&self.path);
@@ -345,7 +345,7 @@ mod tests {
     }
 
     #[test]
-    fn should_remove_file_for_non_permanent() {
+    fn should_remove_file_for_non_persistent() {
         with_temp_file(|path| {
             let mut file_memory = MemoryMappedFile::new(path.clone(), false).unwrap();
             file_memory.resize(PAGE_SIZE).unwrap();
