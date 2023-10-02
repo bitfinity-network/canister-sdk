@@ -91,13 +91,16 @@ where
     }
 }
 
+/// NOTE: we can't implement this trait for a heap inner map because
+/// `upper_bound` isn't implemented for `BTreeMap` in stable Rust
+#[cfg(not(feature = "always-heap"))]
 impl<K, V, M> IterableSortedMapStructure<K, V> for CachedStableBTreeMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
     M: Memory,
 {
-    type Iterator<'a> = dfinity_stable_structures::btreemap::Iter<'a, K, V, M> where Self: 'a;
+    type Iterator<'a> = StableBTreeMap::<K, V, M>::Iter<'a> where Self: 'a;
 
     fn iter(&self) -> Self::Iterator<'_> {
         self.inner.iter()
@@ -214,6 +217,7 @@ mod tests {
         assert_eq!(Some(Array([3u8, 10])), map.get(&3));
     }
 
+    #[cfg(not(feature = "always-heap"))]
     #[test]
     fn should_iterate() {
         let cache_items = 2;
@@ -231,6 +235,7 @@ mod tests {
         assert_eq!(iter.next(), None);
     }
 
+    #[cfg(not(feature = "always-heap"))]
     #[test]
     fn should_iterate_over_range() {
         let cache_items = 2;
@@ -247,6 +252,7 @@ mod tests {
         assert_eq!(iter.next(), None);
     }
 
+    #[cfg(not(feature = "always-heap"))]
     #[test]
     fn should_iterate_upper_bound() {
         let cache_items = 2;
