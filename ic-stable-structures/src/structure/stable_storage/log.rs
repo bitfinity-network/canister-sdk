@@ -46,7 +46,7 @@ impl<T: Storable, M: Memory> LogStructure<T> for StableLog<T, M> {
         let (index_mem, data_mem) = self
             .0
             .take()
-            .expect("inner log is laways present")
+            .expect("inner log is always present")
             .into_memories();
         self.0 = Some(log::Log::new(index_mem, data_mem));
     }

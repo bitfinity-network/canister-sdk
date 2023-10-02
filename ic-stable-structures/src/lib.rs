@@ -1,7 +1,7 @@
 mod structure;
 
 mod error;
-#[cfg(feature = "memory-mapped-files")]
+#[cfg(feature = "memory-mapped-files-memory")]
 mod memory_mapped_files;
 mod memory_utils;
 #[cfg(test)]
@@ -16,7 +16,7 @@ pub use stable_structures::{BoundedStorable, FileMemory, Storable, VectorMemory}
 #[cfg(target_arch = "wasm32")]
 pub use stable_structures::Ic0StableMemory;
 
-#[cfg(feature = "memory-mapped-files")]
+#[cfg(feature = "memory-mapped-files-memory")]
 pub use memory_mapped_files::MemoryMappedFileMemory;
 
 pub use memory_utils::{

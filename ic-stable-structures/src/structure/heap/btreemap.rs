@@ -1,23 +1,23 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, marker::PhantomData};
 
-use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use dfinity_stable_structures::BoundedStorable;
 
 use crate::structure::BTreeMapStructure;
 
 /// Stores key-value data in heap memory.
-pub struct HeapBTreeMap<K, V>(BTreeMap<K, V>)
+pub struct HeapBTreeMap<K, V, M>(BTreeMap<K, V>, PhantomData<M>)
 where
     K: BoundedStorable + Ord + Clone,
     V: BoundedStorable + Clone;
 
-impl<K, V> HeapBTreeMap<K, V>
+impl<K, V, M> HeapBTreeMap<K, V, M>
 where
     K: BoundedStorable + Ord + Clone,
     V: BoundedStorable + Clone,
 {
     /// Create new instance of key-value storage.
-    pub fn new(_memory_id: MemoryId) -> Self {
-        Self(BTreeMap::new())
+    pub fn new(_memory: M) -> Self {
+        Self(BTreeMap::new(), Default::default())
     }
 
     /// Iterate over all currently stored key-value pairs.
@@ -26,7 +26,7 @@ where
     }
 }
 
-impl<K, V> BTreeMapStructure<K, V> for HeapBTreeMap<K, V>
+impl<K, V, M> BTreeMapStructure<K, V> for HeapBTreeMap<K, V, M>
 where
     K: BoundedStorable + Ord + Clone,
     V: BoundedStorable + Clone,
@@ -60,11 +60,10 @@ where
 mod tests {
 
     use super::*;
-    use dfinity_stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn btreemap_works() {
-        let mut map = HeapBTreeMap::new(MemoryId::new(150));
+        let mut map = HeapBTreeMap::new(());
         assert!(map.is_empty());
 
         map.insert(0u32, 42u32);

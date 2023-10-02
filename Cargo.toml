@@ -69,7 +69,7 @@ humantime = "2.1"
 k256 = "0.13"
 lazy_static = "1"
 log = "0.4"
-memmap2 = { version = "0.7"}
+memmap2 = { version = "0.8" }
 mini-moka = "0.10.2"
 num-bigint = "0.4"
 num-traits = "0.2"

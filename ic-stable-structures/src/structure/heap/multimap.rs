@@ -1,33 +1,23 @@
 use std::collections::btree_map::Iter as BTreeMapIter;
 use std::iter::Peekable;
+use std::marker::PhantomData;
 use std::{collections::BTreeMap, hash::Hash};
 
-use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use dfinity_stable_structures::BoundedStorable;
 
 use crate::structure::MultimapStructure;
 
 /// `HeapMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
 /// The data is stored in the heap memory.
-
-pub struct HeapMultimap<K1, K2, V>(BTreeMap<K1, BTreeMap<K2, V>>)
+#[derive(Default)]
+pub struct HeapMultimap<K1, K2, V, M>(BTreeMap<K1, BTreeMap<K2, V>>, PhantomData<M>)
 where
     K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone;
 
-impl<K1, K2, V> Default for HeapMultimap<K1, K2, V>
-where
-    K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone,
-{
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
-
-impl<K1, K2, V> HeapMultimap<K1, K2, V>
+impl<K1, K2, V, M> HeapMultimap<K1, K2, V, M>
 where
     K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
@@ -35,12 +25,12 @@ where
 {
     /// Create a new instance of a `HeapMultimap`.
     /// All keys and values byte representations should be less then related `..._max_size` arguments.
-    pub fn new(_memory_id: MemoryId) -> Self {
-        Self(BTreeMap::new())
+    pub fn new(_memory: M) -> Self {
+        Self(BTreeMap::new(), Default::default())
     }
 }
 
-impl<K1, K2, V> MultimapStructure<K1, K2, V> for HeapMultimap<K1, K2, V>
+impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for HeapMultimap<K1, K2, V, M>
 where
     K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
@@ -175,11 +165,9 @@ where
 mod tests {
 
     use super::*;
-    use dfinity_stable_structures::memory_manager::MemoryId;
-
     #[test]
     fn multimap_works() {
-        let mut map = HeapMultimap::new(MemoryId::new(160));
+        let mut map = HeapMultimap::new(());
         assert!(map.is_empty());
 
         map.insert(&0u32, &0u32, &42u32);

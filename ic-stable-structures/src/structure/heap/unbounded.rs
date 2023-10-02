@@ -1,17 +1,18 @@
-use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use dfinity_stable_structures::BoundedStorable;
 use std::collections::btree_map::Iter as BTreeMapIter;
+use std::marker::PhantomData;
 use std::{collections::BTreeMap, hash::Hash};
 
 use crate::structure::common::SlicedStorable;
 use crate::structure::UnboundedMapStructure;
 
 /// Stores key-value data in heap memory.
-pub struct HeapUnboundedMap<K, V>(BTreeMap<K, V>)
+pub struct HeapUnboundedMap<K, V, M>(BTreeMap<K, V>, PhantomData<M>)
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone;
 
-impl<K, V> HeapUnboundedMap<K, V>
+impl<K, V, M> HeapUnboundedMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
@@ -20,8 +21,8 @@ where
     ///
     /// If a memory with the `memory_id` contains data of the map, the map reads it, and the instance
     /// will contain the data from the memory.
-    pub fn new(_memory_id: MemoryId) -> Self {
-        Self(BTreeMap::new())
+    pub fn new(_memory: M) -> Self {
+        Self(BTreeMap::new(), Default::default())
     }
 
     /// List all currently stored key-value pairs.
@@ -30,7 +31,7 @@ where
     }
 }
 
-impl<K, V> UnboundedMapStructure<K, V> for HeapUnboundedMap<K, V>
+impl<K, V, M> UnboundedMapStructure<K, V> for HeapUnboundedMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
@@ -83,14 +84,12 @@ where
 mod tests {
     use std::collections::HashMap;
 
-    use dfinity_stable_structures::memory_manager::MemoryId;
-
     use super::*;
     use crate::test_utils;
 
     #[test]
     fn unbounded_map_works() {
-        let mut map = HeapUnboundedMap::new(MemoryId::new(170));
+        let mut map = HeapUnboundedMap::new(());
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);

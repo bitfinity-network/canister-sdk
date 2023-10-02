@@ -36,7 +36,7 @@ impl<T: BoundedStorable, M: Memory> VecStructure<T> for StableVec<T, M> {
         let memory = self
             .0
             .take()
-            .expect("vector is alway initialized")
+            .expect("vector is always initialized")
             .into_memory();
         self.0 = Some(vec::Vec::new(memory)?);
         Ok(())
