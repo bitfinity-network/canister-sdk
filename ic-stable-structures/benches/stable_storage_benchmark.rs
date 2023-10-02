@@ -4,7 +4,7 @@ use rand::distributions::{Alphanumeric, DistString};
 use types::StringValue;
 
 fn multimap_benchmark(c: &mut Criterion) {
-    let mut map = StableMultimap::new(MemoryId::new(100));
+    let mut map = StableMultimap::new(VectorMemory::default());
 
     let key1_count = 100u64;
     let key2_count = 100u64;
@@ -27,7 +27,7 @@ fn multimap_benchmark(c: &mut Criterion) {
 }
 
 fn unboundedmap_benchmark(c: &mut Criterion) {
-    let mut map = StableUnboundedMap::new(MemoryId::new(101));
+    let mut map = StableUnboundedMap::new(VectorMemory::default());
     let key1_count = 10000u64;
 
     c.bench_function("unboundedmap_benchmark", |b| {
