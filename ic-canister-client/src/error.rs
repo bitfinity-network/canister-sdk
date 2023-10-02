@@ -1,4 +1,5 @@
 use ic_exports::ic_cdk::api::call::RejectionCode;
+#[cfg(feature = "state-machine-tests-client")]
 use ic_exports::ic_test_state_machine::UserError;
 use thiserror::Error;
 
