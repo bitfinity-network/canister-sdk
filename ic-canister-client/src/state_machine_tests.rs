@@ -58,7 +58,7 @@ impl StateMachineCanisterClient {
     }
 
     /// Performs a blocking action with state machine and awaits the result.
-    /// 
+    ///
     /// Arguments of the closure `f`:
     /// 1) `env` - The state machine environment.
     /// 2) `canister` - The canister principal.
@@ -94,7 +94,9 @@ impl CanisterClient for StateMachineCanisterClient {
         let method = String::from(method);
 
         let call_result = self
-            .with_state_machine(move |env, canister, caller| env.update_call(canister, caller, &method, args))
+            .with_state_machine(move |env, canister, caller| {
+                env.update_call(canister, caller, &method, args)
+            })
             .await?;
 
         let reply = match call_result {
@@ -120,7 +122,9 @@ impl CanisterClient for StateMachineCanisterClient {
         let method = String::from(method);
 
         let call_result = self
-            .with_state_machine(move |env, canister, caller| env.query_call(canister, caller, &method, args))
+            .with_state_machine(move |env, canister, caller| {
+                env.query_call(canister, caller, &method, args)
+            })
             .await?;
 
         let reply = match call_result {
