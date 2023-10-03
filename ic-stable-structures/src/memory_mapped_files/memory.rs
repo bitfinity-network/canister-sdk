@@ -2,10 +2,11 @@ use std::cell::RefCell;
 use std::path::Path;
 
 use dfinity_stable_structures::Memory;
-use ic_cdk::api::stable::WASM_PAGE_SIZE_IN_BYTES;
 
 use super::error::MemMapResult;
 use super::memory_mapped_file::MemoryMappedFile;
+
+const const WASM_PAGE_SIZE_IN_BYTES: u64 = 65536;
 
 pub struct MemoryMappedFileMemory(RefCell<MemoryMappedFile>);
 
