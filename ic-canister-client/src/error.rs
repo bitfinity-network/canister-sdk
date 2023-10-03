@@ -12,6 +12,17 @@ pub enum CanisterClientError {
     #[cfg(feature = "ic-agent-client")]
     #[error("ic agent error: {0}")]
     IcAgentError(#[from] ic_agent::agent::AgentError),
+
+    #[cfg(feature = "state-machine-tests-client")]
+    #[error("state machine test error: {0}")]
+    StateMachineTestError(ic_exports::ic_test_state_machine::UserError),
+}
+
+#[cfg(feature = "state-machine-tests-client")]
+impl From<ic_exports::ic_test_state_machine::UserError> for CanisterClientError {
+    fn from(error: ic_exports::ic_test_state_machine::UserError) -> Self {
+        CanisterClientError::StateMachineTestError(error)
+    }
 }
 
 pub type CanisterClientResult<T> = Result<T, CanisterClientError>;
