@@ -57,13 +57,29 @@ impl StateMachineCanisterClient {
         self.state_machine.as_ref()
     }
 
-    /// Calls a method on the canister.
-    async fn with_state_machine<F, R>(&self, f: F) -> R
+    /// Performs a blocking action with state machine and awaits the result.
+    /// 
+    /// Arguments of the closure `f`:
+    /// 1) `env` - The state machine environment.
+    /// 2) `canister` - The canister principal.
+    /// 3) `caller` - The caller principal.
+    pub async fn with_state_machine<F, R>(&self, f: F) -> R
     where
-        F: FnOnce(&StateMachine) -> R,
+        F: Send + FnOnce(&StateMachine, Principal, Principal) -> R + 'static,
+        R: Send + 'static,
     {
-        let state_machine = self.state_machine.lock().await;
-        f(&*state_machine)
+        let client = self.state_machine.clone();
+        let cansiter = self.canister;
+        let caller = self.caller;
+
+        let result = tokio::task::spawn_blocking(move || {
+            let locked_client = client.blocking_lock();
+            f(&locked_client, cansiter, caller)
+        })
+        .await
+        .unwrap();
+
+        result
     }
 }
 
@@ -75,9 +91,10 @@ impl CanisterClient for StateMachineCanisterClient {
         R: for<'de> Deserialize<'de> + CandidType,
     {
         let args = candid::encode_args(args)?;
+        let method = String::from(method);
 
         let call_result = self
-            .with_state_machine(|s| s.update_call(self.canister, self.caller, method, args))
+            .with_state_machine(move |env, canister, caller| env.update_call(canister, caller, &method, args))
             .await?;
 
         let reply = match call_result {
@@ -100,9 +117,10 @@ impl CanisterClient for StateMachineCanisterClient {
         R: for<'de> Deserialize<'de> + CandidType,
     {
         let args = candid::encode_args(args)?;
+        let method = String::from(method);
 
         let call_result = self
-            .with_state_machine(|s| s.query_call(self.canister, self.caller, method, args))
+            .with_state_machine(move |env, canister, caller| env.query_call(canister, caller, &method, args))
             .await?;
 
         let reply = match call_result {
