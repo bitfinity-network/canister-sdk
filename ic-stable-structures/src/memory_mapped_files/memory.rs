@@ -6,7 +6,7 @@ use dfinity_stable_structures::Memory;
 use super::error::MemMapResult;
 use super::memory_mapped_file::MemoryMappedFile;
 
-const const WASM_PAGE_SIZE_IN_BYTES: u64 = 65536;
+const WASM_PAGE_SIZE_IN_BYTES: u64 = 65536;
 
 pub struct MemoryMappedFileMemory(RefCell<MemoryMappedFile>);
 

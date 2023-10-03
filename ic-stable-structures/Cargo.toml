@@ -33,4 +33,4 @@ harness = false
 always-heap = []
 # Enables the integration tests based on ic-test-state-machine
 state-machine = []
-memory-mapped-files-memory = ["memmap2", "ic-cdk"]
+memory-mapped-files-memory = ["memmap2"]
