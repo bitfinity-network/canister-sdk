@@ -1,15 +1,17 @@
-use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use std::marker::PhantomData;
+
+use dfinity_stable_structures::BoundedStorable;
 
 use crate::{structure::VecStructure, Result};
 
-pub struct HeapVec<T: BoundedStorable + Clone>(Vec<T>);
+pub struct HeapVec<T: BoundedStorable + Clone, M>(Vec<T>, PhantomData<M>);
 
 /// A stable analogue of the `std::vec::Vec`:
 /// integer-indexed collection of mutable values that is able to grow.
-impl<T: BoundedStorable + Clone> HeapVec<T> {
+impl<T: BoundedStorable + Clone, M> HeapVec<T, M> {
     /// Creates new `StableVec`
-    pub fn new(_memory_id: MemoryId) -> Result<Self> {
-        Ok(Self(vec![]))
+    pub fn new(_memory: M) -> Result<Self> {
+        Ok(Self(vec![], Default::default()))
     }
 
     /// Returns iterator over the elements in the vector
@@ -18,7 +20,7 @@ impl<T: BoundedStorable + Clone> HeapVec<T> {
     }
 }
 
-impl<T: BoundedStorable + Clone> VecStructure<T> for HeapVec<T> {
+impl<T: BoundedStorable + Clone, M> VecStructure<T> for HeapVec<T, M> {
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -55,11 +57,10 @@ impl<T: BoundedStorable + Clone> VecStructure<T> for HeapVec<T> {
 mod tests {
 
     use super::*;
-    use dfinity_stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn vec_works() {
-        let mut vec = HeapVec::<u64>::new(MemoryId::new(0)).unwrap();
+        let mut vec = HeapVec::<u64, _>::new(()).unwrap();
 
         assert!(vec.is_empty());
         assert_eq!(vec.len(), 0);

@@ -1,19 +1,26 @@
 mod structure;
 
 mod error;
+#[cfg(feature = "memory-mapped-files-memory")]
+mod memory_mapped_files;
+mod memory_utils;
 #[cfg(test)]
 mod test_utils;
 
 pub use dfinity_stable_structures as stable_structures;
 
 pub use error::{Error, Result};
-pub use stable_structures::memory_manager::MemoryId;
-use stable_structures::memory_manager::{self, VirtualMemory};
-use stable_structures::DefaultMemoryImpl;
-pub use stable_structures::{BoundedStorable, Storable};
+pub use stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
+pub use stable_structures::{BoundedStorable, FileMemory, Storable, VectorMemory};
 
-pub type Memory = VirtualMemory<DefaultMemoryImpl>;
+#[cfg(target_arch = "wasm32")]
+pub use stable_structures::Ic0StableMemory;
 
-type MemoryManager = memory_manager::MemoryManager<DefaultMemoryImpl>;
+#[cfg(feature = "memory-mapped-files-memory")]
+pub use memory_mapped_files::MemoryMappedFileMemory;
+
+pub use memory_utils::{
+    get_memory_by_id, DefaultMemoryManager, DefaultMemoryResourceType, DefaultMemoryType,
+};
 
 pub use structure::*;

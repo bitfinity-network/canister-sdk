@@ -1,39 +1,38 @@
 use std::ops::RangeBounds;
 
-use dfinity_stable_structures::memory_manager::MemoryId;
-use dfinity_stable_structures::{btreemap, BoundedStorable};
+use dfinity_stable_structures::{btreemap, BoundedStorable, Memory};
 
-use super::get_memory_by_id;
 use crate::structure::BTreeMapStructure;
-use crate::{IterableSortedMapStructure, Memory};
+use crate::IterableSortedMapStructure;
 
 /// Stores key-value data in stable memory.
-pub struct StableBTreeMap<K, V>(btreemap::BTreeMap<K, V, Memory>)
+pub struct StableBTreeMap<K, V, M: Memory>(btreemap::BTreeMap<K, V, M>)
 where
     K: BoundedStorable + Ord + Clone,
     V: BoundedStorable;
 
-impl<K, V> StableBTreeMap<K, V>
+impl<K, V, M> StableBTreeMap<K, V, M>
 where
     K: BoundedStorable + Ord + Clone,
     V: BoundedStorable,
+    M: Memory,
 {
     /// Create new instance of key-value storage.
-    pub fn new(memory_id: MemoryId) -> Self {
-        let memory = get_memory_by_id(memory_id);
+    pub fn new(memory: M) -> Self {
         Self(btreemap::BTreeMap::init(memory))
     }
 
     /// Iterate over all currently stored key-value pairs.
-    pub fn iter(&self) -> btreemap::Iter<'_, K, V, Memory> {
+    pub fn iter(&self) -> btreemap::Iter<'_, K, V, M> {
         self.0.iter()
     }
 }
 
-impl<K, V> BTreeMapStructure<K, V> for StableBTreeMap<K, V>
+impl<K, V, M> BTreeMapStructure<K, V> for StableBTreeMap<K, V, M>
 where
     K: BoundedStorable + Ord + Clone,
     V: BoundedStorable,
+    M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
         self.0.get(key)
@@ -65,12 +64,13 @@ where
     }
 }
 
-impl<K, V> IterableSortedMapStructure<K, V> for StableBTreeMap<K, V>
+impl<K, V, M> IterableSortedMapStructure<K, V> for StableBTreeMap<K, V, M>
 where
     K: BoundedStorable + Ord + Clone,
     V: BoundedStorable,
+    M: Memory,
 {
-    type Iterator<'a> = btreemap::Iter<'a, K, V, Memory> where Self: 'a;
+    type Iterator<'a> = btreemap::Iter<'a, K, V, M> where Self: 'a;
 
     fn iter(&self) -> Self::Iterator<'_> {
         self.0.iter()
@@ -88,12 +88,13 @@ where
 #[cfg(test)]
 mod tests {
 
+    use dfinity_stable_structures::VectorMemory;
+
     use super::*;
-    use dfinity_stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn btreemap_works() {
-        let mut map = StableBTreeMap::new(MemoryId::new(0));
+        let mut map = StableBTreeMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         map.insert(0u32, 42u32);

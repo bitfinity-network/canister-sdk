@@ -1,34 +1,36 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 
-use dfinity_stable_structures::memory_manager::MemoryId;
 use dfinity_stable_structures::BoundedStorable;
+use dfinity_stable_structures::Memory;
 
 use crate::structure::*;
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 /// A LRU Cache for StableUnboundedMaps
-pub struct CachedStableUnboundedMap<K, V>
+pub struct CachedStableUnboundedMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
+    M: Memory,
 {
-    inner: StableUnboundedMap<K, V>,
+    inner: StableUnboundedMap<K, V, M>,
     cache: RefCell<Cache<K, V>>,
 }
 
-impl<K, V> CachedStableUnboundedMap<K, V>
+impl<K, V, M> CachedStableUnboundedMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
+    M: Memory,
 {
     /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
-    pub fn new(memory_id: MemoryId, max_cache_items: u64) -> Self {
-        Self::with_map(StableUnboundedMap::new(memory_id), max_cache_items)
+    pub fn new(memory: M, max_cache_items: u64) -> Self {
+        Self::with_map(StableUnboundedMap::new(memory), max_cache_items)
     }
 
     /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
-    pub fn with_map(inner: StableUnboundedMap<K, V>, max_cache_items: u64) -> Self {
+    pub fn with_map(inner: StableUnboundedMap<K, V, M>, max_cache_items: u64) -> Self {
         Self {
             inner,
             cache: RefCell::new(
@@ -40,10 +42,11 @@ where
     }
 }
 
-impl<K, V> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V>
+impl<K, V, M> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
+    M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
         let mut cache = self.cache.borrow_mut();
@@ -93,7 +96,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use dfinity_stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::VectorMemory;
 
     use super::*;
     use crate::test_utils::{Array, StringValue};
@@ -101,8 +104,10 @@ mod tests {
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        let mut map =
-            CachedStableUnboundedMap::<u32, StringValue>::new(MemoryId::new(123), cache_items);
+        let mut map = CachedStableUnboundedMap::<u32, StringValue, _>::new(
+            VectorMemory::default(),
+            cache_items,
+        );
 
         assert!(map.get(&1).is_none());
         assert!(map.get(&2).is_none());
@@ -144,8 +149,8 @@ mod tests {
     #[test]
     fn should_get_insert_and_replace() {
         let cache_items = 2;
-        let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(120), cache_items);
+        let mut map =
+            CachedStableUnboundedMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));
@@ -195,8 +200,8 @@ mod tests {
     #[test]
     fn should_clear() {
         let cache_items = 2;
-        let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(121), cache_items);
+        let mut map =
+            CachedStableUnboundedMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &Array([2u8, 1])));
@@ -216,8 +221,8 @@ mod tests {
     #[test]
     fn should_replace_old_value() {
         let cache_items = 2;
-        let mut map: CachedStableUnboundedMap<u32, Array<2>> =
-            CachedStableUnboundedMap::<u32, Array<2>>::new(MemoryId::new(122), cache_items);
+        let mut map =
+            CachedStableUnboundedMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &Array([2u8, 1])));

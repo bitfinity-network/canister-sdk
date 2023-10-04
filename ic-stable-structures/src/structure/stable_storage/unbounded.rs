@@ -3,11 +3,9 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
-use dfinity_stable_structures::{
-    btreemap, memory_manager::MemoryId, BoundedStorable, StableBTreeMap, Storable,
-};
+use dfinity_stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
 
-use crate::{structure::UnboundedMapStructure, Memory, SlicedStorable};
+use crate::{structure::UnboundedMapStructure, SlicedStorable};
 
 type ChunkIndex = u16;
 const CHUNK_INDEX_LEN: usize = mem::size_of::<ChunkIndex>();
@@ -16,26 +14,27 @@ const CHUNK_INDEX_LEN: usize = mem::size_of::<ChunkIndex>();
 ///
 /// Current implementation stores values in chunks with fixed size.
 /// Size of chunk should be set using the [`SlicedStorable`] trait.
-pub struct StableUnboundedMap<K, V>
+pub struct StableUnboundedMap<K, V, M>
 where
     K: BoundedStorable,
     V: SlicedStorable,
+    M: Memory,
 {
-    inner: StableBTreeMap<Key<K>, Chunk<V>, Memory>,
+    inner: StableBTreeMap<Key<K>, Chunk<V>, M>,
     items_count: u64,
 }
 
-impl<K, V> StableUnboundedMap<K, V>
+impl<K, V, M> StableUnboundedMap<K, V, M>
 where
     K: BoundedStorable,
     V: SlicedStorable,
+    M: Memory,
 {
     /// Create new instance of the map.
     ///
     /// If the `memory` contains data of the map, the map reads it, and the instance
     /// will contain the data from the `memory`.
-    pub fn new(memory_id: MemoryId) -> Self {
-        let memory = super::get_memory_by_id(memory_id);
+    pub fn new(memory: M) -> Self {
         Self {
             inner: StableBTreeMap::init(memory),
             items_count: 0,
@@ -56,13 +55,13 @@ where
     }
 
     /// Iterator for all stored key-value pairs.
-    pub fn iter(&self) -> StableUnboundedIter<'_, K, V> {
+    pub fn iter(&self) -> StableUnboundedIter<'_, K, V, M> {
         StableUnboundedIter(self.inner.iter().peekable())
     }
 
     /// Returns an iterator pointing to the first element below the given bound.
     /// Returns an empty iterator if there are no keys below the given bound.
-    pub fn iter_upper_bound(&self, bound: &K) -> StableUnboundedIter<'_, K, V> {
+    pub fn iter_upper_bound(&self, bound: &K) -> StableUnboundedIter<'_, K, V, M> {
         let mut iter = self.inner.iter_upper_bound(&Key::new(bound));
         match iter.next() {
             Some((mut key, _)) => {
@@ -80,10 +79,11 @@ where
     }
 }
 
-impl<K, V> UnboundedMapStructure<K, V> for StableUnboundedMap<K, V>
+impl<K, V, M> UnboundedMapStructure<K, V> for StableUnboundedMap<K, V, M>
 where
     K: BoundedStorable,
     V: SlicedStorable,
+    M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
         let first_chunk_key = Key::new(key);
@@ -344,15 +344,17 @@ impl<V: SlicedStorable> BoundedStorable for Chunk<V> {
 
 /// Iterator over values in unbounded map.
 /// Constructs a value from chunks on each `next()` call.
-pub struct StableUnboundedIter<'a, K, V>(Peekable<btreemap::Iter<'a, Key<K>, Chunk<V>, Memory>>)
-where
-    K: BoundedStorable,
-    V: SlicedStorable;
-
-impl<'a, K, V> Iterator for StableUnboundedIter<'a, K, V>
+pub struct StableUnboundedIter<'a, K, V, M>(Peekable<btreemap::Iter<'a, Key<K>, Chunk<V>, M>>)
 where
     K: BoundedStorable,
     V: SlicedStorable,
+    M: Memory;
+
+impl<'a, K, V, M> Iterator for StableUnboundedIter<'a, K, V, M>
+where
+    K: BoundedStorable,
+    V: SlicedStorable,
+    M: Memory,
 {
     type Item = (K, V);
 
@@ -380,7 +382,7 @@ where
 mod tests {
     use std::collections::HashMap;
 
-    use dfinity_stable_structures::memory_manager::MemoryId;
+    use dfinity_stable_structures::VectorMemory;
 
     use super::*;
     use crate::test_utils;
@@ -411,7 +413,7 @@ mod tests {
 
     #[test]
     fn insert_get_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(30));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);
@@ -429,7 +431,7 @@ mod tests {
 
     #[test]
     fn insert_should_replace_previous_value() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(31));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);
@@ -444,7 +446,7 @@ mod tests {
 
     #[test]
     fn remove_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(32));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
 
         let long_str = test_utils::str_val(50000);
         let medium_str = test_utils::str_val(5000);
@@ -463,7 +465,7 @@ mod tests {
 
     #[test]
     fn iter_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(33));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
 
         let strs = [
             test_utils::str_val(50),
@@ -480,7 +482,7 @@ mod tests {
 
     #[test]
     fn upper_bound_test() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(33));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
 
         let strs = [
             test_utils::str_val(50),
@@ -506,7 +508,7 @@ mod tests {
 
     #[test]
     fn unbounded_map_works() {
-        let mut map = StableUnboundedMap::new(MemoryId::new(34));
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);

@@ -1,11 +1,9 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use dfinity_stable_structures::{
-    btreemap, memory_manager::MemoryId, BoundedStorable, StableBTreeMap, Storable,
-};
+use dfinity_stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
 
-use crate::{structure::MultimapStructure, Memory};
+use crate::structure::MultimapStructure;
 
 // Keys memory layout:
 //
@@ -29,35 +27,37 @@ use crate::{structure::MultimapStructure, Memory};
 
 /// `StableMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
-pub struct StableMultimap<K1, K2, V>(StableBTreeMap<KeyPair<K1, K2>, Value<V>, Memory>)
-where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable;
-
-impl<K1, K2, V> StableMultimap<K1, K2, V>
+pub struct StableMultimap<K1, K2, V, M>(StableBTreeMap<KeyPair<K1, K2>, Value<V>, M>)
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory;
+
+impl<K1, K2, V, M> StableMultimap<K1, K2, V, M>
+where
+    K1: BoundedStorable,
+    K2: BoundedStorable,
+    V: BoundedStorable,
+    M: Memory,
 {
     /// Create a new instance of a `StableMultimap`.
     /// All keys and values byte representations should be less then related `..._max_size` arguments.
-    pub fn new(memory_id: MemoryId) -> Self {
-        let memory = super::get_memory_by_id(memory_id);
+    pub fn new(memory: M) -> Self {
         Self(StableBTreeMap::init(memory))
     }
 }
 
-impl<K1, K2, V> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V>
+impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
-    type Iterator<'a> = StableMultimapIter<'a, K1, K2, V> where Self: 'a;
+    type Iterator<'a> = StableMultimapIter<'a, K1, K2, V, M> where Self: 'a;
 
-    type RangeIterator<'a> = StableMultimapRangeIter<'a, K1, K2, V> where Self: 'a;
+    type RangeIterator<'a> = StableMultimapRangeIter<'a, K1, K2, V, M> where Self: 'a;
 
     fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
         let key = KeyPair::new(first_key, second_key);
@@ -315,22 +315,24 @@ impl<V: BoundedStorable> BoundedStorable for Value<V> {
 }
 
 /// Range iterator
-pub struct StableMultimapRangeIter<'a, K1, K2, V>
+pub struct StableMultimapRangeIter<'a, K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
-    inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, Memory>,
+    inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>,
 }
 
-impl<'a, K1, K2, V> StableMultimapRangeIter<'a, K1, K2, V>
+impl<'a, K1, K2, V, M> StableMultimapRangeIter<'a, K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
-    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, Memory>) -> Self {
+    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
         Self { inner }
     }
 }
@@ -338,11 +340,12 @@ where
 // -----------------------------------------------------------------------------
 //     - Range Iterator impl -
 // -----------------------------------------------------------------------------
-impl<'a, K1, K2, V> Iterator for StableMultimapRangeIter<'a, K1, K2, V>
+impl<'a, K1, K2, V, M> Iterator for StableMultimapRangeIter<'a, K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
     type Item = (K2, V);
 
@@ -353,28 +356,31 @@ where
     }
 }
 
-pub struct StableMultimapIter<'a, K1, K2, V>(btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, Memory>)
-where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable;
-
-impl<'a, K1, K2, V> StableMultimapIter<'a, K1, K2, V>
+pub struct StableMultimapIter<'a, K1, K2, V, M>(btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>)
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory;
+
+impl<'a, K1, K2, V, M> StableMultimapIter<'a, K1, K2, V, M>
+where
+    K1: BoundedStorable,
+    K2: BoundedStorable,
+    V: BoundedStorable,
+    M: Memory,
 {
-    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, Memory>) -> Self {
+    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
         Self(inner)
     }
 }
 
-impl<'a, K1, K2, V> Iterator for StableMultimapIter<'a, K1, K2, V>
+impl<'a, K1, K2, V, M> Iterator for StableMultimapIter<'a, K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
     type Item = (K1, K2, V);
 
@@ -387,15 +393,16 @@ where
     }
 }
 
-impl<'a, K1, K2, V> IntoIterator for &'a StableMultimap<K1, K2, V>
+impl<'a, K1, K2, V, M> IntoIterator for &'a StableMultimap<K1, K2, V, M>
 where
     K1: BoundedStorable,
     K2: BoundedStorable,
     V: BoundedStorable,
+    M: Memory,
 {
     type Item = (K1, K2, V);
 
-    type IntoIter = StableMultimapIter<'a, K1, K2, V>;
+    type IntoIter = StableMultimapIter<'a, K1, K2, V, M>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
@@ -405,12 +412,13 @@ where
 #[cfg(test)]
 mod test {
 
+    use dfinity_stable_structures::VectorMemory;
+
     use super::*;
     use crate::test_utils::Array;
-    use dfinity_stable_structures::memory_manager::MemoryId;
 
-    fn make_map(memory_id: MemoryId) -> StableMultimap<Array<2>, Array<3>, Array<6>> {
-        let mut mm = StableMultimap::new(memory_id);
+    fn make_map() -> StableMultimap<Array<2>, Array<3>, Array<6>, VectorMemory> {
+        let mut mm = StableMultimap::new(VectorMemory::default());
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
@@ -426,7 +434,7 @@ mod test {
 
     #[test]
     fn inserts() {
-        let mut mm = StableMultimap::new(MemoryId::new(20));
+        let mut mm = StableMultimap::new(VectorMemory::default());
         for i in 0..10 {
             let k1 = Array([i; 1]);
             let k2 = Array([i * 10; 2]);
@@ -439,7 +447,7 @@ mod test {
 
     #[test]
     fn insert_should_replace_old_value() {
-        let mut mm = make_map(MemoryId::new(21));
+        let mut mm = make_map();
 
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
@@ -454,7 +462,7 @@ mod test {
 
     #[test]
     fn get() {
-        let mm = make_map(MemoryId::new(22));
+        let mm = make_map();
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = mm.get(&k1, &k2).unwrap();
@@ -465,7 +473,7 @@ mod test {
 
     #[test]
     fn remove() {
-        let mut mm = make_map(MemoryId::new(23));
+        let mut mm = make_map();
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = mm.remove(&k1, &k2).unwrap();
@@ -482,7 +490,7 @@ mod test {
 
     #[test]
     fn remove_partial() {
-        let mut mm = StableMultimap::new(MemoryId::new(24));
+        let mut mm = StableMultimap::new(VectorMemory::default());
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
@@ -499,7 +507,7 @@ mod test {
 
     #[test]
     fn clear() {
-        let mut mm = StableMultimap::new(MemoryId::new(25));
+        let mut mm = StableMultimap::new(VectorMemory::default());
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
@@ -517,7 +525,7 @@ mod test {
 
     #[test]
     fn iter() {
-        let mm = make_map(MemoryId::new(26));
+        let mm = make_map();
         let mut iter = mm.into_iter();
         assert!(iter.next().is_some());
         assert!(iter.next().is_some());
@@ -527,7 +535,7 @@ mod test {
     #[test]
     fn range_iter() {
         let k1 = Array([1u8, 2]);
-        let mm = make_map(MemoryId::new(27));
+        let mm = make_map();
         let mut iter = mm.range(&k1);
         assert!(iter.next().is_some());
         assert!(iter.next().is_none());
@@ -535,7 +543,7 @@ mod test {
 
     #[test]
     fn multimap_works() {
-        let mut map = StableMultimap::new(MemoryId::new(0));
+        let mut map = StableMultimap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         map.insert(&0u32, &0u32, &42u32);

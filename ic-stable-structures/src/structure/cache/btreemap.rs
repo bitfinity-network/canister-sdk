@@ -1,31 +1,33 @@
 use std::{cell::RefCell, hash::Hash};
 
-use crate::{structure::*, Memory};
-use dfinity_stable_structures::{memory_manager::MemoryId, BoundedStorable};
+use crate::structure::*;
+use dfinity_stable_structures::{BoundedStorable, Memory};
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 /// A LRU Cache for StableBTreeMap
-pub struct CachedStableBTreeMap<K, V>
+pub struct CachedStableBTreeMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
+    M: Memory,
 {
-    inner: StableBTreeMap<K, V>,
+    inner: StableBTreeMap<K, V, M>,
     cache: RefCell<Cache<K, V>>,
 }
 
-impl<K, V> CachedStableBTreeMap<K, V>
+impl<K, V, M> CachedStableBTreeMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
+    M: Memory,
 {
     /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
-    pub fn new(memory_id: MemoryId, max_cache_items: u64) -> Self {
-        Self::with_map(StableBTreeMap::new(memory_id), max_cache_items)
+    pub fn new(memory: M, max_cache_items: u64) -> Self {
+        Self::with_map(StableBTreeMap::new(memory), max_cache_items)
     }
 
     /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
-    pub fn with_map(inner: StableBTreeMap<K, V>, max_cache_items: u64) -> Self {
+    pub fn with_map(inner: StableBTreeMap<K, V, M>, max_cache_items: u64) -> Self {
         Self {
             inner,
             cache: RefCell::new(
@@ -37,10 +39,11 @@ where
     }
 }
 
-impl<K, V> BTreeMapStructure<K, V> for CachedStableBTreeMap<K, V>
+impl<K, V, M> BTreeMapStructure<K, V> for CachedStableBTreeMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
+    M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
         let mut cache = self.cache.borrow_mut();
@@ -88,12 +91,16 @@ where
     }
 }
 
-impl<K, V> IterableSortedMapStructure<K, V> for CachedStableBTreeMap<K, V>
+/// NOTE: we can't implement this trait for a heap inner map because
+/// `upper_bound` isn't implemented for `BTreeMap` in stable Rust
+#[cfg(not(feature = "always-heap"))]
+impl<K, V, M> IterableSortedMapStructure<K, V> for CachedStableBTreeMap<K, V, M>
 where
     K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
     V: BoundedStorable + Clone,
+    M: Memory,
 {
-    type Iterator<'a> = dfinity_stable_structures::btreemap::Iter<'a, K, V, Memory> where Self: 'a;
+    type Iterator<'a> = dfinity_stable_structures::btreemap::Iter<'a, K, V, M> where Self: 'a;
 
     fn iter(&self) -> Self::Iterator<'_> {
         self.inner.iter()
@@ -110,17 +117,17 @@ where
 
 #[cfg(test)]
 mod tests {
+    use dfinity_stable_structures::VectorMemory;
 
     use crate::test_utils::Array;
 
     use super::*;
-    use dfinity_stable_structures::memory_manager::MemoryId;
 
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(100), cache_items);
+        let mut map =
+            CachedStableBTreeMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));
@@ -170,8 +177,8 @@ mod tests {
     #[test]
     fn should_clear() {
         let cache_items = 2;
-        let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(101), cache_items);
+        let mut map =
+            CachedStableBTreeMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
@@ -191,8 +198,8 @@ mod tests {
     #[test]
     fn should_replace_old_value() {
         let cache_items = 2;
-        let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(102), cache_items);
+        let mut map =
+            CachedStableBTreeMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
@@ -210,11 +217,12 @@ mod tests {
         assert_eq!(Some(Array([3u8, 10])), map.get(&3));
     }
 
+    #[cfg(not(feature = "always-heap"))]
     #[test]
     fn should_iterate() {
         let cache_items = 2;
-        let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(102), cache_items);
+        let mut map =
+            CachedStableBTreeMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
@@ -227,11 +235,12 @@ mod tests {
         assert_eq!(iter.next(), None);
     }
 
+    #[cfg(not(feature = "always-heap"))]
     #[test]
     fn should_iterate_over_range() {
         let cache_items = 2;
-        let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(102), cache_items);
+        let mut map =
+            CachedStableBTreeMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
@@ -243,11 +252,12 @@ mod tests {
         assert_eq!(iter.next(), None);
     }
 
+    #[cfg(not(feature = "always-heap"))]
     #[test]
     fn should_iterate_upper_bound() {
         let cache_items = 2;
-        let mut map: CachedStableBTreeMap<u32, Array<2>> =
-            CachedStableBTreeMap::<u32, Array<2>>::new(MemoryId::new(102), cache_items);
+        let mut map =
+            CachedStableBTreeMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));

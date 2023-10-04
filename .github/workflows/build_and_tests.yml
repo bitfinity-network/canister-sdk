@@ -57,7 +57,7 @@ jobs:
 
       - name: Generate code coverage
         run: |
-          cargo +nightly tarpaulin --verbose --timeout 120 --out xml --workspace  --exclude canister-a --exclude canister-b --exclude canister-c --exclude canister-d --exclude canister-e --exclude test-payment-canister
+          cargo +nightly tarpaulin --features memory-mapped-files-memory --verbose --timeout 120 --out xml --workspace  --exclude canister-a --exclude canister-b --exclude canister-c --exclude canister-d --exclude canister-e --exclude test-payment-canister
 
   integration-test:
     name: Integration tests
@@ -81,5 +81,6 @@ jobs:
       - name: Run integration tests
         run: |
           export WASMS_DIR="../target/wasm32-unknown-unknown/release/"
+          ./scripts/build.sh
           cd ./ic-stable-structures
-          cargo test --features state-machine
+          cargo test --features "state-machine,memory-mapped-files-memory"

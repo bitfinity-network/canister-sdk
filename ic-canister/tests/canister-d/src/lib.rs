@@ -2,13 +2,18 @@ use std::cell::RefCell;
 
 use ic_canister::{generate_exports, generate_idl, query, update, Canister, Idl, PreUpdate};
 use ic_exports::candid::Principal;
-use ic_stable_structures::{CellStructure, MemoryId, StableCell};
+use ic_stable_structures::{
+    get_memory_by_id, CellStructure, DefaultMemoryManager, DefaultMemoryResourceType,
+    DefaultMemoryType, MemoryId, StableCell,
+};
 
 const MEMORY_ID: MemoryId = MemoryId::new(0);
 
 thread_local! {
-    pub static COUNTER: RefCell<StableCell<u32>> =
-        RefCell::new(StableCell::new(MEMORY_ID, 0).expect("failed to initialize stable cell"));
+    pub static MEMORY_MANAGER: DefaultMemoryManager = DefaultMemoryManager::init(DefaultMemoryResourceType::default());
+
+    pub static COUNTER: RefCell<StableCell<u32, DefaultMemoryType>> =
+        RefCell::new(StableCell::new(get_memory_by_id(&MEMORY_MANAGER, MEMORY_ID), 0).expect("failed to initialize stable cell"));
 }
 
 // Canister trait with no `state_getter` method.
