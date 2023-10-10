@@ -24,6 +24,9 @@ pub trait Context {
     /// The balance of the canister.
     fn balance(&self) -> u64;
 
+    /// The balance of the canister.
+    fn balance128(&self) -> u128;
+
     /// The caller who has invoked this method on the canister.
     fn caller(&self) -> Principal;
 
