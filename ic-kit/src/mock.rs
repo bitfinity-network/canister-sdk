@@ -440,6 +440,11 @@ impl Context for MockContext {
         self.as_mut().watcher.called_balance = true;
         self.balance
     }
+    
+    #[inline]
+    fn balance128(&self) -> u128 {
+        self.balance() as u128
+    }
 
     #[inline]
     fn caller(&self) -> Principal {
