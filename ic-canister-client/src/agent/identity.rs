@@ -38,6 +38,13 @@ impl Identity for GenericIdentity {
             Self::Secp256k1Identity(identity) => identity.sign(blob),
         }
     }
+
+    fn public_key(&self) -> Option<Vec<u8>> {
+        match self {
+            Self::BasicIdentity(identity) => identity.public_key(),
+            Self::Secp256k1Identity(identity) => identity.public_key(),
+        }
+    }
 }
 
 impl From<Secp256k1Identity> for GenericIdentity {
