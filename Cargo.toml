@@ -26,29 +26,9 @@ members = [
     "ic-test-utils",
 ]
 
-[package]
-name = "canister-sdk"
-version.workspace = true
-edition.workspace = true
-
 [workspace.package]
 version = "0.5.5"
 edition = "2021"
-
-[features]
-default = []
-auction-api = ["ic-auction?/export-api"]
-metrics-api = ["ic-metrics/export-api"]
-auction = ["dep:ic-auction"]
-
-
-[dependencies]
-ic-exports = { path = "./ic-exports" }
-ic-auction = { path = "./ic-auction", optional = true }
-ic-canister = { path = "./ic-canister/ic-canister" }
-ic-storage = { path = "./ic-storage" }
-ic-helpers = { path = "./ic-helpers" }
-ic-metrics = { path = "./ic-metrics" }
 
 [workspace.dependencies]
 anyhow = "1"

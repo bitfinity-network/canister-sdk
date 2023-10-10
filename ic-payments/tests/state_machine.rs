@@ -1,4 +1,4 @@
-#[cfg(feature = "state-machine")]
+
 mod tests {
     use candid::{CandidType, Decode, Deserialize, Encode, Nat, Principal};
     use ic_exports::ic_kit::mock_principals::{alice, bob};
@@ -44,17 +44,22 @@ mod tests {
         fn default() -> Self {
             Self {
                 controller_id: Principal::anonymous(),
-                ..Default::default()
+                trigger_threshold: Default::default(),
+                num_blocks_to_archive: Default::default(),
+                node_max_memory_size_bytes: Default::default(),
+                max_message_size_bytes: Default::default(),
+                cycles_for_archive_creation: Default::default(),
+                max_transactions_per_response: Default::default()
             }
         }
     }
 
     fn token_wasm() -> &'static [u8] {
-        include_bytes!("./common/ic-icrc1-ledger.wasm")
+        include_bytes!("../../target/wasm32-unknown-unknown/release/ic-icrc1-ledger.wasm")
     }
 
     fn payment_canister_wasm() -> &'static [u8] {
-        include_bytes!("./common/payment_canister.wasm")
+        include_bytes!("../../target/wasm32-unknown-unknown/release/payment_canister.wasm")
     }
 
     const INIT_BALANCE: u128 = 10u128.pow(12);

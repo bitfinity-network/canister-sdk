@@ -25,30 +25,17 @@ fn load_wasm_bytecode_or_panic(wasm_name: &str) -> Vec<u8> {
 }
 
 fn get_path_to_wasm(wasm_name: &str) -> PathBuf {
-    if let Ok(dir_path) = std::env::var("WASMS_DIR") {
-        let wasm_path = Path::new(&dir_path).join(wasm_name);
 
-        if wasm_path.as_path().exists() {
-            return wasm_path;
-        }
+    const ARTIFACT_PATH: &str = "../target/wasm32-unknown-unknown/release/";
+    // Get to the root of the project
+    let wasm_path = format!("{}{}", ARTIFACT_PATH, wasm_name);
+    println!("path: {wasm_path:?}");
+    if Path::new(&wasm_path).exists() {
+        return wasm_path.into();
     } else {
-        const ARTIFACT_PATH: &str = "../target/wasm32-unknown-unknown/release/";
-        // Get to the root of the project
-        let wasm_path = format!("{}{}", ARTIFACT_PATH, wasm_name);
-        println!("path: {wasm_path:?}");
-        if Path::new(&wasm_path).exists() {
-            return wasm_path.into();
-        }
+        panic!(
+            "File {wasm_name} was not found in {ARTIFACT_PATH}"
+        );
     }
 
-    if let Ok(dir_path) = std::env::var("DFX_WASMS_DIR") {
-        let wasm_path = Path::new(&dir_path).join(wasm_name);
-        if wasm_path.as_path().exists() {
-            return wasm_path;
-        }
-    }
-
-    panic!(
-        "File {wasm_name} was not found in dirs provided by ENV variables WASMS_DIR or DFX_WASMS_DIR or in the '.artifact' folder"
-    );
 }

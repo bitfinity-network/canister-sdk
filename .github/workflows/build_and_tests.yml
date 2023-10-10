@@ -57,7 +57,7 @@ jobs:
 
       - name: Generate code coverage
         run: |
-          cargo +nightly tarpaulin --features memory-mapped-files-memory --verbose --timeout 120 --out xml --workspace  --exclude canister-a --exclude canister-b --exclude canister-c --exclude canister-d --exclude canister-e --exclude test-payment-canister
+          ./scripts/coverage.sh
 
   integration-test:
     name: Integration tests
@@ -73,14 +73,8 @@ jobs:
           sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
           rustup target add wasm32-unknown-unknown
           cargo install ic-wasm
-          dfx start --background
-          dfx canister create dummy_canister
-          dfx build dummy_canister
-          ic-payments/build_payments_canister.sh
 
       - name: Run integration tests
         run: |
-          export WASMS_DIR="../target/wasm32-unknown-unknown/release/"
           ./scripts/build.sh
-          cd ./ic-stable-structures
-          cargo test --features "state-machine,memory-mapped-files-memory"
+          ./scripts/test.sh
