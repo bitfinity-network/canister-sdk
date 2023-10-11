@@ -140,7 +140,7 @@ mod tests {
         let payload = Encode!(&TransferArg {
             from_subaccount: None,
             to: Account {
-                owner: payment.into(),
+                owner: payment,
                 subaccount
             },
             fee: None,
@@ -149,27 +149,27 @@ mod tests {
             amount: 2_000_000.into()
         })
         .unwrap();
-        let response = execute_ingress_as(&env, bob().into(), token, "icrc1_transfer", payload);
+        let response = execute_ingress_as(&env, bob(), token, "icrc1_transfer", payload);
         Decode!(&response, Result<Nat, TransferError>)
             .unwrap()
             .unwrap();
 
         let payload = Encode!(&Nat::from(2_000_000)).unwrap();
-        let response = execute_ingress_as(&env, bob().into(), payment, "deposit", payload);
+        let response = execute_ingress_as(&env, bob(), payment, "deposit", payload);
         let (_, transferred) = Decode!(&response, Result<(Nat, Nat), PaymentError>)
             .unwrap()
             .unwrap();
         assert_eq!(transferred, Nat::from(1_999_900));
 
         let payload = Encode!(&()).unwrap();
-        let response = execute_ingress_as(&env, bob().into(), payment, "get_balance", payload);
+        let response = execute_ingress_as(&env, bob(), payment, "get_balance", payload);
         let (local_balance, token_balance) = Decode!(&response, Nat, Nat).unwrap();
 
         assert_eq!(local_balance, Nat::from(1_999_900));
         assert_eq!(token_balance, Nat::from(1_999_900));
 
         let payload = Encode!(&Nat::from(1_999_900)).unwrap();
-        let response = execute_ingress_as(&env, bob().into(), payment, "withdraw", payload);
+        let response = execute_ingress_as(&env, bob(), payment, "withdraw", payload);
         let (_, transferred) = Decode!(&response, Result<(Nat, Nat), PaymentError>)
             .unwrap()
             .unwrap();

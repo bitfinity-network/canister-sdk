@@ -72,14 +72,14 @@ impl StateMachineCanisterClient {
         let cansiter = self.canister;
         let caller = self.caller;
 
-        let result = tokio::task::spawn_blocking(move || {
+        
+
+        tokio::task::spawn_blocking(move || {
             let locked_client = client.blocking_lock();
             f(&locked_client, cansiter, caller)
         })
         .await
-        .unwrap();
-
-        result
+        .unwrap()
     }
 }
 

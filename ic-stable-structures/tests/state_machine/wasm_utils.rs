@@ -30,7 +30,7 @@ fn get_path_to_wasm(wasm_name: &str) -> PathBuf {
     let wasm_path = format!("{}{}", ARTIFACT_PATH, wasm_name);
     println!("path: {wasm_path:?}");
     if Path::new(&wasm_path).exists() {
-        return wasm_path.into();
+        wasm_path.into()
     } else {
         panic!("File {wasm_name} was not found in {ARTIFACT_PATH}");
     }

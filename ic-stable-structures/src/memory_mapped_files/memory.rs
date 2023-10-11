@@ -35,7 +35,7 @@ impl Memory for MemoryMappedFileMemory {
     fn grow(&self, pages: u64) -> i64 {
         let mut memory = self.0.borrow_mut();
         let old_size = memory.len();
-        let bytes_to_add = pages * (WASM_PAGE_SIZE_IN_BYTES as u64);
+        let bytes_to_add = pages * WASM_PAGE_SIZE_IN_BYTES;
         let new_length = memory
             .resize(old_size + bytes_to_add)
             .expect("failed to resize memory-mapped file");

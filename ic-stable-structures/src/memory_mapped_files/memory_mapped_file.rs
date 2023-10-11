@@ -302,7 +302,7 @@ mod tests {
 
     fn check_data(data: &[u8]) {
         for i in 0..data.len() {
-            assert_eq!(data[i as usize], (i % u8::MAX as usize) as u8);
+            assert_eq!(data[i], (i % u8::MAX as usize) as u8);
         }
     }
 
