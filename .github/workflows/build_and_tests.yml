@@ -52,7 +52,7 @@ jobs:
         with:
           toolchain: stable
           override: true
-          target: add wasm32-unknown-unknown
+          target: wasm32-unknown-unknown
       - name: build and test
         run: |
           cargo install ic-wasm
