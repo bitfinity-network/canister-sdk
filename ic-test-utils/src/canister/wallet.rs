@@ -8,7 +8,7 @@
 //!
 //! let user = "bob";
 //! let agent = get_agent(user, None).await.unwrap();
-//! let wallet = Canister::new_wallet(&agent, user, None);
+//! let wallet = Canister::new_wallet(&agent, user);
 //! # }
 //! ```
 

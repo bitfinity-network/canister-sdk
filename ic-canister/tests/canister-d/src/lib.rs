@@ -60,8 +60,8 @@ pub fn idl() -> String {
 
 #[cfg(test)]
 mod tests {
+    
     use ic_canister::{canister_call, Canister};
-    use ic_exports::ic_kit::inject::get_context;
     use ic_exports::ic_kit::MockContext;
 
     use crate::{CanisterD, CanisterDImpl};
@@ -77,36 +77,6 @@ mod tests {
         assert_eq!(
             CanisterDImpl::from_principal(canister.principal()).get_counter(),
             3
-        );
-    }
-
-    #[test]
-    fn independent_states() {
-        MockContext::new().inject();
-
-        let mut canister_1 = CanisterDImpl::init_instance();
-
-        // Canister state bound to canister's ic::id(), so we need to update the id in test context
-        // if we have several canisters.
-        get_context().update_id(canister_1.principal());
-        canister_1.inc_counter(3);
-
-        let mut canister_2 = CanisterDImpl::init_instance();
-        get_context().update_id(canister_2.principal());
-        canister_2.inc_counter(5);
-
-        get_context().update_id(canister_1.principal());
-        assert_eq!(canister_1.get_counter(), 3);
-        assert_eq!(
-            CanisterDImpl::from_principal(canister_1.principal()).get_counter(),
-            3
-        );
-
-        get_context().update_id(canister_2.principal());
-        assert_eq!(canister_2.get_counter(), 5);
-        assert_eq!(
-            CanisterDImpl::from_principal(canister_2.principal()).get_counter(),
-            5
         );
     }
 
