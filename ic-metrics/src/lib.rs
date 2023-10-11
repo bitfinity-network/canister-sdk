@@ -1,6 +1,12 @@
 //! Metrics for the canister can be collected by adding a specific state field to the canister struct
 //!
-//! ```ignore
+//! ```
+//! use candid::Principal;
+//! use ic_canister::{Canister, MethodType, PreUpdate};
+//! use ic_metrics::*;
+//! use ic_storage::IcStorage;
+//! use std::cell::RefCell;
+//! 
 //! #[derive(IcStorage, Clone, Debug, Default)]
 //! pub struct Metrics {
 //!     pub cycles: u64,
@@ -11,10 +17,11 @@
 //!     #[id]
 //!     principal: Principal,
 //!     
-//!     metrics: std::rc::Rc<RefCell<ic_helpers::MetricsMap<Metrics>>>,
-//!
-//!     #[state]
-//!     state: Rc<RefCell<MyCanisterState>>,
+//!     metrics: std::rc::Rc<RefCell<MetricsMap<Metrics>>>,
+//! }
+//! 
+//! impl PreUpdate for MyCanister {
+//!     fn pre_update(&self, _method_name: &str, _method_type: MethodType) {}
 //! }
 //! ```
 //!
