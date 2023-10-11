@@ -13,36 +13,6 @@ concurrency:
 name: Clippy, fmt and tests with coverage
 
 jobs:
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          components: rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: clippy
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --all-targets
-
   test:
     name: Build and Test
     runs-on: ubuntu-latest
@@ -53,9 +23,15 @@ jobs:
           toolchain: stable
           override: true
           target: wasm32-unknown-unknown
-      - name: Machine setup
+      - name: machine setup
         run: |
           cargo install ic-wasm
+      - name: rustfmt
+        run: |
+          cargo fmt --check
+      - name: clippy
+        run: |
+          cargo clippy --all-features --all-targets
       - name: build
         run: |
           ./scripts/build.sh
