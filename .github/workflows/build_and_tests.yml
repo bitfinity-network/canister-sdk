@@ -44,7 +44,7 @@ jobs:
           args: --all-features --all-targets
 
   test:
-    name: build and test
+    name: Build and Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -63,22 +63,3 @@ jobs:
         run: |
           ./scripts/test.sh
 
-  integration-test-old:
-    name: Integration tests OLD
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Machine setup
-        run: |
-          sudo apt update 
-          sudo apt install -y libunwind-dev cmake protobuf-compiler
-          sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
-          rustup target add wasm32-unknown-unknown
-          cargo install ic-wasm
-
-      - name: Run integration tests
-        run: |
-          ./scripts/build.sh
-          ./scripts/test.sh
