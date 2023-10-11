@@ -44,6 +44,22 @@ jobs:
           args: --all-features --all-targets
 
   test:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          target: add wasm32-unknown-unknown
+      - name: build and test
+        run: |
+          cargo install ic-wasm
+          ./scripts/build.sh
+          ./scripts/test.sh
+
+  coverage:
     name: Tests with coverage
     runs-on: ubuntu-latest
     container:
@@ -54,9 +70,11 @@ jobs:
         uses: actions/checkout@v2
       - name: Generate code coverage
         run: |
+          cargo install ic-wasm
+          ./scripts/build.sh
           ./scripts/coverage.sh
 
-  integration-test:
+  integration-test-old:
     name: Integration tests
     runs-on: ubuntu-latest
     steps:
