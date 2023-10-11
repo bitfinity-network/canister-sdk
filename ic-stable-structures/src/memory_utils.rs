@@ -5,7 +5,7 @@ use dfinity_stable_structures::{
     Memory,
 };
 
-#[cfg(all(not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 pub type DefaultMemoryResourceType = dfinity_stable_structures::VectorMemory;
 
 #[cfg(target_arch = "wasm32")]

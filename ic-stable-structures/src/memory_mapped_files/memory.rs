@@ -29,7 +29,7 @@ impl MemoryMappedFileMemory {
 
 impl Memory for MemoryMappedFileMemory {
     fn size(&self) -> u64 {
-        self.0.borrow().len() / WASM_PAGE_SIZE_IN_BYTES as u64
+        self.0.borrow().len() / WASM_PAGE_SIZE_IN_BYTES
     }
 
     fn grow(&self, pages: u64) -> i64 {
@@ -43,7 +43,7 @@ impl Memory for MemoryMappedFileMemory {
             .zero_range(old_size, bytes_to_add)
             .expect("should succeed to zero new memory");
 
-        (new_length / WASM_PAGE_SIZE_IN_BYTES as u64) as i64
+        (new_length / WASM_PAGE_SIZE_IN_BYTES) as i64
     }
 
     fn read(&self, offset: u64, dst: &mut [u8]) {

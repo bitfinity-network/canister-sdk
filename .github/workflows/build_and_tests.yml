@@ -27,7 +27,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: -p canister-sdk -- --check
+          args: --check
 
   clippy:
     name: Clippy
