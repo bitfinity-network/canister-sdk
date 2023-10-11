@@ -1,4 +1,3 @@
-
 mod tests {
     use candid::{CandidType, Decode, Deserialize, Encode, Nat, Principal};
     use ic_exports::ic_kit::mock_principals::{alice, bob};
@@ -49,7 +48,7 @@ mod tests {
                 node_max_memory_size_bytes: Default::default(),
                 max_message_size_bytes: Default::default(),
                 cycles_for_archive_creation: Default::default(),
-                max_transactions_per_response: Default::default()
+                max_transactions_per_response: Default::default(),
             }
         }
     }

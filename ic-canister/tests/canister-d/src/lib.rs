@@ -60,7 +60,7 @@ pub fn idl() -> String {
 
 #[cfg(test)]
 mod tests {
-    
+
     use ic_canister::{canister_call, Canister};
     use ic_exports::ic_kit::MockContext;
 

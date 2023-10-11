@@ -241,7 +241,7 @@ impl MockContext {
     /// ```
     /// use ic_kit::*;
     /// use ic_kit::inject::get_context;
-    /// 
+    ///
     /// MockContext::new()
     ///     .with_stable(("Bella".to_string(), ))
     ///     .inject();
@@ -446,7 +446,7 @@ impl Context for MockContext {
         self.as_mut().watcher.called_balance = true;
         self.balance
     }
-    
+
     #[inline]
     fn balance128(&self) -> u128 {
         self.balance() as u128

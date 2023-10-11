@@ -6,7 +6,7 @@
 //! use ic_metrics::*;
 //! use ic_storage::IcStorage;
 //! use std::cell::RefCell;
-//! 
+//!
 //! #[derive(IcStorage, Clone, Debug, Default)]
 //! pub struct Metrics {
 //!     pub cycles: u64,
@@ -19,7 +19,7 @@
 //!     
 //!     metrics: std::rc::Rc<RefCell<MetricsMap<Metrics>>>,
 //! }
-//! 
+//!
 //! impl PreUpdate for MyCanister {
 //!     fn pre_update(&self, _method_name: &str, _method_type: MethodType) {}
 //! }
