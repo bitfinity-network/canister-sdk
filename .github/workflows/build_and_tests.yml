@@ -53,26 +53,15 @@ jobs:
           toolchain: stable
           override: true
           target: wasm32-unknown-unknown
-      - name: build and test
+      - name: Machine setup
         run: |
           cargo install ic-wasm
+      - name: build
+        run: |
           ./scripts/build.sh
+      - name: test
+        run: |
           ./scripts/test.sh
-
-  coverage:
-    name: Tests with coverage
-    runs-on: ubuntu-latest
-    container:
-      image: xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-      - name: Generate code coverage
-        run: |
-          cargo install ic-wasm
-          ./scripts/build.sh
-          ./scripts/coverage.sh
 
   integration-test-old:
     name: Integration tests OLD
