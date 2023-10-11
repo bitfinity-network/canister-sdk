@@ -75,7 +75,7 @@ jobs:
           ./scripts/coverage.sh
 
   integration-test-old:
-    name: Integration tests
+    name: Integration tests OLD
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

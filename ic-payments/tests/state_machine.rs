@@ -1,4 +1,7 @@
 mod tests {
+    use std::fs::File;
+    use std::io::Read;
+
     use candid::{CandidType, Decode, Deserialize, Encode, Nat, Principal};
     use ic_exports::ic_kit::mock_principals::{alice, bob};
     use ic_exports::ic_test_state_machine::{
@@ -9,6 +12,7 @@ mod tests {
     use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
     use ic_payments::error::{PaymentError, TransferFailReason};
     use ic_payments::get_principal_subaccount;
+    use once_cell::sync::OnceCell;
 
     #[derive(CandidType, Clone, Debug)]
     pub struct InitArgs {
@@ -53,12 +57,31 @@ mod tests {
         }
     }
 
-    fn token_wasm() -> &'static [u8] {
-        include_bytes!("../../target/wasm32-unknown-unknown/release/ic-icrc1-ledger.wasm")
+    /// Returns the bytecode of the evmc canister
+    fn token_wasm() -> &'static Vec<u8> {
+        static CANISTER_BYTECODE: OnceCell<Vec<u8>> = OnceCell::new();
+        CANISTER_BYTECODE.get_or_init(|| {
+            load_wasm_bytecode_or_panic(
+                "../../target/wasm32-unknown-unknown/release/ic-icrc1-ledger.wasm",
+            )
+        })
     }
 
-    fn payment_canister_wasm() -> &'static [u8] {
-        include_bytes!("../../target/wasm32-unknown-unknown/release/payment_canister.wasm")
+    fn payment_canister_wasm() -> &'static Vec<u8> {
+        static CANISTER_BYTECODE: OnceCell<Vec<u8>> = OnceCell::new();
+        CANISTER_BYTECODE.get_or_init(|| {
+            load_wasm_bytecode_or_panic(
+                "../../target/wasm32-unknown-unknown/release/payment_canister.wasm",
+            )
+        })
+    }
+
+    fn load_wasm_bytecode_or_panic(path: &str) -> Vec<u8> {
+        let mut f = File::open(path).expect("File does not exists");
+        let mut buffer = Vec::new();
+        f.read_to_end(&mut buffer)
+            .expect("Could not read file content");
+        buffer
     }
 
     const INIT_BALANCE: u128 = 10u128.pow(12);
@@ -84,7 +107,7 @@ mod tests {
         };
         let args = Encode!(&args, &Nat::from(1_000_000_000)).unwrap();
         let principal = env.create_canister(None);
-        env.install_canister(principal, token_wasm().into(), args, None);
+        env.install_canister(principal, token_wasm().clone(), args, None);
 
         eprintln!("Created token canister {principal}");
         principal
@@ -93,7 +116,7 @@ mod tests {
     fn init_payment(env: &mut StateMachine, token: Principal) -> Principal {
         let args = Encode!(&token).unwrap();
         let principal = env.create_canister(None);
-        env.install_canister(principal, payment_canister_wasm().into(), args, None);
+        env.install_canister(principal, payment_canister_wasm().clone(), args, None);
 
         eprintln!("Created payment canister {principal}");
         principal
