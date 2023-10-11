@@ -10,7 +10,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-name: Clippy, fmt and tests with coverage
+name: Clippy, fmt and tests
 
 jobs:
   test:
