@@ -47,12 +47,16 @@ build_ic_payments_test_canister() {
     # Get example icrc1 canister
     if [ ! -f $WASM_DIR/ic-icrc1-ledger.wasm ]; then
         export IC_VERSION=4824fd13586f1be43ea842241f22ee98f98230d0
+        echo curl
         curl -o $WASM_DIR/ic-icrc1-ledger.wasm.gz https://download.dfinity.systems/ic/${IC_VERSION}/canisters/ic-icrc1-ledger.wasm.gz
+        echo gun
         gunzip $WASM_DIR/ic-icrc1-ledger.wasm.gz
     fi
 
+    echo build
     cargo build --target wasm32-unknown-unknown --features export-api -p test-payment-canister --release
-    ic-wasm $WASM_DIR/test_payment_canister.wasm -o $WASM_DIR/payment_canister.wasm shrink
+    echo wasm
+    ic-wasm $WASM_DIR/test-payment-canister.wasm -o $WASM_DIR/test-payment-canister.wasm shrink
 }
 
 main() {

@@ -71,7 +71,7 @@ mod tests {
         static CANISTER_BYTECODE: OnceCell<Vec<u8>> = OnceCell::new();
         CANISTER_BYTECODE.get_or_init(|| {
             load_wasm_bytecode_or_panic(
-                "../../target/wasm32-unknown-unknown/release/payment_canister.wasm",
+                "../../target/wasm32-unknown-unknown/release/test-payment-canister.wasm",
             )
         })
     }
