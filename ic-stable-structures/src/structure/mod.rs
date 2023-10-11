@@ -11,16 +11,9 @@ pub use cache::*;
 pub use common::*;
 pub use heap::*;
 
-#[cfg(not(feature = "always-heap"))]
 pub use stable_storage::*;
 
-#[cfg(feature = "always-heap")]
-pub use heap::{
-    HeapBTreeMap as StableBTreeMap, HeapCell as StableCell, HeapLog as StableLog,
-    HeapMultimap as StableMultimap, HeapMultimapIter as StableMultimapIter,
-    HeapUnboundedIter as StableUnboundedIter, HeapUnboundedMap as StableUnboundedMap,
-    HeapVec as StableVec,
-};
+pub use heap::*;
 
 pub trait BTreeMapStructure<K, V> {
     /// Return value associated with `key` from stable memory.
