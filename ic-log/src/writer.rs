@@ -109,16 +109,15 @@ pub mod tests {
         writer.print(&"some data".into()).unwrap();
 
         LOG_RECORDS.with(|records| {
-            assert!(records
-                .borrow()
-                .iter()
-                .eq(["some data".to_string()].iter()));
+            assert!(records.borrow().iter().eq(["some data".to_string()].iter()));
         });
 
         writer.print(&"some more data".into()).unwrap();
         LOG_RECORDS.with(|records| {
-            assert!(records.borrow().iter().eq(["some data".to_string(),
-                "some more data".to_string()]
+            assert!(records.borrow().iter().eq([
+                "some data".to_string(),
+                "some more data".to_string()
+            ]
             .iter()));
         });
     }

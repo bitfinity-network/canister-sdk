@@ -72,8 +72,6 @@ impl StateMachineCanisterClient {
         let cansiter = self.canister;
         let caller = self.caller;
 
-        
-
         tokio::task::spawn_blocking(move || {
             let locked_client = client.blocking_lock();
             f(&locked_client, cansiter, caller)
