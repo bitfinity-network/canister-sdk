@@ -73,7 +73,7 @@ tokio-test = "0.4"
 
 # IC dependencies
 candid = "0.9"
-ic-agent = { version = "0.27" }
+ic-agent = { version = "0.29" }
 ic-cdk = "0.11"
 ic-cdk-macros = "0.8"
 ic-cdk-timers = "0.4"
