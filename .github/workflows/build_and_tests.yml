@@ -28,7 +28,7 @@ jobs:
           cargo install ic-wasm
       - name: rustfmt
         run: |
-          cargo fmt --check
+          cargo fmt --all --check
       - name: clippy
         run: |
           cargo clippy --all-features --all-targets
