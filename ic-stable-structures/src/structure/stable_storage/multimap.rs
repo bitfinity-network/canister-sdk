@@ -146,7 +146,7 @@ impl<K1: BoundedStorable, K2: BoundedStorable> Eq for KeyPair<K1, K2> {}
 
 impl<K1: BoundedStorable, K2: BoundedStorable> PartialOrd for KeyPair<K1, K2> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.encoded.partial_cmp(&other.encoded)
+        Some(self.cmp(other))
     }
 }
 

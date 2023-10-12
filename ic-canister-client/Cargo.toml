@@ -9,15 +9,15 @@ description = "Client for interacting with an IC Canister"
 [features]
 default = []
 ic-agent-client = ["dep:ic-agent"]
-state-machine-tests-client = ["dep:tokio"]
+state-machine-tests-client = ["dep:tokio", "ic-exports/ic-test-state-machine"]
 
 [dependencies]
+async-trait = { workspace = true }
 candid = { workspace = true }
 ic-agent = { workspace = true, optional = true }
 ic-canister = { path = "../ic-canister/ic-canister" }
 ic-exports = { path = "../ic-exports" }
-serde_json = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
-async-trait = { workspace = true }
 tokio = { workspace = true, optional = true, features = ["sync"] }

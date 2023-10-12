@@ -354,7 +354,7 @@ mod tests {
     fn should_push() {
         with_buffer(3, |buffer| {
             check_buffer(buffer, &vec![]);
-            assert_eq!(buffer.is_empty(), true);
+            assert!(buffer.is_empty());
 
             assert_eq!(buffer.push(&1), (0, None));
             check_buffer(buffer, &vec![1]);

@@ -1,38 +1,38 @@
 {
   "canisters": {
     "canister-a": {
-      "build": "bash scripts/build.sh",
-      "candid": "ic-canister/tests/canister_a/canister_a.did",
+      "build": "",
+      "candid": "target/wasm32-unknown-unknown/release/canister_a.did",
       "wasm": "target/wasm32-unknown-unknown/release/canister_a.wasm",
       "type": "custom"
     },
     "canister-b": {
-      "build": "bash scripts/build.sh",
-      "candid": "ic-canister/tests/canister_b/canister_b.did",
+      "build": "",
+      "candid": "target/wasm32-unknown-unknown/release/canister_b.did",
       "wasm": "target/wasm32-unknown-unknown/release/canister_b.wasm",
       "type": "custom"
     },
     "canister-c": {
-      "build": "bash scripts/build.sh",
-      "candid": "ic-canister/tests/canister-c/canister-c.did",
+      "build": "",
+      "candid": "target/wasm32-unknown-unknown/release/canister-c.did",
       "wasm": "target/wasm32-unknown-unknown/release/canister-c.wasm",
       "type": "custom"
     },
     "canister-d": {
-      "build": "bash scripts/build.sh",
-      "candid": "ic-canister/tests/canister-d/canister-d.did",
+      "build": "",
+      "candid": "target/wasm32-unknown-unknown/release/canister-d.did",
       "wasm": "target/wasm32-unknown-unknown/release/canister-d.wasm",
       "type": "custom"
     },
     "dummy_canister": {
-      "candid": "ic-stable-structures/tests/dummy_canister/dummy_canister.did",
-      "build": "bash scripts/build_dummy_canister.sh",
+      "build": "",
+      "candid": "target/wasm32-unknown-unknown/release/dummy_canister.did",
       "wasm": "target/wasm32-unknown-unknown/release/dummy_canister.wasm",
       "type": "custom"
     },
     "log_canister": {
-      "candid": "ic-log/examples/log_canister.did",
       "build": "bash scripts/build_log_canister.sh",
+      "candid": "target/wasm32-unknown-unknown/release/log_canister.did",
       "wasm": "target/wasm32-unknown-unknown/release/examples/log_canister.wasm",
       "type": "custom"
     }

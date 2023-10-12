@@ -21,7 +21,7 @@
 //! for more details on custom implementations.
 
 #[cfg(all(
-    target_arch = "wasm32",
+    target_family = "wasm",
     target_vendor = "unknown",
     target_os = "unknown"
 ))]
@@ -31,7 +31,7 @@ pub fn always_fail(_buf: &mut [u8]) -> Result<(), getrandom::Error> {
 }
 
 #[cfg(all(
-    target_arch = "wasm32",
+    target_family = "wasm",
     target_vendor = "unknown",
     target_os = "unknown"
 ))]

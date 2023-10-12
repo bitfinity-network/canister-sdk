@@ -126,6 +126,7 @@ impl MockContext {
     ///
     /// ```
     /// use ic_kit::*;
+    /// use ic_kit::inject::get_context;
     ///
     /// let id = Principal::from_text("ai7t5-aibaq-aaaaa-aaaaa-c").unwrap();
     ///
@@ -148,6 +149,7 @@ impl MockContext {
     ///
     /// ```
     /// use ic_kit::*;
+    /// use ic_kit::inject::get_context;
     ///
     /// MockContext::new()
     ///     .with_balance(1000)
@@ -168,6 +170,7 @@ impl MockContext {
     ///
     /// ```
     /// use ic_kit::*;
+    /// use ic_kit::inject::get_context;
     ///
     /// let alice = Principal::from_text("ai7t5-aibaq-aaaaa-aaaaa-c").unwrap();
     ///
@@ -192,6 +195,7 @@ impl MockContext {
     ///
     /// ```
     /// use ic_kit::*;
+    /// use ic_kit::inject::get_context;
     ///
     /// MockContext::new()
     ///     .with_msg_cycles(1000)
@@ -214,6 +218,7 @@ impl MockContext {
     ///
     /// ```
     /// use ic_kit::*;
+    /// use ic_kit::inject::get_context;
     ///
     /// MockContext::new()
     ///     .with_data(String::from("Hello"))
@@ -235,6 +240,7 @@ impl MockContext {
     ///
     /// ```
     /// use ic_kit::*;
+    /// use ic_kit::inject::get_context;
     ///
     /// MockContext::new()
     ///     .with_stable(("Bella".to_string(), ))
@@ -440,7 +446,7 @@ impl Context for MockContext {
         self.as_mut().watcher.called_balance = true;
         self.balance
     }
-    
+
     #[inline]
     fn balance128(&self) -> u128 {
         self.balance() as u128

@@ -514,7 +514,7 @@ pub fn get_deposit_interim_account(principal: Principal) -> Account {
 /// Bytes[1..principal.len() + 1] = principal.bytes()
 /// Bytes[principal.len() + 1..32] = 0
 /// ```
-fn get_principal_subaccount(principal_id: &Principal) -> Option<Subaccount> {
+pub fn get_principal_subaccount(principal_id: &Principal) -> Option<Subaccount> {
     let mut subaccount = [0; std::mem::size_of::<Subaccount>()];
     let principal_id = principal_id.as_slice();
     subaccount[0] = principal_id.len().try_into().unwrap();

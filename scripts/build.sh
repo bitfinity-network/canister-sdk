@@ -1,19 +1,72 @@
+#!/usr/bin/env sh
 set -e
+export RUST_BACKTRACE=full
 
-cargo run -p canister-a --features export-api > ic-canister/tests/canister-a/canister-a.did
-cargo run -p canister-b --features export-api > ic-canister/tests/canister-b/canister-b.did
-cargo run -p canister-c --features export-api > ic-canister/tests/canister-c/canister-c.did
-cargo run -p canister-d --features export-api > ic-canister/tests/canister-d/canister-d.did
-cargo run -p dummy_canister --features export-api > ic-stable-structures/tests/dummy_canister/dummy_canister.did
+WASM_DIR="target/wasm32-unknown-unknown/release"
 
-cargo build -p canister-a --target wasm32-unknown-unknown --features export-api --release
-cargo build -p canister-b --target wasm32-unknown-unknown --features export-api --release
-cargo build -p canister-c --target wasm32-unknown-unknown --features export-api --release
-cargo build -p canister-d --target wasm32-unknown-unknown --features export-api --release
-cargo build -p dummy_canister --target wasm32-unknown-unknown --features export-api --release
+build_ic_canister_test_canisters() {
+    echo "Building ic-canister test canisters"
 
-ic-wasm target/wasm32-unknown-unknown/release/canister-a.wasm -o target/wasm32-unknown-unknown/release/canister-a.wasm shrink
-ic-wasm target/wasm32-unknown-unknown/release/canister-b.wasm -o target/wasm32-unknown-unknown/release/canister-b.wasm shrink
-ic-wasm target/wasm32-unknown-unknown/release/canister-c.wasm -o target/wasm32-unknown-unknown/release/canister-c.wasm shrink
-ic-wasm target/wasm32-unknown-unknown/release/canister-d.wasm -o target/wasm32-unknown-unknown/release/canister-d.wasm shrink
+    cargo run -p canister-a --features export-api > $WASM_DIR/canister-a.did
+    cargo run -p canister-b --features export-api > $WASM_DIR/canister-b.did
+    cargo run -p canister-c --features export-api > $WASM_DIR/canister-c.did
+    cargo run -p canister-d --features export-api > $WASM_DIR/canister-d.did
 
+    cargo build -p canister-a --target wasm32-unknown-unknown --features export-api --release
+    cargo build -p canister-b --target wasm32-unknown-unknown --features export-api --release
+    cargo build -p canister-c --target wasm32-unknown-unknown --features export-api --release
+    cargo build -p canister-d --target wasm32-unknown-unknown --features export-api --release
+
+    ic-wasm $WASM_DIR/canister-a.wasm -o $WASM_DIR/canister-a.wasm shrink
+    ic-wasm $WASM_DIR/canister-b.wasm -o $WASM_DIR/canister-b.wasm shrink
+    ic-wasm $WASM_DIR/canister-c.wasm -o $WASM_DIR/canister-c.wasm shrink
+    ic-wasm $WASM_DIR/canister-d.wasm -o $WASM_DIR/canister-d.wasm shrink
+}
+
+build_ic_stable_structures_dummy_canister() {
+    echo "Building ic-stable-structures dummy canister"
+
+    cargo run -p dummy_canister --features export-api > $WASM_DIR/dummy_canister.did
+    cargo build -p dummy_canister --target wasm32-unknown-unknown --features export-api --release
+    ic-wasm $WASM_DIR/dummy_canister.wasm -o $WASM_DIR/dummy_canister.wasm shrink
+
+}
+
+build_ic_log_test_canister() {
+    echo "Building ic-log test canister"
+
+    cargo run -p ic-log --example log_canister --features export-api > $WASM_DIR/log_canister.did
+    cargo build -p ic-log --example log_canister --target wasm32-unknown-unknown --features export-api --release
+    ic-wasm $WASM_DIR/examples/log_canister.wasm -o $WASM_DIR/log_canister.wasm shrink
+
+}
+
+build_ic_payments_test_canister() {
+    echo "Building ic-payments test canister"
+
+    # Get example icrc1 canister
+    if [ ! -f $WASM_DIR/ic-icrc1-ledger.wasm ]; then
+        export IC_VERSION=4824fd13586f1be43ea842241f22ee98f98230d0
+        echo curl
+        curl -o $WASM_DIR/ic-icrc1-ledger.wasm.gz https://download.dfinity.systems/ic/${IC_VERSION}/canisters/ic-icrc1-ledger.wasm.gz
+        echo gun
+        gunzip $WASM_DIR/ic-icrc1-ledger.wasm.gz
+    fi
+
+    echo build
+    cargo build --target wasm32-unknown-unknown --features export-api -p test-payment-canister --release
+    echo wasm
+    ic-wasm $WASM_DIR/test-payment-canister.wasm -o $WASM_DIR/test-payment-canister.wasm shrink
+}
+
+main() {
+    mkdir -p $WASM_DIR
+
+    build_ic_canister_test_canisters
+    build_ic_stable_structures_dummy_canister
+    build_ic_log_test_canister
+    build_ic_payments_test_canister
+
+}
+
+main "$@"

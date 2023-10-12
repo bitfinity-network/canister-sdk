@@ -10,77 +10,32 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-name: Clippy, fmt and tests with coverage
+name: Clippy, fmt and tests
 
 jobs:
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -p canister-sdk -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: clippy
-          override: true
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --all-targets
-          name: Clippy Output
-
   test:
-    name: Tests with coverage
-    runs-on: ubuntu-latest
-    container:
-      image: xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Generate code coverage
-        run: |
-          cargo +nightly tarpaulin --features memory-mapped-files-memory --verbose --timeout 120 --out xml --workspace  --exclude canister-a --exclude canister-b --exclude canister-c --exclude canister-d --exclude canister-e --exclude test-payment-canister
-
-  integration-test:
-    name: Integration tests
+    name: Build and Test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Machine setup
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          target: wasm32-unknown-unknown
+      - name: machine setup
         run: |
-          sudo apt update 
-          sudo apt install -y libunwind-dev cmake protobuf-compiler
-          sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
-          rustup target add wasm32-unknown-unknown
           cargo install ic-wasm
-          dfx start --background
-          dfx canister create dummy_canister
-          dfx build dummy_canister
-          ic-payments/build_payments_canister.sh
-
-      - name: Run integration tests
+      - name: rustfmt
         run: |
-          export WASMS_DIR="../target/wasm32-unknown-unknown/release/"
+          cargo fmt --all --check
+      - name: clippy
+        run: |
+          cargo clippy --all-features --all-targets
+      - name: build
+        run: |
           ./scripts/build.sh
-          cd ./ic-stable-structures
-          cargo test --features "state-machine,memory-mapped-files-memory"
+      - name: test
+        run: |
+          ./scripts/test.sh
+

@@ -1,4 +1,4 @@
-mod identity;
+pub mod identity;
 
 use std::path::{Path, PathBuf};
 

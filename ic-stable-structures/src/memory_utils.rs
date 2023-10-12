@@ -5,10 +5,10 @@ use dfinity_stable_structures::{
     Memory,
 };
 
-#[cfg(all(not(target_arch = "wasm32")))]
+#[cfg(not(target_family = "wasm"))]
 pub type DefaultMemoryResourceType = dfinity_stable_structures::VectorMemory;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_family = "wasm")]
 pub type DefaultMemoryResourceType = dfinity_stable_structures::Ic0StableMemory;
 
 pub type DefaultMemoryType = VirtualMemory<DefaultMemoryResourceType>;

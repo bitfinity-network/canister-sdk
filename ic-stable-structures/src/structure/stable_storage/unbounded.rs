@@ -194,7 +194,7 @@ impl<K: BoundedStorable> Eq for Key<K> {}
 
 impl<K: BoundedStorable> PartialOrd for Key<K> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.data.partial_cmp(&other.data)
+        Some(self.cmp(other))
     }
 }
 

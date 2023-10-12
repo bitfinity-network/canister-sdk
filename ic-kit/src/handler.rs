@@ -429,7 +429,7 @@ mod tests {
             2000,
             &Principal::management_canister(),
             "deposit",
-            &vec![],
+            &[],
             None,
         );
         assert_eq!(refunded, 2000);
@@ -440,7 +440,7 @@ mod tests {
             2000,
             &Principal::management_canister(),
             "deposit",
-            &vec![],
+            &[],
             None,
         );
         assert_eq!(refunded, 0);
@@ -455,7 +455,7 @@ mod tests {
             2000,
             &Principal::management_canister(),
             "deposit",
-            &vec![],
+            &[],
             None,
         );
         assert_eq!(refunded, 1900);
@@ -466,7 +466,7 @@ mod tests {
             2000,
             &Principal::management_canister(),
             "deposit",
-            &vec![],
+            &[],
             None,
         );
         assert_eq!(refunded, 1750);
@@ -483,7 +483,7 @@ mod tests {
                 2000,
                 &Principal::management_canister(),
                 "deposit",
-                &vec![],
+                &[],
                 None,
             )
             .0
@@ -499,7 +499,7 @@ mod tests {
             2000,
             &Principal::management_canister(),
             "deposit",
-            &vec![],
+            &[],
             None,
         );
         assert_eq!(refunded, 100);
@@ -510,7 +510,7 @@ mod tests {
             2000,
             &Principal::management_canister(),
             "deposit",
-            &vec![],
+            &[],
             None,
         );
         assert_eq!(refunded, 120);

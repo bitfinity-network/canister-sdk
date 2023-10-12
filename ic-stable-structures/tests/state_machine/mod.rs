@@ -12,7 +12,7 @@ use ic_exports::ic_test_state_machine::{
 };
 use once_cell::sync::Lazy;
 
-use crate::utils::wasm::get_dummy_canister_bytecode;
+use wasm_utils::get_dummy_canister_bytecode;
 
 mod btreemap;
 mod cell;
@@ -21,6 +21,7 @@ mod map;
 mod multimap;
 mod ring_buffer;
 mod vec;
+mod wasm_utils;
 
 pub struct StateMachineTestContext {
     pub env: StateMachine,

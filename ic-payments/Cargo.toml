@@ -3,9 +3,6 @@ name = "ic-payments"
 version.workspace = true
 edition.workspace = true
 
-[features]
-state-machine = ["ic-exports/ic-test-state-machine"]
-
 [dependencies]
 ic-exports = { path = "../ic-exports", features = ["icrc"] }
 ic-canister = { path = "../ic-canister/ic-canister" }
@@ -18,4 +15,6 @@ thiserror = { workspace = true }
 async-recursion = { workspace = true }
 
 [dev-dependencies]
+ic-exports = { path = "../ic-exports", features = ["ic-test-state-machine"] }
+once_cell = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros"] }

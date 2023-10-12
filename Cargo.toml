@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
     "ic-auction",
     "ic-canister/ic-canister-macros",
@@ -26,29 +27,9 @@ members = [
     "ic-test-utils",
 ]
 
-[package]
-name = "canister-sdk"
-version.workspace = true
-edition.workspace = true
-
 [workspace.package]
-version = "0.5.4"
+version = "0.5.5"
 edition = "2021"
-
-[features]
-default = []
-auction-api = ["ic-auction?/export-api"]
-metrics-api = ["ic-metrics/export-api"]
-auction = ["dep:ic-auction"]
-
-
-[dependencies]
-ic-exports = { path = "./ic-exports" }
-ic-auction = { path = "./ic-auction", optional = true }
-ic-canister = { path = "./ic-canister/ic-canister" }
-ic-storage = { path = "./ic-storage" }
-ic-helpers = { path = "./ic-helpers" }
-ic-metrics = { path = "./ic-metrics" }
 
 [workspace.dependencies]
 anyhow = "1"
@@ -69,7 +50,7 @@ humantime = "2.1"
 k256 = "0.13"
 lazy_static = "1"
 log = "0.4"
-memmap2 = { version = "0.8" }
+memmap2 = { version = "0.9" }
 mini-moka = "0.10.2"
 num-bigint = "0.4"
 num-traits = "0.2"
@@ -78,7 +59,7 @@ proc-macro2 = "1.0"
 quote = "1.0"
 rand = "0.8"
 reqwest = { version = "0.11", default-features = false }
-ringbuffer = "0.14.2"
+ringbuffer = "0.15"
 serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11.2"
 serde_json = "1.0"
@@ -92,11 +73,11 @@ tokio-test = "0.4"
 
 # IC dependencies
 candid = "0.9"
-ic-agent = { version = "0.26" }
-ic-cdk = "0.10"
-ic-cdk-macros = "0.7"
+ic-agent = { version = "0.27" }
+ic-cdk = "0.11"
+ic-cdk-macros = "0.8"
 ic-cdk-timers = "0.4"
 icrc-ledger-types = "0.1.0"
-ic-ledger-types = "0.7"
+ic-ledger-types = "0.8"
 dfinity-stable-structures = { package = "ic-stable-structures", version = "0.5.6" }
 ic-test-state-machine-client = "3"

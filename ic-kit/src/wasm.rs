@@ -67,7 +67,6 @@ impl Context for IcContext {
         ic_cdk::api::canister_balance()
     }
 
-
     #[inline(always)]
     fn balance128(&self) -> u128 {
         ic_cdk::api::canister_balance128()

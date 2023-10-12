@@ -56,12 +56,12 @@ pub(crate) fn canister_call(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         {
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(target_family = "wasm")]
             {
                 #cdk_call
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_family = "wasm"))]
             async {
                 let __caller = ::ic_exports::ic_kit::ic::caller();
                 let __id = ::ic_exports::ic_kit::ic::id();
@@ -98,12 +98,12 @@ pub(crate) fn canister_notify(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         {
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(target_family = "wasm")]
             {
                 #cdk_call
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_family = "wasm"))]
             {
                 let __caller = ::ic_exports::ic_kit::ic::caller();
                 let __id = ::ic_exports::ic_kit::ic::id();
@@ -219,12 +219,12 @@ pub(crate) fn virtual_canister_call(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         {
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(target_family = "wasm")]
             {
                 #cdk_call
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_family = "wasm"))]
             {
                 #responder_call
             }
@@ -263,12 +263,12 @@ pub(crate) fn virtual_canister_notify(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         {
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(target_family = "wasm")]
             {
                 #cdk_call
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_family = "wasm"))]
             {
                 #responder_call
             }

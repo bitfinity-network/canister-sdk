@@ -4,7 +4,7 @@
 //! use ic_test_utils::canister::Canister;
 //!
 //! # async fn run<'a, T>(canister: Canister<'a, T>, principal: candid::Principal, agent: &'a ic_agent::Agent) {
-//! let wallet = Canister::new_wallet(agent, "bob", None).unwrap();
+//! let wallet = Canister::new_wallet(agent, "bob").unwrap();
 //! let management = Canister::new_management(agent);
 //! # }
 //! ```

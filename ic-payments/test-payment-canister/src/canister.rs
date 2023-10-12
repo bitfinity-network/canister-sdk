@@ -53,7 +53,7 @@ impl Balances for TestBalances {
 }
 
 #[derive(Debug, Canister)]
-struct PaymentCanister {
+pub struct PaymentCanister {
     #[id]
     id: Principal,
 }

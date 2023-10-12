@@ -169,12 +169,12 @@ impl Transfer {
 
         let mut hash = Sha224::default();
         hash.update(INTERMEDIATE_ACC_DOMAIN);
-        hash.update(&self.from.unwrap_or_default());
+        hash.update(self.from.unwrap_or_default());
         hash.update(self.to.owner.as_slice());
         hash.update(self.to.effective_subaccount());
         hash.update(&self.amount.0.to_bytes_le());
         hash.update(self.token.as_slice());
-        hash.update(&self.created_at.to_le_bytes());
+        hash.update(self.created_at.to_le_bytes());
 
         let hash_result: [u8; 28] = hash.finalize().into();
         let mut subaccount = [0; 32];

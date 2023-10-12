@@ -38,6 +38,13 @@ impl Identity for GenericIdentity {
             Self::Secp256k1Identity(identity) => identity.sign(blob),
         }
     }
+
+    fn public_key(&self) -> Option<Vec<u8>> {
+        match self {
+            Self::BasicIdentity(identity) => identity.public_key(),
+            Self::Secp256k1Identity(identity) => identity.public_key(),
+        }
+    }
 }
 
 impl From<Secp256k1Identity> for GenericIdentity {
@@ -66,4 +73,54 @@ pub async fn init_agent(identity_path: &Path, url: &str) -> super::Result<Agent>
     agent.fetch_root_key().await?;
 
     Ok(agent)
+}
+
+#[cfg(test)]
+mod test {
+
+    use std::path::Path;
+
+    use super::*;
+
+    #[test]
+    fn should_get_identity_from_pem_file() {
+        let path = Path::new("./tests/identity/identity.pem");
+
+        assert!(GenericIdentity::try_from(path).is_ok());
+        assert!(matches!(
+            GenericIdentity::try_from(path).unwrap(),
+            GenericIdentity::Secp256k1Identity(_)
+        ));
+    }
+
+    #[test]
+    fn should_get_sender_from_identity() {
+        let path = Path::new("./tests/identity/identity.pem");
+        let identity = GenericIdentity::try_from(path).unwrap();
+        let expected =
+            Principal::from_text("zrrb4-gyxmq-nx67d-wmbky-k6xyt-byhmw-tr5ct-vsxu4-nuv2g-6rr65-aae")
+                .unwrap();
+
+        let principal = identity.sender().unwrap();
+
+        assert_eq!(expected, principal);
+    }
+
+    #[test]
+    fn identity_should_sign() {
+        let path = Path::new("./tests/identity/identity.pem");
+        let identity = GenericIdentity::try_from(path).unwrap();
+
+        let envelop = EnvelopeContent::Query {
+            ingress_expiry: 123,
+            sender: Principal::anonymous(),
+            canister_id: Principal::anonymous(),
+            method_name: "some".to_owned(),
+            arg: vec![],
+        };
+
+        let signature = identity.sign(&envelop).unwrap();
+
+        assert!(signature.signature.is_some());
+    }
 }
