@@ -60,7 +60,7 @@ use ic_canister::{generate_exports, generate_idl, query, state_getter, Canister,
 use ic_exports::candid::{CandidType, Deserialize};
 use ic_storage::IcStorage;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_family = "wasm")]
 const WASM_PAGE_SIZE: u64 = 65536;
 
 #[derive(CandidType, Deserialize, IcStorage, Default, Clone, Debug)]
@@ -96,7 +96,7 @@ pub trait Metrics: Canister {
     }
 
     /// This function updates the metrics at intervals with the specified timer
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(target_family = "wasm")]
     fn update_metrics_timer(&mut self, timer: std::time::Duration) {
         use ic_exports::ic_cdk_timers;
         let metrics = MetricsStorage::get();
@@ -127,21 +127,21 @@ fn curr_values() -> MetricsData {
     MetricsData {
         cycles: ic_exports::ic_kit::ic::balance(),
         stable_memory_size: {
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(target_family = "wasm")]
             {
                 ic_exports::ic_cdk::api::stable::stable64_size()
             }
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_family = "wasm"))]
             {
                 0
             }
         },
         heap_memory_size: {
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(target_family = "wasm")]
             {
                 (core::arch::wasm32::memory_size(0) as u64) * WASM_PAGE_SIZE
             }
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_family = "wasm"))]
             {
                 0
             }

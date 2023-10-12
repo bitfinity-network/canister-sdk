@@ -112,7 +112,7 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
     };
 
     let expanded = quote! {
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(target_family = "wasm"))]
         thread_local! {
             static __NEXT_ID: ::std::sync::atomic::AtomicU64 = {
                 let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
@@ -121,31 +121,31 @@ pub fn derive_canister(input: TokenStream) -> TokenStream {
             };
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(target_family = "wasm"))]
         fn __next_id() -> [u8; 8] {
             __NEXT_ID.with(|v| v.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed).to_le_bytes())
         }
 
         #[automatically_derived]
         impl #trait_name for #name {
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(target_family = "wasm")]
             fn init_instance() -> Self {
                 let principal = ::ic_exports::ic_cdk::api::id();
                 Self { #principal_field : principal #state_fields_wasm #default_fields }
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_family = "wasm"))]
             fn init_instance() -> Self {
                 let principal = ::ic_exports::candid::Principal::from_slice(&__next_id());
                 Self::from_principal(principal)
             }
 
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(target_family = "wasm")]
             fn from_principal(principal: ::ic_exports::candid::Principal) -> Self {
                 Self { #principal_field: principal #state_fields_wasm #default_fields }
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_family = "wasm"))]
             fn from_principal(principal: ::ic_exports::candid::Principal) -> Self {
                 let curr_id = ::ic_exports::ic_kit::ic::id();
 
@@ -209,26 +209,26 @@ fn expand_upgrade_methods(
                 #field_assignment
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_family = "wasm"))]
             fn __post_upgrade() {
                 let instance = Self::init_instance();
                 instance.__post_upgrade_inst();
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_family = "wasm"))]
             fn __pre_upgrade() {
                 let instance = Self::init_instance();
                 instance.__pre_upgrade_inst();
             }
 
-            #[cfg(all(target_arch = "wasm32", feature = "export-api"))]
+            #[cfg(all(target_family = "wasm", feature = "export-api"))]
             #[export_name = "canister_pre_upgrade"]
             fn __pre_upgrade() {
                 let instance = Self::init_instance();
                 instance.__pre_upgrade_inst();
             }
 
-            #[cfg(all(target_arch = "wasm32", feature = "export-api"))]
+            #[cfg(all(target_family = "wasm", feature = "export-api"))]
             #[export_name = "canister_post_upgrade"]
             fn __post_upgrade() {
                 let instance = Self::init_instance();

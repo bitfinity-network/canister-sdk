@@ -198,7 +198,7 @@ pub(crate) fn api_method(
             quote! {}
         };
         quote! {
-            #[cfg(all(target_arch = "wasm32", feature = "export-api"))]
+            #[cfg(all(target_family = "wasm", feature = "export-api"))]
             #[export_name = #export_name]
             fn #internal_method() {
                 ::ic_exports::ic_cdk::setup();
@@ -218,7 +218,7 @@ pub(crate) fn api_method(
 
         #export_function
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(target_family = "wasm"))]
         #[allow(dead_code)]
         #orig_vis fn #internal_method(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_exports::ic_cdk::api::call::CallResult<#inner_return_type>> + '_>> {
             // todo: trap handler
@@ -226,7 +226,7 @@ pub(crate) fn api_method(
             Box::pin(async move { Ok(result #await_call) })
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(target_family = "wasm"))]
         #[allow(unused_mut)]
         #[allow(unused_must_use)]
         #orig_vis fn #internal_method_notify(#args) -> ::std::result::Result<(), ::ic_exports::ic_cdk::api::call::RejectionCode> {
@@ -430,7 +430,7 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         };
 
         quote! {
-            #[cfg(all(target_arch = "wasm32", feature = "export-api"))]
+            #[cfg(all(target_family = "wasm", feature = "export-api"))]
             #[export_name = #export_name]
             fn #internal_method() {
                 ::ic_exports::ic_cdk::setup();

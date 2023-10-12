@@ -102,7 +102,7 @@ pub trait IcStorage {
 #[macro_export]
 macro_rules! generic_derive {
     ($storage:ty) => {
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(target_family = "wasm")]
         // Note, that this path is not qualified because we have a derivation of IcStorage in
         // `ic-metrics` which creates a looping dependency hell.
         impl IcStorage for $storage {
@@ -118,7 +118,7 @@ macro_rules! generic_derive {
             }
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(target_family = "wasm"))]
         impl IcStorage for $storage {
             fn get() -> ::std::rc::Rc<::std::cell::RefCell<Self>> {
                 use ::std::rc::Rc;
