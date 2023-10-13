@@ -1,13 +1,12 @@
 use std::borrow::Cow;
 
-use dfinity_stable_structures::Storable;
 use dfinity_stable_structures::storable::Bound;
+use dfinity_stable_structures::Storable;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StringValue(pub String);
 
 impl Storable for StringValue {
-
     const BOUND: Bound = Bound::Unbounded;
 
     fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
@@ -24,10 +23,9 @@ impl Storable for StringValue {
 pub struct Array<const N: usize>(pub [u8; N]);
 
 impl<const N: usize> Storable for Array<N> {
-
-    const BOUND: Bound = Bound::Bounded { 
-        max_size: N as u32, 
-        is_fixed_size: true 
+    const BOUND: Bound = Bound::Bounded {
+        max_size: N as u32,
+        is_fixed_size: true,
     };
 
     fn to_bytes(&self) -> Cow<'_, [u8]> {

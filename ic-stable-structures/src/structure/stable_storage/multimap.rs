@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use dfinity_stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 use dfinity_stable_structures::storable::Bound;
+use dfinity_stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 
 use crate::structure::MultimapStructure;
 
@@ -28,14 +28,17 @@ use crate::structure::MultimapStructure;
 
 /// `StableMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
-pub struct StableMultimap<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>(StableBTreeMap<KeyPair<K1, K2, K1_SIZE, K2_SIZE>, Value<V>, M>)
+pub struct StableMultimap<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>(
+    StableBTreeMap<KeyPair<K1, K2, K1_SIZE, K2_SIZE>, Value<V>, M>,
+)
 where
     K1: Storable,
     K2: Storable,
     V: Storable,
     M: Memory;
 
-impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>
+    StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
 where
     K1: Storable,
     K2: Storable,
@@ -46,19 +49,33 @@ where
     /// All keys and values byte representations should be less then related `..._max_size` arguments.
     pub fn new(memory: M) -> Self {
         match (K1::BOUND, K2::BOUND) {
-            (Bound::Bounded { is_fixed_size: k1_is_fixed_size, max_size: k1_max_size }, Bound::Bounded { is_fixed_size: k2_is_fixed_size, max_size: k2_max_size, .. }) => {
-                if !(k1_is_fixed_size && k2_is_fixed_size) || ((k1_max_size as usize) != K1_SIZE) || ((k2_max_size as usize) != K2_SIZE) {
-                    panic!("Multimap keys must be bounded and fixed size. In addition, K1 and K2 sizes should equal K1_SIZE and K2_SIZE")   
+            (
+                Bound::Bounded {
+                    is_fixed_size: k1_is_fixed_size,
+                    max_size: k1_max_size,
+                },
+                Bound::Bounded {
+                    is_fixed_size: k2_is_fixed_size,
+                    max_size: k2_max_size,
+                    ..
+                },
+            ) => {
+                if !(k1_is_fixed_size && k2_is_fixed_size)
+                    || ((k1_max_size as usize) != K1_SIZE)
+                    || ((k2_max_size as usize) != K2_SIZE)
+                {
+                    panic!("Multimap keys must be bounded and fixed size. In addition, K1 and K2 sizes should equal K1_SIZE and K2_SIZE")
                 }
-            },
+            }
             _ => panic!("Multimap keys must be bounded and fixed size"),
         };
-        
+
         Self(StableBTreeMap::init(memory))
     }
 }
 
-impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> MultimapStructure<K1, K2, V>
+    for StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
 where
     K1: Storable,
     K2: Storable,
@@ -135,27 +152,41 @@ struct KeyPair<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize> {
     _p: PhantomData<(K1, K2)>,
 }
 
-impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> Clone for KeyPair<K1, K2, K1_SIZE, K2_SIZE> {
+impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> Clone
+    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
+{
     fn clone(&self) -> Self {
-        Self { encoded: self.encoded.clone(), _p: self._p }
+        Self {
+            encoded: self.encoded.clone(),
+            _p: self._p,
+        }
     }
 }
 
-impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> PartialEq for KeyPair<K1, K2, K1_SIZE, K2_SIZE> {
+impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> PartialEq
+    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
+{
     fn eq(&self, other: &Self) -> bool {
         self.encoded == other.encoded
     }
 }
 
-impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> Eq for KeyPair<K1, K2, K1_SIZE, K2_SIZE> {}
+impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> Eq
+    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
+{
+}
 
-impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> PartialOrd for KeyPair<K1, K2, K1_SIZE, K2_SIZE> {
+impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> PartialOrd
+    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
+{
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> Ord for KeyPair<K1, K2, K1_SIZE, K2_SIZE> {
+impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> Ord
+    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
+{
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.encoded.cmp(&other.encoded)
     }
@@ -222,10 +253,10 @@ where
             _p: PhantomData,
         }
     }
-
 }
 
-impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize> Storable for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
+impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize> Storable
+    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
 where
     K1: Storable,
     K2: Storable,
@@ -241,9 +272,9 @@ where
         }
     }
 
-    const BOUND: Bound = Bound::Bounded { 
-        max_size: (K1_SIZE + K2_SIZE) as u32, 
-        is_fixed_size: true 
+    const BOUND: Bound = Bound::Bounded {
+        max_size: (K1_SIZE + K2_SIZE) as u32,
+        is_fixed_size: true,
     };
 }
 
@@ -262,9 +293,8 @@ impl<V: Storable> From<&V> for Value<V> {
 }
 
 impl<V: Storable> Storable for Value<V> {
-    
     const BOUND: dfinity_stable_structures::storable::Bound = V::BOUND;
-    
+
     fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::Borrowed(&self.0)
     }
@@ -272,7 +302,6 @@ impl<V: Storable> Storable for Value<V> {
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Self(bytes.to_vec(), PhantomData)
     }
-
 }
 
 /// Range iterator
@@ -286,7 +315,8 @@ where
     inner: btreemap::Iter<'a, KeyPair<K1, K2, K1_SIZE, K2_SIZE>, Value<V>, M>,
 }
 
-impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> StableMultimapRangeIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>
+    StableMultimapRangeIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
 where
     K1: Storable,
     K2: Storable,
@@ -301,7 +331,8 @@ where
 // -----------------------------------------------------------------------------
 //     - Range Iterator impl -
 // -----------------------------------------------------------------------------
-impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> Iterator for StableMultimapRangeIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> Iterator
+    for StableMultimapRangeIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
 where
     K1: Storable,
     K2: Storable,
@@ -317,14 +348,17 @@ where
     }
 }
 
-pub struct StableMultimapIter<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>(btreemap::Iter<'a, KeyPair<K1, K2, K1_SIZE, K2_SIZE>, Value<V>, M>)
+pub struct StableMultimapIter<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>(
+    btreemap::Iter<'a, KeyPair<K1, K2, K1_SIZE, K2_SIZE>, Value<V>, M>,
+)
 where
     K1: Storable,
     K2: Storable,
     V: Storable,
     M: Memory;
 
-impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> StableMultimapIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>
+    StableMultimapIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
 where
     K1: Storable,
     K2: Storable,
@@ -336,7 +370,8 @@ where
     }
 }
 
-impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> Iterator for StableMultimapIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> Iterator
+    for StableMultimapIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
 where
     K1: Storable,
     K2: Storable,
@@ -354,7 +389,8 @@ where
     }
 }
 
-impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> IntoIterator for &'a StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> IntoIterator
+    for &'a StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
 where
     K1: Storable,
     K2: Storable,
@@ -381,7 +417,6 @@ mod test {
     use crate::test_utils::Array;
 
     fn make_map() -> StableMultimap<Array<2>, Array<3>, 2, 3, Array<6>, VectorMemory> {
-
         let mut mm = StableMultimap::new(VectorMemory::default());
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
@@ -398,7 +433,8 @@ mod test {
 
     #[test]
     fn inserts() {
-        let mut mm: StableMultimap<Array<1>, Array<2>, 1, 2, Array<1>, _> = StableMultimap::new(VectorMemory::default());
+        let mut mm: StableMultimap<Array<1>, Array<2>, 1, 2, Array<1>, _> =
+            StableMultimap::new(VectorMemory::default());
         for i in 0..10 {
             let k1 = Array([i; 1]);
             let k2 = Array([i * 10; 2]);
@@ -508,7 +544,8 @@ mod test {
     #[test]
     fn multimap_works() {
         const K1_SIZE: usize = size_of::<u32>();
-        let mut map: StableMultimap<_, _, K1_SIZE, K1_SIZE, _, _> = StableMultimap::new(VectorMemory::default());
+        let mut map: StableMultimap<_, _, K1_SIZE, K1_SIZE, _, _> =
+            StableMultimap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         map.insert(&0u32, &0u32, &42u32);

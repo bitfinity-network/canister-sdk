@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 
-use dfinity_stable_structures::{Storable, Memory};
+use dfinity_stable_structures::{Memory, Storable};
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 use crate::structure::*;
@@ -18,7 +18,8 @@ where
     cache: RefCell<Cache<(K1, K2), V>>,
 }
 
-impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> CachedStableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>
+    CachedStableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
 where
     K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
     K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
@@ -31,7 +32,10 @@ where
     }
 
     /// Create new instance of the CachedStableMultimap with a fixed number of max cached elements.
-    pub fn with_map(inner: StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>, max_cache_items: u64) -> Self {
+    pub fn with_map(
+        inner: StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>,
+        max_cache_items: u64,
+    ) -> Self {
         Self {
             inner,
             cache: RefCell::new(
@@ -43,7 +47,8 @@ where
     }
 }
 
-impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> MultimapStructure<K1, K2, V> for CachedStableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> MultimapStructure<K1, K2, V>
+    for CachedStableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
 where
     K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
     K2: Storable + Clone + Hash + Eq + PartialEq + Ord,

@@ -1,4 +1,4 @@
-use dfinity_stable_structures::{vec, Storable, Memory};
+use dfinity_stable_structures::{vec, Memory, Storable};
 
 use crate::structure::VecStructure;
 use crate::Result;

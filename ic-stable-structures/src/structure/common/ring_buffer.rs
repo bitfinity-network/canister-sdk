@@ -3,8 +3,8 @@ use std::cmp::min;
 use std::mem::size_of;
 use std::thread::LocalKey;
 
-use dfinity_stable_structures::{Memory, Storable};
 use dfinity_stable_structures::storable::Bound;
+use dfinity_stable_structures::{Memory, Storable};
 
 use crate::structure::{CellStructure, StableCell, StableVec, VecStructure};
 
@@ -56,12 +56,11 @@ impl StableRingBufferIndices {
 
 const STABLE_RING_BUFFER_INDICES_SIZE: usize = 2 * size_of::<u64>();
 impl Storable for StableRingBufferIndices {
-
-    const BOUND: Bound = Bound::Bounded { 
-        max_size: STABLE_RING_BUFFER_INDICES_SIZE as u32, 
-        is_fixed_size: true 
+    const BOUND: Bound = Bound::Bounded {
+        max_size: STABLE_RING_BUFFER_INDICES_SIZE as u32,
+        is_fixed_size: true,
     };
-    
+
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         let mut buf = Vec::with_capacity(STABLE_RING_BUFFER_INDICES_SIZE);
         buf.extend_from_slice(&self.latest.to_le_bytes());
@@ -79,7 +78,6 @@ impl Storable for StableRingBufferIndices {
             ),
         }
     }
-
 }
 
 /// Stable ring buffer implementation

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, hash::Hash};
 
 use crate::structure::*;
-use dfinity_stable_structures::{Storable, Memory};
+use dfinity_stable_structures::{Memory, Storable};
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 /// A LRU Cache for StableBTreeMap

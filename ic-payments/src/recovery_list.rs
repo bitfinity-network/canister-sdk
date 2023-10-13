@@ -2,11 +2,11 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 
 use candid::Encode;
-use ic_stable_structures::{
-    get_memory_by_id, DefaultMemoryManager, DefaultMemoryResourceType,
-    DefaultMemoryType, MemoryId, Storable, StableBTreeMap, BTreeMapStructure,
-};
 use ic_stable_structures::stable_structures::storable::Bound;
+use ic_stable_structures::{
+    get_memory_by_id, BTreeMapStructure, DefaultMemoryManager, DefaultMemoryResourceType,
+    DefaultMemoryType, MemoryId, StableBTreeMap, Storable,
+};
 
 use crate::Transfer;
 
@@ -33,8 +33,10 @@ impl TransferKey {
 }
 
 impl Storable for TransferKey {
-
-    const BOUND: Bound = Bound::Bounded { max_size: 32, is_fixed_size: true };
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 32,
+        is_fixed_size: true,
+    };
 
     fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::from(&self.0[..])
@@ -71,7 +73,6 @@ impl Storable for TransferValue {
 /// The only variable size part of the transfer is memo, which is usually 32 bytes. We use 60 bytes
 /// value to account for candid header.
 // const VALUE_SIZE_OFFSET: usize = 60;
-
 
 #[derive(Debug)]
 pub struct StableRecoveryList<const MEM_ID: u8>;

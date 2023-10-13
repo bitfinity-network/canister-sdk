@@ -5,7 +5,7 @@ use ic_stable_structures::*;
 
 fn multimap_benchmark(c: &mut Criterion) {
     const U64_SIZE: usize = size_of::<u64>();
-    let mut map = StableMultimap::<_,_,U64_SIZE,U64_SIZE,_,_ >::new(VectorMemory::default());
+    let mut map = StableMultimap::<_, _, U64_SIZE, U64_SIZE, _, _>::new(VectorMemory::default());
 
     let key1_count = 100u64;
     let key2_count = 100u64;
@@ -51,8 +51,8 @@ mod types {
 
     use std::borrow::Cow;
 
-    use ic_stable_structures::stable_structures::Storable;
     use ic_stable_structures::stable_structures::storable::Bound;
+    use ic_stable_structures::stable_structures::Storable;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct StringValue(pub String);
@@ -68,5 +68,4 @@ mod types {
 
         const BOUND: Bound = Bound::Unbounded;
     }
-
 }
