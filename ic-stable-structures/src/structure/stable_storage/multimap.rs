@@ -299,7 +299,10 @@ impl<V: Storable> From<&V> for Value<V> {
     }
 }
 
-impl<V> Storable for Value<V> {
+impl<V: Storable> Storable for Value<V> {
+    
+    const BOUND: dfinity_stable_structures::storable::Bound = V::BOUND;
+    
     fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::Borrowed(&self.0)
     }
@@ -307,12 +310,8 @@ impl<V> Storable for Value<V> {
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Self(bytes.to_vec(), PhantomData)
     }
-}
 
-// impl<V: BoundedStorable> BoundedStorable for Value<V> {
-//     const MAX_SIZE: u32 = V::MAX_SIZE;
-//     const IS_FIXED_SIZE: bool = V::IS_FIXED_SIZE;
-// }
+}
 
 /// Range iterator
 pub struct StableMultimapRangeIter<'a, K1, K2, V, M>
