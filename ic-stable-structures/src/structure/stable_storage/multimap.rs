@@ -197,39 +197,35 @@ where
 
     /// Minimum possible `KeyPair` for the specified `first_key`.
     pub fn min_key(first_key: &K1) -> Self {
-        todo!()
-        // let first_key_bytes = first_key.to_bytes();
+        let first_key_bytes = first_key.to_bytes();
 
-        // assert!(first_key_bytes.len() <= K1_SIZE);
+        assert!(first_key_bytes.len() <= K1_SIZE);
 
-        // let full_len = Self::size_prefix_len() + first_key_bytes.len();
-        // let mut buffer = Vec::with_capacity(full_len);
-        // Self::push_size_prefix(&mut buffer, first_key_bytes.len());
-        // buffer.extend_from_slice(&first_key_bytes);
+        let full_len = K1_SIZE;
+        let mut buffer = Vec::with_capacity(full_len);
+        buffer.extend_from_slice(&first_key_bytes);
 
-        // Self {
-        //     encoded: buffer,
-        //     _p: PhantomData,
-        // }
+        Self {
+            encoded: buffer,
+            _p: PhantomData,
+        }
     }
 
     /// Maximum possible `KeyPair` for the specified `first_key`.
     pub fn max_key(first_key: &K1) -> Self {
-        todo!()
-        // let first_key_bytes = first_key.to_bytes();
+        let first_key_bytes = first_key.to_bytes();
 
-        // assert!(first_key_bytes.len() <= K1_SIZE as usize);
+        assert!(first_key_bytes.len() <= K1_SIZE);
 
-        // let full_len = Self::size_prefix_len() + first_key_bytes.len();
-        // let mut buffer = Vec::with_capacity(full_len);
-        // Self::push_size_prefix(&mut buffer, first_key_bytes.len());
-        // buffer.extend_from_slice(&first_key_bytes);
-        // buffer.resize(Self::MAX_SIZE as _, 0xFF);
+        let full_len = K1_SIZE;
+        let mut buffer = Vec::with_capacity(full_len);
+        buffer.extend_from_slice(&first_key_bytes);
+        buffer.resize(K1_SIZE + K2_SIZE, 0xFF);
 
-        // Self {
-        //     encoded: buffer,
-        //     _p: PhantomData,
-        // }
+        Self {
+            encoded: buffer,
+            _p: PhantomData,
+        }
     }
 
 }
