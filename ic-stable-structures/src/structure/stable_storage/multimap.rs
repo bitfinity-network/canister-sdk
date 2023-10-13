@@ -197,33 +197,28 @@ where
 
     /// Minimum possible `KeyPair` for the specified `first_key`.
     pub fn min_key(first_key: &K1) -> Self {
-        let first_key_bytes = first_key.to_bytes();
+        let mut first_key_bytes = first_key.to_bytes().to_vec();
 
-        assert!(first_key_bytes.len() <= K1_SIZE);
+        assert!(first_key_bytes.len() == K1_SIZE);
 
-        let full_len = K1_SIZE;
-        let mut buffer = Vec::with_capacity(full_len);
-        buffer.extend_from_slice(&first_key_bytes);
+        first_key_bytes.resize(K1_SIZE + K2_SIZE, 0x0);
 
         Self {
-            encoded: buffer,
+            encoded: first_key_bytes,
             _p: PhantomData,
         }
     }
 
     /// Maximum possible `KeyPair` for the specified `first_key`.
     pub fn max_key(first_key: &K1) -> Self {
-        let first_key_bytes = first_key.to_bytes();
+        let mut first_key_bytes = first_key.to_bytes().to_vec();
 
-        assert!(first_key_bytes.len() <= K1_SIZE);
+        assert!(first_key_bytes.len() == K1_SIZE);
 
-        let full_len = K1_SIZE;
-        let mut buffer = Vec::with_capacity(full_len);
-        buffer.extend_from_slice(&first_key_bytes);
-        buffer.resize(K1_SIZE + K2_SIZE, 0xFF);
+        first_key_bytes.resize(K1_SIZE + K2_SIZE, 0xFF);
 
         Self {
-            encoded: buffer,
+            encoded: first_key_bytes,
             _p: PhantomData,
         }
     }

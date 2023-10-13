@@ -1,9 +1,9 @@
 use ic_stable_structures::*;
-use std::cell::RefCell;
+use std::{cell::RefCell, mem::size_of};
 
 use did::Transaction;
 
-const TX_MAP_MEMORY_ID: MemoryId = MemoryId::new(1);
+// const TX_MAP_MEMORY_ID: MemoryId = MemoryId::new(1);
 const TX_VEC_MEMORY_ID: MemoryId = MemoryId::new(2);
 const TX_LOG_INDEX_MEMORY_ID: MemoryId = MemoryId::new(3);
 const TX_LOG_MEMORY_ID: MemoryId = MemoryId::new(4);
@@ -12,6 +12,8 @@ const TX_BTREEMAP_MEMORY_ID: MemoryId = MemoryId::new(6);
 const TX_MULTIMAP_MEMORY_ID: MemoryId = MemoryId::new(7);
 const TX_RING_BUFFER_INDICES_MEMORY_ID: MemoryId = MemoryId::new(8);
 const TX_RING_BUFFER_VEC_MEMORY_ID: MemoryId = MemoryId::new(9);
+
+const U64_SIZE: usize = size_of::<u64>();
 
 thread_local! {
     static MEMORY_MANAGER: DefaultMemoryManager = DefaultMemoryManager::init(DefaultMemoryResourceType::default());
@@ -28,11 +30,11 @@ thread_local! {
         RefCell::new(StableLog::new(get_memory_by_id(&MEMORY_MANAGER, TX_LOG_INDEX_MEMORY_ID), get_memory_by_id(&MEMORY_MANAGER, TX_LOG_MEMORY_ID)).expect("failed to create stable log"))
     };
 
-    static TX_MAP: RefCell<StableUnboundedMap<u64, Transaction, DefaultMemoryType>> = {
-        RefCell::new(StableUnboundedMap::new(get_memory_by_id(&MEMORY_MANAGER, TX_MAP_MEMORY_ID)))
-    };
+    // static TX_MAP: RefCell<StableUnboundedMap<u64, Transaction, DefaultMemoryType>> = {
+    //     RefCell::new(StableUnboundedMap::new(get_memory_by_id(&MEMORY_MANAGER, TX_MAP_MEMORY_ID)))
+    // };
 
-    static TX_MULTIMAP: RefCell<StableMultimap<u64, u64, Transaction, DefaultMemoryType>> = {
+    static TX_MULTIMAP: RefCell<StableMultimap<u64, u64, U64_SIZE, U64_SIZE, Transaction, DefaultMemoryType>> = {
         RefCell::new(StableMultimap::new(get_memory_by_id(&MEMORY_MANAGER, TX_MULTIMAP_MEMORY_ID)))
     };
 
@@ -68,14 +70,14 @@ impl Service {
                 value: 0,
             });
         }
-        let should_init_map = TX_MAP.with(|txs| txs.borrow().len()) == 0;
-        if should_init_map {
-            Self::insert_tx_to_map(Transaction {
-                from: 0,
-                to: 0,
-                value: 0,
-            });
-        }
+        // let should_init_map = TX_MAP.with(|txs| txs.borrow().len()) == 0;
+        // if should_init_map {
+        //     Self::insert_tx_to_map(Transaction {
+        //         from: 0,
+        //         to: 0,
+        //         value: 0,
+        //     });
+        // }
         let should_init_multimap = TX_MULTIMAP.with(|txs| txs.borrow().len()) == 0;
         if should_init_multimap {
             Self::insert_tx_to_multimap(Transaction {
@@ -159,18 +161,18 @@ impl Service {
         TX_RING_BUFFER.with(|storage| storage.borrow_mut().push(&transaction).0)
     }
 
-    pub fn get_tx_from_map(key: u64) -> Option<Transaction> {
-        TX_MAP.with(|tx| tx.borrow().get(&key))
-    }
+    // pub fn get_tx_from_map(key: u64) -> Option<Transaction> {
+    //     TX_MAP.with(|tx| tx.borrow().get(&key))
+    // }
 
-    pub fn insert_tx_to_map(transaction: Transaction) -> u64 {
-        TX_MAP.with(|storage| {
-            let new_key = storage.borrow().len();
-            storage.borrow_mut().insert(&new_key, &transaction);
+    // pub fn insert_tx_to_map(transaction: Transaction) -> u64 {
+    //     TX_MAP.with(|storage| {
+    //         let new_key = storage.borrow().len();
+    //         storage.borrow_mut().insert(&new_key, &transaction);
 
-            new_key
-        })
-    }
+    //         new_key
+    //     })
+    // }
 
     pub fn get_tx_from_multimap(key: u64) -> Option<Transaction> {
         TX_MULTIMAP.with(|tx| tx.borrow().get(&key, &(key + 1)))

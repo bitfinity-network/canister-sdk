@@ -51,15 +51,15 @@ impl DummyCanister {
         Service::push_tx_to_log(transaction)
     }
 
-    #[query]
-    pub fn get_tx_from_map(&self, key: u64) -> Option<Transaction> {
-        Service::get_tx_from_map(key)
-    }
+    // #[query]
+    // pub fn get_tx_from_map(&self, key: u64) -> Option<Transaction> {
+    //     Service::get_tx_from_map(key)
+    // }
 
-    #[update]
-    pub async fn insert_tx_to_map(&self, transaction: Transaction) -> u64 {
-        Service::insert_tx_to_map(transaction)
-    }
+    // #[update]
+    // pub async fn insert_tx_to_map(&self, transaction: Transaction) -> u64 {
+    //     Service::insert_tx_to_map(transaction)
+    // }
 
     #[query]
     pub fn get_tx_from_multimap(&self, key: u64) -> Option<Transaction> {
