@@ -34,14 +34,14 @@ impl From<cell::ValueError> for Error {
     }
 }
 
-impl From<btreemap::InsertError> for Error {
-    fn from(e: btreemap::InsertError) -> Self {
-        match e {
-            btreemap::InsertError::KeyTooLarge { given, .. } => Self::ValueTooLarge(given as _),
-            btreemap::InsertError::ValueTooLarge { given, .. } => Self::ValueTooLarge(given as _),
-        }
-    }
-}
+// impl From<btreemap::InsertError> for Error {
+//     fn from(e: btreemap::InsertError) -> Self {
+//         match e {
+//             btreemap::InsertError::KeyTooLarge { given, .. } => Self::ValueTooLarge(given as _),
+//             btreemap::InsertError::ValueTooLarge { given, .. } => Self::ValueTooLarge(given as _),
+//         }
+//     }
+// }
 
 impl From<log::InitError> for Error {
     fn from(_: log::InitError) -> Self {

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use dfinity_stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
+use dfinity_stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 
 use crate::structure::MultimapStructure;
 
@@ -29,16 +29,16 @@ use crate::structure::MultimapStructure;
 /// to fetch all values by the root key, or a single value by specifying both keys.
 pub struct StableMultimap<K1, K2, V, M>(StableBTreeMap<KeyPair<K1, K2>, Value<V>, M>)
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory;
 
 impl<K1, K2, V, M> StableMultimap<K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     /// Create a new instance of a `StableMultimap`.
@@ -50,9 +50,9 @@ where
 
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     type Iterator<'a> = StableMultimapIter<'a, K1, K2, V, M> where Self: 'a;
@@ -126,7 +126,7 @@ struct KeyPair<K1, K2> {
     _p: PhantomData<(K1, K2)>,
 }
 
-impl<K1: BoundedStorable, K2: BoundedStorable> Clone for KeyPair<K1, K2> {
+impl<K1: Storable, K2: Storable> Clone for KeyPair<K1, K2> {
     fn clone(&self) -> Self {
         Self {
             encoded: self.encoded.clone(),
@@ -136,21 +136,21 @@ impl<K1: BoundedStorable, K2: BoundedStorable> Clone for KeyPair<K1, K2> {
     }
 }
 
-impl<K1: BoundedStorable, K2: BoundedStorable> PartialEq for KeyPair<K1, K2> {
+impl<K1: Storable, K2: Storable> PartialEq for KeyPair<K1, K2> {
     fn eq(&self, other: &Self) -> bool {
         self.encoded == other.encoded && self.first_key_len == other.first_key_len
     }
 }
 
-impl<K1: BoundedStorable, K2: BoundedStorable> Eq for KeyPair<K1, K2> {}
+impl<K1: Storable, K2: Storable> Eq for KeyPair<K1, K2> {}
 
-impl<K1: BoundedStorable, K2: BoundedStorable> PartialOrd for KeyPair<K1, K2> {
+impl<K1: Storable, K2: Storable> PartialOrd for KeyPair<K1, K2> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<K1: BoundedStorable, K2: BoundedStorable> Ord for KeyPair<K1, K2> {
+impl<K1: Storable, K2: Storable> Ord for KeyPair<K1, K2> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.encoded.cmp(&other.encoded)
     }
@@ -158,8 +158,8 @@ impl<K1: BoundedStorable, K2: BoundedStorable> Ord for KeyPair<K1, K2> {
 
 impl<K1, K2> KeyPair<K1, K2>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
 {
     /// # Preconditions:
     ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
@@ -257,8 +257,8 @@ where
 
 impl<K1, K2> Storable for KeyPair<K1, K2>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
 {
     fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::Borrowed(&self.encoded)
@@ -275,15 +275,15 @@ where
     }
 }
 
-impl<K1, K2> BoundedStorable for KeyPair<K1, K2>
-where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-{
-    const MAX_SIZE: u32 = Self::size_prefix_len() as u32 + K1::MAX_SIZE + K2::MAX_SIZE;
+// impl<K1, K2> BoundedStorable for KeyPair<K1, K2>
+// where
+//     K1: BoundedStorable,
+//     K2: BoundedStorable,
+// {
+//     const MAX_SIZE: u32 = Self::size_prefix_len() as u32 + K1::MAX_SIZE + K2::MAX_SIZE;
 
-    const IS_FIXED_SIZE: bool = false;
-}
+//     const IS_FIXED_SIZE: bool = false;
+// }
 
 struct Value<V>(Vec<u8>, PhantomData<V>);
 
@@ -309,17 +309,17 @@ impl<V> Storable for Value<V> {
     }
 }
 
-impl<V: BoundedStorable> BoundedStorable for Value<V> {
-    const MAX_SIZE: u32 = V::MAX_SIZE;
-    const IS_FIXED_SIZE: bool = V::IS_FIXED_SIZE;
-}
+// impl<V: BoundedStorable> BoundedStorable for Value<V> {
+//     const MAX_SIZE: u32 = V::MAX_SIZE;
+//     const IS_FIXED_SIZE: bool = V::IS_FIXED_SIZE;
+// }
 
 /// Range iterator
 pub struct StableMultimapRangeIter<'a, K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>,
@@ -327,9 +327,9 @@ where
 
 impl<'a, K1, K2, V, M> StableMultimapRangeIter<'a, K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
@@ -342,9 +342,9 @@ where
 // -----------------------------------------------------------------------------
 impl<'a, K1, K2, V, M> Iterator for StableMultimapRangeIter<'a, K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     type Item = (K2, V);
@@ -358,16 +358,16 @@ where
 
 pub struct StableMultimapIter<'a, K1, K2, V, M>(btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>)
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory;
 
 impl<'a, K1, K2, V, M> StableMultimapIter<'a, K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
@@ -377,9 +377,9 @@ where
 
 impl<'a, K1, K2, V, M> Iterator for StableMultimapIter<'a, K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     type Item = (K1, K2, V);
@@ -395,9 +395,9 @@ where
 
 impl<'a, K1, K2, V, M> IntoIterator for &'a StableMultimap<K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     type Item = (K1, K2, V);

@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
-use dfinity_stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
+use dfinity_stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 
 use crate::{structure::UnboundedMapStructure, SlicedStorable};
 
@@ -16,7 +16,7 @@ const CHUNK_INDEX_LEN: usize = mem::size_of::<ChunkIndex>();
 /// Size of chunk should be set using the [`SlicedStorable`] trait.
 pub struct StableUnboundedMap<K, V, M>
 where
-    K: BoundedStorable,
+    K: Storable,
     V: SlicedStorable,
     M: Memory,
 {
@@ -26,7 +26,7 @@ where
 
 impl<K, V, M> StableUnboundedMap<K, V, M>
 where
-    K: BoundedStorable,
+    K: Storable,
     V: SlicedStorable,
     M: Memory,
 {
@@ -81,7 +81,7 @@ where
 
 impl<K, V, M> UnboundedMapStructure<K, V> for StableUnboundedMap<K, V, M>
 where
-    K: BoundedStorable,
+    K: Storable,
     V: SlicedStorable,
     M: Memory,
 {
@@ -166,16 +166,16 @@ where
 /// - `size_prefix` is a len of `key_bytes`. Length of `size_prefix` depends on `K::max_size()`
 /// and calculated in `Key::size_prefix_len()`.
 /// - `key_bytes` is a result of the `<K as Storable>::to_bytes(key)` call. Length limited by the
-/// `<K as BoundedStorable>::max_size()`.
+/// `<K as Storable>::max_size()`.
 /// - `chunk_index` is an index of chunk associated with a key instance. If inserted value split to `N`
 /// chunks, then they stored as several entries. Each entry has unique key, with difference only in `chunk_index`.
 /// In `get()` operation the value constructing from it's chunks. The `chunk_index` takes [`CHUNK_INDEX_LEN`] bytes.
-struct Key<K: BoundedStorable> {
+struct Key<K: Storable> {
     data: Vec<u8>,
     _p: PhantomData<K>,
 }
 
-impl<K: BoundedStorable> Clone for Key<K> {
+impl<K: Storable> Clone for Key<K> {
     fn clone(&self) -> Self {
         Self {
             data: self.data.clone(),
@@ -184,27 +184,27 @@ impl<K: BoundedStorable> Clone for Key<K> {
     }
 }
 
-impl<K: BoundedStorable> PartialEq for Key<K> {
+impl<K: Storable> PartialEq for Key<K> {
     fn eq(&self, other: &Self) -> bool {
         self.data == other.data
     }
 }
 
-impl<K: BoundedStorable> Eq for Key<K> {}
+impl<K: Storable> Eq for Key<K> {}
 
-impl<K: BoundedStorable> PartialOrd for Key<K> {
+impl<K: Storable> PartialOrd for Key<K> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<K: BoundedStorable> Ord for Key<K> {
+impl<K: Storable> Ord for Key<K> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.data.cmp(&other.data)
     }
 }
 
-impl<K: BoundedStorable> Key<K> {
+impl<K: Storable> Key<K> {
     /// Crate a new key.
     ///
     /// # Preconditions:
@@ -283,7 +283,7 @@ impl<K: BoundedStorable> Key<K> {
     }
 }
 
-impl<K: BoundedStorable> Storable for Key<K> {
+impl<K: Storable> Storable for Key<K> {
     fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         (&self.data).into()
     }
@@ -294,11 +294,6 @@ impl<K: BoundedStorable> Storable for Key<K> {
             _p: PhantomData,
         }
     }
-}
-
-impl<K: BoundedStorable> BoundedStorable for Key<K> {
-    const MAX_SIZE: u32 = Self::size_prefix_len() as u32 + K::MAX_SIZE + CHUNK_INDEX_LEN as u32;
-    const IS_FIXED_SIZE: bool = K::IS_FIXED_SIZE;
 }
 
 /// Wrapper for value chunks stored in inner [`StableBTreeMap`].
@@ -337,22 +332,18 @@ impl<V: SlicedStorable> Storable for Chunk<V> {
     }
 }
 
-impl<V: SlicedStorable> BoundedStorable for Chunk<V> {
-    const MAX_SIZE: u32 = V::CHUNK_SIZE as _;
-    const IS_FIXED_SIZE: bool = false;
-}
 
 /// Iterator over values in unbounded map.
 /// Constructs a value from chunks on each `next()` call.
 pub struct StableUnboundedIter<'a, K, V, M>(Peekable<btreemap::Iter<'a, Key<K>, Chunk<V>, M>>)
 where
-    K: BoundedStorable,
+    K: Storable,
     V: SlicedStorable,
     M: Memory;
 
 impl<'a, K, V, M> Iterator for StableUnboundedIter<'a, K, V, M>
 where
-    K: BoundedStorable,
+    K: Storable,
     V: SlicedStorable,
     M: Memory,
 {

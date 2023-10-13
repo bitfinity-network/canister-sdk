@@ -1,6 +1,6 @@
 use std::ops::RangeBounds;
 
-use dfinity_stable_structures::{btreemap, BoundedStorable, Memory};
+use dfinity_stable_structures::{btreemap, Storable, Memory};
 
 use crate::structure::BTreeMapStructure;
 use crate::IterableSortedMapStructure;
@@ -8,13 +8,13 @@ use crate::IterableSortedMapStructure;
 /// Stores key-value data in stable memory.
 pub struct StableBTreeMap<K, V, M: Memory>(btreemap::BTreeMap<K, V, M>)
 where
-    K: BoundedStorable + Ord + Clone,
-    V: BoundedStorable;
+    K: Storable + Ord + Clone,
+    V: Storable;
 
 impl<K, V, M> StableBTreeMap<K, V, M>
 where
-    K: BoundedStorable + Ord + Clone,
-    V: BoundedStorable,
+    K: Storable + Ord + Clone,
+    V: Storable,
     M: Memory,
 {
     /// Create new instance of key-value storage.
@@ -30,8 +30,8 @@ where
 
 impl<K, V, M> BTreeMapStructure<K, V> for StableBTreeMap<K, V, M>
 where
-    K: BoundedStorable + Ord + Clone,
-    V: BoundedStorable,
+    K: Storable + Ord + Clone,
+    V: Storable,
     M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
@@ -66,8 +66,8 @@ where
 
 impl<K, V, M> IterableSortedMapStructure<K, V> for StableBTreeMap<K, V, M>
 where
-    K: BoundedStorable + Ord + Clone,
-    V: BoundedStorable,
+    K: Storable + Ord + Clone,
+    V: Storable,
     M: Memory,
 {
     type Iterator<'a> = btreemap::Iter<'a, K, V, M> where Self: 'a;

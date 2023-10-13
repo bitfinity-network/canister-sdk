@@ -1,4 +1,4 @@
-use dfinity_stable_structures::BoundedStorable;
+use dfinity_stable_structures::Storable;
 use std::collections::btree_map::Iter as BTreeMapIter;
 use std::marker::PhantomData;
 use std::{collections::BTreeMap, hash::Hash};
@@ -9,12 +9,12 @@ use crate::structure::UnboundedMapStructure;
 /// Stores key-value data in heap memory.
 pub struct HeapUnboundedMap<K, V, M>(BTreeMap<K, V>, PhantomData<M>)
 where
-    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone;
 
 impl<K, V, M> HeapUnboundedMap<K, V, M>
 where
-    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
 {
     /// Create new instance of key-value storage.
@@ -33,7 +33,7 @@ where
 
 impl<K, V, M> UnboundedMapStructure<K, V> for HeapUnboundedMap<K, V, M>
 where
-    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
 {
     fn get(&self, key: &K) -> Option<V> {
@@ -65,12 +65,12 @@ where
 /// Constructs a value from chunks on each `next()` call.
 pub struct HeapUnboundedIter<'a, K, V>(BTreeMapIter<'a, K, V>)
 where
-    K: BoundedStorable + Clone,
+    K: Storable + Clone,
     V: SlicedStorable + Clone;
 
 impl<'a, K, V> Iterator for HeapUnboundedIter<'a, K, V>
 where
-    K: BoundedStorable + Clone,
+    K: Storable + Clone,
     V: SlicedStorable + Clone,
 {
     type Item = (K, V);

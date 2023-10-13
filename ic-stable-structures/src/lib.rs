@@ -11,7 +11,7 @@ pub use dfinity_stable_structures as stable_structures;
 
 pub use error::{Error, Result};
 pub use stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
-pub use stable_structures::{BoundedStorable, FileMemory, Storable, VectorMemory};
+pub use stable_structures::{FileMemory, Storable, VectorMemory};
 
 #[cfg(target_family = "wasm")]
 pub use stable_structures::Ic0StableMemory;

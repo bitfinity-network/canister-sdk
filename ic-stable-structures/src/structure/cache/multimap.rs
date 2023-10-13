@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 
-use dfinity_stable_structures::{BoundedStorable, Memory};
+use dfinity_stable_structures::{Storable, Memory};
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 use crate::structure::*;
@@ -9,9 +9,9 @@ use crate::structure::*;
 /// A LRU Cache for StableMultimaps
 pub struct CachedStableMultimap<K1, K2, V, M>
 where
-    K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone,
+    K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone,
     M: Memory,
 {
     inner: StableMultimap<K1, K2, V, M>,
@@ -20,9 +20,9 @@ where
 
 impl<K1, K2, V, M> CachedStableMultimap<K1, K2, V, M>
 where
-    K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone,
+    K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone,
     M: Memory,
 {
     /// Create new instance of the CachedStableMultimap with a fixed number of max cached elements.
@@ -45,9 +45,9 @@ where
 
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for CachedStableMultimap<K1, K2, V, M>
 where
-    K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone,
+    K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone,
     M: Memory,
 {
     type Iterator<'a> = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::Iterator<'a> where Self: 'a;

@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::{collections::BTreeMap, hash::Hash};
 
-use dfinity_stable_structures::BoundedStorable;
+use dfinity_stable_structures::Storable;
 
 use crate::structure::MultimapStructure;
 
@@ -13,15 +13,15 @@ use crate::structure::MultimapStructure;
 #[derive(Default)]
 pub struct HeapMultimap<K1, K2, V, M>(BTreeMap<K1, BTreeMap<K2, V>>, PhantomData<M>)
 where
-    K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone;
+    K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone;
 
 impl<K1, K2, V, M> HeapMultimap<K1, K2, V, M>
 where
-    K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone,
+    K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone,
 {
     /// Create a new instance of a `HeapMultimap`.
     /// All keys and values byte representations should be less then related `..._max_size` arguments.
@@ -32,9 +32,9 @@ where
 
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for HeapMultimap<K1, K2, V, M>
 where
-    K1: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    K2: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone,
+    K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone,
 {
     type Iterator<'a> = MultimapIter<'a, K1, K2, V> where Self: 'a;
 
@@ -140,13 +140,13 @@ where
 
 pub struct HeapMultimapIter<'a, K2, V>(Option<BTreeMapIter<'a, K2, V>>)
 where
-    K2: BoundedStorable + Clone,
-    V: BoundedStorable + Clone;
+    K2: Storable + Clone,
+    V: Storable + Clone;
 
 impl<'a, K2, V> Iterator for HeapMultimapIter<'a, K2, V>
 where
-    K2: BoundedStorable + Clone,
-    V: BoundedStorable + Clone,
+    K2: Storable + Clone,
+    V: Storable + Clone,
 {
     type Item = (K2, V);
 
