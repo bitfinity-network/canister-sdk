@@ -2,9 +2,12 @@ use std::mem::size_of;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use ic_stable_structures::*;
+use rand::distributions::{Alphanumeric, DistString};
+use types::StringValue;
+
+const U64_SIZE: usize = size_of::<u64>();
 
 fn multimap_benchmark(c: &mut Criterion) {
-    const U64_SIZE: usize = size_of::<u64>();
     let mut map = StableMultimap::<_, _, U64_SIZE, U64_SIZE, _, _>::new(VectorMemory::default());
 
     let key1_count = 100u64;
@@ -28,7 +31,8 @@ fn multimap_benchmark(c: &mut Criterion) {
 }
 
 fn unboundedmap_benchmark(c: &mut Criterion) {
-    let mut map = StableUnboundedMap::new(VectorMemory::default());
+    let mut map: StableUnboundedMap<_, _, U64_SIZE, true, _> =
+        StableUnboundedMap::new(VectorMemory::default());
     let key1_count = 10000u64;
 
     c.bench_function("unboundedmap_benchmark", |b| {
@@ -53,6 +57,7 @@ mod types {
 
     use ic_stable_structures::stable_structures::storable::Bound;
     use ic_stable_structures::stable_structures::Storable;
+    use ic_stable_structures::{ChunkSize, SlicedStorable};
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct StringValue(pub String);
@@ -67,5 +72,9 @@ mod types {
         }
 
         const BOUND: Bound = Bound::Unbounded;
+    }
+
+    impl SlicedStorable for StringValue {
+        const CHUNK_SIZE: ChunkSize = 64;
     }
 }
