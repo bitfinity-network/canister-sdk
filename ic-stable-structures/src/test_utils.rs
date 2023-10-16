@@ -3,6 +3,8 @@ use std::borrow::Cow;
 use dfinity_stable_structures::storable::Bound;
 use dfinity_stable_structures::Storable;
 
+use crate::{SlicedStorable, ChunkSize};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StringValue(pub String);
 
@@ -47,4 +49,8 @@ impl<const N: usize> Storable for Array<N> {
         buf.copy_from_slice(&bytes);
         Array(buf)
     }
+}
+
+impl<const N: usize> SlicedStorable for Array<N> {
+    const CHUNK_SIZE: ChunkSize = 64;
 }

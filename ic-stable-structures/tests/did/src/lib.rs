@@ -1,6 +1,6 @@
 use candid::{CandidType, Decode, Deserialize, Encode};
 use ic_stable_structures::stable_structures::storable::Bound;
-use ic_stable_structures::Storable;
+use ic_stable_structures::{Storable, SlicedStorable, ChunkSize};
 
 pub fn encode(item: &impl CandidType) -> Vec<u8> {
     Encode!(item).expect("failed to encode item to candid")
@@ -27,4 +27,8 @@ impl Storable for Transaction {
     }
 
     const BOUND: Bound = Bound::Unbounded;
+}
+
+impl SlicedStorable for Transaction {
+    const CHUNK_SIZE: ChunkSize = 8;
 }
