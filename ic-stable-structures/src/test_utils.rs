@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use dfinity_stable_structures::storable::Bound;
 use dfinity_stable_structures::Storable;
 
-use crate::{SlicedStorable, ChunkSize};
+use crate::{ChunkSize, SlicedStorable};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StringValue(pub String);

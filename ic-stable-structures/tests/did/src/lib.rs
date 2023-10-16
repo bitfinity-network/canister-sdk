@@ -1,6 +1,6 @@
 use candid::{CandidType, Decode, Deserialize, Encode};
 use ic_stable_structures::stable_structures::storable::Bound;
-use ic_stable_structures::{Storable, SlicedStorable, ChunkSize};
+use ic_stable_structures::{ChunkSize, SlicedStorable, Storable};
 
 pub fn encode(item: &impl CandidType) -> Vec<u8> {
     Encode!(item).expect("failed to encode item to candid")

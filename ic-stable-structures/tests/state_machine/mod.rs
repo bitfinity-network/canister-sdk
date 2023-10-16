@@ -113,14 +113,24 @@ impl StateMachineTestContext {
 
     pub fn get_tx_from_unboundedmap(&self, key: u64) -> Result<Option<Transaction>> {
         let args = Encode!(&key).unwrap();
-        let res = self.query_as(ic::caller(), self.dummy_canister, "get_tx_from_unboundedmap", args);
+        let res = self.query_as(
+            ic::caller(),
+            self.dummy_canister,
+            "get_tx_from_unboundedmap",
+            args,
+        );
 
         Ok(res)
     }
 
     pub fn insert_tx_to_unboundedmap(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&Transaction { from, to, value }).unwrap();
-        let res = self.update_call_as(ic::caller(), self.dummy_canister, "insert_tx_to_unboundedmap", args);
+        let res = self.update_call_as(
+            ic::caller(),
+            self.dummy_canister,
+            "insert_tx_to_unboundedmap",
+            args,
+        );
 
         Ok(res)
     }

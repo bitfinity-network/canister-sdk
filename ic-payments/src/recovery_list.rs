@@ -2,12 +2,11 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 
 use candid::Encode;
-use ic_stable_structures::{
-    get_memory_by_id, DefaultMemoryManager, DefaultMemoryResourceType,
-    DefaultMemoryType, MemoryId, SlicedStorable, StableUnboundedMap, Storable,
-    UnboundedMapStructure,
-};
 use ic_stable_structures::stable_structures::storable::Bound;
+use ic_stable_structures::{
+    get_memory_by_id, DefaultMemoryManager, DefaultMemoryResourceType, DefaultMemoryType, MemoryId,
+    SlicedStorable, StableUnboundedMap, Storable, UnboundedMapStructure,
+};
 
 use crate::Transfer;
 
@@ -44,7 +43,10 @@ impl Storable for TransferKey {
         Self(bytes)
     }
 
-    const BOUND: Bound = Bound::Bounded { max_size: TRANSFER_KEY_MAX_SIZE as u32, is_fixed_size: TRANSFER_KEY_IS_FIXED_SIZE };
+    const BOUND: Bound = Bound::Bounded {
+        max_size: TRANSFER_KEY_MAX_SIZE as u32,
+        is_fixed_size: TRANSFER_KEY_IS_FIXED_SIZE,
+    };
 }
 
 const TRANSFER_KEY_MAX_SIZE: usize = 32;
@@ -80,7 +82,15 @@ pub struct StableRecoveryList<const MEM_ID: u8>;
 impl<const MEM_ID: u8> StableRecoveryList<MEM_ID> {
     fn with_storage<R>(
         &self,
-        f: impl Fn(&mut StableUnboundedMap<TransferKey, TransferValue, TRANSFER_KEY_MAX_SIZE, TRANSFER_KEY_IS_FIXED_SIZE, DefaultMemoryType>) -> R,
+        f: impl Fn(
+            &mut StableUnboundedMap<
+                TransferKey,
+                TransferValue,
+                TRANSFER_KEY_MAX_SIZE,
+                TRANSFER_KEY_IS_FIXED_SIZE,
+                DefaultMemoryType,
+            >,
+        ) -> R,
     ) -> R {
         RECOVERY_LIST_STORAGE.with(|v| {
             let mut map = v.borrow_mut();

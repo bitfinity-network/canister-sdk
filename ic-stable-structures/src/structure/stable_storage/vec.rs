@@ -135,6 +135,5 @@ mod tests {
         let item = "I am an unbounded item".to_string();
         vec.push(&item).unwrap();
         assert_eq!(Some(item), vec.get(0));
-
     }
 }

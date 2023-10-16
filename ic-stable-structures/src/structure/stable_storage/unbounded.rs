@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
-use dfinity_stable_structures::{storable::Bound, btreemap, Memory, StableBTreeMap, Storable};
+use dfinity_stable_structures::{btreemap, storable::Bound, Memory, StableBTreeMap, Storable};
 
 use crate::{structure::UnboundedMapStructure, SlicedStorable};
 
@@ -24,7 +24,8 @@ where
     items_count: u64,
 }
 
-impl<K, V, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool, M> StableUnboundedMap<K, V, K_MAX_SIZE, K_FIXED_SIZE, M>
+impl<K, V, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool, M>
+    StableUnboundedMap<K, V, K_MAX_SIZE, K_FIXED_SIZE, M>
 where
     K: Storable,
     V: SlicedStorable,
@@ -35,18 +36,18 @@ where
     /// If the `memory` contains data of the map, the map reads it, and the instance
     /// will contain the data from the `memory`.
     pub fn new(memory: M) -> Self {
-        
         match K::BOUND {
-            Bound::Bounded {is_fixed_size, max_size} => {
-                if ((max_size as usize) != K_MAX_SIZE)
-                    || (is_fixed_size != K_FIXED_SIZE)
-                {
+            Bound::Bounded {
+                is_fixed_size,
+                max_size,
+            } => {
+                if ((max_size as usize) != K_MAX_SIZE) || (is_fixed_size != K_FIXED_SIZE) {
                     panic!("StableUnboundedMap keys must be bounded. In addition, key bound values should equal K_MAX_SIZE and K_FIXED_SIZE")
                 }
             }
             _ => panic!("StableUnboundedMap keys must be bounded"),
         };
-        
+
         Self {
             inner: StableBTreeMap::init(memory),
             items_count: 0,
@@ -73,7 +74,10 @@ where
 
     /// Returns an iterator pointing to the first element below the given bound.
     /// Returns an empty iterator if there are no keys below the given bound.
-    pub fn iter_upper_bound(&self, bound: &K) -> StableUnboundedIter<'_, K, V, K_MAX_SIZE, K_FIXED_SIZE, M> {
+    pub fn iter_upper_bound(
+        &self,
+        bound: &K,
+    ) -> StableUnboundedIter<'_, K, V, K_MAX_SIZE, K_FIXED_SIZE, M> {
         let mut iter = self.inner.iter_upper_bound(&Key::new(bound));
         match iter.next() {
             Some((mut key, _)) => {
@@ -91,7 +95,8 @@ where
     }
 }
 
-impl<K, V, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool, M> UnboundedMapStructure<K, V> for StableUnboundedMap<K, V, K_MAX_SIZE, K_FIXED_SIZE, M>
+impl<K, V, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool, M> UnboundedMapStructure<K, V>
+    for StableUnboundedMap<K, V, K_MAX_SIZE, K_FIXED_SIZE, M>
 where
     K: Storable,
     V: SlicedStorable,
@@ -187,7 +192,9 @@ struct Key<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> {
     _p: PhantomData<K>,
 }
 
-impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Clone for Key<K, K_MAX_SIZE, K_FIXED_SIZE> {
+impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Clone
+    for Key<K, K_MAX_SIZE, K_FIXED_SIZE>
+{
     fn clone(&self) -> Self {
         Self {
             data: self.data.clone(),
@@ -196,27 +203,38 @@ impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Clone for K
     }
 }
 
-impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> PartialEq for Key<K, K_MAX_SIZE, K_FIXED_SIZE> {
+impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> PartialEq
+    for Key<K, K_MAX_SIZE, K_FIXED_SIZE>
+{
     fn eq(&self, other: &Self) -> bool {
         self.data == other.data
     }
 }
 
-impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Eq for Key<K, K_MAX_SIZE, K_FIXED_SIZE> {}
+impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Eq
+    for Key<K, K_MAX_SIZE, K_FIXED_SIZE>
+{
+}
 
-impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> PartialOrd for Key<K, K_MAX_SIZE, K_FIXED_SIZE> {
+impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> PartialOrd
+    for Key<K, K_MAX_SIZE, K_FIXED_SIZE>
+{
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Ord for Key<K, K_MAX_SIZE, K_FIXED_SIZE> {
+impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Ord
+    for Key<K, K_MAX_SIZE, K_FIXED_SIZE>
+{
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.data.cmp(&other.data)
     }
 }
 
-impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Key<K, K_MAX_SIZE, K_FIXED_SIZE> {
+impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool>
+    Key<K, K_MAX_SIZE, K_FIXED_SIZE>
+{
     /// Crate a new key.
     ///
     /// # Preconditions:
@@ -285,7 +303,7 @@ impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Key<K, K_MA
     const fn size_prefix_len() -> usize {
         if K_FIXED_SIZE {
             0
-        } else if K_MAX_SIZE <= u8::MAX as usize{
+        } else if K_MAX_SIZE <= u8::MAX as usize {
             1
         } else if K_MAX_SIZE <= u16::MAX as usize {
             2
@@ -295,7 +313,9 @@ impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Key<K, K_MA
     }
 }
 
-impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Storable for Key<K, K_MAX_SIZE, K_FIXED_SIZE> {
+impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Storable
+    for Key<K, K_MAX_SIZE, K_FIXED_SIZE>
+{
     fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         (&self.data).into()
     }
@@ -307,9 +327,9 @@ impl<K: Storable, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool> Storable fo
         }
     }
 
-    const BOUND: Bound = Bound::Bounded { 
-        max_size: Self::size_prefix_len() as u32 + K_MAX_SIZE as u32 + CHUNK_INDEX_LEN as u32, 
-        is_fixed_size: K_FIXED_SIZE 
+    const BOUND: Bound = Bound::Bounded {
+        max_size: Self::size_prefix_len() as u32 + K_MAX_SIZE as u32 + CHUNK_INDEX_LEN as u32,
+        is_fixed_size: K_FIXED_SIZE,
     };
 }
 
@@ -337,9 +357,11 @@ impl<V: SlicedStorable> Chunk<V> {
 }
 
 impl<V: SlicedStorable> Storable for Chunk<V> {
+    const BOUND: Bound = Bound::Bounded {
+        max_size: V::CHUNK_SIZE as _,
+        is_fixed_size: false,
+    };
 
-    const BOUND: Bound = Bound::Bounded { max_size: V::CHUNK_SIZE as _, is_fixed_size: false };
-    
     fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         (&self.chunk).into()
     }
@@ -350,19 +372,20 @@ impl<V: SlicedStorable> Storable for Chunk<V> {
             _p: PhantomData,
         }
     }
-
 }
-
 
 /// Iterator over values in unbounded map.
 /// Constructs a value from chunks on each `next()` call.
-pub struct StableUnboundedIter<'a, K, V, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool, M>(Peekable<btreemap::Iter<'a, Key<K, K_MAX_SIZE, K_FIXED_SIZE>, Chunk<V>, M>>)
+pub struct StableUnboundedIter<'a, K, V, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool, M>(
+    Peekable<btreemap::Iter<'a, Key<K, K_MAX_SIZE, K_FIXED_SIZE>, Chunk<V>, M>>,
+)
 where
     K: Storable,
     V: SlicedStorable,
     M: Memory;
 
-impl<'a, K, V, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool, M> Iterator for StableUnboundedIter<'a, K, V, K_MAX_SIZE, K_FIXED_SIZE, M>
+impl<'a, K, V, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool, M> Iterator
+    for StableUnboundedIter<'a, K, V, K_MAX_SIZE, K_FIXED_SIZE, M>
 where
     K: Storable,
     V: SlicedStorable,
@@ -428,7 +451,8 @@ mod tests {
 
     #[test]
     fn insert_get_test() {
-        let mut map: StableUnboundedMap<_,_,U32_SIZE, true, _> = StableUnboundedMap::new(VectorMemory::default());
+        let mut map: StableUnboundedMap<_, _, U32_SIZE, true, _> =
+            StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);
@@ -446,7 +470,8 @@ mod tests {
 
     #[test]
     fn insert_should_replace_previous_value() {
-        let mut map: StableUnboundedMap<_,_,U32_SIZE, true, _> = StableUnboundedMap::new(VectorMemory::default());
+        let mut map: StableUnboundedMap<_, _, U32_SIZE, true, _> =
+            StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);
@@ -461,7 +486,8 @@ mod tests {
 
     #[test]
     fn remove_test() {
-        let mut map: StableUnboundedMap<_,_,U32_SIZE, true, _> = StableUnboundedMap::new(VectorMemory::default());
+        let mut map: StableUnboundedMap<_, _, U32_SIZE, true, _> =
+            StableUnboundedMap::new(VectorMemory::default());
 
         let long_str = test_utils::str_val(50000);
         let medium_str = test_utils::str_val(5000);
@@ -480,7 +506,8 @@ mod tests {
 
     #[test]
     fn iter_test() {
-        let mut map: StableUnboundedMap<_,_,U32_SIZE, true, _> = StableUnboundedMap::new(VectorMemory::default());
+        let mut map: StableUnboundedMap<_, _, U32_SIZE, true, _> =
+            StableUnboundedMap::new(VectorMemory::default());
 
         let strs = [
             test_utils::str_val(50),
@@ -497,7 +524,8 @@ mod tests {
 
     #[test]
     fn upper_bound_test() {
-        let mut map: StableUnboundedMap<_,_,U32_SIZE, true, _> = StableUnboundedMap::new(VectorMemory::default());
+        let mut map: StableUnboundedMap<_, _, U32_SIZE, true, _> =
+            StableUnboundedMap::new(VectorMemory::default());
 
         let strs = [
             test_utils::str_val(50),
@@ -523,7 +551,8 @@ mod tests {
 
     #[test]
     fn unbounded_map_works() {
-        let mut map: StableUnboundedMap<_,_,U32_SIZE, true, _> = StableUnboundedMap::new(VectorMemory::default());
+        let mut map: StableUnboundedMap<_, _, U32_SIZE, true, _> =
+            StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         let long_str = test_utils::str_val(50000);
