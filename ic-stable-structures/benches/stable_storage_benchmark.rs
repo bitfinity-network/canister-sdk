@@ -27,24 +27,24 @@ fn multimap_benchmark(c: &mut Criterion) {
     });
 }
 
-// fn unboundedmap_benchmark(c: &mut Criterion) {
-//     let mut map = StableUnboundedMap::new(VectorMemory::default());
-//     let key1_count = 10000u64;
+fn unboundedmap_benchmark(c: &mut Criterion) {
+    let mut map = StableUnboundedMap::new(VectorMemory::default());
+    let key1_count = 10000u64;
 
-//     c.bench_function("unboundedmap_benchmark", |b| {
-//         b.iter(|| {
-//             for k1 in 0..key1_count {
-//                 let value = StringValue(Alphanumeric.sample_string(&mut rand::thread_rng(), 128));
-//                 map.insert(&k1, &value);
-//             }
-//             for k1 in 0..key1_count {
-//                 assert!(map.get(&k1).is_some())
-//             }
-//         })
-//     });
-// }
+    c.bench_function("unboundedmap_benchmark", |b| {
+        b.iter(|| {
+            for k1 in 0..key1_count {
+                let value = StringValue(Alphanumeric.sample_string(&mut rand::thread_rng(), 128));
+                map.insert(&k1, &value);
+            }
+            for k1 in 0..key1_count {
+                assert!(map.get(&k1).is_some())
+            }
+        })
+    });
+}
 
-criterion_group!(benches, multimap_benchmark);
+criterion_group!(benches, multimap_benchmark, unboundedmap_benchmark);
 criterion_main!(benches);
 
 mod types {

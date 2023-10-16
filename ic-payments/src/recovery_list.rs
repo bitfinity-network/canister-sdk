@@ -2,11 +2,12 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 
 use candid::Encode;
-use ic_stable_structures::stable_structures::storable::Bound;
 use ic_stable_structures::{
-    get_memory_by_id, BTreeMapStructure, DefaultMemoryManager, DefaultMemoryResourceType,
-    DefaultMemoryType, MemoryId, StableBTreeMap, Storable,
+    get_memory_by_id, DefaultMemoryManager, DefaultMemoryResourceType,
+    DefaultMemoryType, MemoryId, SlicedStorable, StableUnboundedMap, Storable,
+    UnboundedMapStructure,
 };
+use ic_stable_structures::stable_structures::storable::Bound;
 
 use crate::Transfer;
 
@@ -19,7 +20,7 @@ pub trait RecoveryList: Sync + Send {
 thread_local! {
     static MEMORY_MANAGER: DefaultMemoryManager = DefaultMemoryManager::init(DefaultMemoryResourceType::default());
 
-    static RECOVERY_LIST_STORAGE: RefCell<Option<StableBTreeMap<TransferKey, TransferValue, DefaultMemoryType>>> =
+    static RECOVERY_LIST_STORAGE: RefCell<Option<StableUnboundedMap<TransferKey, TransferValue, TRANSFER_KEY_MAX_SIZE, TRANSFER_KEY_IS_FIXED_SIZE, DefaultMemoryType>>> =
         RefCell::new(None);
 }
 
@@ -33,11 +34,6 @@ impl TransferKey {
 }
 
 impl Storable for TransferKey {
-    const BOUND: Bound = Bound::Bounded {
-        max_size: 32,
-        is_fixed_size: true,
-    };
-
     fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::from(&self.0[..])
     }
@@ -47,12 +43,12 @@ impl Storable for TransferKey {
         bytes.copy_from_slice(&input);
         Self(bytes)
     }
+
+    const BOUND: Bound = Bound::Bounded { max_size: TRANSFER_KEY_MAX_SIZE as u32, is_fixed_size: TRANSFER_KEY_IS_FIXED_SIZE };
 }
 
-// impl BoundedStorable for TransferKey {
-//     const MAX_SIZE: u32 = 32;
-//     const IS_FIXED_SIZE: bool = true;
-// }
+const TRANSFER_KEY_MAX_SIZE: usize = 32;
+const TRANSFER_KEY_IS_FIXED_SIZE: bool = true;
 
 #[derive(Clone)]
 struct TransferValue(Transfer);
@@ -72,7 +68,11 @@ impl Storable for TransferValue {
 
 /// The only variable size part of the transfer is memo, which is usually 32 bytes. We use 60 bytes
 /// value to account for candid header.
-// const VALUE_SIZE_OFFSET: usize = 60;
+const VALUE_SIZE_OFFSET: usize = 60;
+
+impl SlicedStorable for TransferValue {
+    const CHUNK_SIZE: u16 = (std::mem::size_of::<Transfer>() + VALUE_SIZE_OFFSET) as u16;
+}
 
 #[derive(Debug)]
 pub struct StableRecoveryList<const MEM_ID: u8>;
@@ -80,12 +80,12 @@ pub struct StableRecoveryList<const MEM_ID: u8>;
 impl<const MEM_ID: u8> StableRecoveryList<MEM_ID> {
     fn with_storage<R>(
         &self,
-        f: impl Fn(&mut StableBTreeMap<TransferKey, TransferValue, DefaultMemoryType>) -> R,
+        f: impl Fn(&mut StableUnboundedMap<TransferKey, TransferValue, TRANSFER_KEY_MAX_SIZE, TRANSFER_KEY_IS_FIXED_SIZE, DefaultMemoryType>) -> R,
     ) -> R {
         RECOVERY_LIST_STORAGE.with(|v| {
             let mut map = v.borrow_mut();
             let map = map.get_or_insert_with(|| {
-                StableBTreeMap::new(get_memory_by_id(&MEMORY_MANAGER, MemoryId::new(MEM_ID)))
+                StableUnboundedMap::new(get_memory_by_id(&MEMORY_MANAGER, MemoryId::new(MEM_ID)))
             });
             f(map)
         })
@@ -103,7 +103,7 @@ impl<const MEM_ID: u8> RecoveryList for StableRecoveryList<MEM_ID> {
             // that the transactions have same parameters, so deduplication mechanism of ICRC-1
             // tokens would not allow both of such transactions be successful. So we can store only
             // one of them.
-            m.insert(key, value);
+            m.insert(&key, &value);
         })
     }
 

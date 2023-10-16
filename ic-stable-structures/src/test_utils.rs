@@ -18,6 +18,16 @@ impl Storable for StringValue {
     }
 }
 
+impl SlicedStorable for StringValue {
+    const CHUNK_SIZE: ChunkSize = 64;
+}
+
+pub fn str_val(len: usize) -> StringValue {
+    let mut s = String::with_capacity(len);
+    s.extend((0..len).map(|_| 'Q'));
+    StringValue(s)
+}
+
 /// New type pattern used to implement `Storable` trait for all arrays.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Array<const N: usize>(pub [u8; N]);

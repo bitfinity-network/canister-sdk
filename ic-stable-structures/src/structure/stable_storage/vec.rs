@@ -126,4 +126,15 @@ mod tests {
         assert_eq!(vec.get(0), None);
         assert_eq!(None, vec.iter().next());
     }
+
+    #[should_panic]
+    #[test]
+    fn vec_unbounded_items() {
+        let mut vec = StableVec::<String, _>::new(VectorMemory::default()).unwrap();
+
+        let item = "I am an unbounded item".to_string();
+        vec.push(&item).unwrap();
+        assert_eq!(Some(item), vec.get(0));
+
+    }
 }

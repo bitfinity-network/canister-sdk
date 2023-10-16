@@ -7,17 +7,17 @@ use crate::structure::*;
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 /// A LRU Cache for StableUnboundedMaps
-pub struct CachedStableUnboundedMap<K, V, M>
+pub struct CachedStableUnboundedMap<K, V, const K_SIZE: usize, const K_FIXED_SIZE: bool, M>
 where
     K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
     M: Memory,
 {
-    inner: StableUnboundedMap<K, V, M>,
+    inner: StableUnboundedMap<K, V, K_SIZE, K_FIXED_SIZE, M>,
     cache: RefCell<Cache<K, V>>,
 }
 
-impl<K, V, M> CachedStableUnboundedMap<K, V, M>
+impl<K, V, const K_SIZE: usize, const K_FIXED_SIZE: bool, M> CachedStableUnboundedMap<K, V, K_SIZE, K_FIXED_SIZE, M>
 where
     K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
@@ -29,7 +29,7 @@ where
     }
 
     /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
-    pub fn with_map(inner: StableUnboundedMap<K, V, M>, max_cache_items: u64) -> Self {
+    pub fn with_map(inner: StableUnboundedMap<K, V, K_SIZE, K_FIXED_SIZE, M>, max_cache_items: u64) -> Self {
         Self {
             inner,
             cache: RefCell::new(
@@ -41,7 +41,7 @@ where
     }
 }
 
-impl<K, V, M> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V, M>
+impl<K, V, const K_SIZE: usize, const K_FIXED_SIZE: bool, M> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V, K_SIZE, K_FIXED_SIZE, M>
 where
     K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
