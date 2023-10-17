@@ -420,7 +420,7 @@ mod tests {
     use dfinity_stable_structures::VectorMemory;
 
     use super::*;
-    use crate::test_utils;
+    use crate::test_utils::*;
 
     const U64_SIZE: usize = size_of::<u64>();
     const U32_SIZE: usize = size_of::<u32>();
@@ -455,9 +455,9 @@ mod tests {
             StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
-        let long_str = test_utils::str_val(50000);
-        let medium_str = test_utils::str_val(5000);
-        let short_str = test_utils::str_val(50);
+        let long_str = str_val(50000);
+        let medium_str = str_val(5000);
+        let short_str = str_val(50);
 
         map.insert(&0u32, &long_str);
         map.insert(&3u32, &medium_str);
@@ -474,8 +474,8 @@ mod tests {
             StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
-        let long_str = test_utils::str_val(50000);
-        let short_str = test_utils::str_val(50);
+        let long_str = str_val(50000);
+        let short_str = str_val(50);
 
         assert!(map.insert(&0u32, &long_str).is_none());
         let prev = map.insert(&0u32, &short_str).unwrap();
@@ -489,9 +489,9 @@ mod tests {
         let mut map: StableUnboundedMap<_, _, U32_SIZE, true, _> =
             StableUnboundedMap::new(VectorMemory::default());
 
-        let long_str = test_utils::str_val(50000);
-        let medium_str = test_utils::str_val(5000);
-        let short_str = test_utils::str_val(50);
+        let long_str = str_val(50000);
+        let medium_str = str_val(5000);
+        let short_str = str_val(50);
 
         map.insert(&0u32, &long_str);
         map.insert(&3u32, &medium_str);
@@ -509,11 +509,7 @@ mod tests {
         let mut map: StableUnboundedMap<_, _, U32_SIZE, true, _> =
             StableUnboundedMap::new(VectorMemory::default());
 
-        let strs = [
-            test_utils::str_val(50),
-            test_utils::str_val(5000),
-            test_utils::str_val(50000),
-        ];
+        let strs = [str_val(50), str_val(5000), str_val(50000)];
 
         for i in 0..100u32 {
             map.insert(&i, &strs[i as usize % strs.len()]);
@@ -527,11 +523,7 @@ mod tests {
         let mut map: StableUnboundedMap<_, _, U32_SIZE, true, _> =
             StableUnboundedMap::new(VectorMemory::default());
 
-        let strs = [
-            test_utils::str_val(50),
-            test_utils::str_val(5000),
-            test_utils::str_val(50000),
-        ];
+        let strs = [str_val(50), str_val(5000), str_val(50000)];
 
         for i in 0..100u32 {
             map.insert(&i, &strs[i as usize % strs.len()]);
@@ -555,9 +547,9 @@ mod tests {
             StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
-        let long_str = test_utils::str_val(50000);
-        let medium_str = test_utils::str_val(5000);
-        let short_str = test_utils::str_val(50);
+        let long_str = str_val(50000);
+        let medium_str = str_val(5000);
+        let short_str = str_val(50);
 
         map.insert(&0u32, &long_str);
         map.insert(&3u32, &medium_str);
@@ -573,5 +565,33 @@ mod tests {
         assert_eq!(map.remove(&3), Some(medium_str));
 
         assert_eq!(map.len(), 2);
+    }
+
+    #[should_panic]
+    #[test]
+    fn unbounded_map_should_not_allow_undounded_keys() {
+        let _: StableUnboundedMap<StringValue, StringValue, U32_SIZE, true, _> =
+            StableUnboundedMap::new(VectorMemory::default());
+    }
+
+    #[should_panic]
+    #[test]
+    fn unbounded_map_should_not_allow_keys_with_not_matching_max_size() {
+        let _: StableUnboundedMap<u64, StringValue, U32_SIZE, true, _> =
+            StableUnboundedMap::new(VectorMemory::default());
+    }
+
+    #[should_panic]
+    #[test]
+    fn unbounded_map_should_not_allow_keys_with_not_matching_is_fixed_size() {
+        let _: StableUnboundedMap<u32, StringValue, U32_SIZE, false, _> =
+            StableUnboundedMap::new(VectorMemory::default());
+    }
+
+    #[should_panic]
+    #[test]
+    fn unbounded_map_should_not_allow_keys_with_not_matching_max_size_and_fixed_size() {
+        let _: StableUnboundedMap<u64, StringValue, U32_SIZE, false, _> =
+            StableUnboundedMap::new(VectorMemory::default());
     }
 }

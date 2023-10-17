@@ -414,7 +414,7 @@ mod test {
     use dfinity_stable_structures::VectorMemory;
 
     use super::*;
-    use crate::test_utils::Array;
+    use crate::test_utils::{Array, StringValue};
 
     fn make_map() -> StableMultimap<Array<2>, Array<3>, 2, 3, Array<6>, VectorMemory> {
         let mut mm = StableMultimap::new(VectorMemory::default());
@@ -579,5 +579,45 @@ mod test {
         assert_eq!(map.remove(&1, &0), Some(10));
         assert_eq!(map.iter().next(), Some((1, 1, 20)));
         assert_eq!(map.len(), 1);
+    }
+
+    #[should_panic]
+    #[test]
+    fn btreemap_should_not_allow_undounded_key_1() {
+        const K1_SIZE: usize = size_of::<u32>();
+        let _: StableMultimap<StringValue, u32, K1_SIZE, K1_SIZE, u32, _> =
+            StableMultimap::new(VectorMemory::default());
+    }
+
+    #[should_panic]
+    #[test]
+    fn btreemap_should_not_allow_undounded_key_2() {
+        const K1_SIZE: usize = size_of::<u32>();
+        let _: StableMultimap<u32, StringValue, K1_SIZE, K1_SIZE, u32, _> =
+            StableMultimap::new(VectorMemory::default());
+    }
+
+    #[should_panic]
+    #[test]
+    fn btreemap_should_not_allow_key_1_with_unmatched_size() {
+        const K1_SIZE: usize = size_of::<u32>();
+        let _: StableMultimap<u64, u32, K1_SIZE, K1_SIZE, u32, _> =
+            StableMultimap::new(VectorMemory::default());
+    }
+
+    #[should_panic]
+    #[test]
+    fn btreemap_should_not_allow_key_2_with_unmatched_size() {
+        const K1_SIZE: usize = size_of::<u32>();
+        let _: StableMultimap<u32, u64, K1_SIZE, K1_SIZE, u32, _> =
+            StableMultimap::new(VectorMemory::default());
+    }
+
+    #[should_panic]
+    #[test]
+    fn btreemap_should_not_allow_keys_with_unmatched_size() {
+        const K1_SIZE: usize = size_of::<u32>();
+        let _: StableMultimap<u64, u64, K1_SIZE, K1_SIZE, u32, _> =
+            StableMultimap::new(VectorMemory::default());
     }
 }

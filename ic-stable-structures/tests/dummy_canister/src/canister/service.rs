@@ -1,7 +1,7 @@
 use ic_stable_structures::*;
 use std::{cell::RefCell, mem::size_of};
 
-use did::Transaction;
+use did::*;
 
 const TX_UNBOUNDEDMAP_MEMORY_ID: MemoryId = MemoryId::new(1);
 const TX_VEC_MEMORY_ID: MemoryId = MemoryId::new(2);
@@ -18,15 +18,15 @@ const U64_SIZE: usize = size_of::<u64>();
 thread_local! {
     static MEMORY_MANAGER: DefaultMemoryManager = DefaultMemoryManager::init(DefaultMemoryResourceType::default());
 
-    static TX_BTREEMAP: RefCell<StableBTreeMap<u64, Transaction, DefaultMemoryType>> = {
+    static TX_BTREEMAP: RefCell<StableBTreeMap<u64, BoundedTransaction, DefaultMemoryType>> = {
         RefCell::new(StableBTreeMap::new(get_memory_by_id(&MEMORY_MANAGER, TX_BTREEMAP_MEMORY_ID)))
     };
 
-    static TX_CELL: RefCell<StableCell<Transaction, DefaultMemoryType>> = {
-        RefCell::new(StableCell::new(get_memory_by_id(&MEMORY_MANAGER, TX_CELL_MEMORY_ID), Transaction::default()).expect("failed to create stable cell"))
+    static TX_CELL: RefCell<StableCell<BoundedTransaction, DefaultMemoryType>> = {
+        RefCell::new(StableCell::new(get_memory_by_id(&MEMORY_MANAGER, TX_CELL_MEMORY_ID), BoundedTransaction::default()).expect("failed to create stable cell"))
     };
 
-    static TX_LOG: RefCell<StableLog<Transaction, DefaultMemoryType>> = {
+    static TX_LOG: RefCell<StableLog<BoundedTransaction, DefaultMemoryType>> = {
         RefCell::new(StableLog::new(get_memory_by_id(&MEMORY_MANAGER, TX_LOG_INDEX_MEMORY_ID), get_memory_by_id(&MEMORY_MANAGER, TX_LOG_MEMORY_ID)).expect("failed to create stable log"))
     };
 
@@ -34,15 +34,15 @@ thread_local! {
         RefCell::new(StableUnboundedMap::new(get_memory_by_id(&MEMORY_MANAGER, TX_UNBOUNDEDMAP_MEMORY_ID)))
     };
 
-    static TX_MULTIMAP: RefCell<StableMultimap<u64, u64, U64_SIZE, U64_SIZE, Transaction, DefaultMemoryType>> = {
+    static TX_MULTIMAP: RefCell<StableMultimap<u64, u64, U64_SIZE, U64_SIZE, BoundedTransaction, DefaultMemoryType>> = {
         RefCell::new(StableMultimap::new(get_memory_by_id(&MEMORY_MANAGER, TX_MULTIMAP_MEMORY_ID)))
     };
 
-    static TX_VEC: RefCell<StableVec<Transaction, DefaultMemoryType>> = {
+    static TX_VEC: RefCell<StableVec<BoundedTransaction, DefaultMemoryType>> = {
         RefCell::new(StableVec::new(get_memory_by_id(&MEMORY_MANAGER, TX_VEC_MEMORY_ID)).expect("failed to create stable vec"))
     };
 
-    static TX_RING_BUFFER_DATA: RefCell<StableVec<Transaction, DefaultMemoryType>> = {
+    static TX_RING_BUFFER_DATA: RefCell<StableVec<BoundedTransaction, DefaultMemoryType>> = {
         RefCell::new(StableVec::new(get_memory_by_id(&MEMORY_MANAGER, TX_RING_BUFFER_VEC_MEMORY_ID)).expect("failed to create stable vec"))
     };
 
@@ -50,7 +50,7 @@ thread_local! {
         RefCell::new(StableCell::new(get_memory_by_id(&MEMORY_MANAGER, TX_RING_BUFFER_INDICES_MEMORY_ID), StableRingBufferIndices::new(4)).expect("failed to create stable cell"))
     };
 
-    static TX_RING_BUFFER: RefCell<StableRingBuffer<Transaction, DefaultMemoryType>> = {
+    static TX_RING_BUFFER: RefCell<StableRingBuffer<BoundedTransaction, DefaultMemoryType>> = {
         RefCell::new(StableRingBuffer::new(&TX_RING_BUFFER_DATA, &TX_RING_BUFFER_INDICES))
     };
 
@@ -64,7 +64,7 @@ impl Service {
     pub fn init() {
         let should_init_btreemap = TX_BTREEMAP.with(|txs| txs.borrow().len()) == 0;
         if should_init_btreemap {
-            Self::insert_tx_to_btreemap(Transaction {
+            Self::insert_tx_to_btreemap(BoundedTransaction {
                 from: 0,
                 to: 0,
                 value: 0,
@@ -80,7 +80,7 @@ impl Service {
         }
         let should_init_multimap = TX_MULTIMAP.with(|txs| txs.borrow().len()) == 0;
         if should_init_multimap {
-            Self::insert_tx_to_multimap(Transaction {
+            Self::insert_tx_to_multimap(BoundedTransaction {
                 from: 0,
                 to: 0,
                 value: 0,
@@ -88,7 +88,7 @@ impl Service {
         }
         let should_init_vec = TX_VEC.with(|txs| txs.borrow().len()) == 0;
         if should_init_vec {
-            Self::push_tx_to_vec(Transaction {
+            Self::push_tx_to_vec(BoundedTransaction {
                 from: 0,
                 to: 0,
                 value: 0,
@@ -96,7 +96,7 @@ impl Service {
         }
         let should_init_log = TX_LOG.with(|txs| txs.borrow().len()) == 0;
         if should_init_log {
-            Self::push_tx_to_log(Transaction {
+            Self::push_tx_to_log(BoundedTransaction {
                 from: 0,
                 to: 0,
                 value: 0,
@@ -104,7 +104,7 @@ impl Service {
         }
         let should_init_ring_buf = TX_RING_BUFFER.with(|txs| txs.borrow().len()) == 0;
         if should_init_ring_buf {
-            Self::push_tx_to_ring_buffer(Transaction {
+            Self::push_tx_to_ring_buffer(BoundedTransaction {
                 from: 0,
                 to: 0,
                 value: 0,
@@ -112,11 +112,11 @@ impl Service {
         }
     }
 
-    pub fn get_tx_from_btreemap(key: u64) -> Option<Transaction> {
+    pub fn get_tx_from_btreemap(key: u64) -> Option<BoundedTransaction> {
         TX_BTREEMAP.with(|tx| tx.borrow().get(&key))
     }
 
-    pub fn insert_tx_to_btreemap(transaction: Transaction) -> u64 {
+    pub fn insert_tx_to_btreemap(transaction: BoundedTransaction) -> u64 {
         TX_BTREEMAP.with(|storage| {
             let new_key = storage.borrow().len();
             storage.borrow_mut().insert(new_key, transaction);
@@ -125,11 +125,11 @@ impl Service {
         })
     }
 
-    pub fn get_tx_from_cell() -> Transaction {
+    pub fn get_tx_from_cell() -> BoundedTransaction {
         TX_CELL.with(|tx| *tx.borrow().get())
     }
 
-    pub fn insert_tx_to_cell(transaction: Transaction) {
+    pub fn insert_tx_to_cell(transaction: BoundedTransaction) {
         TX_CELL.with(|storage| {
             storage
                 .borrow_mut()
@@ -138,11 +138,11 @@ impl Service {
         })
     }
 
-    pub fn get_tx_from_log(idx: u64) -> Option<Transaction> {
+    pub fn get_tx_from_log(idx: u64) -> Option<BoundedTransaction> {
         TX_LOG.with(|tx| tx.borrow().get(idx))
     }
 
-    pub fn push_tx_to_log(transaction: Transaction) -> u64 {
+    pub fn push_tx_to_log(transaction: BoundedTransaction) -> u64 {
         TX_LOG.with(|storage| {
             storage
                 .borrow_mut()
@@ -153,11 +153,11 @@ impl Service {
         })
     }
 
-    pub fn get_tx_from_ring_buffer(idx: u64) -> Option<Transaction> {
+    pub fn get_tx_from_ring_buffer(idx: u64) -> Option<BoundedTransaction> {
         TX_RING_BUFFER.with(|tx| tx.borrow().get_value_from_end(idx))
     }
 
-    pub fn push_tx_to_ring_buffer(transaction: Transaction) -> u64 {
+    pub fn push_tx_to_ring_buffer(transaction: BoundedTransaction) -> u64 {
         TX_RING_BUFFER.with(|storage| storage.borrow_mut().push(&transaction).0)
     }
 
@@ -174,11 +174,11 @@ impl Service {
         })
     }
 
-    pub fn get_tx_from_multimap(key: u64) -> Option<Transaction> {
+    pub fn get_tx_from_multimap(key: u64) -> Option<BoundedTransaction> {
         TX_MULTIMAP.with(|tx| tx.borrow().get(&key, &(key + 1)))
     }
 
-    pub fn insert_tx_to_multimap(transaction: Transaction) -> u64 {
+    pub fn insert_tx_to_multimap(transaction: BoundedTransaction) -> u64 {
         TX_MULTIMAP.with(|storage| {
             let new_key = storage.borrow().len() as u64;
             storage
@@ -189,11 +189,11 @@ impl Service {
         })
     }
 
-    pub fn get_tx_from_vec(idx: u64) -> Option<Transaction> {
+    pub fn get_tx_from_vec(idx: u64) -> Option<BoundedTransaction> {
         TX_VEC.with(|tx| tx.borrow().get(idx))
     }
 
-    pub fn push_tx_to_vec(transaction: Transaction) -> u64 {
+    pub fn push_tx_to_vec(transaction: BoundedTransaction) -> u64 {
         TX_VEC.with(|storage| {
             storage
                 .borrow_mut()
