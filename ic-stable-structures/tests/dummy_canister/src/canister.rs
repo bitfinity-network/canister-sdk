@@ -52,12 +52,12 @@ impl DummyCanister {
     }
 
     #[query]
-    pub fn get_tx_from_unboundedmap(&self, key: u64) -> Option<Transaction> {
+    pub fn get_tx_from_unboundedmap(&self, key: u64) -> Option<UnboundedTransaction> {
         Service::get_tx_from_unboundedmap(key)
     }
 
     #[update]
-    pub async fn insert_tx_to_unboundedmap(&self, transaction: Transaction) -> u64 {
+    pub async fn insert_tx_to_unboundedmap(&self, transaction: UnboundedTransaction) -> u64 {
         Service::insert_tx_to_unboundedmap(transaction)
     }
 

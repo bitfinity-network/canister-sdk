@@ -30,7 +30,7 @@ thread_local! {
         RefCell::new(StableLog::new(get_memory_by_id(&MEMORY_MANAGER, TX_LOG_INDEX_MEMORY_ID), get_memory_by_id(&MEMORY_MANAGER, TX_LOG_MEMORY_ID)).expect("failed to create stable log"))
     };
 
-    static TX_UNBOUNDEDMAP: RefCell<StableUnboundedMap<u64, Transaction, U64_SIZE, true, DefaultMemoryType>> = {
+    static TX_UNBOUNDEDMAP: RefCell<StableUnboundedMap<u64, UnboundedTransaction, U64_SIZE, true, DefaultMemoryType>> = {
         RefCell::new(StableUnboundedMap::new(get_memory_by_id(&MEMORY_MANAGER, TX_UNBOUNDEDMAP_MEMORY_ID)))
     };
 
@@ -72,7 +72,7 @@ impl Service {
         }
         let should_init_map = TX_UNBOUNDEDMAP.with(|txs| txs.borrow().len()) == 0;
         if should_init_map {
-            Self::insert_tx_to_unboundedmap(Transaction {
+            Self::insert_tx_to_unboundedmap(UnboundedTransaction {
                 from: 0,
                 to: 0,
                 value: 0,
@@ -161,11 +161,11 @@ impl Service {
         TX_RING_BUFFER.with(|storage| storage.borrow_mut().push(&transaction).0)
     }
 
-    pub fn get_tx_from_unboundedmap(key: u64) -> Option<Transaction> {
+    pub fn get_tx_from_unboundedmap(key: u64) -> Option<UnboundedTransaction> {
         TX_UNBOUNDEDMAP.with(|tx| tx.borrow().get(&key))
     }
 
-    pub fn insert_tx_to_unboundedmap(transaction: Transaction) -> u64 {
+    pub fn insert_tx_to_unboundedmap(transaction: UnboundedTransaction) -> u64 {
         TX_UNBOUNDEDMAP.with(|storage| {
             let new_key = storage.borrow().len();
             storage.borrow_mut().insert(&new_key, &transaction);

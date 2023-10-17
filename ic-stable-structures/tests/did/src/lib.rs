@@ -37,13 +37,13 @@ impl Storable for BoundedTransaction {
 }
 
 #[derive(Debug, Default, Clone, Copy, CandidType, Deserialize)]
-pub struct Transaction {
+pub struct UnboundedTransaction {
     pub from: u8,
     pub to: u8,
     pub value: u8,
 }
 
-impl Storable for Transaction {
+impl Storable for UnboundedTransaction {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         encode(self).into()
     }
@@ -55,6 +55,6 @@ impl Storable for Transaction {
     const BOUND: Bound = Bound::Unbounded;
 }
 
-impl SlicedStorable for Transaction {
+impl SlicedStorable for UnboundedTransaction {
     const CHUNK_SIZE: ChunkSize = 8;
 }
