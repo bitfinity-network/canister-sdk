@@ -55,6 +55,7 @@ impl StableRingBufferIndices {
 }
 
 const STABLE_RING_BUFFER_INDICES_SIZE: usize = 2 * size_of::<u64>();
+
 impl Storable for StableRingBufferIndices {
     const BOUND: Bound = Bound::Bounded {
         max_size: STABLE_RING_BUFFER_INDICES_SIZE as u32,
