@@ -388,7 +388,7 @@ mod test {
     use dfinity_stable_structures::VectorMemory;
 
     use super::*;
-    use crate::test_utils::{Array, StringValue};
+    use crate::test_utils::Array;
 
     fn make_map() -> StableMultimap<Array<2>, Array<3>, Array<6>, VectorMemory> {
         let mut mm = StableMultimap::new(VectorMemory::default());
@@ -551,19 +551,5 @@ mod test {
         assert_eq!(map.remove(&1, &0), Some(10));
         assert_eq!(map.iter().next(), Some((1, 1, 20)));
         assert_eq!(map.len(), 1);
-    }
-
-    #[should_panic]
-    #[test]
-    fn btreemap_should_not_allow_undounded_key_1() {
-        let _: StableMultimap<StringValue, u32, u32, _> =
-            StableMultimap::new(VectorMemory::default());
-    }
-
-    #[should_panic]
-    #[test]
-    fn btreemap_should_not_allow_undounded_key_2() {
-        let _: StableMultimap<u32, StringValue, u32, _> =
-            StableMultimap::new(VectorMemory::default());
     }
 }

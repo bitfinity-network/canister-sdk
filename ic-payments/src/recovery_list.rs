@@ -79,13 +79,7 @@ pub struct StableRecoveryList<const MEM_ID: u8>;
 impl<const MEM_ID: u8> StableRecoveryList<MEM_ID> {
     fn with_storage<R>(
         &self,
-        f: impl Fn(
-            &mut StableUnboundedMap<
-                TransferKey,
-                TransferValue,
-                DefaultMemoryType,
-            >,
-        ) -> R,
+        f: impl Fn(&mut StableUnboundedMap<TransferKey, TransferValue, DefaultMemoryType>) -> R,
     ) -> R {
         RECOVERY_LIST_STORAGE.with(|v| {
             let mut map = v.borrow_mut();
