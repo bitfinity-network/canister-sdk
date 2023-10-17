@@ -7,18 +7,17 @@ use crate::structure::*;
 use mini_moka::unsync::{Cache, CacheBuilder};
 
 /// A LRU Cache for StableUnboundedMaps
-pub struct CachedStableUnboundedMap<K, V, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool, M>
+pub struct CachedStableUnboundedMap<K, V, M>
 where
     K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
     M: Memory,
 {
-    inner: StableUnboundedMap<K, V, K_MAX_SIZE, K_FIXED_SIZE, M>,
+    inner: StableUnboundedMap<K, V, M>,
     cache: RefCell<Cache<K, V>>,
 }
 
-impl<K, V, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool, M>
-    CachedStableUnboundedMap<K, V, K_MAX_SIZE, K_FIXED_SIZE, M>
+impl<K, V, M> CachedStableUnboundedMap<K, V, M>
 where
     K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
@@ -30,10 +29,7 @@ where
     }
 
     /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
-    pub fn with_map(
-        inner: StableUnboundedMap<K, V, K_MAX_SIZE, K_FIXED_SIZE, M>,
-        max_cache_items: u64,
-    ) -> Self {
+    pub fn with_map(inner: StableUnboundedMap<K, V, M>, max_cache_items: u64) -> Self {
         Self {
             inner,
             cache: RefCell::new(
@@ -45,8 +41,7 @@ where
     }
 }
 
-impl<K, V, const K_MAX_SIZE: usize, const K_FIXED_SIZE: bool, M> UnboundedMapStructure<K, V>
-    for CachedStableUnboundedMap<K, V, K_MAX_SIZE, K_FIXED_SIZE, M>
+impl<K, V, M> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V, M>
 where
     K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
@@ -100,19 +95,16 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::mem::size_of;
 
     use dfinity_stable_structures::VectorMemory;
 
     use super::*;
     use crate::test_utils::{Array, StringValue};
 
-    const U32_SIZE: usize = size_of::<u32>();
-
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        let mut map = CachedStableUnboundedMap::<u32, StringValue, U32_SIZE, true, _>::new(
+        let mut map = CachedStableUnboundedMap::<u32, StringValue, _>::new(
             VectorMemory::default(),
             cache_items,
         );
@@ -157,10 +149,8 @@ mod tests {
     #[test]
     fn should_get_insert_and_replace() {
         let cache_items = 2;
-        let mut map = CachedStableUnboundedMap::<u32, Array<2>, U32_SIZE, true, _>::new(
-            VectorMemory::default(),
-            cache_items,
-        );
+        let mut map =
+            CachedStableUnboundedMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));
@@ -210,10 +200,8 @@ mod tests {
     #[test]
     fn should_clear() {
         let cache_items = 2;
-        let mut map = CachedStableUnboundedMap::<u32, Array<2>, U32_SIZE, true, _>::new(
-            VectorMemory::default(),
-            cache_items,
-        );
+        let mut map =
+            CachedStableUnboundedMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &Array([2u8, 1])));
@@ -233,10 +221,8 @@ mod tests {
     #[test]
     fn should_replace_old_value() {
         let cache_items = 2;
-        let mut map = CachedStableUnboundedMap::<u32, Array<2>, U32_SIZE, true, _>::new(
-            VectorMemory::default(),
-            cache_items,
-        );
+        let mut map =
+            CachedStableUnboundedMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
         assert_eq!(None, map.insert(&1, &Array([1u8, 1])));
         assert_eq!(None, map.insert(&2, &Array([2u8, 1])));
