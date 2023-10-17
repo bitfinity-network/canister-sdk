@@ -5,6 +5,7 @@ use dfinity_stable_structures::storable::Bound;
 use dfinity_stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 
 use crate::structure::MultimapStructure;
+use crate::Bounds;
 
 // Keys memory layout:
 //
@@ -28,17 +29,14 @@ use crate::structure::MultimapStructure;
 
 /// `StableMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
-pub struct StableMultimap<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>(
-    StableBTreeMap<KeyPair<K1, K2, K1_SIZE, K2_SIZE>, Value<V>, M>,
-)
+pub struct StableMultimap<K1, K2, V, M>(StableBTreeMap<KeyPair<K1, K2>, Value<V>, M>)
 where
     K1: Storable,
     K2: Storable,
     V: Storable,
     M: Memory;
 
-impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>
-    StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<K1, K2, V, M> StableMultimap<K1, K2, V, M>
 where
     K1: Storable,
     K2: Storable,
@@ -48,43 +46,22 @@ where
     /// Create a new instance of a `StableMultimap`.
     /// All keys and values byte representations should be less then related `..._max_size` arguments.
     pub fn new(memory: M) -> Self {
-        match (K1::BOUND, K2::BOUND) {
-            (
-                Bound::Bounded {
-                    is_fixed_size: k1_is_fixed_size,
-                    max_size: k1_max_size,
-                },
-                Bound::Bounded {
-                    is_fixed_size: k2_is_fixed_size,
-                    max_size: k2_max_size,
-                    ..
-                },
-            ) => {
-                if !(k1_is_fixed_size && k2_is_fixed_size)
-                    || ((k1_max_size as usize) != K1_SIZE)
-                    || ((k2_max_size as usize) != K2_SIZE)
-                {
-                    panic!("Multimap keys must be bounded and fixed size. In addition, K1 and K2 sizes should equal K1_SIZE and K2_SIZE")
-                }
-            }
-            _ => panic!("Multimap keys must be bounded and fixed size"),
-        };
-
+        let _ = KeyPair::<K1, K2>::K1_BOUNDS;
+        let _ = KeyPair::<K1, K2>::K2_BOUNDS;
         Self(StableBTreeMap::init(memory))
     }
 }
 
-impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> MultimapStructure<K1, K2, V>
-    for StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V, M>
 where
     K1: Storable,
     K2: Storable,
     V: Storable,
     M: Memory,
 {
-    type Iterator<'a> = StableMultimapIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M> where Self: 'a;
+    type Iterator<'a> = StableMultimapIter<'a, K1, K2, V, M> where Self: 'a;
 
-    type RangeIterator<'a> = StableMultimapRangeIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M> where Self: 'a;
+    type RangeIterator<'a> = StableMultimapRangeIter<'a, K1, K2, V, M> where Self: 'a;
 
     fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
         let key = KeyPair::new(first_key, second_key);
@@ -103,8 +80,8 @@ where
     }
 
     fn remove_partial(&mut self, first_key: &K1) -> bool {
-        let min_key = KeyPair::<K1, K2, K1_SIZE, K2_SIZE>::min_key(first_key);
-        let max_key = KeyPair::<K1, K2, K1_SIZE, K2_SIZE>::max_key(first_key);
+        let min_key = KeyPair::<K1, K2>::min_key(first_key);
+        let max_key = KeyPair::<K1, K2>::max_key(first_key);
 
         let keys: Vec<_> = self
             .0
@@ -135,8 +112,8 @@ where
     }
 
     fn range(&self, first_key: &K1) -> Self::RangeIterator<'_> {
-        let min_key = KeyPair::<K1, K2, K1_SIZE, K2_SIZE>::min_key(first_key);
-        let max_key = KeyPair::<K1, K2, K1_SIZE, K2_SIZE>::max_key(first_key);
+        let min_key = KeyPair::<K1, K2>::min_key(first_key);
+        let max_key = KeyPair::<K1, K2>::max_key(first_key);
 
         let inner = self.0.range(min_key..=max_key);
         StableMultimapRangeIter::new(inner)
@@ -147,14 +124,12 @@ where
     }
 }
 
-struct KeyPair<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize> {
+struct KeyPair<K1, K2> {
     encoded: Vec<u8>,
     _p: PhantomData<(K1, K2)>,
 }
 
-impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> Clone
-    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
-{
+impl<K1: Storable, K2: Storable> Clone for KeyPair<K1, K2> {
     fn clone(&self) -> Self {
         Self {
             encoded: self.encoded.clone(),
@@ -163,40 +138,49 @@ impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> Clo
     }
 }
 
-impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> PartialEq
-    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
-{
+impl<K1: Storable, K2: Storable> PartialEq for KeyPair<K1, K2> {
     fn eq(&self, other: &Self) -> bool {
         self.encoded == other.encoded
     }
 }
 
-impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> Eq
-    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
-{
-}
+impl<K1: Storable, K2: Storable> Eq for KeyPair<K1, K2> {}
 
-impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> PartialOrd
-    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
-{
+impl<K1: Storable, K2: Storable> PartialOrd for KeyPair<K1, K2> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<K1: Storable, K2: Storable, const K1_SIZE: usize, const K2_SIZE: usize> Ord
-    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
-{
+impl<K1: Storable, K2: Storable> Ord for KeyPair<K1, K2> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.encoded.cmp(&other.encoded)
     }
 }
 
-impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize> KeyPair<K1, K2, K1_SIZE, K2_SIZE>
+const fn to_key_bounds<K: Storable>() -> Bounds {
+    match K::BOUND {
+        Bound::Unbounded => panic!("Multimap keys must be bounded and fixed size"),
+        Bound::Bounded {
+            max_size,
+            is_fixed_size,
+        } => {
+            if !is_fixed_size {
+                panic!("Multimap keys must be bounded and fixed size")
+            }
+            Bounds::new(max_size as usize, is_fixed_size)
+        }
+    }
+}
+
+impl<K1, K2> KeyPair<K1, K2>
 where
     K1: Storable,
     K2: Storable,
 {
+    const K1_BOUNDS: Bounds = to_key_bounds::<K1>();
+    const K2_BOUNDS: Bounds = to_key_bounds::<K2>();
+
     /// # Preconditions:
     ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
     ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
@@ -204,10 +188,10 @@ where
         let first_key_bytes = first_key.to_bytes();
         let second_key_bytes = second_key.to_bytes();
 
-        assert!(first_key_bytes.len() <= K1_SIZE);
-        assert!(second_key_bytes.len() <= K2_SIZE);
+        assert!(first_key_bytes.len() <= Self::K1_BOUNDS.max_size);
+        assert!(second_key_bytes.len() <= Self::K2_BOUNDS.max_size);
 
-        let full_len = K1_SIZE + K2_SIZE;
+        let full_len = Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size;
         let mut buffer = Vec::with_capacity(full_len);
         buffer.extend_from_slice(&first_key_bytes);
         buffer.extend_from_slice(&second_key_bytes);
@@ -219,20 +203,20 @@ where
     }
 
     pub fn first_key(&self) -> K1 {
-        K1::from_bytes(self.encoded[..K1_SIZE].into())
+        K1::from_bytes(self.encoded[..Self::K1_BOUNDS.max_size].into())
     }
 
     pub fn second_key(&self) -> K2 {
-        K2::from_bytes(self.encoded[K1_SIZE..].into())
+        K2::from_bytes(self.encoded[Self::K1_BOUNDS.max_size..].into())
     }
 
     /// Minimum possible `KeyPair` for the specified `first_key`.
     pub fn min_key(first_key: &K1) -> Self {
         let mut first_key_bytes = first_key.to_bytes().to_vec();
 
-        assert!(first_key_bytes.len() == K1_SIZE);
+        assert!(first_key_bytes.len() == Self::K1_BOUNDS.max_size);
 
-        first_key_bytes.resize(K1_SIZE + K2_SIZE, 0x0);
+        first_key_bytes.resize(Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size, 0x0);
 
         Self {
             encoded: first_key_bytes,
@@ -244,9 +228,9 @@ where
     pub fn max_key(first_key: &K1) -> Self {
         let mut first_key_bytes = first_key.to_bytes().to_vec();
 
-        assert!(first_key_bytes.len() == K1_SIZE);
+        assert!(first_key_bytes.len() == Self::K1_BOUNDS.max_size);
 
-        first_key_bytes.resize(K1_SIZE + K2_SIZE, 0xFF);
+        first_key_bytes.resize(Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size, 0xFF);
 
         Self {
             encoded: first_key_bytes,
@@ -255,8 +239,7 @@ where
     }
 }
 
-impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize> Storable
-    for KeyPair<K1, K2, K1_SIZE, K2_SIZE>
+impl<K1, K2> Storable for KeyPair<K1, K2>
 where
     K1: Storable,
     K2: Storable,
@@ -273,7 +256,7 @@ where
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: (K1_SIZE + K2_SIZE) as u32,
+        max_size: (Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size) as u32,
         is_fixed_size: true,
     };
 }
@@ -305,25 +288,24 @@ impl<V: Storable> Storable for Value<V> {
 }
 
 /// Range iterator
-pub struct StableMultimapRangeIter<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>
+pub struct StableMultimapRangeIter<'a, K1, K2, V, M>
 where
     K1: Storable,
     K2: Storable,
     V: Storable,
     M: Memory,
 {
-    inner: btreemap::Iter<'a, KeyPair<K1, K2, K1_SIZE, K2_SIZE>, Value<V>, M>,
+    inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>,
 }
 
-impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>
-    StableMultimapRangeIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<'a, K1, K2, V, M> StableMultimapRangeIter<'a, K1, K2, V, M>
 where
     K1: Storable,
     K2: Storable,
     V: Storable,
     M: Memory,
 {
-    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2, K1_SIZE, K2_SIZE>, Value<V>, M>) -> Self {
+    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
         Self { inner }
     }
 }
@@ -331,8 +313,7 @@ where
 // -----------------------------------------------------------------------------
 //     - Range Iterator impl -
 // -----------------------------------------------------------------------------
-impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> Iterator
-    for StableMultimapRangeIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<'a, K1, K2, V, M> Iterator for StableMultimapRangeIter<'a, K1, K2, V, M>
 where
     K1: Storable,
     K2: Storable,
@@ -348,30 +329,26 @@ where
     }
 }
 
-pub struct StableMultimapIter<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>(
-    btreemap::Iter<'a, KeyPair<K1, K2, K1_SIZE, K2_SIZE>, Value<V>, M>,
-)
+pub struct StableMultimapIter<'a, K1, K2, V, M>(btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>)
 where
     K1: Storable,
     K2: Storable,
     V: Storable,
     M: Memory;
 
-impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>
-    StableMultimapIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<'a, K1, K2, V, M> StableMultimapIter<'a, K1, K2, V, M>
 where
     K1: Storable,
     K2: Storable,
     V: Storable,
     M: Memory,
 {
-    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2, K1_SIZE, K2_SIZE>, Value<V>, M>) -> Self {
+    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
         Self(inner)
     }
 }
 
-impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> Iterator
-    for StableMultimapIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<'a, K1, K2, V, M> Iterator for StableMultimapIter<'a, K1, K2, V, M>
 where
     K1: Storable,
     K2: Storable,
@@ -389,8 +366,7 @@ where
     }
 }
 
-impl<'a, K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> IntoIterator
-    for &'a StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<'a, K1, K2, V, M> IntoIterator for &'a StableMultimap<K1, K2, V, M>
 where
     K1: Storable,
     K2: Storable,
@@ -399,7 +375,7 @@ where
 {
     type Item = (K1, K2, V);
 
-    type IntoIter = StableMultimapIter<'a, K1, K2, K1_SIZE, K2_SIZE, V, M>;
+    type IntoIter = StableMultimapIter<'a, K1, K2, V, M>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
@@ -409,14 +385,12 @@ where
 #[cfg(test)]
 mod test {
 
-    use std::mem::size_of;
-
     use dfinity_stable_structures::VectorMemory;
 
     use super::*;
     use crate::test_utils::{Array, StringValue};
 
-    fn make_map() -> StableMultimap<Array<2>, Array<3>, 2, 3, Array<6>, VectorMemory> {
+    fn make_map() -> StableMultimap<Array<2>, Array<3>, Array<6>, VectorMemory> {
         let mut mm = StableMultimap::new(VectorMemory::default());
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
@@ -433,7 +407,7 @@ mod test {
 
     #[test]
     fn inserts() {
-        let mut mm: StableMultimap<Array<1>, Array<2>, 1, 2, Array<1>, _> =
+        let mut mm: StableMultimap<Array<1>, Array<2>, Array<1>, _> =
             StableMultimap::new(VectorMemory::default());
         for i in 0..10 {
             let k1 = Array([i; 1]);
@@ -490,7 +464,7 @@ mod test {
 
     #[test]
     fn remove_partial() {
-        let mut mm: StableMultimap<_, _, 2, 3, _, _> = StableMultimap::new(VectorMemory::default());
+        let mut mm = StableMultimap::new(VectorMemory::default());
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
@@ -507,7 +481,7 @@ mod test {
 
     #[test]
     fn clear() {
-        let mut mm: StableMultimap<_, _, 2, 3, _, _> = StableMultimap::new(VectorMemory::default());
+        let mut mm = StableMultimap::new(VectorMemory::default());
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
@@ -543,9 +517,7 @@ mod test {
 
     #[test]
     fn multimap_works() {
-        const K1_SIZE: usize = size_of::<u32>();
-        let mut map: StableMultimap<_, _, K1_SIZE, K1_SIZE, _, _> =
-            StableMultimap::new(VectorMemory::default());
+        let mut map = StableMultimap::new(VectorMemory::default());
         assert!(map.is_empty());
 
         map.insert(&0u32, &0u32, &42u32);
@@ -584,40 +556,14 @@ mod test {
     #[should_panic]
     #[test]
     fn btreemap_should_not_allow_undounded_key_1() {
-        const K1_SIZE: usize = size_of::<u32>();
-        let _: StableMultimap<StringValue, u32, K1_SIZE, K1_SIZE, u32, _> =
+        let _: StableMultimap<StringValue, u32, u32, _> =
             StableMultimap::new(VectorMemory::default());
     }
 
     #[should_panic]
     #[test]
     fn btreemap_should_not_allow_undounded_key_2() {
-        const K1_SIZE: usize = size_of::<u32>();
-        let _: StableMultimap<u32, StringValue, K1_SIZE, K1_SIZE, u32, _> =
-            StableMultimap::new(VectorMemory::default());
-    }
-
-    #[should_panic]
-    #[test]
-    fn btreemap_should_not_allow_key_1_with_unmatched_size() {
-        const K1_SIZE: usize = size_of::<u32>();
-        let _: StableMultimap<u64, u32, K1_SIZE, K1_SIZE, u32, _> =
-            StableMultimap::new(VectorMemory::default());
-    }
-
-    #[should_panic]
-    #[test]
-    fn btreemap_should_not_allow_key_2_with_unmatched_size() {
-        const K1_SIZE: usize = size_of::<u32>();
-        let _: StableMultimap<u32, u64, K1_SIZE, K1_SIZE, u32, _> =
-            StableMultimap::new(VectorMemory::default());
-    }
-
-    #[should_panic]
-    #[test]
-    fn btreemap_should_not_allow_keys_with_unmatched_size() {
-        const K1_SIZE: usize = size_of::<u32>();
-        let _: StableMultimap<u64, u64, K1_SIZE, K1_SIZE, u32, _> =
+        let _: StableMultimap<u32, StringValue, u32, _> =
             StableMultimap::new(VectorMemory::default());
     }
 }

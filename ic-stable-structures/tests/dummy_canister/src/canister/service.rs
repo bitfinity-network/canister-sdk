@@ -1,5 +1,5 @@
 use ic_stable_structures::*;
-use std::{cell::RefCell, mem::size_of};
+use std::cell::RefCell;
 
 use did::*;
 
@@ -12,8 +12,6 @@ const TX_BTREEMAP_MEMORY_ID: MemoryId = MemoryId::new(6);
 const TX_MULTIMAP_MEMORY_ID: MemoryId = MemoryId::new(7);
 const TX_RING_BUFFER_INDICES_MEMORY_ID: MemoryId = MemoryId::new(8);
 const TX_RING_BUFFER_VEC_MEMORY_ID: MemoryId = MemoryId::new(9);
-
-const U64_SIZE: usize = size_of::<u64>();
 
 thread_local! {
     static MEMORY_MANAGER: DefaultMemoryManager = DefaultMemoryManager::init(DefaultMemoryResourceType::default());
@@ -34,7 +32,7 @@ thread_local! {
         RefCell::new(StableUnboundedMap::new(get_memory_by_id(&MEMORY_MANAGER, TX_UNBOUNDEDMAP_MEMORY_ID)))
     };
 
-    static TX_MULTIMAP: RefCell<StableMultimap<u64, u64, U64_SIZE, U64_SIZE, BoundedTransaction, DefaultMemoryType>> = {
+    static TX_MULTIMAP: RefCell<StableMultimap<u64, u64, BoundedTransaction, DefaultMemoryType>> = {
         RefCell::new(StableMultimap::new(get_memory_by_id(&MEMORY_MANAGER, TX_MULTIMAP_MEMORY_ID)))
     };
 

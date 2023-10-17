@@ -7,19 +7,18 @@ use mini_moka::unsync::{Cache, CacheBuilder};
 use crate::structure::*;
 
 /// A LRU Cache for StableMultimaps
-pub struct CachedStableMultimap<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>
+pub struct CachedStableMultimap<K1, K2, V, M>
 where
     K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
     K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: Storable + Clone,
     M: Memory,
 {
-    inner: StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>,
+    inner: StableMultimap<K1, K2, V, M>,
     cache: RefCell<Cache<(K1, K2), V>>,
 }
 
-impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M>
-    CachedStableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<K1, K2, V, M> CachedStableMultimap<K1, K2, V, M>
 where
     K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
     K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
@@ -32,10 +31,7 @@ where
     }
 
     /// Create new instance of the CachedStableMultimap with a fixed number of max cached elements.
-    pub fn with_map(
-        inner: StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>,
-        max_cache_items: u64,
-    ) -> Self {
+    pub fn with_map(inner: StableMultimap<K1, K2, V, M>, max_cache_items: u64) -> Self {
         Self {
             inner,
             cache: RefCell::new(
@@ -47,17 +43,16 @@ where
     }
 }
 
-impl<K1, K2, const K1_SIZE: usize, const K2_SIZE: usize, V, M> MultimapStructure<K1, K2, V>
-    for CachedStableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M>
+impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for CachedStableMultimap<K1, K2, V, M>
 where
     K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
     K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: Storable + Clone,
     M: Memory,
 {
-    type Iterator<'a> = <StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M> as MultimapStructure<K1, K2, V>>::Iterator<'a> where Self: 'a;
+    type Iterator<'a> = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::Iterator<'a> where Self: 'a;
 
-    type RangeIterator<'a> = <StableMultimap<K1, K2, K1_SIZE, K2_SIZE, V, M> as MultimapStructure<K1, K2, V>>::RangeIterator<'a> where Self: 'a;
+    type RangeIterator<'a> = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::RangeIterator<'a> where Self: 'a;
 
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
         let mut cache = self.cache.borrow_mut();
@@ -127,8 +122,6 @@ where
 #[cfg(test)]
 mod test {
 
-    use std::mem::size_of;
-
     use dfinity_stable_structures::VectorMemory;
 
     use crate::test_utils::Array;
@@ -138,8 +131,8 @@ mod test {
     #[test]
     fn should_get_and_insert() {
         let cache_items = 2;
-        const K1_SIZE: usize = size_of::<u32>();
-        let mut map = CachedStableMultimap::<u32, u32, K1_SIZE, K1_SIZE, Array<2>, _>::new(
+
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
             VectorMemory::default(),
             cache_items,
         );
@@ -178,8 +171,8 @@ mod test {
     #[test]
     fn should_clear() {
         let cache_items = 2;
-        const K1_SIZE: usize = size_of::<u32>();
-        let mut map = CachedStableMultimap::<u32, u32, K1_SIZE, K1_SIZE, Array<2>, _>::new(
+
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
             VectorMemory::default(),
             cache_items,
         );
@@ -202,8 +195,8 @@ mod test {
     #[test]
     fn should_replace_old_value() {
         let cache_items = 2;
-        const K1_SIZE: usize = size_of::<u32>();
-        let mut map = CachedStableMultimap::<u32, u32, K1_SIZE, K1_SIZE, Array<2>, _>::new(
+
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
             VectorMemory::default(),
             cache_items,
         );
@@ -227,8 +220,8 @@ mod test {
     #[test]
     fn iter() {
         let cache_items = 2;
-        const K1_SIZE: usize = size_of::<u32>();
-        let mut map = CachedStableMultimap::<u32, u32, K1_SIZE, K1_SIZE, Array<2>, _>::new(
+
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
             VectorMemory::default(),
             cache_items,
         );
@@ -246,8 +239,8 @@ mod test {
     #[test]
     fn range_iter() {
         let cache_items = 2;
-        const K1_SIZE: usize = size_of::<u32>();
-        let mut map = CachedStableMultimap::<u32, u32, K1_SIZE, K1_SIZE, Array<2>, _>::new(
+
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
             VectorMemory::default(),
             cache_items,
         );
