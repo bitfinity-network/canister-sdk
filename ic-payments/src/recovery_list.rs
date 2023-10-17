@@ -19,7 +19,7 @@ pub trait RecoveryList: Sync + Send {
 thread_local! {
     static MEMORY_MANAGER: DefaultMemoryManager = DefaultMemoryManager::init(DefaultMemoryResourceType::default());
 
-    static RECOVERY_LIST_STORAGE: RefCell<Option<StableUnboundedMap<TransferKey, TransferValue, TRANSFER_KEY_MAX_SIZE, TRANSFER_KEY_IS_FIXED_SIZE, DefaultMemoryType>>> =
+    static RECOVERY_LIST_STORAGE: RefCell<Option<StableUnboundedMap<TransferKey, TransferValue, DefaultMemoryType>>> =
         RefCell::new(None);
 }
 
@@ -44,13 +44,10 @@ impl Storable for TransferKey {
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: TRANSFER_KEY_MAX_SIZE as u32,
-        is_fixed_size: TRANSFER_KEY_IS_FIXED_SIZE,
+        max_size: 32,
+        is_fixed_size: true,
     };
 }
-
-const TRANSFER_KEY_MAX_SIZE: usize = 32;
-const TRANSFER_KEY_IS_FIXED_SIZE: bool = true;
 
 #[derive(Clone)]
 struct TransferValue(Transfer);
@@ -86,8 +83,6 @@ impl<const MEM_ID: u8> StableRecoveryList<MEM_ID> {
             &mut StableUnboundedMap<
                 TransferKey,
                 TransferValue,
-                TRANSFER_KEY_MAX_SIZE,
-                TRANSFER_KEY_IS_FIXED_SIZE,
                 DefaultMemoryType,
             >,
         ) -> R,
