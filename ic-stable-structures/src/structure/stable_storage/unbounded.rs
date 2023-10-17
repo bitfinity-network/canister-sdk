@@ -30,7 +30,6 @@ where
     V: SlicedStorable,
     M: Memory,
 {
-
     /// Create new instance of the map.
     ///
     /// If the `memory` contains data of the map, the map reads it, and the instance
@@ -228,7 +227,9 @@ impl<K: Storable> Key<K> {
         let size_prefix_len = Self::BOUNDS.size_prefix_len;
         let full_len = size_prefix_len + key_bytes.len() + CHUNK_INDEX_LEN;
         let mut data = Vec::with_capacity(full_len);
-        data.extend_from_slice(&key_bytes.len().to_le_bytes()[..size_prefix_len]);
+        if size_prefix_len != 0 {
+            data.extend_from_slice(&key_bytes.len().to_le_bytes()[..size_prefix_len]);
+        }
         data.extend_from_slice(&key_bytes);
         data.extend_from_slice(&[0u8; CHUNK_INDEX_LEN]);
 
