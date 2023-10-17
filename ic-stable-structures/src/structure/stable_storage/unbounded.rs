@@ -30,22 +30,13 @@ where
     V: SlicedStorable,
     M: Memory,
 {
-    const BOUNDS: Bounds = {
-        match K::BOUND {
-            Bound::Unbounded => panic!("StableUnboundedMap key must be bounded"),
-            Bound::Bounded {
-                max_size,
-                is_fixed_size,
-            } => Bounds::new(max_size as usize, is_fixed_size),
-        }
-    };
 
     /// Create new instance of the map.
     ///
     /// If the `memory` contains data of the map, the map reads it, and the instance
     /// will contain the data from the `memory`.
     pub fn new(memory: M) -> Self {
-        let _ = Self::BOUNDS;
+        let _ = Key::<K>::BOUNDS;
         Self {
             inner: StableBTreeMap::init(memory),
             items_count: 0,
