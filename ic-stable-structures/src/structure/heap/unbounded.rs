@@ -1,7 +1,9 @@
-use dfinity_stable_structures::Storable;
 use std::collections::btree_map::Iter as BTreeMapIter;
+use std::collections::BTreeMap;
+use std::hash::Hash;
 use std::marker::PhantomData;
-use std::{collections::BTreeMap, hash::Hash};
+
+use dfinity_stable_structures::Storable;
 
 use crate::structure::common::SlicedStorable;
 use crate::structure::UnboundedMapStructure;

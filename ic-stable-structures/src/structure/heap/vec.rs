@@ -2,7 +2,8 @@ use std::marker::PhantomData;
 
 use dfinity_stable_structures::Storable;
 
-use crate::{structure::VecStructure, Result};
+use crate::structure::VecStructure;
+use crate::Result;
 
 pub struct HeapVec<T: Storable + Clone, M>(Vec<T>, PhantomData<M>);
 

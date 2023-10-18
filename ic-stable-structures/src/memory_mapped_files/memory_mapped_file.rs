@@ -1,7 +1,5 @@
-use std::{
-    fs::{copy, remove_file, File, OpenOptions},
-    path::Path,
-};
+use std::fs::{copy, remove_file, File, OpenOptions};
+use std::path::Path;
 
 use memmap2::{MmapMut, MmapOptions};
 

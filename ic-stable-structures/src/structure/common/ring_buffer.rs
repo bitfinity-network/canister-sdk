@@ -224,12 +224,12 @@ mod tests {
     use std::cell::RefCell;
     use std::fmt::Debug;
 
-    use crate::Storable;
     use candid::Principal;
     use dfinity_stable_structures::VectorMemory;
     use ic_exports::ic_kit::MockContext;
 
     use super::*;
+    use crate::Storable;
 
     /// Check the roundtrip value -> bytes -> value for `Storable` object
     fn test_storable_roundtrip<Val: Storable + Eq + std::fmt::Debug>(value: &Val) {

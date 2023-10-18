@@ -1,4 +1,5 @@
-use std::{collections::BTreeMap, marker::PhantomData};
+use std::collections::BTreeMap;
+use std::marker::PhantomData;
 
 use dfinity_stable_structures::Storable;
 

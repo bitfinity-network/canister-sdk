@@ -2,7 +2,8 @@ use std::marker::PhantomData;
 
 use dfinity_stable_structures::Storable;
 
-use crate::{structure::LogStructure, Result};
+use crate::structure::LogStructure;
+use crate::Result;
 
 /// Stores list of immutable values in heap memory.
 /// Provides only `append()` and `get()` operations.

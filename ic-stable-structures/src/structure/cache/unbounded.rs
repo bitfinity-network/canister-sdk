@@ -2,9 +2,9 @@ use std::cell::RefCell;
 use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
+use mini_moka::unsync::{Cache, CacheBuilder};
 
 use crate::structure::*;
-use mini_moka::unsync::{Cache, CacheBuilder};
 
 /// A LRU Cache for StableUnboundedMaps
 pub struct CachedStableUnboundedMap<K, V, M>

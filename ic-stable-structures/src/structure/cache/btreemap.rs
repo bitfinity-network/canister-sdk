@@ -1,8 +1,10 @@
-use std::{cell::RefCell, hash::Hash};
+use std::cell::RefCell;
+use std::hash::Hash;
 
-use crate::structure::*;
 use dfinity_stable_structures::{Memory, Storable};
 use mini_moka::unsync::{Cache, CacheBuilder};
+
+use crate::structure::*;
 
 /// A LRU Cache for StableBTreeMap
 pub struct CachedStableBTreeMap<K, V, M>
@@ -119,9 +121,8 @@ where
 mod tests {
     use dfinity_stable_structures::VectorMemory;
 
-    use crate::test_utils::Array;
-
     use super::*;
+    use crate::test_utils::Array;
 
     #[test]
     fn should_get_and_insert() {

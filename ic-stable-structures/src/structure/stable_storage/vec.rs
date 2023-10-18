@@ -67,8 +67,9 @@ impl<T: Storable, M: Memory> VecStructure<T> for StableVec<T, M> {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
     use dfinity_stable_structures::VectorMemory;
+
+    use super::*;
 
     #[test]
     fn vec_works() {

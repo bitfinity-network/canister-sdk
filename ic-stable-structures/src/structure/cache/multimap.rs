@@ -124,9 +124,8 @@ mod test {
 
     use dfinity_stable_structures::VectorMemory;
 
-    use crate::test_utils::Array;
-
     use super::*;
+    use crate::test_utils::Array;
 
     #[test]
     fn should_get_and_insert() {

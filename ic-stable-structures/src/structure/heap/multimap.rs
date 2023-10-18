@@ -1,7 +1,8 @@
 use std::collections::btree_map::Iter as BTreeMapIter;
+use std::collections::BTreeMap;
+use std::hash::Hash;
 use std::iter::Peekable;
 use std::marker::PhantomData;
-use std::{collections::BTreeMap, hash::Hash};
 
 use dfinity_stable_structures::Storable;
 

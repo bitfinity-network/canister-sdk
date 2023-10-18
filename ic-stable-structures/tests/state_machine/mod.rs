@@ -1,17 +1,14 @@
 use std::sync::Mutex;
 
 use anyhow::Result;
-use candid::{CandidType, Deserialize, Principal};
-use candid::{Decode, Encode};
+use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use did::*;
-use ic_exports::ic_kit::ic;
-use ic_exports::ic_kit::inject;
 use ic_exports::ic_kit::mock_principals::alice;
+use ic_exports::ic_kit::{ic, inject};
 use ic_exports::ic_test_state_machine::{
     get_ic_test_state_machine_client_path, StateMachine, WasmResult,
 };
 use once_cell::sync::Lazy;
-
 use wasm_utils::get_dummy_canister_bytecode;
 
 mod btreemap;

@@ -3,9 +3,11 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
-use dfinity_stable_structures::{btreemap, storable::Bound, Memory, StableBTreeMap, Storable};
+use dfinity_stable_structures::storable::Bound;
+use dfinity_stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 
-use crate::{structure::UnboundedMapStructure, Bounds, SlicedStorable};
+use crate::structure::UnboundedMapStructure;
+use crate::{Bounds, SlicedStorable};
 
 type ChunkIndex = u16;
 const CHUNK_INDEX_LEN: usize = mem::size_of::<ChunkIndex>();
