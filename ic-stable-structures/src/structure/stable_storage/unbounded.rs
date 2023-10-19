@@ -3,9 +3,11 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::mem;
 
-use dfinity_stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
+use dfinity_stable_structures::storable::Bound;
+use dfinity_stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 
-use crate::{structure::UnboundedMapStructure, SlicedStorable};
+use crate::structure::UnboundedMapStructure;
+use crate::{Bounds, SlicedStorable};
 
 type ChunkIndex = u16;
 const CHUNK_INDEX_LEN: usize = mem::size_of::<ChunkIndex>();
@@ -16,7 +18,7 @@ const CHUNK_INDEX_LEN: usize = mem::size_of::<ChunkIndex>();
 /// Size of chunk should be set using the [`SlicedStorable`] trait.
 pub struct StableUnboundedMap<K, V, M>
 where
-    K: BoundedStorable,
+    K: Storable,
     V: SlicedStorable,
     M: Memory,
 {
@@ -26,7 +28,7 @@ where
 
 impl<K, V, M> StableUnboundedMap<K, V, M>
 where
-    K: BoundedStorable,
+    K: Storable,
     V: SlicedStorable,
     M: Memory,
 {
@@ -35,6 +37,7 @@ where
     /// If the `memory` contains data of the map, the map reads it, and the instance
     /// will contain the data from the `memory`.
     pub fn new(memory: M) -> Self {
+        let _ = Key::<K>::BOUNDS;
         Self {
             inner: StableBTreeMap::init(memory),
             items_count: 0,
@@ -81,7 +84,7 @@ where
 
 impl<K, V, M> UnboundedMapStructure<K, V> for StableUnboundedMap<K, V, M>
 where
-    K: BoundedStorable,
+    K: Storable,
     V: SlicedStorable,
     M: Memory,
 {
@@ -166,16 +169,16 @@ where
 /// - `size_prefix` is a len of `key_bytes`. Length of `size_prefix` depends on `K::max_size()`
 /// and calculated in `Key::size_prefix_len()`.
 /// - `key_bytes` is a result of the `<K as Storable>::to_bytes(key)` call. Length limited by the
-/// `<K as BoundedStorable>::max_size()`.
+/// `<K as Storable>::max_size()`.
 /// - `chunk_index` is an index of chunk associated with a key instance. If inserted value split to `N`
 /// chunks, then they stored as several entries. Each entry has unique key, with difference only in `chunk_index`.
 /// In `get()` operation the value constructing from it's chunks. The `chunk_index` takes [`CHUNK_INDEX_LEN`] bytes.
-struct Key<K: BoundedStorable> {
+struct Key<K: Storable> {
     data: Vec<u8>,
     _p: PhantomData<K>,
 }
 
-impl<K: BoundedStorable> Clone for Key<K> {
+impl<K: Storable> Clone for Key<K> {
     fn clone(&self) -> Self {
         Self {
             data: self.data.clone(),
@@ -184,39 +187,51 @@ impl<K: BoundedStorable> Clone for Key<K> {
     }
 }
 
-impl<K: BoundedStorable> PartialEq for Key<K> {
+impl<K: Storable> PartialEq for Key<K> {
     fn eq(&self, other: &Self) -> bool {
         self.data == other.data
     }
 }
 
-impl<K: BoundedStorable> Eq for Key<K> {}
+impl<K: Storable> Eq for Key<K> {}
 
-impl<K: BoundedStorable> PartialOrd for Key<K> {
+impl<K: Storable> PartialOrd for Key<K> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<K: BoundedStorable> Ord for Key<K> {
+impl<K: Storable> Ord for Key<K> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.data.cmp(&other.data)
     }
 }
 
-impl<K: BoundedStorable> Key<K> {
+impl<K: Storable> Key<K> {
+    const BOUNDS: Bounds = {
+        match K::BOUND {
+            Bound::Unbounded => panic!("StableUnboundedMap key must be bounded"),
+            Bound::Bounded {
+                max_size,
+                is_fixed_size,
+            } => Bounds::new(max_size as usize, is_fixed_size),
+        }
+    };
+
     /// Crate a new key.
     ///
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     pub fn new(key: &K) -> Self {
         let key_bytes = key.to_bytes();
-        assert!(key_bytes.len() <= K::MAX_SIZE as usize);
+        assert!(key_bytes.len() <= Self::BOUNDS.max_size);
 
-        let size_prefix_len = Self::size_prefix_len();
+        let size_prefix_len = Self::BOUNDS.size_prefix_len;
         let full_len = size_prefix_len + key_bytes.len() + CHUNK_INDEX_LEN;
         let mut data = Vec::with_capacity(full_len);
-        data.extend_from_slice(&key_bytes.len().to_le_bytes()[..size_prefix_len]);
+        if size_prefix_len != 0 {
+            data.extend_from_slice(&key_bytes.len().to_le_bytes()[..size_prefix_len]);
+        }
         data.extend_from_slice(&key_bytes);
         data.extend_from_slice(&[0u8; CHUNK_INDEX_LEN]);
 
@@ -267,23 +282,11 @@ impl<K: BoundedStorable> Key<K> {
     /// Bytes of key `key: K`.
     /// Result of the `<K as Storable>::to_bytes(key)` call.
     pub fn key_data(&self) -> &[u8] {
-        &self.data[Self::size_prefix_len()..self.data.len() - CHUNK_INDEX_LEN]
-    }
-
-    const fn size_prefix_len() -> usize {
-        const U8_MAX: u32 = u8::MAX as u32;
-        const U8_END: u32 = U8_MAX + 1;
-        const U16_MAX: u32 = u16::MAX as u32;
-
-        match K::MAX_SIZE {
-            0..=U8_MAX => 1,
-            U8_END..=U16_MAX => 2,
-            _ => 4,
-        }
+        &self.data[Self::BOUNDS.size_prefix_len..self.data.len() - CHUNK_INDEX_LEN]
     }
 }
 
-impl<K: BoundedStorable> Storable for Key<K> {
+impl<K: Storable> Storable for Key<K> {
     fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         (&self.data).into()
     }
@@ -294,11 +297,13 @@ impl<K: BoundedStorable> Storable for Key<K> {
             _p: PhantomData,
         }
     }
-}
 
-impl<K: BoundedStorable> BoundedStorable for Key<K> {
-    const MAX_SIZE: u32 = Self::size_prefix_len() as u32 + K::MAX_SIZE + CHUNK_INDEX_LEN as u32;
-    const IS_FIXED_SIZE: bool = K::IS_FIXED_SIZE;
+    const BOUND: Bound = Bound::Bounded {
+        max_size: Self::BOUNDS.size_prefix_len as u32
+            + Self::BOUNDS.max_size as u32
+            + CHUNK_INDEX_LEN as u32,
+        is_fixed_size: Self::BOUNDS.is_fixed_size,
+    };
 }
 
 /// Wrapper for value chunks stored in inner [`StableBTreeMap`].
@@ -325,6 +330,11 @@ impl<V: SlicedStorable> Chunk<V> {
 }
 
 impl<V: SlicedStorable> Storable for Chunk<V> {
+    const BOUND: Bound = Bound::Bounded {
+        max_size: V::CHUNK_SIZE as _,
+        is_fixed_size: false,
+    };
+
     fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
         (&self.chunk).into()
     }
@@ -337,22 +347,17 @@ impl<V: SlicedStorable> Storable for Chunk<V> {
     }
 }
 
-impl<V: SlicedStorable> BoundedStorable for Chunk<V> {
-    const MAX_SIZE: u32 = V::CHUNK_SIZE as _;
-    const IS_FIXED_SIZE: bool = false;
-}
-
 /// Iterator over values in unbounded map.
 /// Constructs a value from chunks on each `next()` call.
 pub struct StableUnboundedIter<'a, K, V, M>(Peekable<btreemap::Iter<'a, Key<K>, Chunk<V>, M>>)
 where
-    K: BoundedStorable,
+    K: Storable,
     V: SlicedStorable,
     M: Memory;
 
 impl<'a, K, V, M> Iterator for StableUnboundedIter<'a, K, V, M>
 where
-    K: BoundedStorable,
+    K: Storable,
     V: SlicedStorable,
     M: Memory,
 {
@@ -385,7 +390,7 @@ mod tests {
     use dfinity_stable_structures::VectorMemory;
 
     use super::*;
-    use crate::test_utils;
+    use crate::test_utils::*;
 
     #[test]
     fn set_new_chunk_index_test() {
@@ -416,9 +421,9 @@ mod tests {
         let mut map = StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
-        let long_str = test_utils::str_val(50000);
-        let medium_str = test_utils::str_val(5000);
-        let short_str = test_utils::str_val(50);
+        let long_str = str_val(50000);
+        let medium_str = str_val(5000);
+        let short_str = str_val(50);
 
         map.insert(&0u32, &long_str);
         map.insert(&3u32, &medium_str);
@@ -434,8 +439,8 @@ mod tests {
         let mut map = StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
-        let long_str = test_utils::str_val(50000);
-        let short_str = test_utils::str_val(50);
+        let long_str = str_val(50000);
+        let short_str = str_val(50);
 
         assert!(map.insert(&0u32, &long_str).is_none());
         let prev = map.insert(&0u32, &short_str).unwrap();
@@ -448,9 +453,9 @@ mod tests {
     fn remove_test() {
         let mut map = StableUnboundedMap::new(VectorMemory::default());
 
-        let long_str = test_utils::str_val(50000);
-        let medium_str = test_utils::str_val(5000);
-        let short_str = test_utils::str_val(50);
+        let long_str = str_val(50000);
+        let medium_str = str_val(5000);
+        let short_str = str_val(50);
 
         map.insert(&0u32, &long_str);
         map.insert(&3u32, &medium_str);
@@ -467,11 +472,7 @@ mod tests {
     fn iter_test() {
         let mut map = StableUnboundedMap::new(VectorMemory::default());
 
-        let strs = [
-            test_utils::str_val(50),
-            test_utils::str_val(5000),
-            test_utils::str_val(50000),
-        ];
+        let strs = [str_val(50), str_val(5000), str_val(50000)];
 
         for i in 0..100u32 {
             map.insert(&i, &strs[i as usize % strs.len()]);
@@ -484,11 +485,7 @@ mod tests {
     fn upper_bound_test() {
         let mut map = StableUnboundedMap::new(VectorMemory::default());
 
-        let strs = [
-            test_utils::str_val(50),
-            test_utils::str_val(5000),
-            test_utils::str_val(50000),
-        ];
+        let strs = [str_val(50), str_val(5000), str_val(50000)];
 
         for i in 0..100u32 {
             map.insert(&i, &strs[i as usize % strs.len()]);
@@ -511,9 +508,9 @@ mod tests {
         let mut map = StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
-        let long_str = test_utils::str_val(50000);
-        let medium_str = test_utils::str_val(5000);
-        let short_str = test_utils::str_val(50);
+        let long_str = str_val(50000);
+        let medium_str = str_val(5000);
+        let short_str = str_val(50);
 
         map.insert(&0u32, &long_str);
         map.insert(&3u32, &medium_str);

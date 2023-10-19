@@ -1,16 +1,15 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 
-use dfinity_stable_structures::BoundedStorable;
-use dfinity_stable_structures::Memory;
+use dfinity_stable_structures::{Memory, Storable};
+use mini_moka::unsync::{Cache, CacheBuilder};
 
 use crate::structure::*;
-use mini_moka::unsync::{Cache, CacheBuilder};
 
 /// A LRU Cache for StableUnboundedMaps
 pub struct CachedStableUnboundedMap<K, V, M>
 where
-    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
     M: Memory,
 {
@@ -20,7 +19,7 @@ where
 
 impl<K, V, M> CachedStableUnboundedMap<K, V, M>
 where
-    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
     M: Memory,
 {
@@ -44,7 +43,7 @@ where
 
 impl<K, V, M> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V, M>
 where
-    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
+    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
     M: Memory,
 {
@@ -96,6 +95,7 @@ where
 
 #[cfg(test)]
 mod tests {
+
     use dfinity_stable_structures::VectorMemory;
 
     use super::*;

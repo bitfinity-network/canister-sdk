@@ -1,19 +1,20 @@
-use std::{collections::BTreeMap, marker::PhantomData};
+use std::collections::BTreeMap;
+use std::marker::PhantomData;
 
-use dfinity_stable_structures::BoundedStorable;
+use dfinity_stable_structures::Storable;
 
 use crate::structure::BTreeMapStructure;
 
 /// Stores key-value data in heap memory.
 pub struct HeapBTreeMap<K, V, M>(BTreeMap<K, V>, PhantomData<M>)
 where
-    K: BoundedStorable + Ord + Clone,
-    V: BoundedStorable + Clone;
+    K: Storable + Ord + Clone,
+    V: Storable + Clone;
 
 impl<K, V, M> HeapBTreeMap<K, V, M>
 where
-    K: BoundedStorable + Ord + Clone,
-    V: BoundedStorable + Clone,
+    K: Storable + Ord + Clone,
+    V: Storable + Clone,
 {
     /// Create new instance of key-value storage.
     pub fn new(_memory: M) -> Self {
@@ -28,8 +29,8 @@ where
 
 impl<K, V, M> BTreeMapStructure<K, V> for HeapBTreeMap<K, V, M>
 where
-    K: BoundedStorable + Ord + Clone,
-    V: BoundedStorable + Clone,
+    K: Storable + Ord + Clone,
+    V: Storable + Clone,
 {
     fn get(&self, key: &K) -> Option<V> {
         self.0.get(key).cloned()

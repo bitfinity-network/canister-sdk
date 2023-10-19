@@ -3,10 +3,10 @@ use std::cmp::min;
 use std::mem::size_of;
 use std::thread::LocalKey;
 
-use dfinity_stable_structures::Memory;
+use dfinity_stable_structures::storable::Bound;
+use dfinity_stable_structures::{Memory, Storable};
 
 use crate::structure::{CellStructure, StableCell, StableVec, VecStructure};
-use crate::{BoundedStorable, Storable};
 
 /// Ring buffer indices state
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -54,9 +54,16 @@ impl StableRingBufferIndices {
     }
 }
 
+const STABLE_RING_BUFFER_INDICES_SIZE: usize = 2 * size_of::<u64>();
+
 impl Storable for StableRingBufferIndices {
+    const BOUND: Bound = Bound::Bounded {
+        max_size: STABLE_RING_BUFFER_INDICES_SIZE as u32,
+        is_fixed_size: true,
+    };
+
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        let mut buf = Vec::with_capacity(Self::MAX_SIZE as _);
+        let mut buf = Vec::with_capacity(STABLE_RING_BUFFER_INDICES_SIZE);
         buf.extend_from_slice(&self.latest.to_le_bytes());
         buf.extend_from_slice(&self.capacity.to_le_bytes());
         buf.into()
@@ -74,22 +81,16 @@ impl Storable for StableRingBufferIndices {
     }
 }
 
-impl BoundedStorable for StableRingBufferIndices {
-    const MAX_SIZE: u32 = 2 * (size_of::<u64>() as u32);
-
-    const IS_FIXED_SIZE: bool = true;
-}
-
 /// Stable ring buffer implementation
 #[derive(Debug)]
-pub struct StableRingBuffer<T: BoundedStorable + Clone + 'static, M: Memory + 'static> {
+pub struct StableRingBuffer<T: Storable + Clone + 'static, M: Memory + 'static> {
     /// Vector with elements
     data: &'static LocalKey<RefCell<StableVec<T, M>>>,
     /// Indices that specify where are the first and last elements in the buffer
     indices: &'static LocalKey<RefCell<StableCell<StableRingBufferIndices, M>>>,
 }
 
-impl<T: BoundedStorable + Clone + 'static, M: Memory + 'static> StableRingBuffer<T, M> {
+impl<T: Storable + Clone + 'static, M: Memory + 'static> StableRingBuffer<T, M> {
     /// Creates new ring buffer
     pub fn new(
         data: &'static LocalKey<RefCell<StableVec<T, M>>>,
@@ -223,12 +224,12 @@ mod tests {
     use std::cell::RefCell;
     use std::fmt::Debug;
 
-    use crate::BoundedStorable;
     use candid::Principal;
     use dfinity_stable_structures::VectorMemory;
     use ic_exports::ic_kit::MockContext;
 
     use super::*;
+    use crate::Storable;
 
     /// Check the roundtrip value -> bytes -> value for `Storable` object
     fn test_storable_roundtrip<Val: Storable + Eq + std::fmt::Debug>(value: &Val) {
@@ -315,7 +316,7 @@ mod tests {
         });
     }
 
-    fn check_buffer<T: BoundedStorable + Eq + Debug + Clone, M: Memory>(
+    fn check_buffer<T: Storable + Eq + Debug + Clone, M: Memory>(
         buffer: &StableRingBuffer<T, M>,
         expected: &Vec<T>,
     ) {

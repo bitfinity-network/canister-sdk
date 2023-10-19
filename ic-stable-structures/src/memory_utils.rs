@@ -1,9 +1,7 @@
 use std::thread::LocalKey;
 
-use dfinity_stable_structures::{
-    memory_manager::{MemoryId, MemoryManager, VirtualMemory},
-    Memory,
-};
+use dfinity_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
+use dfinity_stable_structures::Memory;
 
 #[cfg(not(target_family = "wasm"))]
 pub type DefaultMemoryResourceType = dfinity_stable_structures::VectorMemory;

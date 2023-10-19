@@ -1,14 +1,15 @@
 use std::marker::PhantomData;
 
-use dfinity_stable_structures::BoundedStorable;
+use dfinity_stable_structures::Storable;
 
-use crate::{structure::VecStructure, Result};
+use crate::structure::VecStructure;
+use crate::Result;
 
-pub struct HeapVec<T: BoundedStorable + Clone, M>(Vec<T>, PhantomData<M>);
+pub struct HeapVec<T: Storable + Clone, M>(Vec<T>, PhantomData<M>);
 
 /// A stable analogue of the `std::vec::Vec`:
 /// integer-indexed collection of mutable values that is able to grow.
-impl<T: BoundedStorable + Clone, M> HeapVec<T, M> {
+impl<T: Storable + Clone, M> HeapVec<T, M> {
     /// Creates new `StableVec`
     pub fn new(_memory: M) -> Result<Self> {
         Ok(Self(vec![], Default::default()))
@@ -20,7 +21,7 @@ impl<T: BoundedStorable + Clone, M> HeapVec<T, M> {
     }
 }
 
-impl<T: BoundedStorable + Clone, M> VecStructure<T> for HeapVec<T, M> {
+impl<T: Storable + Clone, M> VecStructure<T> for HeapVec<T, M> {
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

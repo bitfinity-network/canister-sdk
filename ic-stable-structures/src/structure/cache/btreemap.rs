@@ -1,14 +1,16 @@
-use std::{cell::RefCell, hash::Hash};
+use std::cell::RefCell;
+use std::hash::Hash;
+
+use dfinity_stable_structures::{Memory, Storable};
+use mini_moka::unsync::{Cache, CacheBuilder};
 
 use crate::structure::*;
-use dfinity_stable_structures::{BoundedStorable, Memory};
-use mini_moka::unsync::{Cache, CacheBuilder};
 
 /// A LRU Cache for StableBTreeMap
 pub struct CachedStableBTreeMap<K, V, M>
 where
-    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone,
+    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone,
     M: Memory,
 {
     inner: StableBTreeMap<K, V, M>,
@@ -17,8 +19,8 @@ where
 
 impl<K, V, M> CachedStableBTreeMap<K, V, M>
 where
-    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone,
+    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone,
     M: Memory,
 {
     /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
@@ -41,8 +43,8 @@ where
 
 impl<K, V, M> BTreeMapStructure<K, V> for CachedStableBTreeMap<K, V, M>
 where
-    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone,
+    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone,
     M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
@@ -96,8 +98,8 @@ where
 #[cfg(not(feature = "always-heap"))]
 impl<K, V, M> IterableSortedMapStructure<K, V> for CachedStableBTreeMap<K, V, M>
 where
-    K: BoundedStorable + Clone + Hash + Eq + PartialEq + Ord,
-    V: BoundedStorable + Clone,
+    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone,
     M: Memory,
 {
     type Iterator<'a> = dfinity_stable_structures::btreemap::Iter<'a, K, V, M> where Self: 'a;
@@ -119,9 +121,8 @@ where
 mod tests {
     use dfinity_stable_structures::VectorMemory;
 
-    use crate::test_utils::Array;
-
     use super::*;
+    use crate::test_utils::Array;
 
     #[test]
     fn should_get_and_insert() {

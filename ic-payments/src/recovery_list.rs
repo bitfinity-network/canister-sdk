@@ -2,10 +2,10 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 
 use candid::Encode;
+use ic_stable_structures::stable_structures::storable::Bound;
 use ic_stable_structures::{
-    get_memory_by_id, BoundedStorable, DefaultMemoryManager, DefaultMemoryResourceType,
-    DefaultMemoryType, MemoryId, SlicedStorable, StableUnboundedMap, Storable,
-    UnboundedMapStructure,
+    get_memory_by_id, DefaultMemoryManager, DefaultMemoryResourceType, DefaultMemoryType, MemoryId,
+    SlicedStorable, StableUnboundedMap, Storable, UnboundedMapStructure,
 };
 
 use crate::Transfer;
@@ -42,11 +42,11 @@ impl Storable for TransferKey {
         bytes.copy_from_slice(&input);
         Self(bytes)
     }
-}
 
-impl BoundedStorable for TransferKey {
-    const MAX_SIZE: u32 = 32;
-    const IS_FIXED_SIZE: bool = true;
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 32,
+        is_fixed_size: true,
+    };
 }
 
 #[derive(Clone)]
@@ -61,6 +61,8 @@ impl Storable for TransferValue {
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Self(candid::decode_one(&bytes).expect("deserialization of transfer failed"))
     }
+
+    const BOUND: Bound = Bound::Unbounded;
 }
 
 /// The only variable size part of the transfer is memo, which is usually 32 bytes. We use 60 bytes

@@ -50,6 +50,7 @@ mod types {
 
     use std::borrow::Cow;
 
+    use ic_stable_structures::stable_structures::storable::Bound;
     use ic_stable_structures::stable_structures::Storable;
     use ic_stable_structures::{ChunkSize, SlicedStorable};
 
@@ -64,6 +65,8 @@ mod types {
         fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
             Self(String::from_bytes(bytes))
         }
+
+        const BOUND: Bound = Bound::Unbounded;
     }
 
     impl SlicedStorable for StringValue {

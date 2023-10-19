@@ -10,10 +10,7 @@ mod stable_storage;
 pub use cache::*;
 pub use common::*;
 pub use heap::*;
-
 pub use stable_storage::*;
-
-pub use heap::*;
 
 pub trait BTreeMapStructure<K, V> {
     /// Return value associated with `key` from stable memory.

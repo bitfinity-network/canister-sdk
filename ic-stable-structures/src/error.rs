@@ -1,4 +1,4 @@
-use dfinity_stable_structures::{btreemap, cell, log, vec, GrowFailed};
+use dfinity_stable_structures::{cell, log, vec, GrowFailed};
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -30,15 +30,6 @@ impl From<cell::ValueError> for Error {
     fn from(e: cell::ValueError) -> Self {
         match e {
             cell::ValueError::ValueTooLarge { value_size } => Self::ValueTooLarge(value_size),
-        }
-    }
-}
-
-impl From<btreemap::InsertError> for Error {
-    fn from(e: btreemap::InsertError) -> Self {
-        match e {
-            btreemap::InsertError::KeyTooLarge { given, .. } => Self::ValueTooLarge(given as _),
-            btreemap::InsertError::ValueTooLarge { given, .. } => Self::ValueTooLarge(given as _),
         }
     }
 }

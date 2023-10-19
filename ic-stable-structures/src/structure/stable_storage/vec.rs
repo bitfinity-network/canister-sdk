@@ -1,13 +1,13 @@
-use dfinity_stable_structures::{vec, BoundedStorable, Memory};
+use dfinity_stable_structures::{vec, Memory, Storable};
 
 use crate::structure::VecStructure;
 use crate::Result;
 
-pub struct StableVec<T: BoundedStorable, M: Memory>(Option<vec::Vec<T, M>>);
+pub struct StableVec<T: Storable, M: Memory>(Option<vec::Vec<T, M>>);
 
 /// A stable analogue of the `std::vec::Vec`:
 /// integer-indexed collection of mutable values that is able to grow.
-impl<T: BoundedStorable, M: Memory> StableVec<T, M> {
+impl<T: Storable, M: Memory> StableVec<T, M> {
     /// Creates new `StableVec`
     pub fn new(memory: M) -> Result<Self> {
         Ok(Self(Some(vec::Vec::init(memory)?)))
@@ -27,7 +27,7 @@ impl<T: BoundedStorable, M: Memory> StableVec<T, M> {
     }
 }
 
-impl<T: BoundedStorable, M: Memory> VecStructure<T> for StableVec<T, M> {
+impl<T: Storable, M: Memory> VecStructure<T> for StableVec<T, M> {
     fn is_empty(&self) -> bool {
         self.get_inner().is_empty()
     }
@@ -67,8 +67,9 @@ impl<T: BoundedStorable, M: Memory> VecStructure<T> for StableVec<T, M> {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
     use dfinity_stable_structures::VectorMemory;
+
+    use super::*;
 
     #[test]
     fn vec_works() {
@@ -125,5 +126,15 @@ mod tests {
         assert_eq!(vec.len(), 0);
         assert_eq!(vec.get(0), None);
         assert_eq!(None, vec.iter().next());
+    }
+
+    #[should_panic]
+    #[test]
+    fn vec_unbounded_items() {
+        let mut vec = StableVec::<String, _>::new(VectorMemory::default()).unwrap();
+
+        let item = "I am an unbounded item".to_string();
+        vec.push(&item).unwrap();
+        assert_eq!(Some(item), vec.get(0));
     }
 }

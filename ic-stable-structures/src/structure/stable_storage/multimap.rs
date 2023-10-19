@@ -1,9 +1,11 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use dfinity_stable_structures::{btreemap, BoundedStorable, Memory, StableBTreeMap, Storable};
+use dfinity_stable_structures::storable::Bound;
+use dfinity_stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 
 use crate::structure::MultimapStructure;
+use crate::Bounds;
 
 // Keys memory layout:
 //
@@ -29,30 +31,32 @@ use crate::structure::MultimapStructure;
 /// to fetch all values by the root key, or a single value by specifying both keys.
 pub struct StableMultimap<K1, K2, V, M>(StableBTreeMap<KeyPair<K1, K2>, Value<V>, M>)
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory;
 
 impl<K1, K2, V, M> StableMultimap<K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     /// Create a new instance of a `StableMultimap`.
     /// All keys and values byte representations should be less then related `..._max_size` arguments.
     pub fn new(memory: M) -> Self {
+        let _ = KeyPair::<K1, K2>::K1_BOUNDS;
+        let _ = KeyPair::<K1, K2>::K2_BOUNDS;
         Self(StableBTreeMap::init(memory))
     }
 }
 
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     type Iterator<'a> = StableMultimapIter<'a, K1, K2, V, M> where Self: 'a;
@@ -122,45 +126,61 @@ where
 
 struct KeyPair<K1, K2> {
     encoded: Vec<u8>,
-    first_key_len: usize,
     _p: PhantomData<(K1, K2)>,
 }
 
-impl<K1: BoundedStorable, K2: BoundedStorable> Clone for KeyPair<K1, K2> {
+impl<K1: Storable, K2: Storable> Clone for KeyPair<K1, K2> {
     fn clone(&self) -> Self {
         Self {
             encoded: self.encoded.clone(),
-            first_key_len: self.first_key_len,
-            _p: PhantomData,
+            _p: self._p,
         }
     }
 }
 
-impl<K1: BoundedStorable, K2: BoundedStorable> PartialEq for KeyPair<K1, K2> {
+impl<K1: Storable, K2: Storable> PartialEq for KeyPair<K1, K2> {
     fn eq(&self, other: &Self) -> bool {
-        self.encoded == other.encoded && self.first_key_len == other.first_key_len
+        self.encoded == other.encoded
     }
 }
 
-impl<K1: BoundedStorable, K2: BoundedStorable> Eq for KeyPair<K1, K2> {}
+impl<K1: Storable, K2: Storable> Eq for KeyPair<K1, K2> {}
 
-impl<K1: BoundedStorable, K2: BoundedStorable> PartialOrd for KeyPair<K1, K2> {
+impl<K1: Storable, K2: Storable> PartialOrd for KeyPair<K1, K2> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<K1: BoundedStorable, K2: BoundedStorable> Ord for KeyPair<K1, K2> {
+impl<K1: Storable, K2: Storable> Ord for KeyPair<K1, K2> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.encoded.cmp(&other.encoded)
     }
 }
 
+const fn to_key_bounds<K: Storable>() -> Bounds {
+    match K::BOUND {
+        Bound::Unbounded => panic!("Multimap keys must be bounded and fixed size"),
+        Bound::Bounded {
+            max_size,
+            is_fixed_size,
+        } => {
+            if !is_fixed_size {
+                panic!("Multimap keys must be bounded and fixed size")
+            }
+            Bounds::new(max_size as usize, is_fixed_size)
+        }
+    }
+}
+
 impl<K1, K2> KeyPair<K1, K2>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
 {
+    const K1_BOUNDS: Bounds = to_key_bounds::<K1>();
+    const K2_BOUNDS: Bounds = to_key_bounds::<K2>();
+
     /// # Preconditions:
     ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
     ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
@@ -168,121 +188,77 @@ where
         let first_key_bytes = first_key.to_bytes();
         let second_key_bytes = second_key.to_bytes();
 
-        assert!(first_key_bytes.len() <= K1::MAX_SIZE as usize);
-        assert!(second_key_bytes.len() <= K2::MAX_SIZE as usize);
+        assert!(first_key_bytes.len() <= Self::K1_BOUNDS.max_size);
+        assert!(second_key_bytes.len() <= Self::K2_BOUNDS.max_size);
 
-        let full_len = Self::size_prefix_len() + first_key_bytes.len() + second_key_bytes.len();
+        let full_len = Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size;
         let mut buffer = Vec::with_capacity(full_len);
-        Self::push_size_prefix(&mut buffer, first_key_bytes.len());
         buffer.extend_from_slice(&first_key_bytes);
         buffer.extend_from_slice(&second_key_bytes);
 
         Self {
             encoded: buffer,
-            first_key_len: first_key_bytes.len(),
             _p: PhantomData,
         }
     }
 
     pub fn first_key(&self) -> K1 {
-        let offset = Self::size_prefix_len();
-        K1::from_bytes(self.encoded[offset..offset + self.first_key_len].into())
+        K1::from_bytes(self.encoded[..Self::K1_BOUNDS.max_size].into())
+    }
+
+    pub fn second_key(&self) -> K2 {
+        K2::from_bytes(self.encoded[Self::K1_BOUNDS.max_size..].into())
     }
 
     /// Minimum possible `KeyPair` for the specified `first_key`.
     pub fn min_key(first_key: &K1) -> Self {
-        let first_key_bytes = first_key.to_bytes();
+        let mut first_key_bytes = first_key.to_bytes().to_vec();
 
-        assert!(first_key_bytes.len() <= K1::MAX_SIZE as usize);
+        assert!(first_key_bytes.len() == Self::K1_BOUNDS.max_size);
 
-        let full_len = Self::size_prefix_len() + first_key_bytes.len();
-        let mut buffer = Vec::with_capacity(full_len);
-        Self::push_size_prefix(&mut buffer, first_key_bytes.len());
-        buffer.extend_from_slice(&first_key_bytes);
+        first_key_bytes.resize(Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size, 0x0);
 
         Self {
-            encoded: buffer,
-            first_key_len: first_key_bytes.len(),
+            encoded: first_key_bytes,
             _p: PhantomData,
         }
     }
 
     /// Maximum possible `KeyPair` for the specified `first_key`.
     pub fn max_key(first_key: &K1) -> Self {
-        let first_key_bytes = first_key.to_bytes();
+        let mut first_key_bytes = first_key.to_bytes().to_vec();
 
-        assert!(first_key_bytes.len() <= K1::MAX_SIZE as usize);
+        assert!(first_key_bytes.len() == Self::K1_BOUNDS.max_size);
 
-        let full_len = Self::size_prefix_len() + first_key_bytes.len();
-        let mut buffer = Vec::with_capacity(full_len);
-        Self::push_size_prefix(&mut buffer, first_key_bytes.len());
-        buffer.extend_from_slice(&first_key_bytes);
-        buffer.resize(Self::MAX_SIZE as _, 0xFF);
+        first_key_bytes.resize(Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size, 0xFF);
 
         Self {
-            encoded: buffer,
-            first_key_len: first_key_bytes.len(),
+            encoded: first_key_bytes,
             _p: PhantomData,
         }
-    }
-
-    pub fn second_key(&self) -> K2 {
-        let offset = Self::size_prefix_len() + self.first_key_len;
-        K2::from_bytes(self.encoded[offset..].into())
-    }
-
-    fn push_size_prefix(buf: &mut Vec<u8>, first_key_size: usize) {
-        buf.extend_from_slice(&first_key_size.to_le_bytes()[..Self::size_prefix_len()]);
-    }
-
-    const fn size_prefix_len() -> usize {
-        const U8_MAX: u32 = u8::MAX as u32;
-        const U8_END: u32 = U8_MAX + 1;
-        const U16_MAX: u32 = u16::MAX as u32;
-
-        match K1::MAX_SIZE {
-            0..=U8_MAX => 1,
-            U8_END..=U16_MAX => 2,
-            _ => 4,
-        }
-    }
-
-    fn read_first_key_len(encoded: &[u8]) -> usize {
-        let mut size_bytes = [0u8; 4];
-        let size_prefix_len = Self::size_prefix_len();
-        size_bytes[..size_prefix_len].copy_from_slice(&encoded[..size_prefix_len]);
-        u32::from_le_bytes(size_bytes) as _
     }
 }
 
 impl<K1, K2> Storable for KeyPair<K1, K2>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
 {
     fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::Borrowed(&self.encoded)
     }
 
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
-        let first_key_len = Self::read_first_key_len(&bytes);
-
         Self {
             encoded: bytes.to_vec(),
-            first_key_len,
             _p: PhantomData,
         }
     }
-}
 
-impl<K1, K2> BoundedStorable for KeyPair<K1, K2>
-where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-{
-    const MAX_SIZE: u32 = Self::size_prefix_len() as u32 + K1::MAX_SIZE + K2::MAX_SIZE;
-
-    const IS_FIXED_SIZE: bool = false;
+    const BOUND: Bound = Bound::Bounded {
+        max_size: (Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size) as u32,
+        is_fixed_size: true,
+    };
 }
 
 struct Value<V>(Vec<u8>, PhantomData<V>);
@@ -299,7 +275,9 @@ impl<V: Storable> From<&V> for Value<V> {
     }
 }
 
-impl<V> Storable for Value<V> {
+impl<V: Storable> Storable for Value<V> {
+    const BOUND: dfinity_stable_structures::storable::Bound = V::BOUND;
+
     fn to_bytes(&self) -> Cow<'_, [u8]> {
         Cow::Borrowed(&self.0)
     }
@@ -309,17 +287,12 @@ impl<V> Storable for Value<V> {
     }
 }
 
-impl<V: BoundedStorable> BoundedStorable for Value<V> {
-    const MAX_SIZE: u32 = V::MAX_SIZE;
-    const IS_FIXED_SIZE: bool = V::IS_FIXED_SIZE;
-}
-
 /// Range iterator
 pub struct StableMultimapRangeIter<'a, K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>,
@@ -327,9 +300,9 @@ where
 
 impl<'a, K1, K2, V, M> StableMultimapRangeIter<'a, K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
@@ -342,9 +315,9 @@ where
 // -----------------------------------------------------------------------------
 impl<'a, K1, K2, V, M> Iterator for StableMultimapRangeIter<'a, K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     type Item = (K2, V);
@@ -358,16 +331,16 @@ where
 
 pub struct StableMultimapIter<'a, K1, K2, V, M>(btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>)
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory;
 
 impl<'a, K1, K2, V, M> StableMultimapIter<'a, K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
@@ -377,9 +350,9 @@ where
 
 impl<'a, K1, K2, V, M> Iterator for StableMultimapIter<'a, K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     type Item = (K1, K2, V);
@@ -395,9 +368,9 @@ where
 
 impl<'a, K1, K2, V, M> IntoIterator for &'a StableMultimap<K1, K2, V, M>
 where
-    K1: BoundedStorable,
-    K2: BoundedStorable,
-    V: BoundedStorable,
+    K1: Storable,
+    K2: Storable,
+    V: Storable,
     M: Memory,
 {
     type Item = (K1, K2, V);
@@ -434,7 +407,8 @@ mod test {
 
     #[test]
     fn inserts() {
-        let mut mm = StableMultimap::new(VectorMemory::default());
+        let mut mm: StableMultimap<Array<1>, Array<2>, Array<1>, _> =
+            StableMultimap::new(VectorMemory::default());
         for i in 0..10 {
             let k1 = Array([i; 1]);
             let k2 = Array([i * 10; 2]);
