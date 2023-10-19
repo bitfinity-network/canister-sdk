@@ -2,10 +2,10 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 
 use candid::Encode;
+use ic_stable_structures::stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::stable_structures::storable::Bound;
 use ic_stable_structures::{
-    get_memory_by_id, DefaultMemoryManager, DefaultMemoryResourceType, DefaultMemoryType, MemoryId,
-    SlicedStorable, StableUnboundedMap, Storable, UnboundedMapStructure,
+    MemoryId, SlicedStorable, StableUnboundedMap, Storable, UnboundedMapStructure, MemoryManager, VirtualMemory,
 };
 
 use crate::Transfer;
@@ -17,9 +17,9 @@ pub trait RecoveryList: Sync + Send {
 }
 
 thread_local! {
-    static MEMORY_MANAGER: DefaultMemoryManager = DefaultMemoryManager::init(DefaultMemoryResourceType::default());
+    static MEMORY_MANAGER: MemoryManager<DefaultMemoryImpl> = MemoryManager::init(DefaultMemoryImpl::default());
 
-    static RECOVERY_LIST_STORAGE: RefCell<Option<StableUnboundedMap<TransferKey, TransferValue, DefaultMemoryType>>> =
+    static RECOVERY_LIST_STORAGE: RefCell<Option<StableUnboundedMap<TransferKey, TransferValue, VirtualMemory<DefaultMemoryImpl>>>> =
         RefCell::new(None);
 }
 
@@ -79,12 +79,12 @@ pub struct StableRecoveryList<const MEM_ID: u8>;
 impl<const MEM_ID: u8> StableRecoveryList<MEM_ID> {
     fn with_storage<R>(
         &self,
-        f: impl Fn(&mut StableUnboundedMap<TransferKey, TransferValue, DefaultMemoryType>) -> R,
+        f: impl Fn(&mut StableUnboundedMap<TransferKey, TransferValue, VirtualMemory<DefaultMemoryImpl>>) -> R,
     ) -> R {
         RECOVERY_LIST_STORAGE.with(|v| {
             let mut map = v.borrow_mut();
             let map = map.get_or_insert_with(|| {
-                StableUnboundedMap::new(get_memory_by_id(&MEMORY_MANAGER, MemoryId::new(MEM_ID)))
+                StableUnboundedMap::new(MEMORY_MANAGER.with(|mm| mm.get(MemoryId::new(MEM_ID))))
             });
             f(map)
         })
