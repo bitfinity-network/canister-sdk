@@ -2,7 +2,8 @@ use std::cell::RefCell;
 
 use ic_canister::{generate_exports, generate_idl, query, update, Canister, Idl, PreUpdate};
 use ic_exports::candid::Principal;
-use ic_stable_structures::{MemoryId, StableCell, MemoryManager, stable_structures::DefaultMemoryImpl, VirtualMemory, CellStructure};
+use ic_stable_structures::stable_structures::DefaultMemoryImpl;
+use ic_stable_structures::{CellStructure, MemoryId, MemoryManager, StableCell, VirtualMemory};
 
 const MEMORY_ID: MemoryId = MemoryId::new(0);
 

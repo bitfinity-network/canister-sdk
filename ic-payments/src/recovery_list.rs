@@ -2,10 +2,11 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 
 use candid::Encode;
-use ic_stable_structures::stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::stable_structures::storable::Bound;
+use ic_stable_structures::stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{
-    MemoryId, SlicedStorable, StableUnboundedMap, Storable, UnboundedMapStructure, MemoryManager, VirtualMemory,
+    MemoryId, MemoryManager, SlicedStorable, StableUnboundedMap, Storable, UnboundedMapStructure,
+    VirtualMemory,
 };
 
 use crate::Transfer;
@@ -79,7 +80,9 @@ pub struct StableRecoveryList<const MEM_ID: u8>;
 impl<const MEM_ID: u8> StableRecoveryList<MEM_ID> {
     fn with_storage<R>(
         &self,
-        f: impl Fn(&mut StableUnboundedMap<TransferKey, TransferValue, VirtualMemory<DefaultMemoryImpl>>) -> R,
+        f: impl Fn(
+            &mut StableUnboundedMap<TransferKey, TransferValue, VirtualMemory<DefaultMemoryImpl>>,
+        ) -> R,
     ) -> R {
         RECOVERY_LIST_STORAGE.with(|v| {
             let mut map = v.borrow_mut();

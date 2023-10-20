@@ -5,8 +5,8 @@ use std::num::NonZeroU64;
 use dfinity_stable_structures::storable::Bound;
 use dfinity_stable_structures::{Memory, Storable};
 
-use crate::Result;
 use crate::structure::{CellStructure, StableCell, StableVec, VecStructure};
+use crate::Result;
 
 /// Ring buffer indices state
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -118,29 +118,31 @@ pub struct StableRingBuffer<T: Storable + Clone, DataMemory: Memory, IndicesMemo
     indices: StableCell<StableRingBufferIndices, IndicesMemory>,
 }
 
-impl<T: Storable + Clone, DataMemory: Memory, IndicesMemory: Memory> StableRingBuffer<T, DataMemory, IndicesMemory> {
+impl<T: Storable + Clone, DataMemory: Memory, IndicesMemory: Memory>
+    StableRingBuffer<T, DataMemory, IndicesMemory>
+{
     /// Creates new ring buffer
     pub fn new(
         data_memory: DataMemory,
         indices_memory: IndicesMemory,
-        default_history_size: NonZeroU64
-    )  -> Result<Self> {
-        Ok(Self { 
-            data: StableVec::new(data_memory)?, 
-            indices: StableCell::new(indices_memory, StableRingBufferIndices::new(default_history_size))?
+        default_history_size: NonZeroU64,
+    ) -> Result<Self> {
+        Ok(Self {
+            data: StableVec::new(data_memory)?,
+            indices: StableCell::new(
+                indices_memory,
+                StableRingBufferIndices::new(default_history_size),
+            )?,
         })
     }
 
-        /// Creates new ring buffer
-        pub fn new_with(
-            data: StableVec<T, DataMemory>,
-            indices: StableCell<StableRingBufferIndices, IndicesMemory>,
-        )  -> Self {
-            Self { 
-                data,
-                indices
-            }
-        }
+    /// Creates new ring buffer
+    pub fn new_with(
+        data: StableVec<T, DataMemory>,
+        indices: StableCell<StableRingBufferIndices, IndicesMemory>,
+    ) -> Self {
+        Self { data, indices }
+    }
 
     /// Removes all elements in the buffer
     pub fn clear(&mut self) {
@@ -277,12 +279,13 @@ impl<T: Storable + Clone, DataMemory: Memory, IndicesMemory: Memory> StableRingB
         &mut self,
         f: impl Fn(&mut StableRingBufferIndices, &mut StableVec<T, DataMemory>) -> R,
     ) -> R {
-            let mut indices = self.indices.get().clone();
-            let result = f(&mut indices, &mut self.data);
-            self.indices.set(indices).expect("failed to update the indices");
-            result
+        let mut indices = self.indices.get().clone();
+        let result = f(&mut indices, &mut self.data);
+        self.indices
+            .set(indices)
+            .expect("failed to update the indices");
+        result
     }
-
 }
 
 #[cfg(test)]
@@ -365,14 +368,23 @@ mod tests {
         assert_eq!(None, buffer.nth_element(expected.len() as _));
     }
 
-    fn with_buffer(capacity: u64, f: impl Fn(&mut StableRingBuffer<u64, VectorMemory, VectorMemory>)) {
+    fn with_buffer(
+        capacity: u64,
+        f: impl Fn(&mut StableRingBuffer<u64, VectorMemory, VectorMemory>),
+    ) {
         let mock_canister_id = Principal::from_slice(&[42; 29]);
         MockContext::new()
             .with_id(mock_canister_id)
             .with_caller(mock_canister_id)
             .inject();
 
-        let mut buffer = StableRingBuffer::new(VectorMemory::default(), VectorMemory::default(), NonZeroU64::new(2).unwrap()).unwrap();        buffer.clear();
+        let mut buffer = StableRingBuffer::new(
+            VectorMemory::default(),
+            VectorMemory::default(),
+            NonZeroU64::new(2).unwrap(),
+        )
+        .unwrap();
+        buffer.clear();
         buffer.resize(capacity.try_into().unwrap());
 
         f(&mut buffer);

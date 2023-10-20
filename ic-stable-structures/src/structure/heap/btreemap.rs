@@ -51,7 +51,7 @@ where
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-    
+
     fn contains_key(&self, key: &K) -> bool {
         self.0.contains_key(key)
     }
