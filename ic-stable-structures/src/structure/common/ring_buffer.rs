@@ -4,6 +4,7 @@ use std::mem::size_of;
 use dfinity_stable_structures::storable::Bound;
 use dfinity_stable_structures::{Memory, Storable};
 
+use crate::Result;
 use crate::structure::{CellStructure, StableCell, StableVec, VecStructure};
 
 /// Ring buffer indices state
@@ -93,13 +94,23 @@ impl<T: Storable + Clone, DataMemory: Memory, IndicesMemory: Memory> StableRingB
         data_memory: DataMemory,
         indices_memory: IndicesMemory,
         default_history_size: u64
-    ) -> Self {
-        Self { 
-            data: StableVec::new(data_memory).expect("failed to initialize history roots vector"), 
-            indices: StableCell::new(indices_memory, StableRingBufferIndices::new(default_history_size))
-            .expect("failed to initialize RingBuffer stable storage for indices")
-        }
+    )  -> Result<Self> {
+        Ok(Self { 
+            data: StableVec::new(data_memory)?, 
+            indices: StableCell::new(indices_memory, StableRingBufferIndices::new(default_history_size))?
+        })
     }
+
+        /// Creates new ring buffer
+        pub fn new_with(
+            data: StableVec<T, DataMemory>,
+            indices: StableCell<StableRingBufferIndices, IndicesMemory>,
+        )  -> Self {
+            Self { 
+                data,
+                indices
+            }
+        }
 
     /// Removes all elements in the buffer
     pub fn clear(&mut self) {
@@ -333,7 +344,7 @@ mod tests {
             .with_caller(mock_canister_id)
             .inject();
 
-        let mut buffer = StableRingBuffer::new(VectorMemory::default(), VectorMemory::default(), 2);
+        let mut buffer = StableRingBuffer::new(VectorMemory::default(), VectorMemory::default(), 2).unwrap();
         buffer.clear();
         buffer.resize(capacity);
 

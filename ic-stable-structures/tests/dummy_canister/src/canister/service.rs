@@ -41,7 +41,7 @@ thread_local! {
     };
 
     static TX_RING_BUFFER: RefCell<StableRingBuffer<BoundedTransaction, VirtualMemory<DefaultMemoryImpl>, VirtualMemory<DefaultMemoryImpl>>> = {
-        RefCell::new(StableRingBuffer::new(MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_VEC_MEMORY_ID)), MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_INDICES_MEMORY_ID)), 4))
+        RefCell::new(StableRingBuffer::new(MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_VEC_MEMORY_ID)), MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_INDICES_MEMORY_ID)), 4).expect("failed to create ring buffer"))
     };
 
 }
