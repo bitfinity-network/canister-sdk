@@ -40,18 +40,9 @@ thread_local! {
         RefCell::new(StableVec::new(MEMORY_MANAGER.with(|mm| mm.get(TX_VEC_MEMORY_ID))).expect("failed to create stable vec"))
     };
 
-    static TX_RING_BUFFER_DATA: RefCell<StableVec<BoundedTransaction, VirtualMemory<DefaultMemoryImpl>>> = {
-        RefCell::new(StableVec::new(MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_VEC_MEMORY_ID))).expect("failed to create stable vec"))
+    static TX_RING_BUFFER: RefCell<StableRingBuffer<BoundedTransaction, VirtualMemory<DefaultMemoryImpl>, VirtualMemory<DefaultMemoryImpl>>> = {
+        RefCell::new(StableRingBuffer::new(MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_VEC_MEMORY_ID)), MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_INDICES_MEMORY_ID)), 4))
     };
-
-    static TX_RING_BUFFER_INDICES: RefCell<StableCell<StableRingBufferIndices, VirtualMemory<DefaultMemoryImpl>>> = {
-        RefCell::new(StableCell::new(MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_INDICES_MEMORY_ID)), StableRingBufferIndices::new(4)).expect("failed to create stable cell"))
-    };
-
-    static TX_RING_BUFFER: RefCell<StableRingBuffer<BoundedTransaction, VirtualMemory<DefaultMemoryImpl>>> = {
-        RefCell::new(StableRingBuffer::new(&TX_RING_BUFFER_DATA, &TX_RING_BUFFER_INDICES))
-    };
-
 
 }
 
