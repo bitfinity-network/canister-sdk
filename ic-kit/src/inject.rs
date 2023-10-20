@@ -33,9 +33,8 @@ pub fn get_context() -> &'static mut MockContext {
 mod tests {
     use std::thread;
 
-    use crate::{Context, MockContext};
-
     use super::get_context;
+    use crate::{Context, MockContext};
 
     #[test]
     fn separate_context_for_thread() {

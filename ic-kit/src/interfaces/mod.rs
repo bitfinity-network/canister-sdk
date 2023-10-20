@@ -1,6 +1,5 @@
 use crate::candid::utils::{ArgumentDecoder, ArgumentEncoder};
-use crate::ic;
-use crate::{CallResponse, Principal};
+use crate::{ic, CallResponse, Principal};
 
 pub mod management;
 

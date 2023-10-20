@@ -1,8 +1,10 @@
-use super::account::{Account, Subaccount};
+use std::fmt;
+
 use candid::{CandidType, Deserialize, Nat};
 use serde::Serialize;
 use serde_bytes::ByteBuf;
-use std::fmt;
+
+use super::account::{Account, Subaccount};
 
 pub type NumTokens = Nat;
 pub type BlockIndex = Nat;

@@ -2,8 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use candid::utils::{ArgumentDecoder, ArgumentEncoder};
-use candid::{self, Principal};
-use candid::{decode_args, encode_args};
+use candid::{self, decode_args, encode_args, Principal};
 use ic_cdk::api::call::CallResult;
 
 pub type CallResponse<T> = Pin<Box<dyn Future<Output = CallResult<T>>>>;

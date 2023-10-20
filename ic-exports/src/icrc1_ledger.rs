@@ -1,11 +1,12 @@
-use crate::icrc_types::icrc::generic_metadata_value::MetadataValue;
-use crate::icrc_types::icrc1::account::Account;
 /// This structs are extracted from:
 /// https://github.com/dfinity/ic/blob/master/rs/rosetta-api/icrc1/ledger/src/lib.rs
 ///
 /// They need to be replaced with the official ones once they are available in crates.io
 use candid::{CandidType, Nat, Principal};
 use serde::{Deserialize, Serialize};
+
+use crate::icrc_types::icrc::generic_metadata_value::MetadataValue;
+use crate::icrc_types::icrc1::account::Account;
 
 #[derive(Deserialize, CandidType, Clone, Debug, PartialEq, Eq)]
 pub struct InitArgs {

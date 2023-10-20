@@ -1,11 +1,11 @@
 use std::cell::RefCell;
+use std::marker::PhantomData;
+use std::rc::Rc;
 
 use candid::Principal;
 use ic_canister::{generate_idl, init, query, update, Canister, Idl, PreUpdate};
 use ic_log::{init_log, LogSettings, LoggerConfig};
 use log::{debug, error, info};
-use std::marker::PhantomData;
-use std::rc::Rc;
 
 #[derive(Canister)]
 pub struct LogCanister {

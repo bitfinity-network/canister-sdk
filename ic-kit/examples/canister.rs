@@ -15,8 +15,9 @@ async fn send_cycles(canister_id: Principal, cycles: u64) -> Result<(), String> 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ic_kit::{mock_principals, MockContext};
+
+    use super::*;
 
     #[test]
     fn test_whoami() {

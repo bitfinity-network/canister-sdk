@@ -1,6 +1,5 @@
 use ic_canister::virtual_canister_call;
 use ic_exports::candid::{CandidType, Nat, Principal};
-
 use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
 use ic_exports::icrc_types::icrc1::transfer::{Memo, TransferArg, TransferError};
 use serde::Deserialize;

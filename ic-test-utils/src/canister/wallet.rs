@@ -17,7 +17,8 @@ use std::thread;
 use std::time::Duration;
 
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
-use ic_agent::{agent::UpdateBuilder, Agent};
+use ic_agent::agent::UpdateBuilder;
+use ic_agent::Agent;
 
 use super::Canister;
 use crate::{Error, Result};
