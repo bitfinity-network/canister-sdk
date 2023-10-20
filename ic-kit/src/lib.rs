@@ -9,10 +9,9 @@ mod mock;
 #[cfg(target_family = "wasm")]
 mod wasm;
 
-pub use candid;
 pub use candid::Principal;
 pub use ic_cdk::api::call::{CallResult, RejectionCode};
-pub use ic_cdk_macros as macros;
+pub use {candid, ic_cdk_macros as macros};
 
 /// A set of mock principal IDs useful for testing.
 #[cfg(not(target_family = "wasm"))]

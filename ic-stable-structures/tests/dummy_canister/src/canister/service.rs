@@ -1,7 +1,7 @@
-use ic_stable_structures::*;
 use std::cell::RefCell;
 
 use did::*;
+use ic_stable_structures::*;
 
 const TX_UNBOUNDEDMAP_MEMORY_ID: MemoryId = MemoryId::new(1);
 const TX_VEC_MEMORY_ID: MemoryId = MemoryId::new(2);
@@ -22,14 +22,14 @@ thread_local! {
 
     static TX_CELL: RefCell<StableCell<BoundedTransaction, DefaultMemoryType>> = {
         RefCell::new(StableCell::new(
-            get_memory_by_id(&MEMORY_MANAGER, TX_CELL_MEMORY_ID), 
+            get_memory_by_id(&MEMORY_MANAGER, TX_CELL_MEMORY_ID),
             BoundedTransaction::default()
         ).expect("failed to create stable cell"))
     };
 
     static TX_LOG: RefCell<StableLog<BoundedTransaction, DefaultMemoryType>> = {
         RefCell::new(StableLog::new(
-            get_memory_by_id(&MEMORY_MANAGER, TX_LOG_INDEX_MEMORY_ID), 
+            get_memory_by_id(&MEMORY_MANAGER, TX_LOG_INDEX_MEMORY_ID),
             get_memory_by_id(&MEMORY_MANAGER, TX_LOG_MEMORY_ID)
         ).expect("failed to create stable log"))
     };

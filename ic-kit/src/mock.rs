@@ -1,12 +1,11 @@
-use futures::executor::LocalPool;
 use std::any::{Any, TypeId};
 use std::collections::{BTreeMap, BTreeSet};
 use std::hash::Hasher;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use candid::utils::{ArgumentDecoder, ArgumentEncoder};
-use candid::{self, Principal};
-use candid::{decode_args, encode_args};
+use candid::{self, decode_args, encode_args, Principal};
+use futures::executor::LocalPool;
 use serde::Serialize;
 
 use crate::candid::CandidType;
@@ -798,17 +797,15 @@ impl WatcherCall {
 
 #[cfg(test)]
 mod tests {
-    use crate::Principal;
-    use crate::{Context, MockContext};
+    use crate::{Context, MockContext, Principal};
 
     /// A simple canister implementation which helps the testing.
     mod canister {
         use std::collections::BTreeMap;
 
-        use crate::ic;
         use crate::interfaces::management::WithCanisterId;
         use crate::interfaces::*;
-        use crate::Principal;
+        use crate::{ic, Principal};
 
         /// An update method that returns the principal id of the caller.
         pub fn whoami() -> Principal {

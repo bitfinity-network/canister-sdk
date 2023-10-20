@@ -1,14 +1,12 @@
+use std::fs::{create_dir_all, File};
+use std::io::*;
+use std::path::Path;
+use std::time::Duration;
+
 use flate2::read::GzDecoder;
+pub use ic_test_state_machine_client::*;
 use log::*;
 use once_cell::sync::OnceCell;
-use std::{
-    fs::{create_dir_all, File},
-    io::*,
-    path::Path,
-    time::Duration,
-};
-
-pub use ic_test_state_machine_client::*;
 
 pub const IC_STATE_MACHINE_BINARY_HASH: &str = "d33ce10e3896f223045bc44320c794308c32a13e";
 
