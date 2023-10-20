@@ -1,8 +1,9 @@
+use std::collections::BTreeMap;
+
 use candid::{CandidType, Deserialize, Int, Nat};
 use num_traits::ToPrimitive;
 use serde_bytes::ByteBuf;
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
 
 /// The number of bytes required to represent a 128-bit integer using LEB128 encoding.
 /// NOTE: ⌈ 128 / 7 ⌉ = 19

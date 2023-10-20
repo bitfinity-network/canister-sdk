@@ -1,10 +1,11 @@
-use crate::error::{InternalPaymentError, ParametersError};
-use crate::icrc1::{self, TokenTransferInfo};
-use crate::{Timestamp, TokenConfiguration};
 use candid::{CandidType, Deserialize, Nat, Principal};
 use ic_exports::ic_kit::ic;
 use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
 use ic_exports::icrc_types::icrc1::transfer::Memo;
+
+use crate::error::{InternalPaymentError, ParametersError};
+use crate::icrc1::{self, TokenTransferInfo};
+use crate::{Timestamp, TokenConfiguration};
 
 /// Transfer to be executed.
 #[derive(Debug, CandidType, Deserialize, Clone)]

@@ -1,7 +1,6 @@
 use candid::Principal;
 use did::*;
 use ic_canister::{generate_idl, init, query, update, Canister, Idl, PreUpdate};
-
 use service::Service;
 
 mod service;

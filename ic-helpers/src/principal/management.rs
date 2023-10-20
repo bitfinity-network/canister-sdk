@@ -11,7 +11,6 @@ use ic_canister::virtual_canister_call;
 use ic_exports::candid::utils::ArgumentEncoder;
 use ic_exports::candid::{encode_args, CandidType, Nat, Principal};
 use ic_exports::ic_cdk::api::call::RejectionCode;
-
 use ic_exports::ic_cdk::api::management_canister::ecdsa::{
     EcdsaCurve, EcdsaKeyId, EcdsaPublicKeyArgument, EcdsaPublicKeyResponse, SignWithEcdsaArgument,
     SignWithEcdsaResponse,

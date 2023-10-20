@@ -5,9 +5,8 @@ use std::path::Path;
 
 use candid::utils::ArgumentEncoder;
 use candid::Principal;
-use ic_agent::identity::Secp256k1Identity;
-use ic_agent::{agent::http_transport::ReqwestHttpReplicaV2Transport, identity::PemError};
-
+use ic_agent::agent::http_transport::ReqwestHttpReplicaV2Transport;
+use ic_agent::identity::{PemError, Secp256k1Identity};
 pub use ic_agent::Agent;
 
 mod errors;

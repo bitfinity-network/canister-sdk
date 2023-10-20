@@ -41,7 +41,7 @@ thread_local! {
     };
 
     static TX_RING_BUFFER: RefCell<StableRingBuffer<BoundedTransaction, VirtualMemory<DefaultMemoryImpl>, VirtualMemory<DefaultMemoryImpl>>> = {
-        RefCell::new(StableRingBuffer::new(MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_VEC_MEMORY_ID)), MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_INDICES_MEMORY_ID)), 4).expect("failed to create ring buffer"))
+        RefCell::new(StableRingBuffer::new(MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_VEC_MEMORY_ID)), MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_INDICES_MEMORY_ID)), 4.try_into().unwrap()).expect("failed to create ring buffer"))
     };
 
 }
@@ -143,11 +143,15 @@ impl Service {
     }
 
     pub fn get_tx_from_ring_buffer(idx: u64) -> Option<BoundedTransaction> {
-        TX_RING_BUFFER.with(|tx| tx.borrow().get_value_from_end(idx))
+        TX_RING_BUFFER.with(|tx| tx.borrow().nth_element_from_end(idx))
     }
 
     pub fn push_tx_to_ring_buffer(transaction: BoundedTransaction) -> u64 {
-        TX_RING_BUFFER.with(|storage| storage.borrow_mut().push(&transaction).0)
+        TX_RING_BUFFER.with(|storage| {
+            let mut storage = storage.borrow_mut();
+            storage.push(&transaction);
+            storage.len() - 1
+        })
     }
 
     pub fn get_tx_from_unboundedmap(key: u64) -> Option<UnboundedTransaction> {
