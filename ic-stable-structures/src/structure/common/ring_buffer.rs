@@ -33,8 +33,6 @@ impl StableRingBufferIndices {
     /// Converts an offset from the start element into an index.
     ///
     /// There is no garantee that an element present at the returned index.
-    ///
-    /// Panics if the capacity is 0.
     fn offset_to_index(&self, offset: u64) -> u64 {
         (self.start + offset) % self.capacity
     }
