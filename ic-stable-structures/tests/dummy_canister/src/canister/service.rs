@@ -21,11 +21,17 @@ thread_local! {
     };
 
     static TX_CELL: RefCell<StableCell<BoundedTransaction, DefaultMemoryType>> = {
-        RefCell::new(StableCell::new(get_memory_by_id(&MEMORY_MANAGER, TX_CELL_MEMORY_ID), BoundedTransaction::default()).expect("failed to create stable cell"))
+        RefCell::new(StableCell::new(
+            get_memory_by_id(&MEMORY_MANAGER, TX_CELL_MEMORY_ID), 
+            BoundedTransaction::default()
+        ).expect("failed to create stable cell"))
     };
 
     static TX_LOG: RefCell<StableLog<BoundedTransaction, DefaultMemoryType>> = {
-        RefCell::new(StableLog::new(get_memory_by_id(&MEMORY_MANAGER, TX_LOG_INDEX_MEMORY_ID), get_memory_by_id(&MEMORY_MANAGER, TX_LOG_MEMORY_ID)).expect("failed to create stable log"))
+        RefCell::new(StableLog::new(
+            get_memory_by_id(&MEMORY_MANAGER, TX_LOG_INDEX_MEMORY_ID), 
+            get_memory_by_id(&MEMORY_MANAGER, TX_LOG_MEMORY_ID)
+        ).expect("failed to create stable log"))
     };
 
     static TX_UNBOUNDEDMAP: RefCell<StableUnboundedMap<u64, UnboundedTransaction, DefaultMemoryType>> = {
@@ -37,15 +43,22 @@ thread_local! {
     };
 
     static TX_VEC: RefCell<StableVec<BoundedTransaction, DefaultMemoryType>> = {
-        RefCell::new(StableVec::new(get_memory_by_id(&MEMORY_MANAGER, TX_VEC_MEMORY_ID)).expect("failed to create stable vec"))
+        RefCell::new(StableVec::new(
+            get_memory_by_id(&MEMORY_MANAGER, TX_VEC_MEMORY_ID)
+        ).expect("failed to create stable vec"))
     };
 
     static TX_RING_BUFFER_DATA: RefCell<StableVec<BoundedTransaction, DefaultMemoryType>> = {
-        RefCell::new(StableVec::new(get_memory_by_id(&MEMORY_MANAGER, TX_RING_BUFFER_VEC_MEMORY_ID)).expect("failed to create stable vec"))
+        RefCell::new(StableVec::new(
+            get_memory_by_id(&MEMORY_MANAGER, TX_RING_BUFFER_VEC_MEMORY_ID)
+        ).expect("failed to create stable vec"))
     };
 
     static TX_RING_BUFFER_INDICES: RefCell<StableCell<StableRingBufferIndices, DefaultMemoryType>> = {
-        RefCell::new(StableCell::new(get_memory_by_id(&MEMORY_MANAGER, TX_RING_BUFFER_INDICES_MEMORY_ID), StableRingBufferIndices::new(4)).expect("failed to create stable cell"))
+        RefCell::new(StableCell::new(
+            get_memory_by_id(&MEMORY_MANAGER, TX_RING_BUFFER_INDICES_MEMORY_ID),
+            StableRingBufferIndices::new(4.try_into().unwrap())
+        ).expect("failed to create stable cell"))
     };
 
     static TX_RING_BUFFER: RefCell<StableRingBuffer<BoundedTransaction, DefaultMemoryType>> = {
@@ -152,11 +165,15 @@ impl Service {
     }
 
     pub fn get_tx_from_ring_buffer(idx: u64) -> Option<BoundedTransaction> {
-        TX_RING_BUFFER.with(|tx| tx.borrow().get_value_from_end(idx))
+        TX_RING_BUFFER.with(|tx| tx.borrow().nth_element_from_end(idx))
     }
 
     pub fn push_tx_to_ring_buffer(transaction: BoundedTransaction) -> u64 {
-        TX_RING_BUFFER.with(|storage| storage.borrow_mut().push(&transaction).0)
+        TX_RING_BUFFER.with(|storage| {
+            let mut storage = storage.borrow_mut();
+            storage.push(&transaction);
+            storage.len() - 1
+        })
     }
 
     pub fn get_tx_from_unboundedmap(key: u64) -> Option<UnboundedTransaction> {
