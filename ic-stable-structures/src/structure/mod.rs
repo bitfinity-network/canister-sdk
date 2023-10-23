@@ -29,6 +29,9 @@ pub trait BTreeMapStructure<K, V> {
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     fn remove(&mut self, key: &K) -> Option<V>;
 
+    /// True if contains the key.
+    fn contains_key(&self, key: &K) -> bool;
+
     /// Count of items in the map.
     fn len(&self) -> u64;
 
