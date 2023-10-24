@@ -83,6 +83,10 @@ where
         self.inner.len()
     }
 
+    fn contains_key(&self, key: &K) -> bool {
+        self.inner.contains_key(key)
+    }
+
     fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }

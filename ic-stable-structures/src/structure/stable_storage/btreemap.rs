@@ -62,6 +62,10 @@ where
             inner.remove(&key);
         }
     }
+
+    fn contains_key(&self, key: &K) -> bool {
+        self.0.contains_key(key)
+    }
 }
 
 impl<K, V, M> IterableSortedMapStructure<K, V> for StableBTreeMap<K, V, M>
