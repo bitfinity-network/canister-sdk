@@ -1,8 +1,8 @@
-use std::cell::RefCell;
 use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
 use mini_moka::unsync::{Cache, CacheBuilder};
+use parking_lot::Mutex;
 
 use crate::structure::*;
 
@@ -14,7 +14,7 @@ where
     M: Memory,
 {
     inner: StableBTreeMap<K, V, M>,
-    cache: RefCell<Cache<K, V>>,
+    cache: Mutex<Cache<K, V>>,
 }
 
 impl<K, V, M> CachedStableBTreeMap<K, V, M>
@@ -32,7 +32,7 @@ where
     pub fn with_map(inner: StableBTreeMap<K, V, M>, max_cache_items: u64) -> Self {
         Self {
             inner,
-            cache: RefCell::new(
+            cache: Mutex::new(
                 CacheBuilder::default()
                     .max_capacity(max_cache_items)
                     .build(),
@@ -48,7 +48,7 @@ where
     M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
-        let mut cache = self.cache.borrow_mut();
+        let mut cache = self.cache.lock();
         match cache.get(key) {
             Some(value) => Some(value.clone()),
             None => {
@@ -62,7 +62,7 @@ where
     fn insert(&mut self, key: K, value: V) -> Option<V> {
         match self.inner.insert(key.clone(), value) {
             Some(old_value) => {
-                self.cache.borrow_mut().invalidate(&key);
+                self.cache.lock().invalidate(&key);
                 Some(old_value)
             }
             None => None,
@@ -72,7 +72,7 @@ where
     fn remove(&mut self, key: &K) -> Option<V> {
         match self.inner.remove(key) {
             Some(old_value) => {
-                self.cache.borrow_mut().invalidate(key);
+                self.cache.lock().invalidate(key);
                 Some(old_value)
             }
             None => None,
@@ -92,7 +92,7 @@ where
     }
 
     fn clear(&mut self) {
-        self.cache.borrow_mut().invalidate_all();
+        self.cache.lock().invalidate_all();
         self.inner.clear()
     }
 }

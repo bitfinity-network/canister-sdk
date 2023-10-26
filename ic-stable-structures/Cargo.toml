@@ -7,6 +7,7 @@ edition.workspace = true
 dfinity-stable-structures = { workspace = true }
 memmap2 = { workspace = true, optional = true }
 mini-moka = { workspace = true }
+parking_lot = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
