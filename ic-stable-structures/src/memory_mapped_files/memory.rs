@@ -20,14 +20,29 @@ impl MemoryMappedFileMemoryManager {
     }
 }
 
-impl <T: AsRef<Path>> MemoryManager<MemoryMappedFileMemory, T> for MemoryMappedFileMemoryManager {
-    fn get(&self, id: T) -> MemoryMappedFileMemory {
-        let file_path = self.base_path.join(id);
-        let file_path = file_path.to_str().expect(&format!("Cannot extract path from {}", file_path.display()));
-        MemoryMappedFileMemory::new(file_path.to_owned(), self.is_persistent).expect(&format!("failed to initialize MemoryMappedFileMemory with path: {}", file_path))
+impl MemoryManager<MemoryMappedFileMemory, &str> for MemoryMappedFileMemoryManager {
+    fn get(&self, id: &str) -> MemoryMappedFileMemory {
+        get(&self.base_path, self.is_persistent, id)
     }
 }
 
+impl MemoryManager<MemoryMappedFileMemory, &Path> for MemoryMappedFileMemoryManager {
+    fn get(&self, id: &Path) -> MemoryMappedFileMemory {
+        get(&self.base_path, self.is_persistent, id)
+    }
+}
+
+impl MemoryManager<MemoryMappedFileMemory, u8> for MemoryMappedFileMemoryManager {
+    fn get(&self, id: u8) -> MemoryMappedFileMemory {
+        get(&self.base_path, self.is_persistent, id.to_string())
+    }
+}
+
+fn get<T: AsRef<Path>>(base_path: &PathBuf, is_persistent: bool, id: T) -> MemoryMappedFileMemory {
+    let file_path = base_path.join(id.as_ref());
+    let file_path = file_path.to_str().expect(&format!("Cannot extract path from {}", file_path.display()));
+    MemoryMappedFileMemory::new(file_path.to_owned(), is_persistent).expect(&format!("failed to initialize MemoryMappedFileMemory with path: {}", file_path))
+}
 
 pub struct MemoryMappedFileMemory(RwLock<MemoryMappedFile>);
 

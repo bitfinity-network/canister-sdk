@@ -3,12 +3,12 @@ use std::cell::RefCell;
 use ic_canister::{generate_exports, generate_idl, query, update, Canister, Idl, PreUpdate};
 use ic_exports::candid::Principal;
 use ic_stable_structures::stable_structures::DefaultMemoryImpl;
-use ic_stable_structures::{CellStructure, MemoryId, MemoryManager, StableCell, VirtualMemory};
+use ic_stable_structures::{CellStructure, MemoryId, IcMemoryManager, StableCell, VirtualMemory};
 
 const MEMORY_ID: MemoryId = MemoryId::new(0);
 
 thread_local! {
-    static MEMORY_MANAGER: MemoryManager<DefaultMemoryImpl> = MemoryManager::init(DefaultMemoryImpl::default());
+    static MEMORY_MANAGER: IcMemoryManager<DefaultMemoryImpl> = IcMemoryManager::init(DefaultMemoryImpl::default());
 
     pub static COUNTER: RefCell<StableCell<u32, VirtualMemory<DefaultMemoryImpl>>> =
         RefCell::new(StableCell::new(MEMORY_MANAGER.with(|mm| mm.get(MEMORY_ID)), 0).expect("failed to initialize stable cell"));

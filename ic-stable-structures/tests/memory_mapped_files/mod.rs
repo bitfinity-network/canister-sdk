@@ -54,7 +54,7 @@ fn test_memory_mapped_file_memory_manager() {
     assert!(!expected_file_0_path.exists());
     assert!(!expected_file_1_path.exists());
 
-    let mut vec = StableVec::<u32, _>::new(memory_manager.get("0")).unwrap();
+    let mut vec = StableVec::<u32, _>::new(memory_manager.get(0)).unwrap();
     vec.push(&1).unwrap();
     vec.push(&2).unwrap();
     vec.push(&3).unwrap();
@@ -62,7 +62,7 @@ fn test_memory_mapped_file_memory_manager() {
     assert!(expected_file_0_path.exists());
     assert!(!expected_file_1_path.exists());
 
-    let mut map = StableBTreeMap::<u32, u64, _>::new(memory_manager.get("1"));
+    let mut map = StableBTreeMap::<u32, u64, _>::new(memory_manager.get(1));
     map.insert(1, 2);
     map.insert(2, 3);
     map.insert(4, 5);
@@ -77,13 +77,13 @@ fn test_memory_mapped_file_memory_manager() {
 
     let memory_manager = MemoryMappedFileMemoryManager::new(base_path, true);
 
-    let vec = StableVec::<u32, _>::new(memory_manager.get("0")).unwrap();
+    let vec = StableVec::<u32, _>::new(memory_manager.get(0)).unwrap();
     assert_eq!(vec.len(), 3);
     assert_eq!(vec.get(0), Some(1));
     assert_eq!(vec.get(1), Some(2));
     assert_eq!(vec.get(2), Some(3));
 
-    let map = StableBTreeMap::<u32, u64, _>::new(memory_manager.get("1"));
+    let map = StableBTreeMap::<u32, u64, _>::new(memory_manager.get(1));
     assert_eq!(map.len(), 3);
     assert_eq!(map.get(&1), Some(2));
     assert_eq!(map.get(&2), Some(3));
@@ -97,7 +97,7 @@ fn test_memory_mapped_file_memory_manager_is_send() {
 
     let memory_manager = MemoryMappedFileMemoryManager::new(base_path.clone(), true);
 
-    let vec = StableVec::<u32, _>::new(memory_manager.get("relative_file_path")).unwrap();
+    let vec = StableVec::<u32, _>::new(memory_manager.get(0)).unwrap();
     let arc_state = Arc::new(Mutex::new(vec));
 
     let mut handles = vec![];
