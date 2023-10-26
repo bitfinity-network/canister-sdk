@@ -1,11 +1,11 @@
 use std::path::{Path, PathBuf};
 
-use crate::memory::MemoryManager;
 use dfinity_stable_structures::Memory;
 use parking_lot::RwLock;
 
 use super::error::MemMapResult;
 use super::memory_mapped_file::MemoryMappedFile;
+use crate::memory::MemoryManager;
 
 const WASM_PAGE_SIZE_IN_BYTES: u64 = 65536;
 
@@ -16,7 +16,10 @@ pub struct MemoryMappedFileMemoryManager {
 
 impl MemoryMappedFileMemoryManager {
     pub fn new(base_path: PathBuf, is_persistent: bool) -> Self {
-        Self { base_path, is_persistent }
+        Self {
+            base_path,
+            is_persistent,
+        }
     }
 }
 
@@ -40,8 +43,13 @@ impl MemoryManager<MemoryMappedFileMemory, u8> for MemoryMappedFileMemoryManager
 
 fn get<T: AsRef<Path>>(base_path: &PathBuf, is_persistent: bool, id: T) -> MemoryMappedFileMemory {
     let file_path = base_path.join(id.as_ref());
-    let file_path = file_path.to_str().expect(&format!("Cannot extract path from {}", file_path.display()));
-    MemoryMappedFileMemory::new(file_path.to_owned(), is_persistent).expect(&format!("failed to initialize MemoryMappedFileMemory with path: {}", file_path))
+    let file_path = file_path
+        .to_str()
+        .expect(&format!("Cannot extract path from {}", file_path.display()));
+    MemoryMappedFileMemory::new(file_path.to_owned(), is_persistent).expect(&format!(
+        "failed to initialize MemoryMappedFileMemory with path: {}",
+        file_path
+    ))
 }
 
 pub struct MemoryMappedFileMemory(RwLock<MemoryMappedFile>);

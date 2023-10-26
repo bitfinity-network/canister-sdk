@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use ic_stable_structures::{
-    BTreeMapStructure, MemoryId, IcMemoryManager, MemoryMappedFileMemory, StableBTreeMap, StableVec,
-    VecStructure, MemoryMappedFileMemoryManager, MemoryManager,
+    BTreeMapStructure, IcMemoryManager, MemoryId, MemoryManager, MemoryMappedFileMemory,
+    MemoryMappedFileMemoryManager, StableBTreeMap, StableVec, VecStructure,
 };
 use parking_lot::Mutex;
 use tempfile::{NamedTempFile, TempDir};
@@ -101,7 +101,7 @@ fn test_memory_mapped_file_memory_manager_is_send() {
     let arc_state = Arc::new(Mutex::new(vec));
 
     let mut handles = vec![];
-    
+
     for x in 0..10 {
         let arc_state_clone = arc_state.clone();
         let handler = std::thread::spawn(move || {
@@ -113,7 +113,6 @@ fn test_memory_mapped_file_memory_manager_is_send() {
     for handle in handles {
         handle.join().unwrap();
     }
-    
-    assert_eq!(10, arc_state.lock().len());
 
+    assert_eq!(10, arc_state.lock().len());
 }
