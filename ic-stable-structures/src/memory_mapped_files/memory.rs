@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 
 use crate::memory::MemoryManager;
 use dfinity_stable_structures::Memory;
-use dfinity_stable_structures::memory_manager::MemoryId;
 use parking_lot::RwLock;
 
 use super::error::MemMapResult;
@@ -21,9 +20,9 @@ impl MemoryMappedFileMemoryManager {
     }
 }
 
-impl MemoryManager<MemoryMappedFileMemory> for MemoryMappedFileMemoryManager {
-    fn get(&self, id: MemoryId) -> MemoryMappedFileMemory {
-        let file_path = self.base_path.join(format!("{:?}", id));
+impl <T: AsRef<Path>> MemoryManager<MemoryMappedFileMemory, T> for MemoryMappedFileMemoryManager {
+    fn get(&self, id: T) -> MemoryMappedFileMemory {
+        let file_path = self.base_path.join(id);
         let file_path = file_path.to_str().expect(&format!("Cannot extract path from {}", file_path.display()));
         MemoryMappedFileMemory::new(file_path.to_owned(), self.is_persistent).expect(&format!("failed to initialize MemoryMappedFileMemory with path: {}", file_path))
     }
