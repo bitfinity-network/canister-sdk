@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
-use mini_moka::unsync::{Cache, CacheBuilder};
+use mini_moka::sync::{Cache, CacheBuilder};
 use parking_lot::Mutex;
 
 use crate::structure::*;
@@ -9,8 +9,8 @@ use crate::structure::*;
 /// A LRU Cache for StableUnboundedMaps
 pub struct CachedStableUnboundedMap<K, V, M>
 where
-    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: SlicedStorable + Clone,
+    K: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: SlicedStorable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     inner: StableUnboundedMap<K, V, M>,
@@ -19,8 +19,8 @@ where
 
 impl<K, V, M> CachedStableUnboundedMap<K, V, M>
 where
-    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: SlicedStorable + Clone,
+    K: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: SlicedStorable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
@@ -43,8 +43,8 @@ where
 
 impl<K, V, M> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V, M>
 where
-    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: SlicedStorable + Clone,
+    K: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: SlicedStorable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {

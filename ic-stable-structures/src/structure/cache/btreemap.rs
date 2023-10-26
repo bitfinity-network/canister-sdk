@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
-use mini_moka::unsync::{Cache, CacheBuilder};
+use mini_moka::sync::{Cache, CacheBuilder};
 use parking_lot::Mutex;
 
 use crate::structure::*;
@@ -9,8 +9,8 @@ use crate::structure::*;
 /// A LRU Cache for StableBTreeMap
 pub struct CachedStableBTreeMap<K, V, M>
 where
-    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: Storable + Clone,
+    K: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     inner: StableBTreeMap<K, V, M>,
@@ -19,8 +19,8 @@ where
 
 impl<K, V, M> CachedStableBTreeMap<K, V, M>
 where
-    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: Storable + Clone,
+    K: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
@@ -43,12 +43,12 @@ where
 
 impl<K, V, M> BTreeMapStructure<K, V> for CachedStableBTreeMap<K, V, M>
 where
-    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: Storable + Clone,
+    K: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
-        let mut cache = self.cache.lock();
+        let cache = self.cache.lock();
         match cache.get(key) {
             Some(value) => Some(value.clone()),
             None => {
@@ -101,8 +101,8 @@ where
 /// `upper_bound` isn't implemented for `BTreeMap` in stable Rust
 impl<K, V, M> IterableSortedMapStructure<K, V> for CachedStableBTreeMap<K, V, M>
 where
-    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: Storable + Clone,
+    K: Storable + Clone + Send + Sync + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone + Send + Sync,
     M: Memory,
 {
     type Iterator<'a> = dfinity_stable_structures::btreemap::Iter<'a, K, V, M> where Self: 'a;

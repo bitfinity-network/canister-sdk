@@ -2,16 +2,16 @@ use std::cell::RefCell;
 use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
-use mini_moka::unsync::{Cache, CacheBuilder};
+use mini_moka::sync::{Cache, CacheBuilder};
 
 use crate::structure::*;
 
 /// A LRU Cache for StableMultimaps
 pub struct CachedStableMultimap<K1, K2, V, M>
 where
-    K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: Storable + Clone,
+    K1: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     inner: StableMultimap<K1, K2, V, M>,
@@ -20,9 +20,9 @@ where
 
 impl<K1, K2, V, M> CachedStableMultimap<K1, K2, V, M>
 where
-    K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: Storable + Clone,
+    K1: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     /// Create new instance of the CachedStableMultimap with a fixed number of max cached elements.
@@ -45,9 +45,9 @@ where
 
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for CachedStableMultimap<K1, K2, V, M>
 where
-    K1: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    K2: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: Storable + Clone,
+    K1: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     type Iterator<'a> = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::Iterator<'a> where Self: 'a;
@@ -55,7 +55,7 @@ where
     type RangeIterator<'a> = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::RangeIterator<'a> where Self: 'a;
 
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
-        let mut cache = self.cache.borrow_mut();
+        let cache = self.cache.borrow_mut();
         let key = (first_key.clone(), second_key.clone());
 
         match cache.get(&key) {
@@ -91,9 +91,12 @@ where
     }
 
     fn remove_partial(&mut self, first_key: &K1) -> bool {
+
+        let FIX_ME = 0;
+        /// should remove only partial keys
         self.cache
             .borrow_mut()
-            .invalidate_entries_if(|(k1, _k2), _v| k1 == first_key);
+            .invalidate_all();
         self.inner.remove_partial(first_key)
     }
 
