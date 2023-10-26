@@ -102,7 +102,7 @@ fn test_memory_mapped_file_memory_manager_is_send() {
 
     let mut handles = vec![];
     
-    for x in 0..=10 {
+    for x in 0..10 {
         let arc_state_clone = arc_state.clone();
         let handler = std::thread::spawn(move || {
             arc_state_clone.lock().push(&x).unwrap();
@@ -114,6 +114,6 @@ fn test_memory_mapped_file_memory_manager_is_send() {
         handle.join().unwrap();
     }
     
-    assert_eq!(11, arc_state.lock().len());
+    assert_eq!(10, arc_state.lock().len());
 
 }
