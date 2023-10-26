@@ -1,39 +1,61 @@
-use std::cell::RefCell;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use crate::memory::MemoryManager;
 use dfinity_stable_structures::Memory;
+use dfinity_stable_structures::memory_manager::MemoryId;
+use parking_lot::RwLock;
 
 use super::error::MemMapResult;
 use super::memory_mapped_file::MemoryMappedFile;
 
 const WASM_PAGE_SIZE_IN_BYTES: u64 = 65536;
 
-pub struct MemoryMappedFileMemory(RefCell<MemoryMappedFile>);
+pub struct MemoryMappedFileMemoryManager {
+    base_path: PathBuf,
+    is_persistent: bool,
+}
+
+impl MemoryMappedFileMemoryManager {
+    pub fn new(base_path: PathBuf, is_persistent: bool) -> Self {
+        Self { base_path, is_persistent }
+    }
+}
+
+impl MemoryManager<MemoryMappedFileMemory> for MemoryMappedFileMemoryManager {
+    fn get(&self, id: MemoryId) -> MemoryMappedFileMemory {
+        let file_path = self.base_path.join(format!("{:?}", id));
+        let file_path = file_path.to_str().expect(&format!("Cannot extract path from {}", file_path.display()));
+        MemoryMappedFileMemory::new(file_path.to_owned(), self.is_persistent).expect(&format!("failed to initialize MemoryMappedFileMemory with path: {}", file_path))
+    }
+}
+
+
+pub struct MemoryMappedFileMemory(RwLock<MemoryMappedFile>);
 
 impl MemoryMappedFileMemory {
     pub fn new(path: String, is_persistent: bool) -> MemMapResult<Self> {
-        Ok(Self(RefCell::new(MemoryMappedFile::new(
+        Ok(Self(RwLock::new(MemoryMappedFile::new(
             path,
             is_persistent,
         )?)))
     }
 
     pub fn set_is_persistent(&self, is_persistent: bool) {
-        self.0.borrow_mut().set_is_persistent(is_persistent)
+        self.0.write().set_is_persistent(is_persistent)
     }
 
     pub fn save_copy(&self, path: impl AsRef<Path>) -> MemMapResult<()> {
-        self.0.borrow().save_copy(path)
+        self.0.read().save_copy(path)
     }
 }
 
 impl Memory for MemoryMappedFileMemory {
     fn size(&self) -> u64 {
-        self.0.borrow().len() / WASM_PAGE_SIZE_IN_BYTES
+        self.0.read().len() / WASM_PAGE_SIZE_IN_BYTES
     }
 
     fn grow(&self, pages: u64) -> i64 {
-        let mut memory = self.0.borrow_mut();
+        let mut memory = self.0.write();
         let old_size = memory.len();
         let bytes_to_add = pages * WASM_PAGE_SIZE_IN_BYTES;
         let new_length = memory
@@ -48,14 +70,14 @@ impl Memory for MemoryMappedFileMemory {
 
     fn read(&self, offset: u64, dst: &mut [u8]) {
         self.0
-            .borrow()
+            .read()
             .read(offset, dst)
             .expect("invalid memory-mapped file read")
     }
 
     fn write(&self, offset: u64, src: &[u8]) {
         self.0
-            .borrow_mut()
+            .write()
             .write(offset, src)
             .expect("invalid memory-mapped file write")
     }

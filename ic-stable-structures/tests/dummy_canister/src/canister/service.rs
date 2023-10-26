@@ -15,7 +15,7 @@ const TX_RING_BUFFER_INDICES_MEMORY_ID: MemoryId = MemoryId::new(8);
 const TX_RING_BUFFER_VEC_MEMORY_ID: MemoryId = MemoryId::new(9);
 
 thread_local! {
-    static MEMORY_MANAGER: MemoryManager<DefaultMemoryImpl> = MemoryManager::init(DefaultMemoryImpl::default());
+    static MEMORY_MANAGER: IcMemoryManager<DefaultMemoryImpl> = IcMemoryManager::init(DefaultMemoryImpl::default());
 
     static TX_BTREEMAP: RefCell<StableBTreeMap<u64, BoundedTransaction, VirtualMemory<DefaultMemoryImpl>>> = {
         RefCell::new(StableBTreeMap::new(MEMORY_MANAGER.with(|mm| mm.get(TX_BTREEMAP_MEMORY_ID))))

@@ -15,6 +15,7 @@ anyhow = "1"
 candid = { workspace = true }
 criterion = { workspace = true }
 did = { path = "./tests/did" }
+futures = { workspace = true }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 ic-exports = { path = "../ic-exports", features = ["ic-test-state-machine"]}
