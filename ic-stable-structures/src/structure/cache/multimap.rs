@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
@@ -15,7 +14,7 @@ where
     M: Memory,
 {
     inner: StableMultimap<K1, K2, V, M>,
-    cache: RefCell<Cache<(K1, K2), V>>,
+    cache: Cache<(K1, K2), V>,
 }
 
 impl<K1, K2, V, M> CachedStableMultimap<K1, K2, V, M>
@@ -34,11 +33,9 @@ where
     pub fn with_map(inner: StableMultimap<K1, K2, V, M>, max_cache_items: u64) -> Self {
         Self {
             inner,
-            cache: RefCell::new(
-                CacheBuilder::default()
+            cache: CacheBuilder::default()
                     .max_capacity(max_cache_items)
                     .build(),
-            ),
         }
     }
 }
@@ -55,14 +52,13 @@ where
     type RangeIterator<'a> = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::RangeIterator<'a> where Self: 'a;
 
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
-        let cache = self.cache.borrow_mut();
         let key = (first_key.clone(), second_key.clone());
 
-        match cache.get(&key) {
+        match self.cache.get(&key) {
             Some(value) => Some(value.clone()),
             None => {
                 let value = self.inner.get(first_key, second_key)?;
-                cache.insert(key, value.clone());
+                self.cache.insert(key, value.clone());
                 Some(value)
             }
         }
@@ -72,7 +68,7 @@ where
         match self.inner.insert(first_key, second_key, value) {
             Some(old_value) => {
                 let key = (first_key.clone(), second_key.clone());
-                self.cache.borrow_mut().invalidate(&key);
+                self.cache.invalidate(&key);
                 Some(old_value)
             }
             None => None,
@@ -83,7 +79,7 @@ where
         match self.inner.remove(first_key, second_key) {
             Some(old_value) => {
                 let key = (first_key.clone(), second_key.clone());
-                self.cache.borrow_mut().invalidate(&key);
+                self.cache.invalidate(&key);
                 Some(old_value)
             }
             None => None,
@@ -95,7 +91,6 @@ where
         let FIX_ME = 0;
         /// should remove only partial keys
         self.cache
-            .borrow_mut()
             .invalidate_all();
         self.inner.remove_partial(first_key)
     }
@@ -109,7 +104,7 @@ where
     }
 
     fn clear(&mut self) {
-        self.cache.borrow_mut().invalidate_all();
+        self.cache.invalidate_all();
         self.inner.clear()
     }
 

@@ -2,7 +2,6 @@ use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
 use mini_moka::sync::{Cache, CacheBuilder};
-use parking_lot::Mutex;
 
 use crate::structure::*;
 
@@ -14,7 +13,7 @@ where
     M: Memory,
 {
     inner: StableBTreeMap<K, V, M>,
-    cache: Mutex<Cache<K, V>>,
+    cache: Cache<K, V>,
 }
 
 impl<K, V, M> CachedStableBTreeMap<K, V, M>
@@ -32,11 +31,9 @@ where
     pub fn with_map(inner: StableBTreeMap<K, V, M>, max_cache_items: u64) -> Self {
         Self {
             inner,
-            cache: Mutex::new(
-                CacheBuilder::default()
+            cache: CacheBuilder::default()
                     .max_capacity(max_cache_items)
                     .build(),
-            ),
         }
     }
 }
@@ -48,12 +45,11 @@ where
     M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
-        let cache = self.cache.lock();
-        match cache.get(key) {
+        match self.cache.get(key) {
             Some(value) => Some(value.clone()),
             None => {
                 let value = self.inner.get(key)?;
-                cache.insert(key.clone(), value.clone());
+                self.cache.insert(key.clone(), value.clone());
                 Some(value)
             }
         }
@@ -62,7 +58,7 @@ where
     fn insert(&mut self, key: K, value: V) -> Option<V> {
         match self.inner.insert(key.clone(), value) {
             Some(old_value) => {
-                self.cache.lock().invalidate(&key);
+                self.cache.invalidate(&key);
                 Some(old_value)
             }
             None => None,
@@ -72,7 +68,7 @@ where
     fn remove(&mut self, key: &K) -> Option<V> {
         match self.inner.remove(key) {
             Some(old_value) => {
-                self.cache.lock().invalidate(key);
+                self.cache.invalidate(key);
                 Some(old_value)
             }
             None => None,
@@ -92,7 +88,7 @@ where
     }
 
     fn clear(&mut self) {
-        self.cache.lock().invalidate_all();
+        self.cache.invalidate_all();
         self.inner.clear()
     }
 }
