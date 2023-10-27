@@ -41,15 +41,13 @@ impl MemoryManager<MemoryMappedFileMemory, u8> for MemoryMappedFileMemoryManager
     }
 }
 
-fn get<T: AsRef<Path>>(base_path: &PathBuf, is_persistent: bool, id: T) -> MemoryMappedFileMemory {
+fn get<T: AsRef<Path>>(base_path: &Path, is_persistent: bool, id: T) -> MemoryMappedFileMemory {
     let file_path = base_path.join(id.as_ref());
     let file_path = file_path
         .to_str()
-        .expect(&format!("Cannot extract path from {}", file_path.display()));
-    MemoryMappedFileMemory::new(file_path.to_owned(), is_persistent).expect(&format!(
-        "failed to initialize MemoryMappedFileMemory with path: {}",
-        file_path
-    ))
+        .unwrap_or_else(|| panic!("Cannot extract path from {}", file_path.display()));
+    MemoryMappedFileMemory::new(file_path.to_owned(), is_persistent).unwrap_or_else(|_| panic!("failed to initialize MemoryMappedFileMemory with path: {}",
+        file_path))
 }
 
 pub struct MemoryMappedFileMemory(RwLock<MemoryMappedFile>);
