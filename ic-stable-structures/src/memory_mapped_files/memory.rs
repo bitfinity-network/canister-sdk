@@ -46,8 +46,12 @@ fn get<T: AsRef<Path>>(base_path: &Path, is_persistent: bool, id: T) -> MemoryMa
     let file_path = file_path
         .to_str()
         .unwrap_or_else(|| panic!("Cannot extract path from {}", file_path.display()));
-    MemoryMappedFileMemory::new(file_path.to_owned(), is_persistent).unwrap_or_else(|_| panic!("failed to initialize MemoryMappedFileMemory with path: {}",
-        file_path))
+    MemoryMappedFileMemory::new(file_path.to_owned(), is_persistent).unwrap_or_else(|_| {
+        panic!(
+            "failed to initialize MemoryMappedFileMemory with path: {}",
+            file_path
+        )
+    })
 }
 
 pub struct MemoryMappedFileMemory(RwLock<MemoryMappedFile>);
