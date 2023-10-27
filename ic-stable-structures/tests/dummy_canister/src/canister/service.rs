@@ -13,6 +13,7 @@ const TX_BTREEMAP_MEMORY_ID: MemoryId = MemoryId::new(6);
 const TX_MULTIMAP_MEMORY_ID: MemoryId = MemoryId::new(7);
 const TX_RING_BUFFER_INDICES_MEMORY_ID: MemoryId = MemoryId::new(8);
 const TX_RING_BUFFER_VEC_MEMORY_ID: MemoryId = MemoryId::new(9);
+const TX_CACHED_BTREEMAP_MEMORY_ID: MemoryId = MemoryId::new(10);
 
 thread_local! {
     static MEMORY_MANAGER: IcMemoryManager<DefaultMemoryImpl> = IcMemoryManager::init(DefaultMemoryImpl::default());
@@ -44,6 +45,10 @@ thread_local! {
     static TX_RING_BUFFER: RefCell<StableRingBuffer<BoundedTransaction, VirtualMemory<DefaultMemoryImpl>, VirtualMemory<DefaultMemoryImpl>>> = {
         RefCell::new(StableRingBuffer::new(MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_VEC_MEMORY_ID)), MEMORY_MANAGER.with(|mm| mm.get(TX_RING_BUFFER_INDICES_MEMORY_ID)), 4.try_into().unwrap()).expect("failed to create ring buffer"))
     };
+
+        static TX_CACHED_BTREEMAP: RefCell<CachedStableBTreeMap<u64, BoundedTransaction, VirtualMemory<DefaultMemoryImpl>>> = {
+            RefCell::new(CachedStableBTreeMap::new(MEMORY_MANAGER.with(|mm| mm.get(TX_CACHED_BTREEMAP_MEMORY_ID)), 10))
+        };
 
 }
 
@@ -100,6 +105,14 @@ impl Service {
                 value: 0,
             });
         }
+        let should_init_cached_btreemap = TX_CACHED_BTREEMAP.with(|txs| txs.borrow().len()) == 0;
+        if should_init_cached_btreemap {
+            Self::insert_tx_to_btreemap(BoundedTransaction {
+                from: 0,
+                to: 0,
+                value: 0,
+            });
+        }
     }
 
     pub fn get_tx_from_btreemap(key: u64) -> Option<BoundedTransaction> {
@@ -108,6 +121,19 @@ impl Service {
 
     pub fn insert_tx_to_btreemap(transaction: BoundedTransaction) -> u64 {
         TX_BTREEMAP.with(|storage| {
+            let new_key = storage.borrow().len();
+            storage.borrow_mut().insert(new_key, transaction);
+
+            new_key
+        })
+    }
+
+    pub fn get_tx_from_cached_btreemap(key: u64) -> Option<BoundedTransaction> {
+        TX_CACHED_BTREEMAP.with(|tx| tx.borrow().get(&key))
+    }
+
+    pub fn insert_tx_to_cached_btreemap(transaction: BoundedTransaction) -> u64 {
+        TX_CACHED_BTREEMAP.with(|storage| {
             let new_key = storage.borrow().len();
             storage.borrow_mut().insert(new_key, transaction);
 

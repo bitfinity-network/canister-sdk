@@ -12,6 +12,7 @@ use once_cell::sync::Lazy;
 use wasm_utils::get_dummy_canister_bytecode;
 
 mod btreemap;
+mod cached_btreemap;
 mod cell;
 mod log;
 mod map;
@@ -88,6 +89,30 @@ impl StateMachineTestContext {
             ic::caller(),
             self.dummy_canister,
             "insert_tx_to_btreemap",
+            args,
+        );
+
+        Ok(res)
+    }
+
+    pub fn get_tx_from_cached_btreemap(&self, key: u64) -> Result<Option<BoundedTransaction>> {
+        let args = Encode!(&key).unwrap();
+        let res = self.query_as(
+            ic::caller(),
+            self.dummy_canister,
+            "get_tx_from_cached_btreemap",
+            args,
+        );
+
+        Ok(res)
+    }
+
+    pub fn insert_tx_to_cached_btreemap(&self, from: u8, to: u8, value: u8) -> Result<u64> {
+        let args = Encode!(&BoundedTransaction { from, to, value }).unwrap();
+        let res = self.update_call_as(
+            ic::caller(),
+            self.dummy_canister,
+            "insert_tx_to_cached_btreemap",
             args,
         );
 

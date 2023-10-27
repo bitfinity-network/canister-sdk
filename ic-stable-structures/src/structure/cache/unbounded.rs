@@ -1,7 +1,6 @@
 use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
-use mini_moka::sync::{Cache, CacheBuilder};
 
 use crate::structure::*;
 
@@ -13,7 +12,7 @@ where
     M: Memory,
 {
     inner: StableUnboundedMap<K, V, M>,
-    cache: Cache<K, V>,
+    cache: SyncLruCache<K, V>,
 }
 
 impl<K, V, M> CachedStableUnboundedMap<K, V, M>
@@ -23,17 +22,15 @@ where
     M: Memory,
 {
     /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
-    pub fn new(memory: M, max_cache_items: u64) -> Self {
+    pub fn new(memory: M, max_cache_items: u32) -> Self {
         Self::with_map(StableUnboundedMap::new(memory), max_cache_items)
     }
 
     /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
-    pub fn with_map(inner: StableUnboundedMap<K, V, M>, max_cache_items: u64) -> Self {
+    pub fn with_map(inner: StableUnboundedMap<K, V, M>, max_cache_items: u32) -> Self {
         Self {
             inner,
-            cache: CacheBuilder::default()
-                .max_capacity(max_cache_items)
-                .build(),
+            cache: SyncLruCache::new(max_cache_items),
         }
     }
 }
@@ -58,7 +55,7 @@ where
     fn insert(&mut self, key: &K, value: &V) -> Option<V> {
         match self.inner.insert(key, value) {
             Some(old_value) => {
-                self.cache.invalidate(key);
+                self.cache.remove(key);
                 Some(old_value)
             }
             None => None,
@@ -68,7 +65,7 @@ where
     fn remove(&mut self, key: &K) -> Option<V> {
         match self.inner.remove(key) {
             Some(old_value) => {
-                self.cache.invalidate(key);
+                self.cache.remove(key);
                 Some(old_value)
             }
             None => None,
@@ -84,7 +81,7 @@ where
     }
 
     fn clear(&mut self) {
-        self.cache.invalidate_all();
+        self.cache.clear();
         self.inner.clear()
     }
 }

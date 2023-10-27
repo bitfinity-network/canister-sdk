@@ -5,7 +5,6 @@ use dfinity_stable_structures::{DefaultMemoryImpl, Memory};
 
 /// A memory manager that can return multiple memories.
 pub trait MemoryManager<M: Memory, T> {
-
     /// Return a new memory based on a unique ID
     fn get(&self, id: T) -> M;
 }
