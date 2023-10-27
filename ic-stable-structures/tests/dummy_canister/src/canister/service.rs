@@ -107,7 +107,7 @@ impl Service {
         }
         let should_init_cached_btreemap = TX_CACHED_BTREEMAP.with(|txs| txs.borrow().len()) == 0;
         if should_init_cached_btreemap {
-            Self::insert_tx_to_btreemap(BoundedTransaction {
+            Self::insert_tx_to_cached_btreemap(BoundedTransaction {
                 from: 0,
                 to: 0,
                 value: 0,

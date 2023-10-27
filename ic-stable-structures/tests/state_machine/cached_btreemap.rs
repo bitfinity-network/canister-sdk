@@ -14,12 +14,12 @@ fn should_init_tx_cached_btreemap() {
 fn should_push_tx_to_cached_btreemap() {
     with_state_machine_context(|_, ctx| {
         // We saturate the cache to force eviction
-        for i in 0..100 {
-            ctx.insert_tx_to_cached_btreemap(i, i, 10 * i)?;
+        for i in 1..100 {
+            ctx.insert_tx_to_cached_btreemap(i, i, 10 + i)?;
             assert!(ctx.get_tx_from_cached_btreemap(i as u64).unwrap().is_some());
         }
 
-        for i in 0..100 {
+        for i in 1..100 {
             assert!(ctx.get_tx_from_cached_btreemap(i as u64).unwrap().is_some());
         }
 

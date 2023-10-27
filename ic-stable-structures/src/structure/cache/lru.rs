@@ -18,7 +18,8 @@ where
     /// Creats a new `LRU` cache that holds at most `cap` items.
     pub fn new(cap: u32) -> Self {
         Self {
-            inner: Mutex::new(LruMap::<K, V>::new(ByLength::new(cap))),
+            // Creating an inner LruMap with a fixed hasher
+            inner: Mutex::new(LruMap::<K, V>::with_seed(ByLength::new(cap), [0, 1, 3, 4])),
         }
     }
 

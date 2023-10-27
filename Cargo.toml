@@ -65,7 +65,7 @@ serde_bytes = "0.11.2"
 serde_json = "1.0"
 serde_tokenstream = "0.2"
 sha2 = "0.10"
-schnellru = "0.2"
+schnellru = { version = "0.2", default-features = false }
 syn = "1.0"
 tempfile = "3.6"
 thiserror = "1.0"
