@@ -1,68 +1,55 @@
-use std::cell::RefCell;
 use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
-use mini_moka::unsync::{Cache, CacheBuilder};
 
 use crate::structure::*;
 
 /// A LRU Cache for StableUnboundedMaps
 pub struct CachedStableUnboundedMap<K, V, M>
 where
-    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: SlicedStorable + Clone,
+    K: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: SlicedStorable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     inner: StableUnboundedMap<K, V, M>,
-    cache: RefCell<Cache<K, V>>,
+    cache: SyncLruCache<K, V>,
 }
 
 impl<K, V, M> CachedStableUnboundedMap<K, V, M>
 where
-    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: SlicedStorable + Clone,
+    K: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: SlicedStorable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
-    pub fn new(memory: M, max_cache_items: u64) -> Self {
+    pub fn new(memory: M, max_cache_items: u32) -> Self {
         Self::with_map(StableUnboundedMap::new(memory), max_cache_items)
     }
 
     /// Create new instance of the CachedStableUnboundedMap with a fixed number of max cached elements.
-    pub fn with_map(inner: StableUnboundedMap<K, V, M>, max_cache_items: u64) -> Self {
+    pub fn with_map(inner: StableUnboundedMap<K, V, M>, max_cache_items: u32) -> Self {
         Self {
             inner,
-            cache: RefCell::new(
-                CacheBuilder::default()
-                    .max_capacity(max_cache_items)
-                    .build(),
-            ),
+            cache: SyncLruCache::new(max_cache_items),
         }
     }
 }
 
 impl<K, V, M> UnboundedMapStructure<K, V> for CachedStableUnboundedMap<K, V, M>
 where
-    K: Storable + Clone + Hash + Eq + PartialEq + Ord,
-    V: SlicedStorable + Clone,
+    K: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    V: SlicedStorable + Clone + Send + Sync + 'static,
     M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
-        let mut cache = self.cache.borrow_mut();
-        match cache.get(key) {
-            Some(value) => Some(value.clone()),
-            None => {
-                let value = self.inner.get(key)?;
-                cache.insert(key.clone(), value.clone());
-                Some(value)
-            }
-        }
+        self.cache
+            .get_or_insert_with(key, |key| self.inner.get(key))
     }
 
     fn insert(&mut self, key: &K, value: &V) -> Option<V> {
         match self.inner.insert(key, value) {
             Some(old_value) => {
-                self.cache.borrow_mut().invalidate(key);
+                self.cache.remove(key);
                 Some(old_value)
             }
             None => None,
@@ -72,7 +59,7 @@ where
     fn remove(&mut self, key: &K) -> Option<V> {
         match self.inner.remove(key) {
             Some(old_value) => {
-                self.cache.borrow_mut().invalidate(key);
+                self.cache.remove(key);
                 Some(old_value)
             }
             None => None,
@@ -88,7 +75,7 @@ where
     }
 
     fn clear(&mut self) {
-        self.cache.borrow_mut().invalidate_all();
+        self.cache.clear();
         self.inner.clear()
     }
 }

@@ -393,48 +393,48 @@ mod tests {
     #[test]
     fn should_push() {
         with_buffer(3, |buffer| {
-            check_buffer(buffer, &vec![]);
+            check_buffer(buffer, &[]);
             assert!(buffer.is_empty());
 
             assert_eq!(buffer.push(&1), None);
-            check_buffer(buffer, &vec![1]);
+            check_buffer(buffer, &[1]);
 
             assert_eq!(buffer.push(&2), None);
-            check_buffer(buffer, &vec![1, 2]);
+            check_buffer(buffer, &[1, 2]);
 
             assert_eq!(buffer.push(&3), None);
-            check_buffer(buffer, &vec![1, 2, 3]);
+            check_buffer(buffer, &[1, 2, 3]);
 
             assert_eq!(buffer.push(&4), Some(1));
-            check_buffer(buffer, &vec![2, 3, 4])
+            check_buffer(buffer, &[2, 3, 4])
         });
     }
 
     #[test]
     fn should_pop() {
         with_buffer(5, |buffer| {
-            check_buffer(buffer, &vec![]);
+            check_buffer(buffer, &[]);
 
             // Checks for not-wrapped buffer.
             for i in 0..3 {
                 assert_eq!(buffer.push(&i), None);
             }
-            check_buffer(buffer, &vec![0, 1, 2]);
+            check_buffer(buffer, &[0, 1, 2]);
 
             assert_eq!(buffer.pop(), Some(2));
-            check_buffer(buffer, &vec![0, 1]);
+            check_buffer(buffer, &[0, 1]);
 
             assert_eq!(buffer.pop(), Some(1));
-            check_buffer(buffer, &vec![0]);
+            check_buffer(buffer, &[0]);
 
             assert_eq!(buffer.push(&1), None);
-            check_buffer(buffer, &vec![0, 1]);
+            check_buffer(buffer, &[0, 1]);
 
             assert_eq!(buffer.pop(), Some(1));
-            check_buffer(buffer, &vec![0]);
+            check_buffer(buffer, &[0]);
 
             assert_eq!(buffer.pop(), Some(0));
-            check_buffer(buffer, &vec![]);
+            check_buffer(buffer, &[]);
 
             assert_eq!(buffer.pop(), None);
 
@@ -459,7 +459,7 @@ mod tests {
     #[test]
     fn should_truncate() {
         with_buffer(5, |buffer| {
-            check_buffer(buffer, &vec![]);
+            check_buffer(buffer, &[]);
 
             // Checks for not-wrapped buffer.
             for i in 0..5 {
@@ -494,14 +494,14 @@ mod tests {
 
             // resize empty buffer
             buffer.resize(two);
-            check_buffer(buffer, &vec![]);
+            check_buffer(buffer, &[]);
             assert_eq!(two.get(), buffer.capacity());
 
             // resize smaller buffer
             buffer.resize(three);
             buffer.push(&1);
             buffer.resize(two);
-            check_buffer(buffer, &vec![1]);
+            check_buffer(buffer, &[1]);
             assert_eq!(two.get(), buffer.capacity());
 
             // resize same size buffer
@@ -510,7 +510,7 @@ mod tests {
             buffer.push(&1);
             buffer.push(&2);
             buffer.resize(two);
-            check_buffer(buffer, &vec![1, 2]);
+            check_buffer(buffer, &[1, 2]);
             assert_eq!(two.get(), buffer.capacity());
 
             // resize bigger buffer
@@ -520,7 +520,7 @@ mod tests {
             buffer.push(&2);
             buffer.push(&3);
             buffer.resize(two);
-            check_buffer(buffer, &vec![2, 3]);
+            check_buffer(buffer, &[2, 3]);
             assert_eq!(two.get(), buffer.capacity());
 
             // resize bigger buffer, rolled
@@ -531,7 +531,7 @@ mod tests {
             buffer.push(&3);
             buffer.push(&4);
             buffer.resize(two);
-            check_buffer(buffer, &vec![3, 4]);
+            check_buffer(buffer, &[3, 4]);
             assert_eq!(two.get(), buffer.capacity());
         });
     }
@@ -544,7 +544,7 @@ mod tests {
 
             // resize empty buffer
             buffer.resize(four);
-            check_buffer(buffer, &vec![]);
+            check_buffer(buffer, &[]);
             assert_eq!(four.get(), buffer.capacity());
 
             // resize non-full buffer
@@ -552,7 +552,7 @@ mod tests {
             buffer.push(&1);
             buffer.push(&2);
             buffer.resize(four);
-            check_buffer(buffer, &vec![1, 2]);
+            check_buffer(buffer, &[1, 2]);
             assert_eq!(four.get(), buffer.capacity());
 
             // resize full buffer
@@ -562,7 +562,7 @@ mod tests {
             buffer.push(&2);
             buffer.push(&3);
             buffer.resize(four);
-            check_buffer(buffer, &vec![1, 2, 3]);
+            check_buffer(buffer, &[1, 2, 3]);
             assert_eq!(four.get(), buffer.capacity());
 
             // resize full buffer rolled
@@ -574,7 +574,7 @@ mod tests {
             buffer.push(&4);
             buffer.resize(four);
             buffer.push(&5);
-            check_buffer(buffer, &vec![2, 3, 4, 5]);
+            check_buffer(buffer, &[2, 3, 4, 5]);
             assert_eq!(four.get(), buffer.capacity());
         });
     }
@@ -582,28 +582,28 @@ mod tests {
     #[test]
     fn should_clear() {
         with_buffer(2, |buffer| {
-            check_buffer(buffer, &vec![]);
+            check_buffer(buffer, &[]);
 
             buffer.clear();
-            check_buffer(buffer, &vec![]);
+            check_buffer(buffer, &[]);
             assert_eq!(2, buffer.capacity());
 
             buffer.push(&1);
             buffer.push(&2);
             buffer.push(&3);
-            check_buffer(buffer, &vec![2, 3]);
+            check_buffer(buffer, &[2, 3]);
             assert_eq!(2, buffer.capacity());
 
             buffer.clear();
-            check_buffer(buffer, &vec![]);
+            check_buffer(buffer, &[]);
             assert_eq!(2, buffer.capacity());
 
             buffer.push(&1);
-            check_buffer(buffer, &vec![1]);
+            check_buffer(buffer, &[1]);
             assert_eq!(2, buffer.capacity());
 
             buffer.clear();
-            check_buffer(buffer, &vec![]);
+            check_buffer(buffer, &[]);
             assert_eq!(2, buffer.capacity());
         })
     }

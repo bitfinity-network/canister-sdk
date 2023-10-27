@@ -5,7 +5,7 @@ use candid::Encode;
 use ic_stable_structures::stable_structures::storable::Bound;
 use ic_stable_structures::stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{
-    MemoryId, MemoryManager, SlicedStorable, StableUnboundedMap, Storable, UnboundedMapStructure,
+    IcMemoryManager, MemoryId, SlicedStorable, StableUnboundedMap, Storable, UnboundedMapStructure,
     VirtualMemory,
 };
 
@@ -18,7 +18,7 @@ pub trait RecoveryList: Sync + Send {
 }
 
 thread_local! {
-    static MEMORY_MANAGER: MemoryManager<DefaultMemoryImpl> = MemoryManager::init(DefaultMemoryImpl::default());
+    static MEMORY_MANAGER: IcMemoryManager<DefaultMemoryImpl> = IcMemoryManager::init(DefaultMemoryImpl::default());
 
     static RECOVERY_LIST_STORAGE: RefCell<Option<StableUnboundedMap<TransferKey, TransferValue, VirtualMemory<DefaultMemoryImpl>>>> =
         RefCell::new(None);
