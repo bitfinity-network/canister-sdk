@@ -1,12 +1,12 @@
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use dfinity_stable_structures::Memory;
 use parking_lot::RwLock;
 
-use super::error::{MemMapResult, MemMapError};
+use super::error::{MemMapError, MemMapResult};
 use super::memory_mapped_file::MemoryMappedFile;
 use crate::memory::MemoryManager;
 
@@ -30,8 +30,14 @@ impl MemoryMappedFileMemoryManager {
     pub fn flush_and_save_copies_to(&self, path: impl AsRef<Path>) -> Result<(), MemMapError> {
         let created_memory_resources = self.created_memory_resources.read();
         for (file_path, memory) in created_memory_resources.iter() {
-            let file_name = file_path.file_name().ok_or(MemMapError::InvalidSourceFileName)?;
-            let new_path = path.as_ref().join(file_name.to_str().ok_or(MemMapError::InvalidSourceFileName)?);
+            let file_name = file_path
+                .file_name()
+                .ok_or(MemMapError::InvalidSourceFileName)?;
+            let new_path = path.as_ref().join(
+                file_name
+                    .to_str()
+                    .ok_or(MemMapError::InvalidSourceFileName)?,
+            );
 
             memory.save_copy(new_path)?;
         }
@@ -44,20 +50,21 @@ impl MemoryMappedFileMemoryManager {
         let file_path = self.base_path.join(id.as_ref());
         match created_memory_resources.entry(file_path) {
             Entry::Vacant(entry) => {
-                let file_path = entry.key()
-                    .to_str()
-                    .expect(&format!("Cannot extract path from {}", entry.key().display()));
-                let result = MemoryMappedFileMemory::new(file_path.to_owned(), self.is_persistent).expect(&format!(
-                    "failed to initialize MemoryMappedFileMemory with path: {}",
-                    file_path));
+                let file_path = entry.key().to_str().expect(&format!(
+                    "Cannot extract path from {}",
+                    entry.key().display()
+                ));
+                let result = MemoryMappedFileMemory::new(file_path.to_owned(), self.is_persistent)
+                    .expect(&format!(
+                        "failed to initialize MemoryMappedFileMemory with path: {}",
+                        file_path
+                    ));
 
                 entry.insert(result.clone());
 
                 result
-            },
-            Entry::Occupied(entry) => {
-                entry.get().clone()
-            },
+            }
+            Entry::Occupied(entry) => entry.get().clone(),
         }
     }
 }
@@ -76,7 +83,7 @@ impl MemoryManager<MemoryMappedFileMemory, &Path> for MemoryMappedFileMemoryMana
 
 impl MemoryManager<MemoryMappedFileMemory, u8> for MemoryMappedFileMemoryManager {
     fn get(&self, id: u8) -> MemoryMappedFileMemory {
-        self.get_impl( id.to_string())
+        self.get_impl(id.to_string())
     }
 }
 
