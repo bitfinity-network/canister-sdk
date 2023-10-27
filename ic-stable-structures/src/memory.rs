@@ -1,7 +1,7 @@
 use dfinity_stable_structures::memory_manager::{
     MemoryId, MemoryManager as IcMemoryManager, VirtualMemory,
 };
-use dfinity_stable_structures::{Memory, DefaultMemoryImpl};
+use dfinity_stable_structures::{DefaultMemoryImpl, Memory};
 
 pub trait MemoryManager<M: Memory, T> {
     fn get(&self, id: T) -> M;

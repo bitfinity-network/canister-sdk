@@ -32,8 +32,8 @@ where
         Self {
             inner,
             cache: CacheBuilder::default()
-                    .max_capacity(max_cache_items)
-                    .build(),
+                .max_capacity(max_cache_items)
+                .build(),
         }
     }
 }

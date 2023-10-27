@@ -34,8 +34,8 @@ where
         Self {
             inner,
             cache: CacheBuilder::default()
-                    .max_capacity(max_cache_items)
-                    .build(),
+                .max_capacity(max_cache_items)
+                .build(),
         }
     }
 }
@@ -87,11 +87,9 @@ where
     }
 
     fn remove_partial(&mut self, first_key: &K1) -> bool {
-
         let FIX_ME = 0;
         /// should remove only partial keys
-        self.cache
-            .invalidate_all();
+        self.cache.invalidate_all();
         self.inner.remove_partial(first_key)
     }
 
