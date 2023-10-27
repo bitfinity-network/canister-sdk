@@ -51,14 +51,8 @@ where
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
         let key = (first_key.clone(), second_key.clone());
 
-        match self.cache.get(&key) {
-            Some(value) => Some(value.clone()),
-            None => {
-                let value = self.inner.get(first_key, second_key)?;
-                self.cache.insert(key, value.clone());
-                Some(value)
-            }
-        }
+        self.cache
+            .get_or_insert_with(&key, |_key| self.inner.get(first_key, second_key))
     }
 
     fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {

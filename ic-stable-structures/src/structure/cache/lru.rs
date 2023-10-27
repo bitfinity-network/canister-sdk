@@ -12,7 +12,7 @@ pub struct SyncLruCache<K, V> {
 
 impl<K, V> SyncLruCache<K, V>
 where
-    K: Hash + Eq,
+    K: Hash + Eq + Clone,
     V: Clone,
 {
     /// Creats a new `LRU` cache that holds at most `cap` items.
@@ -36,10 +36,10 @@ where
     /// Return the value of they key in the cache otherwise computes the value and inserts it into
     /// the cache. If the key is already in the cache, they gets gets moved to the head of
     /// the LRU list.
-    pub fn get_or_insert_with<F>(&self, key: K, f: F) -> V
+    pub fn get_or_insert_with<F>(&self, key: &K, f: F) -> Option<V>
     where
         V: Clone,
-        F: FnOnce(&K) -> V,
+        F: FnOnce(&K) -> Option<V>,
     {
         Result::<_, Infallible>::unwrap(self.get_or_try_insert_with(key, |k| Ok(f(k))))
     }
@@ -52,17 +52,19 @@ where
     ///
     /// If the provided closure fails, the error is returned and the cache is
     /// not updated.
-    pub fn get_or_try_insert_with<F, E>(&self, key: K, f: F) -> Result<V, E>
+    pub fn get_or_try_insert_with<F, E>(&self, key: &K, f: F) -> Result<Option<V>, E>
     where
         V: Clone,
-        F: FnOnce(&K) -> Result<V, E>,
+        F: FnOnce(&K) -> Result<Option<V>, E>,
     {
-        if let Some(result) = self.get(&key) {
-            return Ok(result);
+        if let Some(result) = self.get(key) {
+            return Ok(Some(result));
         }
-        let val = f(&key)?;
-        let val_clone = val.clone();
-        self.inner.lock().insert(key, val_clone);
+        let val = f(key)?;
+        if let Some(val) = val.as_ref() {
+            let val_clone = val.clone();
+            self.inner.lock().insert(key.clone(), val_clone);
+        }
         Ok(val)
     }
 
@@ -101,10 +103,11 @@ mod tests {
 
         assert_eq!(cache.get(&0u64), None);
         assert_eq!(
-            cache.get_or_insert_with(123u64, |key| vec![*key, 123]),
-            vec![123u64, 123]
+            cache.get_or_insert_with(&123u64, |key| Some(vec![*key, 123])),
+            Some(vec![123u64, 123])
         );
         assert_eq!(cache.get(&123u64), Some(vec![123u64, 123]));
+        assert_eq!(cache.get_or_insert_with(&127u64, |_| None), None);
         assert_eq!(cache.get(&0u64), None);
     }
 }
