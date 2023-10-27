@@ -3,7 +3,10 @@ use dfinity_stable_structures::memory_manager::{
 };
 use dfinity_stable_structures::{DefaultMemoryImpl, Memory};
 
+/// A memory manager that can return multiple memories.
 pub trait MemoryManager<M: Memory, T> {
+
+    /// Return a new memory based on a unique ID
     fn get(&self, id: T) -> M;
 }
 
@@ -19,7 +22,7 @@ impl<M: Memory> MemoryManager<VirtualMemory<M>, MemoryId> for IcMemoryManager<M>
     }
 }
 
-/// Returns a new IC default MemoryManager
+/// Returns a VirtualMemory MemoryManager that uses the default IC memory
 pub fn default_ic_memory_manager() -> IcMemoryManager<DefaultMemoryImpl> {
     IcMemoryManager::init(DefaultMemoryImpl::default())
 }
