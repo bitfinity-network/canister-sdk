@@ -15,7 +15,7 @@ const WASM_PAGE_SIZE_IN_BYTES: u64 = 65536;
 pub struct MemoryMappedFileMemoryManager {
     base_path: PathBuf,
     is_persistent: bool,
-    created_memory_resources: Arc<RwLock<BTreeMap<PathBuf, MemoryMappedFileMemory>>>,
+    created_memory_resources: RwLock<BTreeMap<PathBuf, MemoryMappedFileMemory>>,
 }
 
 impl MemoryMappedFileMemoryManager {
