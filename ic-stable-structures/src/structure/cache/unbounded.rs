@@ -31,10 +31,10 @@ where
     pub fn with_map(inner: StableUnboundedMap<K, V, M>, max_cache_items: u64) -> Self {
         Self {
             inner,
-            cache:                 CacheBuilder::default()
-                    .max_capacity(max_cache_items)
-                    .build(),
-         }
+            cache: CacheBuilder::default()
+                .max_capacity(max_cache_items)
+                .build(),
+        }
     }
 }
 
