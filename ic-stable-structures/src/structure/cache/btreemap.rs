@@ -1,7 +1,6 @@
 use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
-use mini_moka::sync::{Cache, CacheBuilder};
 
 use crate::structure::*;
 
@@ -13,7 +12,7 @@ where
     M: Memory,
 {
     inner: StableBTreeMap<K, V, M>,
-    cache: Cache<K, V>,
+    cache: SyncLruCache<K, V>,
 }
 
 impl<K, V, M> CachedStableBTreeMap<K, V, M>
@@ -23,17 +22,15 @@ where
     M: Memory,
 {
     /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
-    pub fn new(memory: M, max_cache_items: u64) -> Self {
+    pub fn new(memory: M, max_cache_items: u32) -> Self {
         Self::with_map(StableBTreeMap::new(memory), max_cache_items)
     }
 
     /// Create new instance of the CachedUnboundedMap with a fixed number of max cached elements.
-    pub fn with_map(inner: StableBTreeMap<K, V, M>, max_cache_items: u64) -> Self {
+    pub fn with_map(inner: StableBTreeMap<K, V, M>, max_cache_items: u32) -> Self {
         Self {
             inner,
-            cache: CacheBuilder::default()
-                .max_capacity(max_cache_items)
-                .build(),
+            cache: SyncLruCache::new(max_cache_items),
         }
     }
 }
@@ -45,20 +42,14 @@ where
     M: Memory,
 {
     fn get(&self, key: &K) -> Option<V> {
-        match self.cache.get(key) {
-            Some(value) => Some(value.clone()),
-            None => {
-                let value = self.inner.get(key)?;
-                self.cache.insert(key.clone(), value.clone());
-                Some(value)
-            }
-        }
+        self.cache
+            .get_or_insert_with(key, |key| self.inner.get(key))
     }
 
     fn insert(&mut self, key: K, value: V) -> Option<V> {
         match self.inner.insert(key.clone(), value) {
             Some(old_value) => {
-                self.cache.invalidate(&key);
+                self.cache.remove(&key);
                 Some(old_value)
             }
             None => None,
@@ -68,7 +59,7 @@ where
     fn remove(&mut self, key: &K) -> Option<V> {
         match self.inner.remove(key) {
             Some(old_value) => {
-                self.cache.invalidate(key);
+                self.cache.remove(key);
                 Some(old_value)
             }
             None => None,
@@ -88,7 +79,7 @@ where
     }
 
     fn clear(&mut self) {
-        self.cache.invalidate_all();
+        self.cache.clear();
         self.inner.clear()
     }
 }

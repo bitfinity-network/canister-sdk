@@ -1,7 +1,6 @@
 use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
-use mini_moka::sync::{Cache, CacheBuilder};
 
 use crate::structure::*;
 
@@ -14,7 +13,7 @@ where
     M: Memory,
 {
     inner: StableMultimap<K1, K2, V, M>,
-    cache: Cache<(K1, K2), V>,
+    cache: SyncLruCache<(K1, K2), V>,
 }
 
 impl<K1, K2, V, M> CachedStableMultimap<K1, K2, V, M>
@@ -25,17 +24,15 @@ where
     M: Memory,
 {
     /// Create new instance of the CachedStableMultimap with a fixed number of max cached elements.
-    pub fn new(memory: M, max_cache_items: u64) -> Self {
+    pub fn new(memory: M, max_cache_items: u32) -> Self {
         Self::with_map(StableMultimap::new(memory), max_cache_items)
     }
 
     /// Create new instance of the CachedStableMultimap with a fixed number of max cached elements.
-    pub fn with_map(inner: StableMultimap<K1, K2, V, M>, max_cache_items: u64) -> Self {
+    pub fn with_map(inner: StableMultimap<K1, K2, V, M>, max_cache_items: u32) -> Self {
         Self {
             inner,
-            cache: CacheBuilder::default()
-                .max_capacity(max_cache_items)
-                .build(),
+            cache: SyncLruCache::new(max_cache_items),
         }
     }
 }
@@ -54,21 +51,15 @@ where
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
         let key = (first_key.clone(), second_key.clone());
 
-        match self.cache.get(&key) {
-            Some(value) => Some(value.clone()),
-            None => {
-                let value = self.inner.get(first_key, second_key)?;
-                self.cache.insert(key, value.clone());
-                Some(value)
-            }
-        }
+        self.cache
+            .get_or_insert_with(&key, |_key| self.inner.get(first_key, second_key))
     }
 
     fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
         match self.inner.insert(first_key, second_key, value) {
             Some(old_value) => {
                 let key = (first_key.clone(), second_key.clone());
-                self.cache.invalidate(&key);
+                self.cache.remove(&key);
                 Some(old_value)
             }
             None => None,
@@ -79,7 +70,7 @@ where
         match self.inner.remove(first_key, second_key) {
             Some(old_value) => {
                 let key = (first_key.clone(), second_key.clone());
-                self.cache.invalidate(&key);
+                self.cache.remove(&key);
                 Some(old_value)
             }
             None => None,
@@ -88,7 +79,7 @@ where
 
     fn remove_partial(&mut self, first_key: &K1) -> bool {
         // Is it possible to remove only the partial keys?
-        self.cache.invalidate_all();
+        self.cache.clear();
         self.inner.remove_partial(first_key)
     }
 
@@ -101,7 +92,7 @@ where
     }
 
     fn clear(&mut self) {
-        self.cache.invalidate_all();
+        self.cache.clear();
         self.inner.clear()
     }
 

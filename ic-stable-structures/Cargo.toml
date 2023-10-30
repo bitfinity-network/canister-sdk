@@ -6,8 +6,8 @@ edition.workspace = true
 [dependencies]
 dfinity-stable-structures = { workspace = true }
 memmap2 = { workspace = true, optional = true }
-mini-moka = { workspace = true }
 parking_lot = { workspace = true }
+schnellru = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
@@ -15,7 +15,6 @@ anyhow = "1"
 candid = { workspace = true }
 criterion = { workspace = true }
 did = { path = "./tests/did" }
-futures = { workspace = true }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 ic-exports = { path = "../ic-exports", features = ["ic-test-state-machine"]}
