@@ -12,6 +12,7 @@ use crate::memory::MemoryManager;
 
 const WASM_PAGE_SIZE_IN_BYTES: u64 = 65536;
 
+/// Memory manager that uses one memory mapped filer per one memory id.
 pub struct MemoryMappedFileMemoryManager {
     base_path: PathBuf,
     is_persistent: bool,
@@ -19,6 +20,8 @@ pub struct MemoryMappedFileMemoryManager {
 }
 
 impl MemoryMappedFileMemoryManager {
+    /// Create new file manager that uses `base_path` folder.
+    /// If `is_persistent` is set to false all the files will be removed on drop.
     pub fn new(base_path: PathBuf, is_persistent: bool) -> Self {
         Self {
             base_path,
@@ -27,6 +30,9 @@ impl MemoryMappedFileMemoryManager {
         }
     }
 
+    /// Flush and save the memory-mapped files to the given path.
+    /// Note that no changes to the state can be performed until this function is executed.
+    /// Otherwise the backup may contain inconsistent data.
     pub fn flush_and_save_copies_to(&self, path: impl AsRef<Path>) -> Result<(), MemMapError> {
         let created_memory_resources = self.created_memory_resources.read();
         for (file_path, memory) in created_memory_resources.iter() {
