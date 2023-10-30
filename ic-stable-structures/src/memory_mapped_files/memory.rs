@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use dfinity_stable_structures::Memory;
-use parking_lot::RwLock;
+use parking_lot::{RwLock, RwLockReadGuard};
 
 use super::error::{MemMapError, MemMapResult};
 use super::memory_mapped_file::MemoryMappedFile;
@@ -33,9 +33,11 @@ impl MemoryMappedFileMemoryManager {
     /// Flush and save the memory-mapped files to the given path.
     /// Note that no changes to the state can be performed until this function is executed.
     /// Otherwise the backup may contain inconsistent data.
-    pub fn flush_and_save_copies_to(&self, path: impl AsRef<Path>) -> Result<(), MemMapError> {
+    pub fn save_copies_to(&self, path: impl AsRef<Path>) -> Result<(), MemMapError> {
         let created_memory_resources = self.created_memory_resources.read();
-        for (file_path, memory) in created_memory_resources.iter() {
+        // Acquire rad lock on all memories to guarantee no write actions happen during the backup.
+        let locks = created_memory_resources.iter().map(|(file_path, memory)| (file_path, memory.read_lock())).collect::<Vec<_>>();
+        for (file_path, memory) in locks {
             let file_name = file_path
                 .file_name()
                 .ok_or(MemMapError::InvalidSourceFileName)?;
@@ -108,9 +110,10 @@ impl MemoryMappedFileMemory {
         self.0.write().set_is_persistent(is_persistent)
     }
 
-    pub fn save_copy(&self, path: impl AsRef<Path>) -> MemMapResult<()> {
-        self.0.read().save_copy(path)
+    pub(super) fn read_lock(&self) -> RwLockReadGuard<'_, MemoryMappedFile> {
+        self.0.read()
     }
+
 }
 
 impl Memory for MemoryMappedFileMemory {
