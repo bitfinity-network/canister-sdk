@@ -144,9 +144,7 @@ fn test_memory_mapped_file_memory_manager_saves_copy() {
 
     let backup_dir = TempDir::new().unwrap();
     let backup_path = backup_dir.into_path();
-    memory_manager
-        .save_copies_to(backup_path.clone())
-        .unwrap();
+    memory_manager.save_copies_to(backup_path.clone()).unwrap();
 
     drop(memory_manager);
     let memory_manager = MemoryMappedFileMemoryManager::new(backup_path, true);

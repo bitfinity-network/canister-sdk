@@ -36,7 +36,10 @@ impl MemoryMappedFileMemoryManager {
     pub fn save_copies_to(&self, path: impl AsRef<Path>) -> Result<(), MemMapError> {
         let created_memory_resources = self.created_memory_resources.read();
         // Acquire rad lock on all memories to guarantee no write actions happen during the backup.
-        let locks = created_memory_resources.iter().map(|(file_path, memory)| (file_path, memory.read_lock())).collect::<Vec<_>>();
+        let locks = created_memory_resources
+            .iter()
+            .map(|(file_path, memory)| (file_path, memory.read_lock()))
+            .collect::<Vec<_>>();
         for (file_path, memory) in locks {
             let file_name = file_path
                 .file_name()
@@ -113,7 +116,6 @@ impl MemoryMappedFileMemory {
     pub(super) fn read_lock(&self) -> RwLockReadGuard<'_, MemoryMappedFile> {
         self.0.read()
     }
-
 }
 
 impl Memory for MemoryMappedFileMemory {
