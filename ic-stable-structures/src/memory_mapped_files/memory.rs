@@ -31,8 +31,8 @@ impl MemoryMappedFileMemoryManager {
     }
 
     /// Flush and save the memory-mapped files to the given path.
-    /// Note that no changes to the state can be performed until this function is executed.
-    /// Otherwise the backup may contain inconsistent data.
+    /// Note that this function should be executed at the point when the stable storage state in consistent in order
+    /// to save a consistent backup.
     pub fn save_copies_to(&self, path: impl AsRef<Path>) -> Result<(), MemMapError> {
         let created_memory_resources = self.created_memory_resources.read();
         // Acquire rad lock on all memories to guarantee no write actions happen during the backup.
