@@ -10,6 +10,8 @@ pub enum MemMapError {
     AccessOutOfBounds,
     #[error("new length should be page size multiple")]
     SizeShouldBePageSizeMultiple,
+    #[error("invalid source file name")]
+    InvalidSourceFileName,
 }
 
 pub type MemMapResult<T> = Result<T, MemMapError>;
