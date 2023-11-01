@@ -30,6 +30,16 @@ impl DummyCanister {
     }
 
     #[query]
+    pub fn get_tx_from_cached_btreemap(&self, key: u64) -> Option<BoundedTransaction> {
+        Service::get_tx_from_cached_btreemap(key)
+    }
+
+    #[update]
+    pub async fn insert_tx_to_cached_btreemap(&self, transaction: BoundedTransaction) -> u64 {
+        Service::insert_tx_to_cached_btreemap(transaction)
+    }
+
+    #[query]
     pub fn get_tx_from_cell(&self) -> BoundedTransaction {
         Service::get_tx_from_cell()
     }
