@@ -33,6 +33,11 @@ where
             cache: SyncLruCache::new(max_cache_items),
         }
     }
+
+    /// Returns the inner collection
+    pub fn inner(&self) -> &StableBTreeMap<K, V, M> {
+        &self.inner
+    }
 }
 
 impl<K, V, M> BTreeMapStructure<K, V> for CachedStableBTreeMap<K, V, M>

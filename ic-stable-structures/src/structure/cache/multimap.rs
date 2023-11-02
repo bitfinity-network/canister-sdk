@@ -35,6 +35,11 @@ where
             cache: SyncLruCache::new(max_cache_items),
         }
     }
+
+    /// Returns the inner collection
+    pub fn inner(&self) -> &StableMultimap<K1, K2, V, M> {
+        &self.inner
+    }
 }
 
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for CachedStableMultimap<K1, K2, V, M>

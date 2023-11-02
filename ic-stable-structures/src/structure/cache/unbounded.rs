@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
 
-use crate::structure::stable_storage::{StableUnboundedIter, StableUnboundedMap};
+use crate::structure::stable_storage::StableUnboundedMap;
 use crate::UnboundedMapStructure;
 use crate::{SlicedStorable, SyncLruCache};
 
@@ -36,15 +36,9 @@ where
         }
     }
 
-    /// Iterator for all stored key-value pairs.
-    pub fn iter(&self) -> StableUnboundedIter<'_, K, V, M> {
-        self.inner.iter()
-    }
-
-    /// Returns an iterator pointing to the first element below the given bound.
-    /// Returns an empty iterator if there are no keys below the given bound.
-    pub fn iter_upper_bound(&self, bound: &K) -> StableUnboundedIter<'_, K, V, M> {
-        self.inner.iter_upper_bound(bound)
+    /// Returns the inner collection
+    pub fn inner(&self) -> &StableUnboundedMap<K, V, M> {
+        &self.inner
     }
 }
 
@@ -99,7 +93,7 @@ mod tests {
     use dfinity_stable_structures::VectorMemory;
 
     use super::*;
-    use crate::test_utils::{self, Array, StringValue};
+    use crate::test_utils::{Array, StringValue};
 
     #[test]
     fn should_get_and_insert() {
@@ -238,50 +232,5 @@ mod tests {
         assert_eq!(Some(Array([1u8, 10])), map.get(&1));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2));
         assert_eq!(Some(Array([3u8, 10])), map.get(&3));
-    }
-
-    #[test]
-    fn iter_test() {
-        let cache_items = 2;
-        let mut map = CachedStableUnboundedMap::new(VectorMemory::default(), cache_items);
-
-        let strs = [
-            test_utils::str_val(50),
-            test_utils::str_val(5000),
-            test_utils::str_val(50000),
-        ];
-
-        for i in 0..100u32 {
-            map.insert(&i, &strs[i as usize % strs.len()]);
-        }
-
-        assert!(map.iter().all(|(k, v)| v == strs[k as usize % strs.len()]))
-    }
-
-    #[test]
-    fn upper_bound_test() {
-        let cache_items = 2;
-        let mut map = CachedStableUnboundedMap::new(VectorMemory::default(), cache_items);
-
-        let strs = [
-            test_utils::str_val(50),
-            test_utils::str_val(5000),
-            test_utils::str_val(50000),
-        ];
-
-        for i in 0..100u32 {
-            map.insert(&i, &strs[i as usize % strs.len()]);
-        }
-
-        for i in 1..100u32 {
-            let mut iter = map.iter_upper_bound(&i);
-            assert_eq!(
-                iter.next(),
-                Some((i - 1, strs[(i - 1) as usize % strs.len()].clone()))
-            );
-        }
-
-        let mut iter = map.iter_upper_bound(&0);
-        assert_eq!(iter.next(), None);
     }
 }
