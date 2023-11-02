@@ -36,7 +36,7 @@ where
         }
     }
 
-    /// Returns the inner collection
+    /// Returns the inner collection so that the caller can have a readonly access to it that bypasses the cache.
     pub fn inner(&self) -> &StableUnboundedMap<K, V, M> {
         &self.inner
     }
