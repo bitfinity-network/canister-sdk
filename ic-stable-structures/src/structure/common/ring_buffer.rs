@@ -361,8 +361,8 @@ mod tests {
     ) {
         assert_eq!(buffer.len(), expected.len() as u64);
 
-        for i in 0..expected.len() {
-            assert_eq!(Some(&expected[i]), buffer.nth_element(i as u64).as_ref());
+        for (i, expected) in expected.iter().enumerate() {
+            assert_eq!(Some(expected), buffer.nth_element(i as u64).as_ref());
         }
 
         assert_eq!(None, buffer.nth_element(expected.len() as _));

@@ -50,6 +50,16 @@ where
         let _ = KeyPair::<K1, K2>::K2_BOUNDS;
         Self(StableBTreeMap::init(memory))
     }
+
+    /// Returns upper bound iterator for the given pair of keys.
+    pub fn iter_upper_bound(
+        &self,
+        first_key: &K1,
+        second_key: &K2,
+    ) -> StableMultimapIter<'_, K1, K2, V, M> {
+        let bound = KeyPair::new(first_key, second_key);
+        StableMultimapIter::new(self.0.iter_upper_bound(&bound))
+    }
 }
 
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V, M>
@@ -513,6 +523,71 @@ mod test {
         let mut iter = mm.range(&k1);
         assert!(iter.next().is_some());
         assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn iter_upper_bound() {
+        let mm = make_map();
+        assert_eq!(
+            mm.iter_upper_bound(&Array([0, 0]), &Array([0, 0, 0]))
+                .next(),
+            None
+        );
+        assert_eq!(
+            mm.iter_upper_bound(&Array([1, 2]), &Array([0, 0, 0]))
+                .next(),
+            None
+        );
+        assert_eq!(
+            mm.iter_upper_bound(&Array([1, 2]), &Array([11, 12, 13]))
+                .next(),
+            None
+        );
+        assert_eq!(
+            mm.iter_upper_bound(&Array([1, 2]), &Array([15, 16, 17]))
+                .next(),
+            Some((
+                Array([1, 2]),
+                Array([11, 12, 13]),
+                Array([200, 200, 200, 100, 100, 123])
+            ))
+        );
+        assert_eq!(
+            mm.iter_upper_bound(&Array([10, 20]), &Array([15, 16, 17]))
+                .next(),
+            Some((
+                Array([1, 2]),
+                Array([11, 12, 13]),
+                Array([200, 200, 200, 100, 100, 123])
+            ))
+        );
+        assert_eq!(
+            mm.iter_upper_bound(&Array([10, 20]), &Array([21, 22, 23]))
+                .next(),
+            Some((
+                Array([1, 2]),
+                Array([11, 12, 13]),
+                Array([200, 200, 200, 100, 100, 123])
+            ))
+        );
+        assert_eq!(
+            mm.iter_upper_bound(&Array([10, 20]), &Array([21, 22, 25]))
+                .next(),
+            Some((
+                Array([10, 20]),
+                Array([21, 22, 23]),
+                Array([123, 200, 200, 100, 100, 255])
+            ))
+        );
+        assert_eq!(
+            mm.iter_upper_bound(&Array([10, 21]), &Array([0, 0, 0]))
+                .next(),
+            Some((
+                Array([10, 20]),
+                Array([21, 22, 23]),
+                Array([123, 200, 200, 100, 100, 255])
+            ))
+        );
     }
 
     #[test]

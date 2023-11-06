@@ -2,7 +2,9 @@ use std::hash::Hash;
 
 use dfinity_stable_structures::{Memory, Storable};
 
-use crate::structure::*;
+use crate::structure::stable_storage::StableUnboundedMap;
+use crate::UnboundedMapStructure;
+use crate::{SlicedStorable, SyncLruCache};
 
 /// A LRU Cache for StableUnboundedMaps
 pub struct CachedStableUnboundedMap<K, V, M>
@@ -32,6 +34,11 @@ where
             inner,
             cache: SyncLruCache::new(max_cache_items),
         }
+    }
+
+    /// Returns the inner collection so that the caller can have a readonly access to it that bypasses the cache.
+    pub fn inner(&self) -> &StableUnboundedMap<K, V, M> {
+        &self.inner
     }
 }
 
