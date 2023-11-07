@@ -250,7 +250,7 @@ lazy_static! {
 }
 
 pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(item as syn::ImplItemFn);
+    let input = parse_macro_input!(item as syn::TraitItemFn);
     let method_name = input.sig.ident.to_string();
 
     // Check arguments of the getter
@@ -304,23 +304,16 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
     };
 
     // Check that the body of the getter is empty
-
-    let body = &input.block.stmts;
-
-    match &body[..] {
-        [Stmt::Item(Item::Verbatim(ts))] if ts.to_string() == ";" => {}
-        _ => {
+    if input.default.is_some() {
             return syn::Error::new(
                 input.span(),
                 "State getter must only be defined inside struct implementation and not in trait definition",
             )
             .to_compile_error()
             .into();
-        }
     }
 
     // Replace state getter
-
     let old_getter = STATE_GETTER.lock().unwrap().replace(StateGetter {
         method_name,
         state_type,
