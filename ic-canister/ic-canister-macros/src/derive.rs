@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
     parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit, LitBool,
-    Meta, Path, PathArguments, Type, parse, meta::ParseNestedMeta, Expr, MetaNameValue, ExprLit,
+    Meta, Path, PathArguments, Type, parse,
 };
 
 pub fn derive_canister(input: TokenStream) -> TokenStream {
@@ -246,32 +246,32 @@ fn is_state_field_stable(field: &Field) -> bool {
         .iter()
         .filter_map(|a| match a.path().get_ident() {
             Some(ident) if ident == "state" => {
-                Some(a.meta)
+                Some(&a.meta)
             },
             _ => None,
         })
         .next();
 
-    let meta_list = match meta {
-        Some(Meta::List(list)) => list,
-        _ => return true,
-    };
+    match meta {
+        Some(Meta::List(list)) => {
+            let mut result = true;
+            list.parse_nested_meta(|nested_meta| {
+                if let Some(ident) = nested_meta.path.get_ident()  {
+                    if ident == "stable_store" {
+                        let value = nested_meta.value()?;
+                        let parsed_value = value.parse::<Lit>()?;
 
-    // Since there is only going to be one named value in the args
-    // it makes sense to look at the next value as the only value:
-    let next_named_val = match meta_list.nested.into_iter().next() {
-        Some(NestedMeta::Meta(Meta::NameValue(meta))) => meta,
-        Some(_) | None => return true,
-    };
+                        result = !matches!(parsed_value, Lit::Bool(LitBool { value: false, ..  }));
+                    }
+                }
 
-    // Ensure that the path is "stable_store"
-    match next_named_val.path.get_ident() {
-        Some(ident) if ident == "stable_store" => {}
-        Some(_) | None => return true,
+                Ok(())
+            }).expect("invalid `stable` attribute syntax");
+
+            result
+        },
+        _ => true,
     }
-    
-    !matches!(next_named_val, MetaNameValue { value: Expr::Lit(ExprLit{lit: Lit::Bool(LitBool { value: false, .. }), ..}), ..})
-    // !matches!(next_named_val.value, Lit::Bool(LitBool { value: false, .. }))
 }
 
 fn is_principal_attr(attribute: &Attribute) -> bool {

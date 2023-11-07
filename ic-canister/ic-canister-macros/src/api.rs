@@ -73,7 +73,7 @@ pub(crate) fn api_method(
 
     let return_type = &input.sig.output;
     let reply_call = if is_management_api {
-        if *return_type != ReturnType::Default {
+        if !matches!(return_type, &ReturnType::Default) {
             panic!("{method_type} method cannot have a return type.");
         }
 
