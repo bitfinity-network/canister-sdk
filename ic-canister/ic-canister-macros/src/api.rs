@@ -10,8 +10,8 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input, Error, FnArg, Ident, Item, Pat, PatIdent, PatTuple,
-    ReturnType, Signature, Stmt, Token, Type, TypeTuple, Visibility,
+    parse_macro_input, Error, FnArg, Ident, Pat, PatIdent, PatTuple, ReturnType, Signature, Token,
+    Type, TypeTuple, Visibility,
 };
 
 #[derive(Default, Deserialize, Debug)]
@@ -154,7 +154,7 @@ pub(crate) fn api_method(
     };
 
     let is_async_return_type = if let ReturnType::Type(_, ty) = &input.sig.output {
-        let extracted = crate::derive::extract_type_if_matches("AsyncReturn", &ty);
+        let extracted = crate::derive::extract_type_if_matches("AsyncReturn", ty);
         ty.as_ref() != extracted
     } else {
         false
@@ -271,7 +271,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
     // Check return type of the getter
     let return_type = match &input.sig.output {
         ReturnType::Default => panic!("no return type for state getter is specified"),
-        ReturnType::Type(_, t) => crate::derive::get_state_type(&t),
+        ReturnType::Type(_, t) => crate::derive::get_state_type(t),
     };
 
     let path = match return_type {
@@ -305,7 +305,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
 
     // Check that the body of the getter is empty
     if input.default.is_some() {
-            return syn::Error::new(
+        return syn::Error::new(
                 input.span(),
                 "State getter must only be defined inside struct implementation and not in trait definition",
             )

@@ -3,16 +3,15 @@ use std::collections::HashSet;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit, LitBool,
-    Meta, Path, PathArguments, Type, parse,
+    parse, parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit,
+    LitBool, Meta, Path, PathArguments, Type,
 };
 
 pub fn derive_canister(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let trait_stream = TokenStream::from(quote! {Canister});
-    let trait_name = parse::<Path>(trait_stream)
-        .expect("static value parsing always succeeds");
+    let trait_name = parse::<Path>(trait_stream).expect("static value parsing always succeeds");
 
     let derive_upgrade = derive_upgrade_methods(&input);
 
@@ -245,9 +244,7 @@ fn is_state_field_stable(field: &Field) -> bool {
         .attrs
         .iter()
         .filter_map(|a| match a.path().get_ident() {
-            Some(ident) if ident == "state" => {
-                Some(&a.meta)
-            },
+            Some(ident) if ident == "state" => Some(&a.meta),
             _ => None,
         })
         .next();
@@ -256,20 +253,21 @@ fn is_state_field_stable(field: &Field) -> bool {
         Some(Meta::List(list)) => {
             let mut result = true;
             list.parse_nested_meta(|nested_meta| {
-                if let Some(ident) = nested_meta.path.get_ident()  {
+                if let Some(ident) = nested_meta.path.get_ident() {
                     if ident == "stable_store" {
                         let value = nested_meta.value()?;
                         let parsed_value = value.parse::<Lit>()?;
 
-                        result = !matches!(parsed_value, Lit::Bool(LitBool { value: false, ..  }));
+                        result = !matches!(parsed_value, Lit::Bool(LitBool { value: false, .. }));
                     }
                 }
 
                 Ok(())
-            }).expect("invalid `stable` attribute syntax");
+            })
+            .expect("invalid `stable` attribute syntax");
 
             result
-        },
+        }
         _ => true,
     }
 }
