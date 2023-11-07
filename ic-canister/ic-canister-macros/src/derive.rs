@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
     parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit, LitBool,
-    Meta, Path, PathArguments, Type, parse, meta::ParseNestedMeta,
+    Meta, Path, PathArguments, Type, parse, meta::ParseNestedMeta, Expr, MetaNameValue, ExprLit,
 };
 
 pub fn derive_canister(input: TokenStream) -> TokenStream {
@@ -269,8 +269,9 @@ fn is_state_field_stable(field: &Field) -> bool {
         Some(ident) if ident == "stable_store" => {}
         Some(_) | None => return true,
     }
-
-    !matches!(next_named_val.lit, Lit::Bool(LitBool { value: false, .. }))
+    
+    !matches!(next_named_val, MetaNameValue { value: Expr::Lit(ExprLit{lit: Lit::Bool(LitBool { value: false, .. }), ..}), ..})
+    // !matches!(next_named_val.value, Lit::Bool(LitBool { value: false, .. }))
 }
 
 fn is_principal_attr(attribute: &Attribute) -> bool {
