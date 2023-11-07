@@ -10,8 +10,8 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input, Error, FnArg, Ident, ImplItemMethod, Item, Pat, PatIdent, PatTuple,
-    ReturnType, Signature, Stmt, Token, Type, TypeTuple, VisPublic, Visibility,
+    parse_macro_input, Error, FnArg, Ident, Item, Pat, PatIdent, PatTuple,
+    ReturnType, Signature, Stmt, Token, Type, TypeTuple, Visibility,
 };
 
 #[derive(Default, Deserialize, Debug)]
@@ -27,7 +27,7 @@ pub(crate) fn api_method(
     is_management_api: bool,
     with_args: bool,
 ) -> TokenStream {
-    let mut input = parse_macro_input!(item as ImplItemMethod);
+    let mut input = parse_macro_input!(item as syn::ImplItemFn);
 
     // Insert `pre_update` call before executing the method first
     let method_name = input.sig.ident.to_string();
@@ -154,8 +154,8 @@ pub(crate) fn api_method(
     };
 
     let is_async_return_type = if let ReturnType::Type(_, ty) = &input.sig.output {
-        let extracted = crate::derive::extract_type_if_matches("AsyncReturn", ty);
-        &**ty != extracted
+        let extracted = crate::derive::extract_type_if_matches("AsyncReturn", &ty);
+        ty.as_ref() != extracted
     } else {
         false
     };
@@ -250,7 +250,7 @@ lazy_static! {
 }
 
 pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(item as ImplItemMethod);
+    let input = parse_macro_input!(item as syn::ImplItemFn);
     let method_name = input.sig.ident.to_string();
 
     // Check arguments of the getter
@@ -271,7 +271,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
     // Check return type of the getter
     let return_type = match &input.sig.output {
         ReturnType::Default => panic!("no return type for state getter is specified"),
-        ReturnType::Type(_, t) => crate::derive::get_state_type(t),
+        ReturnType::Type(_, t) => crate::derive::get_state_type(&t),
     };
 
     let path = match return_type {
@@ -380,9 +380,7 @@ impl Parse for GenerateExportsInput {
             input.parse::<Token![,]>()?;
             (
                 input.parse::<Ident>()?,
-                Visibility::Public(VisPublic {
-                    pub_token: Default::default(),
-                }),
+                Visibility::Public(Default::default()),
             )
         };
 

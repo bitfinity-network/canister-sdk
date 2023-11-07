@@ -4,14 +4,14 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
     parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit, LitBool,
-    Meta, NestedMeta, Path, PathArguments, Type,
+    Meta, Path, PathArguments, Type, parse, meta::ParseNestedMeta,
 };
 
 pub fn derive_canister(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let trait_stream = TokenStream::from(quote! {Canister});
-    let trait_name = parse_macro_input::parse::<Path>(trait_stream)
+    let trait_name = parse::<Path>(trait_stream)
         .expect("static value parsing always succeeds");
 
     let derive_upgrade = derive_upgrade_methods(&input);
@@ -244,8 +244,10 @@ fn is_state_field_stable(field: &Field) -> bool {
     let meta = field
         .attrs
         .iter()
-        .filter_map(|a| match a.path.get_ident() {
-            Some(ident) if ident == "state" => a.parse_meta().ok(),
+        .filter_map(|a| match a.path().get_ident() {
+            Some(ident) if ident == "state" => {
+                Some(a.meta)
+            },
             _ => None,
         })
         .next();
@@ -272,11 +274,11 @@ fn is_state_field_stable(field: &Field) -> bool {
 }
 
 fn is_principal_attr(attribute: &Attribute) -> bool {
-    attribute.path.is_ident("id")
+    attribute.path().is_ident("id")
 }
 
 fn is_state_attr(attribute: &Attribute) -> bool {
-    attribute.path.is_ident("state")
+    attribute.path().is_ident("state")
 }
 
 pub fn get_state_type(input_type: &Type) -> &Type {
@@ -373,7 +375,7 @@ fn state_type_error(input_type: &Type) -> ! {
 
 fn derive_upgrade_methods(input: &DeriveInput) -> bool {
     !input.attrs.iter().any(|x| {
-        x.path
+        x.path()
             .segments
             .last()
             .map(|last| last.ident == "canister_no_upgrade_methods")

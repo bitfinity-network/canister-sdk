@@ -66,7 +66,7 @@ serde_json = "1.0"
 serde_tokenstream = "0.2"
 sha2 = "0.10"
 schnellru = { version = "0.2", default-features = false }
-syn = "1.0"
+syn = "2.0"
 tempfile = "3.6"
 thiserror = "1.0"
 tokio = "1.0"
