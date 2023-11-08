@@ -63,7 +63,11 @@ impl From<BasicIdentity> for GenericIdentity {
 pub async fn init_agent(identity_path: &Path, url: &str) -> super::Result<Agent> {
     let identity = GenericIdentity::try_from(identity_path)?;
 
-    let transport = ReqwestTransport::create(url)?;
+    let client = reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(180))
+                .build()
+                .map_err(|e| AgentError::ConfigurationError(format!("Could not create HTTP client: {}", e)))?;
+    let transport = ReqwestTransport::create_with_client(url, client)?;
 
     let agent = Agent::builder()
         .with_transport(transport)

@@ -8,7 +8,7 @@ description = "Client for interacting with an IC Canister"
 
 [features]
 default = []
-ic-agent-client = ["dep:ic-agent"]
+ic-agent-client = ["dep:ic-agent", "reqwest"]
 state-machine-tests-client = ["dep:tokio", "ic-exports/ic-test-state-machine"]
 
 [dependencies]
@@ -17,6 +17,13 @@ candid = { workspace = true }
 ic-agent = { workspace = true, optional = true }
 ic-canister = { path = "../ic-canister/ic-canister" }
 ic-exports = { path = "../ic-exports" }
+reqwest = { workspace = true, optional = true, features = [
+  "blocking",
+  "gzip",
+  "json",
+  "rustls-tls",
+  "trust-dns",
+] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

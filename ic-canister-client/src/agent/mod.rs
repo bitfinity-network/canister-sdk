@@ -13,6 +13,10 @@ use crate::{CanisterClientError, CanisterClientResult};
 
 #[derive(Error, Debug)]
 pub enum AgentError {
+
+    #[error("configuration error: {0}")]
+    ConfigurationError(String),
+
     #[error("agent error: {0}")]
     Agent(#[from] ic_agent::AgentError),
 
