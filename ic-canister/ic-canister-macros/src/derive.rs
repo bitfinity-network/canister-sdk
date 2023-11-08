@@ -253,15 +253,12 @@ fn is_state_field_stable(field: &Field) -> bool {
         Some(Meta::List(list)) => {
             let mut result = true;
             list.parse_nested_meta(|nested_meta| {
-                if let Some(ident) = nested_meta.path.get_ident() {
-                    if ident == "stable_store" {
-                        let value = nested_meta.value()?;
-                        let parsed_value = value.parse::<Lit>()?;
+                if nested_meta.path.is_ident("stable_store") {
+                    let value = nested_meta.value()?;
+                    let parsed_value = value.parse::<Lit>()?;
 
-                        result = !matches!(parsed_value, Lit::Bool(LitBool { value: false, .. }));
-                    }
+                    result = !matches!(parsed_value, Lit::Bool(LitBool { value: false, .. }));
                 }
-
                 Ok(())
             })
             .expect("invalid `stable` attribute syntax");
