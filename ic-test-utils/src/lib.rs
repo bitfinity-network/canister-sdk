@@ -5,7 +5,6 @@ use std::path::Path;
 
 use candid::utils::ArgumentEncoder;
 use candid::Principal;
-use ic_agent::agent::http_transport::ReqwestTransport;
 use ic_agent::identity::{PemError, Secp256k1Identity};
 pub use ic_agent::Agent;
 
@@ -37,32 +36,6 @@ pub fn get_identity(account_name: impl AsRef<Path>) -> Result<Secp256k1Identity>
         }
         Err(err) => Err(Error::from(err)),
     }
-}
-
-/// Get an agent by identity name.
-///
-/// This is assuming there is an agent identity available.
-/// If no identities area available then clone the correct **identity** project.
-///
-/// ```text
-/// # Clone the identity project first
-/// mkdir -p ~/.config/dfx/identity/
-/// cp -Rn ./identity/.config/dfx/identity/* ~/.config/dfx/identity/
-/// ```
-pub async fn get_agent(name: impl Into<&str>, url: Option<&str>) -> Result<Agent> {
-    let identity = get_identity(name.into())?;
-
-    let url = url.unwrap_or(URL);
-    let transport = ReqwestTransport::create(url)?;
-
-    let agent = Agent::builder()
-        .with_transport(transport)
-        .with_identity(identity)
-        .build()?;
-
-    agent.fetch_root_key().await?;
-
-    Ok(agent)
 }
 
 /// Create a default `Delay` with a throttle of 500ms

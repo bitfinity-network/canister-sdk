@@ -1,6 +1,7 @@
 pub mod identity;
 
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use candid::utils::ArgumentEncoder;
 use candid::{encode_args, CandidType, Decode, Principal};
@@ -36,8 +37,9 @@ impl IcAgentClient {
         canister: Principal,
         identity_path: &Path,
         network: &str,
+        timeout: Option<Duration>,
     ) -> Result<Self> {
-        let agent = identity::init_agent(identity_path, network).await?;
+        let agent = identity::init_agent(identity_path, network, timeout).await?;
         Ok(Self {
             canister_id: canister,
             agent,
