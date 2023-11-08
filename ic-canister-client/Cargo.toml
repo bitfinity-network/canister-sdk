@@ -18,7 +18,6 @@ ic-agent = { workspace = true, optional = true }
 ic-canister = { path = "../ic-canister/ic-canister" }
 ic-exports = { path = "../ic-exports" }
 reqwest = { workspace = true, optional = true, features = [
-  "blocking",
   "gzip",
   "json",
   "rustls-tls",

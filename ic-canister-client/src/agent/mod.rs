@@ -35,7 +35,7 @@ impl IcAgentClient {
     /// Initialize an IC Agent with a PEM file
     pub async fn with_identity(
         canister: Principal,
-        identity_path: &Path,
+        identity_path: impl AsRef<Path>,
         network: &str,
         timeout: Option<Duration>,
     ) -> Result<Self> {

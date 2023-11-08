@@ -62,11 +62,11 @@ impl From<BasicIdentity> for GenericIdentity {
 
 /// Initialize an IC Agent
 pub async fn init_agent(
-    identity_path: &Path,
+    identity_path: impl AsRef<Path>,
     url: &str,
     timeout: Option<Duration>,
 ) -> super::Result<Agent> {
-    let identity = GenericIdentity::try_from(identity_path)?;
+    let identity = GenericIdentity::try_from(identity_path.as_ref())?;
 
     let timeout = timeout.unwrap_or(Duration::from_secs(120));
 

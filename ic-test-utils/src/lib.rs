@@ -2,9 +2,11 @@
 #![doc = include_str!("../README.md")]
 use std::borrow::Cow;
 use std::path::Path;
+use std::time::Duration;
 
 use candid::utils::ArgumentEncoder;
 use candid::Principal;
+use ic_agent::agent::http_transport::ReqwestTransport;
 use ic_agent::identity::{PemError, Secp256k1Identity};
 pub use ic_agent::Agent;
 
@@ -34,6 +36,47 @@ pub fn get_identity(account_name: impl AsRef<Path>) -> Result<Secp256k1Identity>
         }
         Err(err) => Err(Error::from(err)),
     }
+}
+
+const URL: &str = "http://localhost:8000";
+
+/// Get an agent by identity name.
+///
+/// This is assuming there is an agent identity available.
+/// If no identities area available then clone the correct **identity** project.
+///
+/// ```text
+/// # Clone the identity project first
+/// mkdir -p ~/.config/dfx/identity/
+/// cp -Rn ./identity/.config/dfx/identity/* ~/.config/dfx/identity/
+/// ```
+pub async fn get_agent(
+    name: impl Into<&str>,
+    url: Option<&str>,
+    timeout: Option<Duration>,
+) -> Result<Agent> {
+    let identity = get_identity(name.into())?;
+
+    let url = url.unwrap_or(URL);
+
+    let timeout = timeout.unwrap_or(Duration::from_secs(120));
+
+    let client = reqwest::ClientBuilder::new()
+        .timeout(timeout)
+        .build()
+        .map_err(|e| Error::Generic(format!("error configuring transport client. Err: {:?}", e)))?;
+
+    let transport = ReqwestTransport::create_with_client(url, client)?;
+
+    let agent = Agent::builder()
+        .with_transport(transport)
+        .with_identity(identity)
+        .with_ingress_expiry(Some(timeout))
+        .build()?;
+
+    agent.fetch_root_key().await?;
+
+    Ok(agent)
 }
 
 /// Create a default `Delay` with a throttle of 500ms
