@@ -28,7 +28,6 @@ const MAX_RETRIES: u32 = 3;
 const RETRY_DELAY: Duration = Duration::from_secs(1);
 
 /// Get the principal of a wallet.
-/// Get the principal of a wallet.
 fn get_wallet_principal(account_name: impl AsRef<str>) -> Result<Principal> {
     use_identity(account_name)?;
     let output = execute_command_with_retry("dfx", &["identity", "get-wallet"], MAX_RETRIES)?;
