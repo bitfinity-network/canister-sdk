@@ -15,8 +15,6 @@ pub mod canister;
 
 pub use canister::{Canister, Management, ManagementCanister, Wallet, WalletCanister};
 
-const URL: &str = "http://localhost:8000";
-
 /// Get the identity for an account.
 /// This is useful for testing.
 ///
