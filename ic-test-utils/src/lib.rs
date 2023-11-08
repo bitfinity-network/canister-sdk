@@ -5,7 +5,7 @@ use std::path::Path;
 
 use candid::utils::ArgumentEncoder;
 use candid::Principal;
-use ic_agent::agent::http_transport::ReqwestHttpReplicaV2Transport;
+use ic_agent::agent::http_transport::ReqwestTransport;
 use ic_agent::identity::{PemError, Secp256k1Identity};
 pub use ic_agent::Agent;
 
@@ -53,7 +53,7 @@ pub async fn get_agent(name: impl Into<&str>, url: Option<&str>) -> Result<Agent
     let identity = get_identity(name.into())?;
 
     let url = url.unwrap_or(URL);
-    let transport = ReqwestHttpReplicaV2Transport::create(url)?;
+    let transport = ReqwestTransport::create(url)?;
 
     let agent = Agent::builder()
         .with_transport(transport)

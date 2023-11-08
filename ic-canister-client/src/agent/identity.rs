@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use candid::Principal;
-use ic_agent::agent::http_transport::ReqwestHttpReplicaV2Transport;
+use ic_agent::agent::http_transport::ReqwestTransport;
 use ic_agent::agent::EnvelopeContent;
 use ic_agent::identity::{BasicIdentity, Secp256k1Identity};
 use ic_agent::{Agent, Identity};
@@ -63,7 +63,7 @@ impl From<BasicIdentity> for GenericIdentity {
 pub async fn init_agent(identity_path: &Path, url: &str) -> super::Result<Agent> {
     let identity = GenericIdentity::try_from(identity_path)?;
 
-    let transport = ReqwestHttpReplicaV2Transport::create(url)?;
+    let transport = ReqwestTransport::create(url)?;
 
     let agent = Agent::builder()
         .with_transport(transport)
@@ -117,6 +117,7 @@ mod test {
             canister_id: Principal::anonymous(),
             method_name: "some".to_owned(),
             arg: vec![],
+            nonce: None,
         };
 
         let signature = identity.sign(&envelop).unwrap();
