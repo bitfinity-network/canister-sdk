@@ -1,7 +1,8 @@
 use std::path::Path;
+use std::time::Duration;
 
 use candid::Principal;
-use ic_agent::agent::http_transport::ReqwestHttpReplicaV2Transport;
+use ic_agent::agent::http_transport::ReqwestTransport;
 use ic_agent::agent::EnvelopeContent;
 use ic_agent::identity::{BasicIdentity, Secp256k1Identity};
 use ic_agent::{Agent, Identity};
@@ -60,14 +61,31 @@ impl From<BasicIdentity> for GenericIdentity {
 }
 
 /// Initialize an IC Agent
-pub async fn init_agent(identity_path: &Path, url: &str) -> super::Result<Agent> {
-    let identity = GenericIdentity::try_from(identity_path)?;
+pub async fn init_agent(
+    identity_path: impl AsRef<Path>,
+    url: &str,
+    timeout: Option<Duration>,
+) -> super::Result<Agent> {
+    let identity = GenericIdentity::try_from(identity_path.as_ref())?;
 
-    let transport = ReqwestHttpReplicaV2Transport::create(url)?;
+    let timeout = timeout.unwrap_or(Duration::from_secs(120));
+
+    let client = reqwest::ClientBuilder::new()
+        .timeout(timeout)
+        .build()
+        .map_err(|e| {
+            AgentError::ConfigurationError(format!(
+                "error configuring transport client. Err: {:?}",
+                e
+            ))
+        })?;
+
+    let transport = ReqwestTransport::create_with_client(url, client)?;
 
     let agent = Agent::builder()
         .with_transport(transport)
         .with_identity(identity)
+        .with_ingress_expiry(Some(timeout))
         .build()?;
 
     agent.fetch_root_key().await?;

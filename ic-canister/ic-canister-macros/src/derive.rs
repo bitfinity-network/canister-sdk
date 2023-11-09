@@ -3,16 +3,15 @@ use std::collections::HashSet;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit, LitBool,
-    Meta, NestedMeta, Path, PathArguments, Type,
+    parse, parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, Lit,
+    LitBool, Meta, Path, PathArguments, Type,
 };
 
 pub fn derive_canister(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let trait_stream = TokenStream::from(quote! {Canister});
-    let trait_name = parse_macro_input::parse::<Path>(trait_stream)
-        .expect("static value parsing always succeeds");
+    let trait_name = parse::<Path>(trait_stream).expect("static value parsing always succeeds");
 
     let derive_upgrade = derive_upgrade_methods(&input);
 
@@ -244,39 +243,38 @@ fn is_state_field_stable(field: &Field) -> bool {
     let meta = field
         .attrs
         .iter()
-        .filter_map(|a| match a.path.get_ident() {
-            Some(ident) if ident == "state" => a.parse_meta().ok(),
+        .filter_map(|a| match a.path().get_ident() {
+            Some(ident) if ident == "state" => Some(&a.meta),
             _ => None,
         })
         .next();
 
-    let meta_list = match meta {
-        Some(Meta::List(list)) => list,
-        _ => return true,
-    };
+    match meta {
+        Some(Meta::List(list)) => {
+            let mut result = true;
+            list.parse_nested_meta(|nested_meta| {
+                if nested_meta.path.is_ident("stable_store") {
+                    let value = nested_meta.value()?;
+                    let parsed_value = value.parse::<Lit>()?;
 
-    // Since there is only going to be one named value in the args
-    // it makes sense to look at the next value as the only value:
-    let next_named_val = match meta_list.nested.into_iter().next() {
-        Some(NestedMeta::Meta(Meta::NameValue(meta))) => meta,
-        Some(_) | None => return true,
-    };
+                    result = !matches!(parsed_value, Lit::Bool(LitBool { value: false, .. }));
+                }
+                Ok(())
+            })
+            .expect("invalid `stable` attribute syntax");
 
-    // Ensure that the path is "stable_store"
-    match next_named_val.path.get_ident() {
-        Some(ident) if ident == "stable_store" => {}
-        Some(_) | None => return true,
+            result
+        }
+        _ => true,
     }
-
-    !matches!(next_named_val.lit, Lit::Bool(LitBool { value: false, .. }))
 }
 
 fn is_principal_attr(attribute: &Attribute) -> bool {
-    attribute.path.is_ident("id")
+    attribute.path().is_ident("id")
 }
 
 fn is_state_attr(attribute: &Attribute) -> bool {
-    attribute.path.is_ident("state")
+    attribute.path().is_ident("state")
 }
 
 pub fn get_state_type(input_type: &Type) -> &Type {
@@ -373,7 +371,7 @@ fn state_type_error(input_type: &Type) -> ! {
 
 fn derive_upgrade_methods(input: &DeriveInput) -> bool {
     !input.attrs.iter().any(|x| {
-        x.path
+        x.path()
             .segments
             .last()
             .map(|last| last.ident == "canister_no_upgrade_methods")

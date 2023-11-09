@@ -10,8 +10,8 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input, Error, FnArg, Ident, ImplItemMethod, Item, Pat, PatIdent, PatTuple,
-    ReturnType, Signature, Stmt, Token, Type, TypeTuple, VisPublic, Visibility,
+    parse_macro_input, Error, FnArg, Ident, Pat, PatIdent, PatTuple, ReturnType, Signature, Token,
+    Type, TypeTuple, Visibility,
 };
 
 #[derive(Default, Deserialize, Debug)]
@@ -27,7 +27,7 @@ pub(crate) fn api_method(
     is_management_api: bool,
     with_args: bool,
 ) -> TokenStream {
-    let mut input = parse_macro_input!(item as ImplItemMethod);
+    let mut input = parse_macro_input!(item as syn::ImplItemFn);
 
     // Insert `pre_update` call before executing the method first
     let method_name = input.sig.ident.to_string();
@@ -73,7 +73,7 @@ pub(crate) fn api_method(
 
     let return_type = &input.sig.output;
     let reply_call = if is_management_api {
-        if *return_type != ReturnType::Default {
+        if !matches!(return_type, &ReturnType::Default) {
             panic!("{method_type} method cannot have a return type.");
         }
 
@@ -155,7 +155,7 @@ pub(crate) fn api_method(
 
     let is_async_return_type = if let ReturnType::Type(_, ty) = &input.sig.output {
         let extracted = crate::derive::extract_type_if_matches("AsyncReturn", ty);
-        &**ty != extracted
+        ty.as_ref() != extracted
     } else {
         false
     };
@@ -250,7 +250,7 @@ lazy_static! {
 }
 
 pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(item as ImplItemMethod);
+    let input = parse_macro_input!(item as syn::TraitItemFn);
     let method_name = input.sig.ident.to_string();
 
     // Check arguments of the getter
@@ -304,23 +304,16 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
     };
 
     // Check that the body of the getter is empty
-
-    let body = &input.block.stmts;
-
-    match &body[..] {
-        [Stmt::Item(Item::Verbatim(ts))] if ts.to_string() == ";" => {}
-        _ => {
-            return syn::Error::new(
+    if input.default.is_some() {
+        return syn::Error::new(
                 input.span(),
                 "State getter must only be defined inside struct implementation and not in trait definition",
             )
             .to_compile_error()
             .into();
-        }
     }
 
     // Replace state getter
-
     let old_getter = STATE_GETTER.lock().unwrap().replace(StateGetter {
         method_name,
         state_type,
@@ -380,9 +373,7 @@ impl Parse for GenerateExportsInput {
             input.parse::<Token![,]>()?;
             (
                 input.parse::<Ident>()?,
-                Visibility::Public(VisPublic {
-                    pub_token: Default::default(),
-                }),
+                Visibility::Public(Default::default()),
             )
         };
 
