@@ -7,12 +7,6 @@ edition.workspace = true
 dirs = { workspace = true }
 garcon = { workspace = true }
 ic-agent = { workspace = true }
-reqwest = { workspace = true, features = [
-  "gzip",
-  "json",
-  "rustls-tls",
-  "trust-dns",
-] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_bytes = { workspace = true }

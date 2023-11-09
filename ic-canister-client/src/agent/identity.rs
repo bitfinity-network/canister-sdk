@@ -70,7 +70,7 @@ pub async fn init_agent(
 
     let timeout = timeout.unwrap_or(Duration::from_secs(120));
 
-    let client = reqwest::ClientBuilder::new()
+    let client = ic_agent::agent::http_transport::reqwest::ClientBuilder::new()
         .timeout(timeout)
         .build()
         .map_err(|e| {

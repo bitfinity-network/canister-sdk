@@ -24,13 +24,16 @@ use super::Canister;
 use crate::{Error, Result};
 
 const MAX_RETRIES: u32 = 3;
-const RETRY_DELAY: Duration = Duration::from_millis(1_000); // milliseconds
+
+const RETRY_DELAY: Duration = Duration::from_secs(1);
 
 /// Get the principal of a wallet.
 fn get_wallet_principal(account_name: impl AsRef<str>) -> Result<Principal> {
     use_identity(account_name)?;
     let output = execute_command_with_retry("dfx", &["identity", "get-wallet"], MAX_RETRIES)?;
+
     let stdout = String::from_utf8(output.stdout).expect("invalid utf8");
+
     let principal = Principal::from_text(stdout.trim())?;
     Ok(principal)
 }
@@ -47,27 +50,33 @@ fn use_identity(account_name: impl AsRef<str>) -> Result<()> {
 
 /// Execute a command with retries.
 fn execute_command_with_retry(command: &str, args: &[&str], max_retries: u32) -> Result<Output> {
-    for retry in 0..=max_retries {
-        match execute_command(command, args) {
+    let mut attempts = 0;
+
+    loop {
+        match Command::new(command).args(args).output() {
+            Ok(output) if output.status.success() => return Ok(output),
             Ok(output) => {
-                if output.status.success() {
-                    return Ok(output);
-                } else {
+                eprintln!("Command failed with status: {:?}", output.status);
+                if attempts >= max_retries {
+                    eprintln!("Exhausted all retries");
                     return Err(Error::InvalidOrMissingAccount);
                 }
             }
-            Err(_) if retry < max_retries => {
-                thread::sleep(RETRY_DELAY);
+            Err(error) => {
+                eprintln!("Command execution failed with error: {:?}", error);
+                if attempts >= max_retries {
+                    return Err(Error::CommandExecutionFailed);
+                }
             }
-            Err(_) => return Err(Error::CommandExecutionFailed),
         }
-    }
-    Err(Error::CommandExecutionFailed)
-}
 
-/// Execute a command.
-fn execute_command(command: &str, args: &[&str]) -> std::result::Result<Output, std::io::Error> {
-    Command::new(command).args(args).output()
+        attempts += 1;
+        eprintln!(
+            "Retrying after delay... (Attempt {} of {})",
+            attempts, max_retries
+        );
+        thread::sleep(RETRY_DELAY);
+    }
 }
 
 /// The balance result of a `Wallet::balance` call.
