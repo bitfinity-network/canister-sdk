@@ -7,7 +7,7 @@ use crate::client::CanisterClient;
 use crate::{CanisterClientError, CanisterClientResult};
 
 /// This client is used to interact with the IC canister.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IcCanisterClient {
     /// The canister id of the Evm canister
     canister_id: Principal,

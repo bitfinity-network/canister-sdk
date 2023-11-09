@@ -26,6 +26,7 @@ pub enum AgentError {
 
 pub type Result<T> = std::result::Result<T, AgentError>;
 
+#[derive(Clone)]
 pub struct IcAgentClient {
     canister_id: Principal,
     agent: ic_agent::Agent,
