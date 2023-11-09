@@ -1,6 +1,7 @@
 pub mod identity;
 
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use candid::utils::ArgumentEncoder;
 use candid::{encode_args, CandidType, Decode, Principal};
@@ -13,6 +14,9 @@ use crate::{CanisterClientError, CanisterClientResult};
 
 #[derive(Error, Debug)]
 pub enum AgentError {
+    #[error("configuration error: {0}")]
+    ConfigurationError(String),
+
     #[error("agent error: {0}")]
     Agent(#[from] ic_agent::AgentError),
 
@@ -31,10 +35,11 @@ impl IcAgentClient {
     /// Initialize an IC Agent with a PEM file
     pub async fn with_identity(
         canister: Principal,
-        identity_path: &Path,
+        identity_path: impl AsRef<Path>,
         network: &str,
+        timeout: Option<Duration>,
     ) -> Result<Self> {
-        let agent = identity::init_agent(identity_path, network).await?;
+        let agent = identity::init_agent(identity_path, network, timeout).await?;
         Ok(Self {
             canister_id: canister,
             agent,

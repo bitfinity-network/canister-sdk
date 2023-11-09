@@ -3,8 +3,7 @@ use std::hash::Hash;
 use dfinity_stable_structures::{Memory, Storable};
 
 use crate::structure::stable_storage::StableUnboundedMap;
-use crate::UnboundedMapStructure;
-use crate::{SlicedStorable, SyncLruCache};
+use crate::{SlicedStorable, SyncLruCache, UnboundedMapStructure};
 
 /// A LRU Cache for StableUnboundedMaps
 pub struct CachedStableUnboundedMap<K, V, M>

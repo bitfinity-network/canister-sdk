@@ -11,7 +11,7 @@ schnellru = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-anyhow = "1"
+anyhow = { workspace = true }
 candid = { workspace = true }
 criterion = { workspace = true }
 did = { path = "./tests/did" }
