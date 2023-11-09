@@ -35,7 +35,7 @@ impl IcCanisterClient {
 impl CanisterClient for IcCanisterClient {
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
-        T: ArgumentEncoder + Send,
+        T: ArgumentEncoder + Send + Sync,
         R: for<'de> Deserialize<'de> + CandidType,
     {
         self.call(method, args).await
@@ -43,7 +43,7 @@ impl CanisterClient for IcCanisterClient {
 
     async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
-        T: ArgumentEncoder + Send,
+        T: ArgumentEncoder + Send + Sync,
         R: for<'de> Deserialize<'de> + CandidType,
     {
         self.call(method, args).await

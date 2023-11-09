@@ -23,7 +23,7 @@ pub trait CanisterClient {
     /// The result of the method call.
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
-        T: ArgumentEncoder + Send,
+        T: ArgumentEncoder + Send + Sync,
         R: for<'de> Deserialize<'de> + CandidType;
 
     /// Call a query method on the canister.
@@ -38,6 +38,6 @@ pub trait CanisterClient {
     /// The result of the method call.
     async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
-        T: ArgumentEncoder + Send,
+        T: ArgumentEncoder + Send + Sync,
         R: for<'de> Deserialize<'de> + CandidType;
 }

@@ -141,57 +141,17 @@ impl StateMachineCanisterClient {
 impl CanisterClient for StateMachineCanisterClient {
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
-        T: ArgumentEncoder + Send,
+        T: ArgumentEncoder + Send + Sync,
         R: for<'de> Deserialize<'de> + CandidType,
     {
-        let args = candid::encode_args(args)?;
-        let method = String::from(method);
-
-        let call_result = self
-            .with_state_machine(move |env, canister, caller| {
-                env.update_call(canister, caller, &method, args)
-            })
-            .await?;
-
-        let reply = match call_result {
-            WasmResult::Reply(reply) => reply,
-            WasmResult::Reject(e) => {
-                return Err(CanisterClientError::CanisterError((
-                    RejectionCode::CanisterError,
-                    e,
-                )));
-            }
-        };
-
-        let decoded = Decode!(&reply, R)?;
-        Ok(decoded)
+        StateMachineCanisterClient::update(self, method, args).await
     }
 
     async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
-        T: ArgumentEncoder + Send,
+        T: ArgumentEncoder + Send + Sync,
         R: for<'de> Deserialize<'de> + CandidType,
     {
-        let args = candid::encode_args(args)?;
-        let method = String::from(method);
-
-        let call_result = self
-            .with_state_machine(move |env, canister, caller| {
-                env.query_call(canister, caller, &method, args)
-            })
-            .await?;
-
-        let reply = match call_result {
-            WasmResult::Reply(reply) => reply,
-            WasmResult::Reject(e) => {
-                return Err(CanisterClientError::CanisterError((
-                    RejectionCode::CanisterError,
-                    e,
-                )));
-            }
-        };
-
-        let decoded = Decode!(&reply, R)?;
-        Ok(decoded)
+        StateMachineCanisterClient::query(self, method, args).await
     }
 }
