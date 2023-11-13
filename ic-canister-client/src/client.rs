@@ -10,7 +10,7 @@ use crate::CanisterClientResult;
 /// The IC Agent is used for interaction through the dfx tool, while the IC
 /// Canister is used for interacting with the EVM canister in wasm environments.
 #[async_trait::async_trait]
-pub trait CanisterClient: Clone {
+pub trait CanisterClient: Send + Clone {
     /// Call an update method on the canister.
     ///
     /// # Arguments
