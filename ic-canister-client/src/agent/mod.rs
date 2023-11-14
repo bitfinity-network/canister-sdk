@@ -6,6 +6,7 @@ use std::time::Duration;
 use candid::utils::ArgumentEncoder;
 use candid::{encode_args, CandidType, Decode, Principal};
 use ic_agent::identity::PemError;
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -61,7 +62,7 @@ impl CanisterClient for IcAgentClient {
     async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
         T: ArgumentEncoder + Send + Sync,
-        R: for<'de> Deserialize<'de> + CandidType,
+        R: DeserializeOwned + CandidType,
     {
         let args = encode_args(args)?;
 
@@ -77,7 +78,7 @@ impl CanisterClient for IcAgentClient {
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
         T: ArgumentEncoder + Send + Sync,
-        R: for<'de> Deserialize<'de> + CandidType,
+        R: DeserializeOwned + CandidType,
     {
         let args = encode_args(args)?;
         self.agent

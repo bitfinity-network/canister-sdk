@@ -5,7 +5,6 @@ pub mod client;
 pub mod error;
 pub mod ic_client;
 
-
 #[cfg(feature = "pocket-ic-client")]
 pub mod pocket_ic;
 

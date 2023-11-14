@@ -4,7 +4,7 @@ use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Decode, Principal};
 use ic_exports::ic_kit::RejectionCode;
 use pocket_ic::{PocketIc, WasmResult};
-use serde::Deserialize;
+use serde::de::DeserializeOwned;
 
 use crate::{CanisterClient, CanisterClientError, CanisterClientResult};
 
@@ -85,7 +85,7 @@ impl PocketIcClient {
     pub async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
         T: ArgumentEncoder + Send + Sync,
-        R: for<'de> Deserialize<'de> + CandidType,
+        R: DeserializeOwned + CandidType,
     {
         let args = candid::encode_args(args)?;
         let method = String::from(method);
@@ -114,7 +114,7 @@ impl PocketIcClient {
     pub async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
         T: ArgumentEncoder + Send + Sync,
-        R: for<'de> Deserialize<'de> + CandidType,
+        R: DeserializeOwned + CandidType,
     {
         let args = candid::encode_args(args)?;
         let method = String::from(method);
@@ -145,7 +145,7 @@ impl CanisterClient for PocketIcClient {
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
         T: ArgumentEncoder + Send + Sync,
-        R: for<'de> Deserialize<'de> + CandidType,
+        R: DeserializeOwned + CandidType,
     {
         PocketIcClient::update(self, method, args).await
     }
@@ -153,7 +153,7 @@ impl CanisterClient for PocketIcClient {
     async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
         T: ArgumentEncoder + Send + Sync,
-        R: for<'de> Deserialize<'de> + CandidType,
+        R: DeserializeOwned + CandidType,
     {
         PocketIcClient::query(self, method, args).await
     }
