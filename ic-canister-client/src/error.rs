@@ -22,6 +22,7 @@ pub enum CanisterClientError {
     PocketIcTestError(pocket_ic::UserError),
 }
 
+#[cfg(feature = "pocket-ic-client")]
 impl From<pocket_ic::UserError> for CanisterClientError {
     fn from(error: pocket_ic::UserError) -> Self {
         CanisterClientError::PocketIcTestError(error)
