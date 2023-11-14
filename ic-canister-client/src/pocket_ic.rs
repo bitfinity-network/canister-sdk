@@ -78,12 +78,7 @@ impl PocketIcClient {
 
         let reply = match call_result {
             WasmResult::Reply(reply) => reply,
-            WasmResult::Reject(e) => {
-                return Err(CanisterClientError::CanisterError((
-                    RejectionCode::CanisterError,
-                    e,
-                )));
-            }
+            WasmResult::Reject(e) => return Err(reject_error(e)),
         };
 
         let decoded = Decode!(&reply, R)?;
@@ -107,17 +102,16 @@ impl PocketIcClient {
 
         let reply = match call_result {
             WasmResult::Reply(reply) => reply,
-            WasmResult::Reject(e) => {
-                return Err(CanisterClientError::CanisterError((
-                    RejectionCode::CanisterError,
-                    e,
-                )));
-            }
+            WasmResult::Reject(e) => return Err(reject_error(e)),
         };
 
         let decoded = Decode!(&reply, R)?;
         Ok(decoded)
     }
+}
+
+fn reject_error(e: String) -> CanisterClientError {
+    CanisterClientError::CanisterError((RejectionCode::CanisterError, e))
 }
 
 #[async_trait::async_trait]
