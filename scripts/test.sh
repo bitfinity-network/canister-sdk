@@ -5,13 +5,6 @@ export RUST_BACKTRACE=full
 POCKET_IC_DIR="$(pwd)/target/pocket_ic_test_server"
 export POCKET_IC_BIN="$POCKET_IC_DIR/pocket-ic"
 
-download_file() {
-    local url="$1"
-    local output_path="$2"
-    echo "Downloading $url to $output_path"
-    curl -L -o "$output_path" "$url"
-}
-
 prepare_pocket_ic_server_binary() {
     echo "Preparing Pocket IC..."
 
@@ -27,7 +20,7 @@ prepare_pocket_ic_server_binary() {
 
     echo "Downloading Pocket IC from: $pocket_ic_url"
     mkdir -p $POCKET_IC_DIR
-    download_file "$pocket_ic_url" "$POCKET_IC_DIR/pocket-ic.gz"
+    curl -L -o "$POCKET_IC_DIR/pocket-ic.gz" "$pocket_ic_url"
 
     echo "Decompressing Pocket IC"
     gzip -d "$POCKET_IC_DIR/pocket-ic.gz"
