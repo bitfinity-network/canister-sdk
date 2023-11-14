@@ -79,13 +79,10 @@ impl StateMachineCanisterClient {
         .await
         .unwrap()
     }
-}
 
-#[async_trait::async_trait]
-impl CanisterClient for StateMachineCanisterClient {
-    async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
+    pub async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
-        T: ArgumentEncoder + Send,
+        T: ArgumentEncoder + Send + Sync,
         R: for<'de> Deserialize<'de> + CandidType,
     {
         let args = candid::encode_args(args)?;
@@ -111,9 +108,9 @@ impl CanisterClient for StateMachineCanisterClient {
         Ok(decoded)
     }
 
-    async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
+    pub async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
-        T: ArgumentEncoder + Send,
+        T: ArgumentEncoder + Send + Sync,
         R: for<'de> Deserialize<'de> + CandidType,
     {
         let args = candid::encode_args(args)?;
@@ -137,5 +134,24 @@ impl CanisterClient for StateMachineCanisterClient {
 
         let decoded = Decode!(&reply, R)?;
         Ok(decoded)
+    }
+}
+
+#[async_trait::async_trait]
+impl CanisterClient for StateMachineCanisterClient {
+    async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
+    where
+        T: ArgumentEncoder + Send + Sync,
+        R: for<'de> Deserialize<'de> + CandidType,
+    {
+        StateMachineCanisterClient::update(self, method, args).await
+    }
+
+    async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
+    where
+        T: ArgumentEncoder + Send + Sync,
+        R: for<'de> Deserialize<'de> + CandidType,
+    {
+        StateMachineCanisterClient::query(self, method, args).await
     }
 }

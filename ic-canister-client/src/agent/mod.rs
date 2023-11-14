@@ -26,6 +26,7 @@ pub enum AgentError {
 
 pub type Result<T> = std::result::Result<T, AgentError>;
 
+#[derive(Clone)]
 pub struct IcAgentClient {
     canister_id: Principal,
     agent: ic_agent::Agent,
@@ -59,7 +60,7 @@ impl IcAgentClient {
 impl CanisterClient for IcAgentClient {
     async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
-        T: ArgumentEncoder + Send,
+        T: ArgumentEncoder + Send + Sync,
         R: for<'de> Deserialize<'de> + CandidType,
     {
         let args = encode_args(args)?;
@@ -75,7 +76,7 @@ impl CanisterClient for IcAgentClient {
 
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
-        T: ArgumentEncoder + Send,
+        T: ArgumentEncoder + Send + Sync,
         R: for<'de> Deserialize<'de> + CandidType,
     {
         let args = encode_args(args)?;
