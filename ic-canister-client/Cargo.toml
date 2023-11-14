@@ -10,6 +10,7 @@ description = "Client for interacting with an IC Canister"
 default = []
 ic-agent-client = ["dep:ic-agent"]
 state-machine-tests-client = ["dep:tokio", "ic-exports/ic-test-state-machine"]
+pocket-ic-client = ["dep:tokio", "ic-exports/ic-test-state-machine"]
 
 [dependencies]
 async-trait = { workspace = true }
@@ -21,3 +22,4 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true, features = ["sync"] }
+pocket-ic = { workspace = true, optional = true }
