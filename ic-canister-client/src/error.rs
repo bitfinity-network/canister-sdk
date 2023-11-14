@@ -18,14 +18,21 @@ pub enum CanisterClientError {
     StateMachineTestError(ic_exports::ic_test_state_machine::UserError),
 
     #[cfg(feature = "pocket-ic-client")]
-    #[error("pocket-ic test error: {0}")]
-    PocketIcTestError(pocket_ic::UserError),
+    #[error("pocket-ic test error: {0:?}")]
+    PocketIcTestError(pocket_ic::CallError),
+}
+
+#[cfg(feature = "pocket-ic-client")]
+impl From<pocket_ic::CallError> for CanisterClientError {
+    fn from(error: pocket_ic::CallError) -> Self {
+        CanisterClientError::PocketIcTestError(error)
+    }
 }
 
 #[cfg(feature = "pocket-ic-client")]
 impl From<pocket_ic::UserError> for CanisterClientError {
     fn from(error: pocket_ic::UserError) -> Self {
-        CanisterClientError::PocketIcTestError(error)
+        CanisterClientError::PocketIcTestError(pocket_ic::CallError::UserError(error))
     }
 }
 
