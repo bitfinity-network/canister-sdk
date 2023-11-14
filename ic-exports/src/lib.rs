@@ -18,6 +18,3 @@ pub mod icrc_types {
         pub use crate::icrc1_ledger::*;
     }
 }
-
-#[cfg(feature = "ic-test-state-machine")]
-pub mod ic_test_state_machine;

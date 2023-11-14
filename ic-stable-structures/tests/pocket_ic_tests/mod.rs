@@ -1,14 +1,9 @@
-use std::sync::Mutex;
-
 use anyhow::Result;
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use did::*;
 use ic_exports::ic_kit::mock_principals::alice;
 use ic_exports::ic_kit::{ic, inject};
-use ic_exports::ic_test_state_machine::{
-    get_ic_test_state_machine_client_path, StateMachine, WasmResult,
-};
-use once_cell::sync::Lazy;
+use pocket_ic::{PocketIc, WasmResult};
 use wasm_utils::get_dummy_canister_bytecode;
 
 mod btreemap;
@@ -21,12 +16,12 @@ mod ring_buffer;
 mod vec;
 mod wasm_utils;
 
-pub struct StateMachineTestContext {
-    pub env: StateMachine,
+pub struct PocketIcTestContext {
+    pub env: PocketIc,
     pub dummy_canister: Principal,
 }
 
-impl StateMachineTestContext {
+impl PocketIcTestContext {
     fn query_as<Result>(
         &self,
         sender: Principal,
@@ -234,36 +229,31 @@ impl StateMachineTestContext {
     }
 }
 
-pub fn with_state_machine_context<'a, F>(f: F) -> Result<()>
+pub fn with_pocket_ic_context<'a, F>(f: F) -> Result<()>
 where
-    F: FnOnce(&'a mut ic_exports::ic_kit::MockContext, &StateMachineTestContext) -> Result<()>,
+    F: FnOnce(&'a mut ic_exports::ic_kit::MockContext, &PocketIcTestContext) -> Result<()>,
 {
     ic_exports::ic_kit::MockContext::new()
         .with_caller(alice())
         .with_id(alice())
         .inject();
 
-    static TEST_CONTEXT: Lazy<Mutex<StateMachineTestContext>> = Lazy::new(|| {
-        let client_path = get_ic_test_state_machine_client_path("../target");
-        let env = StateMachine::new(&client_path, false);
-        let dummy_canister = deploy_dummy_canister(&env).unwrap();
-        StateMachineTestContext {
-            env,
-            dummy_canister,
-        }
-        .into()
-    });
-    let test_ctx = TEST_CONTEXT.lock().unwrap();
+    let env = PocketIc::new();
+    let dummy_canister = deploy_dummy_canister(&env).unwrap();
+
+    let test_ctx = PocketIcTestContext {
+        env,
+        dummy_canister,
+    };
+
     let ctx = inject::get_context();
 
     f(ctx, &test_ctx)?;
 
-    reinstall_dummy_canister(&test_ctx)?;
-
     Ok(())
 }
 
-fn deploy_dummy_canister(env: &StateMachine) -> Result<Principal> {
+fn deploy_dummy_canister(env: &PocketIc) -> Result<Principal> {
     let dummy_wasm = get_dummy_canister_bytecode();
     eprintln!("Creating dummy canister");
 
@@ -276,19 +266,7 @@ fn deploy_dummy_canister(env: &StateMachine) -> Result<Principal> {
     Ok(canister)
 }
 
-pub fn reinstall_dummy_canister(ctx: &StateMachineTestContext) -> Result<()> {
-    let args = Encode!(&())?;
-
-    let dummy_wasm = get_dummy_canister_bytecode();
-
-    ctx.env
-        .reinstall_canister(ctx.dummy_canister, dummy_wasm, args, None)
-        .unwrap();
-
-    Ok(())
-}
-
-pub fn upgrade_dummy_canister(ctx: &StateMachineTestContext) -> Result<()> {
+pub fn upgrade_dummy_canister(ctx: &PocketIcTestContext) -> Result<()> {
     let args = Encode!(&())?;
 
     let dummy_wasm = get_dummy_canister_bytecode();

@@ -4,15 +4,13 @@ mod tests {
 
     use candid::{CandidType, Decode, Deserialize, Encode, Nat, Principal};
     use ic_exports::ic_kit::mock_principals::{alice, bob};
-    use ic_exports::ic_test_state_machine::{
-        get_ic_test_state_machine_client_path, StateMachine, WasmResult,
-    };
     use ic_exports::icrc_types::icrc::generic_value::Value;
     use ic_exports::icrc_types::icrc1::account::Account;
     use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
     use ic_payments::error::{PaymentError, TransferFailReason};
     use ic_payments::get_principal_subaccount;
     use once_cell::sync::OnceCell;
+    use pocket_ic::{PocketIc, WasmResult};
 
     #[derive(CandidType, Clone, Debug)]
     pub struct InitArgs {
@@ -86,7 +84,7 @@ mod tests {
 
     const INIT_BALANCE: u128 = 10u128.pow(12);
 
-    fn init_token(env: &mut StateMachine) -> Principal {
+    fn init_token(env: &mut PocketIc) -> Principal {
         let args = InitArgs {
             minting_account: Account {
                 owner: alice(),
@@ -113,7 +111,7 @@ mod tests {
         principal
     }
 
-    fn init_payment(env: &mut StateMachine, token: Principal) -> Principal {
+    fn init_payment(env: &mut PocketIc, token: Principal) -> Principal {
         let args = Encode!(&token).unwrap();
         let principal = env.create_canister(None);
         env.install_canister(principal, payment_canister_wasm().clone(), args, None);
@@ -122,11 +120,7 @@ mod tests {
         principal
     }
 
-    fn get_token_principal_balance(
-        env: &StateMachine,
-        token: Principal,
-        of: Principal,
-    ) -> Option<Nat> {
+    fn get_token_principal_balance(env: &PocketIc, token: Principal, of: Principal) -> Option<Nat> {
         let account = Account {
             owner: of,
             subaccount: None,
@@ -140,7 +134,7 @@ mod tests {
     #[ignore]
     #[test]
     fn terminal_operations() {
-        let mut env = StateMachine::new(&get_ic_test_state_machine_client_path("../target"), false);
+        let mut env = PocketIc::new();
         let token = init_token(&mut env);
         let payment = init_payment(&mut env, token);
         env.add_cycles(payment, 10u128.pow(15));
@@ -208,7 +202,7 @@ mod tests {
     }
 
     fn execute_ingress_as(
-        env: &StateMachine,
+        env: &PocketIc,
         sender: Principal,
         canister_id: Principal,
         method: &str,
