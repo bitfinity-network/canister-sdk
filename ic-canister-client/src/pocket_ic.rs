@@ -12,8 +12,8 @@ use crate::{CanisterClient, CanisterClientError, CanisterClientResult};
 #[derive(Clone)]
 pub struct PocketIcClient {
     client: Arc<PocketIc>,
-    canister: Principal,
-    caller: Principal,
+    pub canister: Principal,
+    pub caller: Principal,
 }
 
 impl PocketIcClient {
@@ -34,26 +34,6 @@ impl PocketIcClient {
             canister,
             caller,
         }
-    }
-
-    /// Returns the caller of the canister.
-    pub fn caller(&self) -> Principal {
-        self.caller
-    }
-
-    /// Replace the caller.
-    pub fn set_caller(&mut self, caller: Principal) {
-        self.caller = caller;
-    }
-
-    /// Returns the canister of the canister.
-    pub fn canister(&self) -> Principal {
-        self.canister
-    }
-
-    /// Replace the canister to call.
-    pub fn set_canister(&mut self, canister: Principal) {
-        self.canister = canister;
     }
 
     /// Returns the PocketIC client for the canister.

@@ -10,7 +10,7 @@ use crate::{CanisterClientError, CanisterClientResult};
 #[derive(Debug, Clone)]
 pub struct IcCanisterClient {
     /// The canister id of the Evm canister
-    canister_id: Principal,
+    pub canister_id: Principal,
 }
 
 impl IcCanisterClient {
