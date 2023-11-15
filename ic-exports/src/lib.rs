@@ -18,3 +18,6 @@ pub mod icrc_types {
         pub use crate::icrc1_ledger::*;
     }
 }
+
+#[cfg(feature = "pocket-ic-tests")]
+pub mod pocket_ic;
