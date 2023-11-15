@@ -8,6 +8,9 @@ use log::*;
 use once_cell::sync::Lazy;
 pub use pocket_ic::*;
 
+#[cfg(feature = "pocket-ic-tests-async")]
+pub mod asnc;
+
 const DFINITY_REVISION: &str = "307d5847c1d2fe1f5e19181c7d0fcec23f4658b3";
 
 /// Returns the pocket-ic client.
