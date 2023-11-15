@@ -17,7 +17,7 @@ criterion = { workspace = true }
 did = { path = "./tests/did" }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
-ic-exports = { path = "../ic-exports", features = ["ic-test-state-machine"]}
+ic-exports = { path = "../ic-exports" }
 once_cell = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
@@ -28,6 +28,6 @@ name = "stable_storage_benchmark"
 harness = false
 
 [features]
-# Enables the integration tests based on ic-test-state-machine
-state-machine = []
+# Enables the integration tests based on pocket-ic
+pocket-ic = []
 memory-mapped-files-memory = ["memmap2"]

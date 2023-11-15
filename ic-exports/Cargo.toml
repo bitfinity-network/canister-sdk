@@ -10,7 +10,8 @@ edition.workspace = true
 default = []
 ledger = ["ic-ledger-types"]
 icrc = ["icrc-ledger-types"]
-ic-test-state-machine = ["flate2", "ic-test-state-machine-client", "log", "once_cell", "reqwest"]
+pocket-ic-tests = ["flate2", "pocket-ic", "log", "once_cell", "reqwest"]
+pocket-ic-tests-async = ["pocket-ic-tests", "tokio"]
 
 [dependencies]
 candid = { workspace = true }
@@ -18,6 +19,8 @@ ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 ic-cdk-timers = { workspace = true }
 serde = { workspace = true }
+pocket-ic = { workspace = true, optional = true }
+
 
 ic-ledger-types = { workspace = true, optional = true }
 
@@ -31,9 +34,8 @@ ic-kit = { path = "../ic-kit" }
 # Do not remove: This fixes the getrandom deployment in wasm canisters
 ic-crypto-getrandom-for-wasm = { path = "../ic-crypto-getrandom-for-wasm" }
 
-# dependencies for `state-machine-test` feature
+# dependencies for `pocket-ic-tests` feature
 flate2 = { workspace = true, optional = true }
-ic-test-state-machine-client = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 once_cell = { workspace = true, optional = true }
 reqwest = { workspace = true, optional = true, features = [
@@ -43,3 +45,4 @@ reqwest = { workspace = true, optional = true, features = [
   "rustls-tls",
   "trust-dns",
 ] }
+tokio = { workspace = true, optional = true }

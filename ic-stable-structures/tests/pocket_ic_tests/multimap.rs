@@ -1,8 +1,8 @@
-use super::with_state_machine_context;
+use super::with_pocket_ic_context;
 
 #[test]
 fn should_init_tx_multimap() {
-    with_state_machine_context(|_, ctx| {
+    with_pocket_ic_context(|_, ctx| {
         assert!(ctx.get_tx_from_multimap(0)?.is_some());
 
         Ok(())
@@ -12,7 +12,7 @@ fn should_init_tx_multimap() {
 
 #[test]
 fn should_push_tx_to_multimap() {
-    with_state_machine_context(|_, ctx| {
+    with_pocket_ic_context(|_, ctx| {
         ctx.insert_tx_to_multimap(1, 1, 10)?;
 
         assert!(ctx.get_tx_from_multimap(1).unwrap().is_some());
@@ -24,7 +24,7 @@ fn should_push_tx_to_multimap() {
 
 #[test]
 fn should_persist_multimap_tx_after_upgrade() {
-    with_state_machine_context(|_, ctx| {
+    with_pocket_ic_context(|_, ctx| {
         ctx.insert_tx_to_multimap(1, 1, 10)?;
 
         assert!(ctx.get_tx_from_multimap(1)?.is_some());

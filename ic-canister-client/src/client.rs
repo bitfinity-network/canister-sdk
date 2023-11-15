@@ -1,6 +1,6 @@
 use candid::utils::ArgumentEncoder;
 use candid::CandidType;
-use serde::Deserialize;
+use serde::de::DeserializeOwned;
 
 use crate::CanisterClientResult;
 
@@ -24,7 +24,7 @@ pub trait CanisterClient: Send + Clone {
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
         T: ArgumentEncoder + Send + Sync,
-        R: for<'de> Deserialize<'de> + CandidType;
+        R: DeserializeOwned + CandidType;
 
     /// Call a query method on the canister.
     ///
@@ -39,5 +39,5 @@ pub trait CanisterClient: Send + Clone {
     async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
         T: ArgumentEncoder + Send + Sync,
-        R: for<'de> Deserialize<'de> + CandidType;
+        R: DeserializeOwned + CandidType;
 }

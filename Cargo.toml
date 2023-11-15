@@ -28,7 +28,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.10.0"
+version = "0.11.0"
 edition = "2021"
 
 [workspace.dependencies]
@@ -81,4 +81,4 @@ ic-cdk-timers = "0.5.1"
 icrc-ledger-types = "0.1.0"
 ic-ledger-types = "0.8"
 dfinity-stable-structures = { package = "ic-stable-structures", version = "0.6" }
-ic-test-state-machine-client = "3"
+pocket-ic = "1.0"
