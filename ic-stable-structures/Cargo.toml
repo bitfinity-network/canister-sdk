@@ -22,7 +22,6 @@ once_cell = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 tempfile = { workspace = true }
-pocket-ic = { workspace = true }
 
 [[bench]]
 name = "stable_storage_benchmark"

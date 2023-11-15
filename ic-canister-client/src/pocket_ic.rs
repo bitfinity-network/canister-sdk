@@ -3,6 +3,7 @@ use std::sync::Arc;
 use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Decode, Principal};
 use ic_exports::ic_kit::RejectionCode;
+use ic_exports::pocket_ic;
 use pocket_ic::{PocketIc, WasmResult};
 use serde::de::DeserializeOwned;
 
@@ -21,7 +22,7 @@ impl PocketIcClient {
     /// The new instance is independent and have no access to canisters of other instances.
     pub fn new(canister: Principal, caller: Principal) -> Self {
         Self {
-            client: Arc::new(PocketIc::new()),
+            client: Arc::new(pocket_ic::init_pocket_ic()),
             canister,
             caller,
         }

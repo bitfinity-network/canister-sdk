@@ -7,6 +7,7 @@ mod tests {
     use ic_exports::icrc_types::icrc::generic_value::Value;
     use ic_exports::icrc_types::icrc1::account::Account;
     use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
+    use ic_exports::pocket_ic;
     use ic_payments::error::{PaymentError, TransferFailReason};
     use ic_payments::get_principal_subaccount;
     use once_cell::sync::OnceCell;
@@ -134,7 +135,7 @@ mod tests {
     #[ignore]
     #[test]
     fn terminal_operations() {
-        let mut env = PocketIc::new();
+        let mut env = pocket_ic::init_pocket_ic();
         let token = init_token(&mut env);
         let payment = init_payment(&mut env, token);
         env.add_cycles(payment, 10u128.pow(15));
