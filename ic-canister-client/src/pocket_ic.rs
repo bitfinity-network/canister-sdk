@@ -2,7 +2,7 @@ use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Decode, Principal};
 use ic_exports::ic_kit::RejectionCode;
 use ic_exports::pocket_ic;
-use ic_exports::pocket_ic::asnc::PocketIcAsync;
+use ic_exports::pocket_ic::nio::PocketIcAsync;
 use pocket_ic::WasmResult;
 use serde::de::DeserializeOwned;
 
