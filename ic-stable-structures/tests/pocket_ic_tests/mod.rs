@@ -260,7 +260,7 @@ fn deploy_dummy_canister(env: &PocketIc) -> Result<Principal> {
 
     let args = Encode!(&())?;
 
-    let canister = env.create_canister(None);
+    let canister = env.create_canister();
     env.add_cycles(canister, 10_u128.pow(12));
     env.install_canister(canister, dummy_wasm.to_vec(), args, None);
 

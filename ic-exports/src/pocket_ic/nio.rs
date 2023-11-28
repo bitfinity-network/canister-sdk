@@ -97,7 +97,7 @@ impl PocketIcAsync {
     }
 
     /// Get the root key of this IC instance
-    pub async fn root_key(&self) -> Vec<u8> {
+    pub async fn root_key(&self) -> Option<Vec<u8>> {
         let client = self.0.clone();
         tokio::task::spawn_blocking(move || client.root_key())
             .await
@@ -177,9 +177,9 @@ impl PocketIcAsync {
     }
 
     /// Create a canister with default settings.
-    pub async fn create_canister(&self, sender: Option<Principal>) -> CanisterId {
+    pub async fn create_canister(&self) -> CanisterId {
         let client = self.0.clone();
-        tokio::task::spawn_blocking(move || client.create_canister(sender))
+        tokio::task::spawn_blocking(move || client.create_canister())
             .await
             .unwrap()
     }
@@ -288,14 +288,6 @@ impl PocketIcAsync {
     pub async fn canister_exists(&self, canister_id: CanisterId) -> bool {
         let client = self.0.clone();
         tokio::task::spawn_blocking(move || client.canister_exists(canister_id))
-            .await
-            .unwrap()
-    }
-
-    /// Triggers the creation of a checkpoint on the IC.
-    pub async fn create_checkpoint(&self) {
-        let client = self.0.clone();
-        tokio::task::spawn_blocking(move || client.create_checkpoint())
             .await
             .unwrap()
     }

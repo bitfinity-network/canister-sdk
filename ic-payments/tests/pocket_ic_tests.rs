@@ -105,7 +105,7 @@ mod tests {
             archive_options: ArchiveOptions::default(),
         };
         let args = Encode!(&args, &Nat::from(1_000_000_000)).unwrap();
-        let principal = env.create_canister(None);
+        let principal = env.create_canister();
         env.install_canister(principal, token_wasm().clone(), args, None);
 
         eprintln!("Created token canister {principal}");
@@ -114,7 +114,7 @@ mod tests {
 
     fn init_payment(env: &mut PocketIc, token: Principal) -> Principal {
         let args = Encode!(&token).unwrap();
-        let principal = env.create_canister(None);
+        let principal = env.create_canister();
         env.install_canister(principal, payment_canister_wasm().clone(), args, None);
 
         eprintln!("Created payment canister {principal}");

@@ -11,7 +11,7 @@ pub use pocket_ic::*;
 #[cfg(feature = "pocket-ic-tests-async")]
 pub mod nio;
 
-const DFINITY_REVISION: &str = "307d5847c1d2fe1f5e19181c7d0fcec23f4658b3";
+const DFINITY_REVISION: &str = "69e1408347723dbaa7a6cd2faa9b65c42abbe861";
 
 /// Returns the pocket-ic client.
 /// If pocket-ic server binary is not present, it downloads it and sets
