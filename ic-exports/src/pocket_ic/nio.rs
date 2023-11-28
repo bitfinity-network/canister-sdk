@@ -177,9 +177,9 @@ impl PocketIcAsync {
     }
 
     /// Create a canister with default settings.
-    pub async fn create_canister(&self) -> CanisterId {
+    pub async fn create_canister(&self, sender: Option<Principal>) -> CanisterId {
         let client = self.0.clone();
-        tokio::task::spawn_blocking(move || client.create_canister())
+        tokio::task::spawn_blocking(move || client.create_canister_with_settings(sender, None))
             .await
             .unwrap()
     }
