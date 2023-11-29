@@ -23,11 +23,7 @@ pocket-ic = { workspace = true, optional = true }
 
 
 ic-ledger-types = { workspace = true, optional = true }
-
-# Using our icrc-ledger-types fork until the one published on crates.io is updated
-# with the latest version of candid
-icrc-ledger-types = { path = "../icrc-ledger-types", optional = true }
-# icrc-ledger-types = { workspace = true, optional = true }
+icrc-ledger-types = { workspace = true, optional = true }
 
 ic-kit = { path = "../ic-kit" }
 
