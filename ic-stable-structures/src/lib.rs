@@ -4,6 +4,7 @@ mod error;
 mod memory;
 #[cfg(feature = "memory-mapped-files-memory")]
 mod memory_mapped_files;
+pub mod task;
 
 #[cfg(test)]
 mod test_utils;
