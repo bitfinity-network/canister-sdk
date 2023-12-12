@@ -106,10 +106,26 @@ where
         Some(V::from_bytes(value_data.into()))
     }
 
+    fn first_key(&self) -> Option<K> {
+        self.inner
+            .iter()
+            .next()
+            .map(|(key, _)| K::from_bytes(key.key_data().into()))
+    }
+
+    fn first_key_value(&self) -> Option<(K, V)> {
+        self.iter().next()
+    }
+
     fn last_key(&self) -> Option<K> {
         self.inner
-            .last_key_value()
+            .iter()
+            .last()
             .map(|(key, _)| K::from_bytes(key.key_data().into()))
+    }
+
+    fn last_key_value(&self) -> Option<(K, V)> {
+        self.iter().last()
     }
 
     fn insert(&mut self, key: &K, value: &V) -> Option<V> {
@@ -535,34 +551,69 @@ mod tests {
     }
 
     #[test]
-    fn test_last_key_value() {
+    fn test_first_and_last_key_value() {
         let mut map = StableUnboundedMap::new(VectorMemory::default());
         assert!(map.is_empty());
 
+        assert!(map.first_key().is_none());
+        assert!(map.first_key_value().is_none());
         assert!(map.last_key().is_none());
+        assert!(map.last_key_value().is_none());
 
-        let long_str = str_val(50000);
-        map.insert(&0u32, &long_str);
+        let str_0 = str_val(50000);
+        map.insert(&0u32, &str_0);
 
+
+        assert_eq!(map.first_key(), Some(0u32));
+        assert_eq!(map.first_key_value(), Some((0u32, str_0.clone())));
         assert_eq!(map.last_key(), Some(0u32));
+        assert_eq!(map.last_key_value(), Some((0u32, str_0.clone())));
 
-        let medium_str = str_val(5000);
-        map.insert(&3u32, &medium_str);
+        let str_3 = str_val(5000);
+        map.insert(&3u32, &str_3);
 
+
+        assert_eq!(map.first_key(), Some(0u32));
+        assert_eq!(map.first_key_value(), Some((0u32, str_0.clone())));
         assert_eq!(map.last_key(), Some(3u32));
+        assert_eq!(map.last_key_value(), Some((3u32, str_3.clone())));
 
-        let short_str = str_val(50);
-        map.insert(&5u32, &short_str);
+        let str_5 = str_val(50);
+        map.insert(&5u32, &str_5);
 
+        assert_eq!(map.first_key(), Some(0u32));
+        assert_eq!(map.first_key_value(), Some((0u32, str_0.clone())));
         assert_eq!(map.last_key(), Some(5u32));
+        assert_eq!(map.last_key_value(), Some((5u32, str_5.clone())));
 
-        let short_str = str_val(50);
-        map.insert(&4u32, &short_str);
+        let str_4 = str_val(50);
+        map.insert(&4u32, &str_4);
 
+        assert_eq!(map.first_key(), Some(0u32));
+        assert_eq!(map.first_key_value(), Some((0u32, str_0.clone())));
         assert_eq!(map.last_key(), Some(5u32));
+        assert_eq!(map.last_key_value(), Some((5u32, str_5)));
 
         map.remove(&5u32);
 
+        assert_eq!(map.first_key(), Some(0u32));
+        assert_eq!(map.first_key_value(), Some((0u32, str_0.clone())));
         assert_eq!(map.last_key(), Some(4u32));
+        assert_eq!(map.last_key_value(), Some((4u32, str_4.clone())));
+
+        let str_4_b = str_val(50);
+        map.insert(&4u32, &str_4_b);
+
+        assert_eq!(map.first_key(), Some(0u32));
+        assert_eq!(map.first_key_value(), Some((0u32, str_0.clone())));
+        assert_eq!(map.last_key(), Some(4u32));
+        assert_eq!(map.last_key_value(), Some((4u32, str_4_b)));
+
+        map.remove(&0u32);
+
+        assert_eq!(map.first_key(), Some(3u32));
+        assert_eq!(map.first_key_value(), Some((3u32, str_3)));
+        assert_eq!(map.last_key(), Some(4u32));
+        assert_eq!(map.last_key_value(), Some((4u32, str_4)));
     }
 }

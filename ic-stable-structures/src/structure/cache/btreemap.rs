@@ -88,6 +88,7 @@ where
         self.inner.clear()
     }
 
+    /// WARN: this bypasses the cache
     fn last_key_value(&self) -> Option<(K, V)> {
         self.inner.last_key_value()
     }
