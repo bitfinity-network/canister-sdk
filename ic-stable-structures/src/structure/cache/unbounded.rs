@@ -84,6 +84,10 @@ where
         self.cache.clear();
         self.inner.clear()
     }
+
+    fn last_key(&self) -> Option<K> {
+        self.inner.last_key()
+    }
 }
 
 #[cfg(test)]
@@ -92,7 +96,7 @@ mod tests {
     use dfinity_stable_structures::VectorMemory;
 
     use super::*;
-    use crate::test_utils::{Array, StringValue};
+    use crate::test_utils::{Array, StringValue, str_val};
 
     #[test]
     fn should_get_and_insert() {
@@ -231,5 +235,40 @@ mod tests {
         assert_eq!(Some(Array([1u8, 10])), map.get(&1));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2));
         assert_eq!(Some(Array([3u8, 10])), map.get(&3));
+    }
+
+    #[test]
+    fn test_last_key_value() {
+        let cache_items = 2;
+        let mut map =
+            CachedStableUnboundedMap::<u32, StringValue, _>::new(VectorMemory::default(), cache_items);
+
+        assert!(map.is_empty());
+
+        assert!(map.last_key().is_none());
+
+        let long_str = str_val(50000);
+        map.insert(&0u32, &long_str);
+
+        assert_eq!(map.last_key(), Some(0u32));
+
+        let medium_str = str_val(5000);
+        map.insert(&3u32, &medium_str);
+
+        assert_eq!(map.last_key(), Some(3u32));
+
+        let short_str = str_val(50);
+        map.insert(&5u32, &short_str);
+
+        assert_eq!(map.last_key(), Some(5u32));
+
+        let short_str = str_val(50);
+        map.insert(&4u32, &short_str);
+
+        assert_eq!(map.last_key(), Some(5u32));
+
+        map.remove(&5u32);
+
+        assert_eq!(map.last_key(), Some(4u32));
     }
 }

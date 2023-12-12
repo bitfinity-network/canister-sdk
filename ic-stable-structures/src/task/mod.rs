@@ -59,7 +59,7 @@ impl <T: 'static + Task, P: 'static + VecStructure<T>> TaskScheduler<T> for Sche
 #[cfg(test)] 
 mod test {
 
-    use dfinity_stable_structures::{Storable, VectorMemory, DefaultMemoryImpl};
+    use dfinity_stable_structures::{Storable, VectorMemory};
     use ic_exports::ic_kit::MockContext;
 
     use crate::StableVec;

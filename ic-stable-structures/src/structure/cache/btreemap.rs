@@ -87,6 +87,10 @@ where
         self.cache.clear();
         self.inner.clear()
     }
+
+    fn last_key_value(&self) -> Option<(K, V)> {
+        self.inner.last_key_value()
+    }
 }
 
 /// NOTE: we can't implement this trait for a heap inner map because
@@ -260,5 +264,27 @@ mod tests {
         assert_eq!(iter.next(), Some((2, Array([2u8, 1]))));
         assert_eq!(iter.next(), Some((3, Array([3u8, 1]))));
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_last_key_value() {
+        let cache_items = 2;
+        let mut map =
+            CachedStableBTreeMap::<u32, u32, _>::new(VectorMemory::default(), cache_items);
+        assert!(map.is_empty());
+
+        assert!(map.last_key_value().is_none());
+
+        map.insert(0u32, 42u32);
+        assert_eq!(map.last_key_value(), Some((0, 42)));
+
+        map.insert(10, 100);
+        assert_eq!(map.last_key_value(), Some((10, 100)));
+
+        map.insert(5, 100);
+        assert_eq!(map.last_key_value(), Some((10, 100)));
+
+        map.remove(&10);
+        assert_eq!(map.last_key_value(), Some((5, 100)));
     }
 }

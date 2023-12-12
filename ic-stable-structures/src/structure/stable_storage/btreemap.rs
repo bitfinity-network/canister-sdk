@@ -66,6 +66,10 @@ where
     fn contains_key(&self, key: &K) -> bool {
         self.0.contains_key(key)
     }
+
+    fn last_key_value(&self) -> Option<(K, V)> {
+        self.0.last_key_value()
+    }
 }
 
 impl<K, V, M> IterableSortedMapStructure<K, V> for StableBTreeMap<K, V, M>
@@ -121,5 +125,25 @@ mod tests {
         assert_eq!(map.remove(&10), Some(100));
 
         assert_eq!(map.len(), 1);
+    }
+
+    #[test]
+    fn test_last_key_value() {
+        let mut map = StableBTreeMap::new(VectorMemory::default());
+        assert!(map.is_empty());
+
+        assert!(map.last_key_value().is_none());
+
+        map.insert(0u32, 42u32);
+        assert_eq!(map.last_key_value(), Some((0, 42)));
+
+        map.insert(10, 100);
+        assert_eq!(map.last_key_value(), Some((10, 100)));
+
+        map.insert(5, 100);
+        assert_eq!(map.last_key_value(), Some((10, 100)));
+
+        map.remove(&10);
+        assert_eq!(map.last_key_value(), Some((5, 100)));
     }
 }

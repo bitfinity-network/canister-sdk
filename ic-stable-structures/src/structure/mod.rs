@@ -32,6 +32,9 @@ pub trait BTreeMapStructure<K, V> {
     /// True if contains the key.
     fn contains_key(&self, key: &K) -> bool;
 
+    /// Returns the last key-value pair in the map.
+    fn last_key_value(&self) -> Option<(K, V)>;
+
     /// Count of items in the map.
     fn len(&self) -> u64;
 
@@ -145,6 +148,9 @@ pub trait UnboundedMapStructure<K, V> {
     /// # Preconditions:
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     fn get(&self, key: &K) -> Option<V>;
+
+    /// Returns the last key in the map.
+    fn last_key(&self) -> Option<K>;
 
     /// Add or replace a value associated with `key` in stable memory.
     ///

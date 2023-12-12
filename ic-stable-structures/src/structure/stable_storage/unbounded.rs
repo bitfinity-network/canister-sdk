@@ -106,6 +106,12 @@ where
         Some(V::from_bytes(value_data.into()))
     }
 
+    fn last_key(&self) -> Option<K> {
+        self.inner
+            .last_key_value()
+            .map(|(key, _)| K::from_bytes(key.key_data().into()))
+    }
+
     fn insert(&mut self, key: &K, value: &V) -> Option<V> {
         // remove old data before insert new();
         let previous_value = self.remove(key);
@@ -526,5 +532,37 @@ mod tests {
         assert_eq!(map.remove(&3), Some(medium_str));
 
         assert_eq!(map.len(), 2);
+    }
+
+    #[test]
+    fn test_last_key_value() {
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
+        assert!(map.is_empty());
+
+        assert!(map.last_key().is_none());
+
+        let long_str = str_val(50000);
+        map.insert(&0u32, &long_str);
+
+        assert_eq!(map.last_key(), Some(0u32));
+
+        let medium_str = str_val(5000);
+        map.insert(&3u32, &medium_str);
+
+        assert_eq!(map.last_key(), Some(3u32));
+
+        let short_str = str_val(50);
+        map.insert(&5u32, &short_str);
+
+        assert_eq!(map.last_key(), Some(5u32));
+
+        let short_str = str_val(50);
+        map.insert(&4u32, &short_str);
+
+        assert_eq!(map.last_key(), Some(5u32));
+
+        map.remove(&5u32);
+
+        assert_eq!(map.last_key(), Some(4u32));
     }
 }

@@ -61,6 +61,10 @@ where
     fn clear(&mut self) {
         self.0.clear()
     }
+
+    fn last_key(&self) -> Option<K> {
+        self.0.keys().last().cloned()
+    }
 }
 
 /// Iterator over values in unbounded map.
