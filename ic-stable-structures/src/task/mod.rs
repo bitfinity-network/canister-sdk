@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, pin::Pin, future::Future};
 
 use parking_lot::Mutex;
 
@@ -7,7 +7,7 @@ use crate::{Result, SlicedStorable, UnboundedMapStructure};
 /// A sync task is a unit of work that can be executed by the scheduler.
 pub trait Task: SlicedStorable {
     /// Execute the task and return the next task to execute.
-    fn execute(&self, task_scheduler: Box<dyn 'static + TaskScheduler<Self>>) -> Result<()>;
+    fn execute(&self, task_scheduler: Box<dyn 'static + TaskScheduler<Self>>) -> Pin<Box<dyn Future<Output = Result<()>>>>;
 }
 
 /// A scheduler is responsible for executing tasks.
@@ -27,7 +27,7 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, T>> Scheduler<T
     }
 
     /// Execute all pending tasks.
-    pub fn run(&self) -> Result<()> {
+    pub async fn run(&self) -> Result<()> {
         let mut lock = self.pending_tasks.lock();
 
         while let Some(key) = lock.first_key() {
@@ -37,7 +37,7 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, T>> Scheduler<T
                     pending_tasks: self.pending_tasks.clone(),
                     phantom: std::marker::PhantomData,
                 });
-                task.execute(task_scheduler)?;
+                task.execute(task_scheduler).await?;
             }
             lock = self.pending_tasks.lock();
         }
@@ -77,37 +77,31 @@ mod test {
         StepOne,
         StepTwo,
         StepThree,
-        StepAsync
     }
 
     impl Task for TestTask {
-        fn execute(&self, task_scheduler: Box<dyn 'static + TaskScheduler<Self>>) -> Result<()> {
+        fn execute(&self, task_scheduler: Box<dyn 'static + TaskScheduler<Self>>) -> Pin<Box<dyn Future<Output = Result<()>>>> {
             match self {
-                TestTask::StepOne => {
+                TestTask::StepOne => Box::pin(async move {
                     println!("StepOne");
                     // Append the next task to be executed
                     task_scheduler.append_task(TestTask::StepTwo);
-                },
-                TestTask::StepTwo => {
+                    Ok(())
+                }),
+                TestTask::StepTwo => Box::pin(async move {
                     println!("StepTwo");
 
                     // More tasks can be appended to the scheduler. BEWARE of circular dependencies!!
                     task_scheduler.append_task(TestTask::StepThree);
                     task_scheduler.append_task(TestTask::StepThree);
-                },
-                TestTask::StepThree => {
+                    Ok(())
+                }),
+                TestTask::StepThree => Box::pin(async move {
                     println!("StepThree");
                     // the last task does not append anything to the scheduler
-                },
-                TestTask::StepAsync => {
-                    // The next task can be executed asynchronously.
-                    ic_cdk::spawn(async move {
-                        println!("Spawned task from StepAsync");
-                        task_scheduler.append_task(TestTask::StepThree);
-                    });
-                },
+                    Ok(())
+                }),
             }
-            Ok(())
         }
     }
 
@@ -127,14 +121,14 @@ mod test {
         const BOUND: dfinity_stable_structures::storable::Bound = dfinity_stable_structures::storable::Bound::Unbounded;
     }
 
-    #[test]
-    fn test_spawn() {
+    #[tokio::test]
+    async fn test_spawn() {
         MockContext::new().inject();
         let map = StableUnboundedMap::new(VectorMemory::default());
         let scheduler = Scheduler::new(map);
         
         scheduler.append_task(TestTask::StepOne);
-        scheduler.run().unwrap();
+        scheduler.run().await.unwrap();
     }
 
 }
