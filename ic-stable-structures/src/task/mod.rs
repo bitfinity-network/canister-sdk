@@ -192,7 +192,6 @@ impl TaskOptions {
 mod test {
 
     use dfinity_stable_structures::{Storable, VectorMemory};
-    use ic_exports::ic_kit::MockContext;
 
     use crate::StableUnboundedMap;
     use super::*;
@@ -247,13 +246,54 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_spawn() {
-        MockContext::new().inject();
+    async fn test_run_scheduler() {
+        let map = StableUnboundedMap::new(VectorMemory::default());
+        let scheduler = Scheduler::new(map);
+        scheduler.append_task(TestTask::StepOne.into());
+        scheduler.run().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_task_option_execute_after_timestamp() {
+        let map = StableUnboundedMap::new(VectorMemory::default());
+        let scheduler = Scheduler::new(map);
+
+        scheduler.append_task((TestTask::StepOne, TaskOptions::new()
+            .with_execute_after_timestamp_in_secs(time_secs() + 2)
+        ).into());
+
+        scheduler.run().await.unwrap();
+
+        todo!()
+    }
+
+    #[tokio::test]
+    async fn test_task_failure_and_retry() {
         let map = StableUnboundedMap::new(VectorMemory::default());
         let scheduler = Scheduler::new(map);
         
-        scheduler.append_task(TestTask::StepOne.into());
+        scheduler.append_task((TestTask::StepOne, TaskOptions::new()
+            .with_max_retries(3)
+        ).into());
+        
         scheduler.run().await.unwrap();
+
+        todo!()
+    }
+
+    #[tokio::test]
+    async fn test_task_retry_delay() {
+        let map = StableUnboundedMap::new(VectorMemory::default());
+        let scheduler = Scheduler::new(map);
+        
+        scheduler.append_task((TestTask::StepOne, TaskOptions::new()
+            .with_max_retries(5)
+            .with_retry_delay_secs(2)
+        ).into());
+        
+        scheduler.run().await.unwrap();
+
+        todo!()
     }
 
 }
