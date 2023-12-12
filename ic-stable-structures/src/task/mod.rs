@@ -4,7 +4,7 @@ use dfinity_stable_structures::Storable;
 use dfinity_stable_structures::storable::Bound;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use crate::{Result, SlicedStorable, UnboundedMapStructure, ChunkSize};
+use crate::{Result, SlicedStorable, UnboundedMapStructure, ChunkSize, time::time_secs};
 
 /// A sync task is a unit of work that can be executed by the scheduler.
 pub trait Task {
@@ -82,21 +82,46 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T
     }
 
     /// Execute all pending tasks.
-    pub async fn run(&self) -> Result<()> {
-        let mut lock = self.pending_tasks.lock();
-
-        while let Some(key) = lock.first_key() {
-            if let Some(task) = lock.remove(&key) {
+    /// Returns a list of the processed tasks
+    pub async fn run(&self) -> Result<Vec<ScheduledTask<T>>> {
+        
+        let mut to_be_reprocessed = Vec::new();
+        let mut processed_tasks = Vec::new();
+        {
+            let mut lock = self.pending_tasks.lock();
+            while let Some(key) = lock.first_key() {
+                let task = lock.remove(&key);
                 drop(lock);
-                let task_scheduler = Box::new(Self {
-                    pending_tasks: self.pending_tasks.clone(),
-                    phantom: std::marker::PhantomData,
-                });
-                task.task.execute(task_scheduler).await?;
+                if let Some(task) = task {
+                    let now_timestamp_secs = time_secs();
+
+                    if task.options.execute_after_timestamp_in_secs > now_timestamp_secs {
+                        to_be_reprocessed.push(task);
+                    } else {
+                        let task_scheduler = Box::new(Self {
+                            pending_tasks: self.pending_tasks.clone(),
+                            phantom: std::marker::PhantomData,
+                        });
+                        match task.task.execute(task_scheduler).await {
+                            Ok(()) => {
+                                processed_tasks.push(task);
+                            },
+                            Err(_) => {
+                                if task.options.max_retries > 0 {
+                                    let mut task = task;
+                                    task.options.max_retries = task.options.max_retries - 1;
+                                    task.options.execute_after_timestamp_in_secs = now_timestamp_secs + task.options.retry_delay_secs;
+                                    to_be_reprocessed.push(task);
+                                }
+                            },
+                        }
+                    }
+                }
+                lock = self.pending_tasks.lock();
             }
-            lock = self.pending_tasks.lock();
         }
-        Ok(())
+        self.append_tasks(to_be_reprocessed);
+        Ok(processed_tasks)
     }
 }
 
@@ -106,6 +131,7 @@ pub trait SchedulerExecutor {
 
 pub trait TaskScheduler<T: 'static + Task> {
     fn append_task(&self, task: ScheduledTask<T>);
+    fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>);
 }
 
 impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> TaskScheduler<T> for Scheduler<T, P> {
@@ -114,14 +140,28 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T
         let key = lock.last_key().map(|val| val + 1).unwrap_or_default();
         lock.insert(&key, &task);
     }
+
+    fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>) {
+        if tasks.is_empty() {
+            return;
+        };
+
+        let mut lock = self.pending_tasks.lock();
+        let mut key = lock.last_key().map(|val| val + 1).unwrap_or_default();
+
+        for task in tasks {
+            lock.insert(&key, &task);
+            key = key + 1;
+        }
+    }
 }
 
 /// Scheduling options for a task
 #[derive(Default, Serialize, Deserialize)]
 pub struct TaskOptions {
-    max_retries: u32,
-    retry_delay_secs: u32,
-    execute_after_timestamp_in_secs: u32,
+    max_retries: u16,
+    retry_delay_secs: u64,
+    execute_after_timestamp_in_secs: u64,
 }
 
 impl TaskOptions {
@@ -130,19 +170,19 @@ impl TaskOptions {
     }
 
     /// Set the maximum number of retries for a failed task. Default is 0.
-    pub fn with_max_retries(mut self, max_retries: u32) -> Self {
+    pub fn with_max_retries(mut self, max_retries: u16) -> Self {
         self.max_retries = max_retries;
         self
     }
 
     /// Set the delay between retries for a failed task. Default is 0.
-    pub fn with_retry_delay_secs(mut self, retry_delay_secs: u32) -> Self {
+    pub fn with_retry_delay_secs(mut self, retry_delay_secs: u64) -> Self {
         self.retry_delay_secs = retry_delay_secs;
         self
     }
 
     /// Set the timestamp after which the task can be executed. Default is 0.
-    pub fn with_execute_after_timestamp_in_secs(mut self, execute_after_timestamp_in_secs: u32) -> Self {
+    pub fn with_execute_after_timestamp_in_secs(mut self, execute_after_timestamp_in_secs: u64) -> Self {
         self.execute_after_timestamp_in_secs = execute_after_timestamp_in_secs;
         self
     }
