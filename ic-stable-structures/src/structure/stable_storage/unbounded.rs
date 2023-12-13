@@ -563,7 +563,6 @@ mod tests {
         let str_0 = str_val(50000);
         map.insert(&0u32, &str_0);
 
-
         assert_eq!(map.first_key(), Some(0u32));
         assert_eq!(map.first_key_value(), Some((0u32, str_0.clone())));
         assert_eq!(map.last_key(), Some(0u32));
@@ -571,7 +570,6 @@ mod tests {
 
         let str_3 = str_val(5000);
         map.insert(&3u32, &str_3);
-
 
         assert_eq!(map.first_key(), Some(0u32));
         assert_eq!(map.first_key_value(), Some((0u32, str_0.clone())));

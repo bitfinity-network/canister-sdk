@@ -1,18 +1,20 @@
-use std::{pin::Pin, future::Future};
+use std::future::Future;
+use std::pin::Pin;
 
-use ic_stable_structures::Bound;
-use ic_stable_structures::ChunkSize;
-use ic_stable_structures::SlicedStorable;
-use ic_stable_structures::Storable;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use crate::SchedulerError;
+use ic_stable_structures::{Bound, ChunkSize, SlicedStorable, Storable};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+
 use crate::scheduler::TaskScheduler;
-
+use crate::SchedulerError;
 
 /// A sync task is a unit of work that can be executed by the scheduler.
 pub trait Task {
     /// Execute the task and return the next task to execute.
-    fn execute(&self, task_scheduler: Box<dyn 'static + TaskScheduler<Self>>) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>>;
+    fn execute(
+        &self,
+        task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>>;
 }
 
 /// A scheduled task is a task that is ready to be executed.
@@ -22,8 +24,7 @@ pub struct ScheduledTask<T: Task> {
     pub(crate) options: TaskOptions,
 }
 
-impl <T: Task> ScheduledTask<T> {
-
+impl<T: Task> ScheduledTask<T> {
     pub fn new(task: T) -> Self {
         Self {
             task,
@@ -32,29 +33,27 @@ impl <T: Task> ScheduledTask<T> {
     }
 
     pub fn with_options(task: T, options: TaskOptions) -> Self {
-        Self {
-            task,
-            options,
-        }
+        Self { task, options }
     }
-
 }
 
-impl <T: Task> From<T> for ScheduledTask<T> {
+impl<T: Task> From<T> for ScheduledTask<T> {
     fn from(task: T) -> Self {
         Self::new(task)
     }
 }
 
-impl <T: Task> From<(T, TaskOptions)> for ScheduledTask<T> {
+impl<T: Task> From<(T, TaskOptions)> for ScheduledTask<T> {
     fn from((task, options): (T, TaskOptions)) -> Self {
         Self::with_options(task, options)
     }
 }
 
-impl <T: 'static + Task + Serialize + DeserializeOwned> Storable for ScheduledTask<T> {
+impl<T: 'static + Task + Serialize + DeserializeOwned> Storable for ScheduledTask<T> {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        bincode::serialize(self).expect("failed to serialize ScheduledTask").into()
+        bincode::serialize(self)
+            .expect("failed to serialize ScheduledTask")
+            .into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
@@ -64,7 +63,7 @@ impl <T: 'static + Task + Serialize + DeserializeOwned> Storable for ScheduledTa
     const BOUND: Bound = Bound::Unbounded;
 }
 
-impl <T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for ScheduledTask<T> {
+impl<T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for ScheduledTask<T> {
     const CHUNK_SIZE: ChunkSize = 128;
 }
 
@@ -104,9 +103,11 @@ impl TaskOptions {
     }
 
     /// Set the timestamp after which the task can be executed. Default is 0.
-    pub fn with_execute_after_timestamp_in_secs(mut self, execute_after_timestamp_in_secs: u64) -> Self {
+    pub fn with_execute_after_timestamp_in_secs(
+        mut self,
+        execute_after_timestamp_in_secs: u64,
+    ) -> Self {
         self.execute_after_timestamp_in_secs = execute_after_timestamp_in_secs;
         self
     }
 }
-

@@ -67,7 +67,8 @@ where
     }
 
     fn first_key_value(&self) -> Option<(K, V)> {
-        self.0.first_key_value()
+        self.0
+            .first_key_value()
             .map(|(k, v)| (k.clone(), v.clone()))
     }
 
@@ -76,8 +77,7 @@ where
     }
 
     fn last_key_value(&self) -> Option<(K, V)> {
-        self.0.last_key_value()
-            .map(|(k, v)| (k.clone(), v.clone()))
+        self.0.last_key_value().map(|(k, v)| (k.clone(), v.clone()))
     }
 }
 

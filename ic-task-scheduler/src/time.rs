@@ -1,4 +1,3 @@
-
 /// returns the timestamp in seconds
 #[inline]
 pub fn time_secs() -> u64 {
