@@ -24,7 +24,7 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T
     /// Execute all pending tasks.
     /// Each task is executed asynchronously in a dedicated ic_cdk::spaw call. 
     /// Consequently, the scheduler does not wait for the tasks to finish.
-    pub async fn run(&self) -> Result<(), SchedulerError> {
+    pub fn run(&self) -> Result<(), SchedulerError> {
         
         let mut to_be_reprocessed = Vec::new();
         {
@@ -100,45 +100,74 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T
 #[cfg(test)] 
 mod test {
 
-    use std::{pin::Pin, future::Future};
+    use std::{pin::Pin, future::Future, collections::HashMap, thread::sleep, time::Duration};
 
     use ic_kit::MockContext;
     use ic_stable_structures::{StableUnboundedMap, VectorMemory};
+    use rand::random;
     use serde::{Deserialize, Serialize};
     
     use crate::task::TaskOptions;
 
     use super::*;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+    thread_local! {
+        pub static STATE: Mutex<HashMap<u32, Vec<String>>> = Mutex::new(HashMap::new())
+    }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
     pub enum TestTask {
-        StepOne,
-        StepTwo,
-        StepThree,
+        StepOne{ id: u32 },
+        StepTwo{ id: u32 },
+        StepThree{ id: u32 },
     }
 
     impl Task for TestTask {
         fn execute(&self, task_scheduler: Box<dyn 'static + TaskScheduler<Self>>) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
             match self {
-                TestTask::StepOne => Box::pin(async move {
-                    println!("StepOne");
+                TestTask::StepOne{ id } => {
+                    let id = *id;
+                Box::pin(async move {
+                    let msg = format!("{} - StepOne", id);
+                    println!("{}", msg);
+                    STATE.with(|state| {
+                        let mut state = state.lock();
+                        let entry = state.entry(id).or_insert_with(Vec::new);
+                        entry.push(msg);
+                    });
+                    std::thread::sleep(Duration::from_millis(500));
                     // Append the next task to be executed
-                    task_scheduler.append_task(TestTask::StepTwo.into());
+                    task_scheduler.append_task(TestTask::StepTwo{ id }.into());
                     Ok(())
-                }),
-                TestTask::StepTwo => Box::pin(async move {
-                    println!("StepTwo");
-
+                })},
+                TestTask::StepTwo{ id } => {
+                    let id = *id;
+                Box::pin(async move {
+                    let msg = format!("{} - StepTwo", id);
+                    println!("{}", msg);
+                    STATE.with(|state| {
+                        let mut state = state.lock();
+                        let entry = state.entry(id).or_insert_with(Vec::new);
+                        entry.push(msg);
+                    });
                     // More tasks can be appended to the scheduler. BEWARE of circular dependencies!!
-                    task_scheduler.append_task(TestTask::StepThree.into());
-                    task_scheduler.append_task(TestTask::StepThree.into());
+                    task_scheduler.append_task(TestTask::StepThree{ id }.into());
+                    task_scheduler.append_task(TestTask::StepThree{ id }.into());
                     Ok(())
-                }),
-                TestTask::StepThree => Box::pin(async move {
-                    println!("StepThree");
+                })},
+                TestTask::StepThree{ id } => {
+                    let id = *id;
+                Box::pin(async move {
+                    let msg = format!("{} - Done", id);
+                    println!("{}", msg);
+                    STATE.with(|state| {
+                        let mut state = state.lock();
+                        let entry = state.entry(id).or_insert_with(Vec::new);
+                        entry.push(msg);
+                    });
                     // the last task does not append anything to the scheduler
                     Ok(())
-                }),
+                })},
             }
         }
     }
@@ -148,20 +177,35 @@ mod test {
         MockContext::new().inject();
         let map = StableUnboundedMap::new(VectorMemory::default());
         let scheduler = Scheduler::new(map);
-        scheduler.append_task(TestTask::StepOne.into());
-        scheduler.run().await.unwrap();
+        let id = random();
+        scheduler.append_task(TestTask::StepOne{id}.into());
+        scheduler.run().unwrap();
+
+        // MockContext executes and waits the spawned tasks in the same thread
+        // so the scheduler job is always completed.
+        STATE.with(|state| {
+            let state = state.lock();
+            let messages = state.get(&id).cloned().unwrap_or_default();
+                assert_eq!(messages, vec![
+                    format!("{} - StepOne", id),
+                    format!("{} - StepTwo", id),
+                    format!("{} - Done", id),
+                    format!("{} - Done", id),
+                ]);
+        });
+
     }
 
     #[tokio::test]
     async fn test_task_option_execute_after_timestamp() {
         let map = StableUnboundedMap::new(VectorMemory::default());
         let scheduler = Scheduler::new(map);
-
-        scheduler.append_task((TestTask::StepOne, TaskOptions::new()
+        let id = random();
+        scheduler.append_task((TestTask::StepOne{id}, TaskOptions::new()
             .with_execute_after_timestamp_in_secs(time_secs() + 2)
         ).into());
 
-        scheduler.run().await.unwrap();
+        scheduler.run().unwrap();
 
         todo!()
     }
@@ -170,12 +214,12 @@ mod test {
     async fn test_task_failure_and_retry() {
         let map = StableUnboundedMap::new(VectorMemory::default());
         let scheduler = Scheduler::new(map);
-        
-        scheduler.append_task((TestTask::StepOne, TaskOptions::new()
+        let id = random();
+        scheduler.append_task((TestTask::StepOne{id}, TaskOptions::new()
             .with_max_retries(3)
         ).into());
         
-        scheduler.run().await.unwrap();
+        scheduler.run().unwrap();
 
         todo!()
     }
@@ -184,13 +228,13 @@ mod test {
     async fn test_task_retry_delay() {
         let map = StableUnboundedMap::new(VectorMemory::default());
         let scheduler = Scheduler::new(map);
-        
-        scheduler.append_task((TestTask::StepOne, TaskOptions::new()
+        let id = random();
+        scheduler.append_task((TestTask::StepOne{id}, TaskOptions::new()
             .with_max_retries(5)
             .with_retry_delay_secs(2)
         ).into());
         
-        scheduler.run().await.unwrap();
+        scheduler.run().unwrap();
 
         todo!()
     }

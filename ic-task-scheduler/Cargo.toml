@@ -15,4 +15,4 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 candid = { workspace = true }
 rand = { workspace = true }
-tokio = { workspace = true, features = ["rt", "macros"] }
+tokio = { workspace = true, features = ["rt", "macros", "time"] }
