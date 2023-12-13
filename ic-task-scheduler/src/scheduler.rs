@@ -1,73 +1,10 @@
-use std::{sync::Arc, pin::Pin, future::Future};
+use std::sync::Arc;
 
-use ic_stable_structures::Bound;
-use ic_stable_structures::ChunkSize;
-use ic_stable_structures::SlicedStorable;
-use ic_stable_structures::Storable;
 use ic_stable_structures::UnboundedMapStructure;
 use parking_lot::Mutex;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use crate::SchedulerError;
+use crate::task::{Task, ScheduledTask};
 use crate::time::time_secs;
-
-/// A sync task is a unit of work that can be executed by the scheduler.
-pub trait Task {
-    /// Execute the task and return the next task to execute.
-    fn execute(&self, task_scheduler: Box<dyn 'static + TaskScheduler<Self>>) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>>;
-}
-
-/// A scheduled task is a task that is ready to be executed.
-#[derive(Default, Serialize, Deserialize)]
-pub struct ScheduledTask<T: Task> {
-    task: T,
-    options: TaskOptions,
-}
-
-impl <T: Task> ScheduledTask<T> {
-
-    pub fn new(task: T) -> Self {
-        Self {
-            task,
-            options: Default::default(),
-        }
-    }
-
-    pub fn with_options(task: T, options: TaskOptions) -> Self {
-        Self {
-            task,
-            options,
-        }
-    }
-
-}
-
-impl <T: Task> From<T> for ScheduledTask<T> {
-    fn from(task: T) -> Self {
-        Self::new(task)
-    }
-}
-
-impl <T: Task> From<(T, TaskOptions)> for ScheduledTask<T> {
-    fn from((task, options): (T, TaskOptions)) -> Self {
-        Self::with_options(task, options)
-    }
-}
-
-impl <T: 'static + Task + Serialize + DeserializeOwned> Storable for ScheduledTask<T> {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        bincode::serialize(self).expect("failed to serialize ScheduledTask").into()
-    }
-
-    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        bincode::deserialize(&bytes).expect("failed to deserialize ScheduledTask")
-    }
-
-    const BOUND: Bound = Bound::Unbounded;
-}
-
-impl <T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for ScheduledTask<T> {
-    const CHUNK_SIZE: ChunkSize = 128;
-}
 
 /// A scheduler is responsible for executing tasks.
 pub struct Scheduler<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> {
@@ -85,7 +22,8 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T
     }
 
     /// Execute all pending tasks.
-    /// Returns a list of the processed tasks
+    /// Each task is executed asynchronously in a dedicated ic_cdk::spaw call. 
+    /// Consequently, the scheduler does not wait for the tasks to finish.
     pub async fn run(&self) -> Result<(), SchedulerError> {
         
         let mut to_be_reprocessed = Vec::new();
@@ -126,10 +64,6 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T
     }
 }
 
-pub trait SchedulerExecutor {
-    fn execute(&self);
-}
-
 pub trait TaskScheduler<T: 'static + Task> {
     fn append_task(&self, task: ScheduledTask<T>);
     fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>);
@@ -163,53 +97,16 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T
     }
 }
 
-/// Scheduling options for a task
-#[derive(Serialize, Deserialize)]
-pub struct TaskOptions {
-    max_retries: u16,
-    retry_delay_secs: u64,
-    execute_after_timestamp_in_secs: u64,
-}
-
-impl Default for TaskOptions {
-    fn default() -> Self {
-        Self {
-            max_retries: 0,
-            retry_delay_secs: 2,
-            execute_after_timestamp_in_secs: 0,
-        }
-    }
-}
-
-impl TaskOptions {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set the maximum number of retries for a failed task. Default is 0.
-    pub fn with_max_retries(mut self, max_retries: u16) -> Self {
-        self.max_retries = max_retries;
-        self
-    }
-
-    /// Set the delay between retries for a failed task. Default is 2.
-    pub fn with_retry_delay_secs(mut self, retry_delay_secs: u64) -> Self {
-        self.retry_delay_secs = retry_delay_secs;
-        self
-    }
-
-    /// Set the timestamp after which the task can be executed. Default is 0.
-    pub fn with_execute_after_timestamp_in_secs(mut self, execute_after_timestamp_in_secs: u64) -> Self {
-        self.execute_after_timestamp_in_secs = execute_after_timestamp_in_secs;
-        self
-    }
-}
-
 #[cfg(test)] 
 mod test {
 
+    use std::{pin::Pin, future::Future};
+
     use ic_kit::MockContext;
     use ic_stable_structures::{StableUnboundedMap, VectorMemory};
+    use serde::{Deserialize, Serialize};
+    
+    use crate::task::TaskOptions;
 
     use super::*;
 
