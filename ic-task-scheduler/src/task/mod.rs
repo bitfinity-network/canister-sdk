@@ -1,15 +1,19 @@
 use std::{sync::Arc, pin::Pin, future::Future};
 
-use dfinity_stable_structures::Storable;
-use dfinity_stable_structures::storable::Bound;
+use ic_stable_structures::Bound;
+use ic_stable_structures::ChunkSize;
+use ic_stable_structures::SlicedStorable;
+use ic_stable_structures::Storable;
+use ic_stable_structures::UnboundedMapStructure;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use crate::{Result, SlicedStorable, UnboundedMapStructure, ChunkSize, time::time_secs};
+use crate::SchedulerError;
+use crate::time::time_secs;
 
 /// A sync task is a unit of work that can be executed by the scheduler.
 pub trait Task {
     /// Execute the task and return the next task to execute.
-    fn execute(&self, task_scheduler: Box<dyn 'static + TaskScheduler<Self>>) -> Pin<Box<dyn Future<Output = Result<()>>>>;
+    fn execute(&self, task_scheduler: Box<dyn 'static + TaskScheduler<Self>>) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>>;
 }
 
 /// A scheduled task is a task that is ready to be executed.
@@ -66,7 +70,6 @@ impl <T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for Sched
 }
 
 /// A scheduler is responsible for executing tasks.
-#[derive(Clone)]
 pub struct Scheduler<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
@@ -83,10 +86,9 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T
 
     /// Execute all pending tasks.
     /// Returns a list of the processed tasks
-    pub async fn run(&self) -> Result<Vec<ScheduledTask<T>>> {
+    pub async fn run(&self) -> Result<(), SchedulerError> {
         
         let mut to_be_reprocessed = Vec::new();
-        let mut processed_tasks = Vec::new();
         {
             let mut lock = self.pending_tasks.lock();
             while let Some(key) = lock.first_key() {
@@ -98,30 +100,29 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T
                     if task.options.execute_after_timestamp_in_secs > now_timestamp_secs {
                         to_be_reprocessed.push(task);
                     } else {
-                        let task_scheduler = Box::new(Self {
-                            pending_tasks: self.pending_tasks.clone(),
-                            phantom: std::marker::PhantomData,
+                        let task_scheduler = self.clone();
+                        ic_kit::ic::spawn(async move {
+                            match task.task.execute(Box::new(task_scheduler.clone())).await {
+                                Ok(()) => {
+//                                    processed_tasks.push(task);
+                                },
+                                Err(_) => {
+                                    if task.options.max_retries > 0 {
+                                        let mut task = task;
+                                        task.options.max_retries = task.options.max_retries - 1;
+                                        task.options.execute_after_timestamp_in_secs = now_timestamp_secs + task.options.retry_delay_secs;
+                                        task_scheduler.append_task(task)
+                                    }
+                                },
+                            }
                         });
-                        match task.task.execute(task_scheduler).await {
-                            Ok(()) => {
-                                processed_tasks.push(task);
-                            },
-                            Err(_) => {
-                                if task.options.max_retries > 0 {
-                                    let mut task = task;
-                                    task.options.max_retries = task.options.max_retries - 1;
-                                    task.options.execute_after_timestamp_in_secs = now_timestamp_secs + task.options.retry_delay_secs;
-                                    to_be_reprocessed.push(task);
-                                }
-                            },
-                        }
                     }
                 }
                 lock = self.pending_tasks.lock();
             }
         }
         self.append_tasks(to_be_reprocessed);
-        Ok(processed_tasks)
+        Ok(())
     }
 }
 
@@ -132,6 +133,12 @@ pub trait SchedulerExecutor {
 pub trait TaskScheduler<T: 'static + Task> {
     fn append_task(&self, task: ScheduledTask<T>);
     fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>);
+}
+
+impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> Clone for Scheduler<T, P> {
+    fn clone(&self) -> Self {
+        Self { pending_tasks: self.pending_tasks.clone(), phantom: self.phantom.clone() }
+    }
 }
 
 impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> TaskScheduler<T> for Scheduler<T, P> {
@@ -157,11 +164,21 @@ impl <T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T
 }
 
 /// Scheduling options for a task
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct TaskOptions {
     max_retries: u16,
     retry_delay_secs: u64,
     execute_after_timestamp_in_secs: u64,
+}
+
+impl Default for TaskOptions {
+    fn default() -> Self {
+        Self {
+            max_retries: 0,
+            retry_delay_secs: 2,
+            execute_after_timestamp_in_secs: 0,
+        }
+    }
 }
 
 impl TaskOptions {
@@ -175,7 +192,7 @@ impl TaskOptions {
         self
     }
 
-    /// Set the delay between retries for a failed task. Default is 0.
+    /// Set the delay between retries for a failed task. Default is 2.
     pub fn with_retry_delay_secs(mut self, retry_delay_secs: u64) -> Self {
         self.retry_delay_secs = retry_delay_secs;
         self
@@ -191,12 +208,12 @@ impl TaskOptions {
 #[cfg(test)] 
 mod test {
 
-    use dfinity_stable_structures::{Storable, VectorMemory};
+    use ic_kit::MockContext;
+    use ic_stable_structures::{StableUnboundedMap, VectorMemory};
 
-    use crate::StableUnboundedMap;
     use super::*;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
     pub enum TestTask {
         StepOne,
         StepTwo,
@@ -204,7 +221,7 @@ mod test {
     }
 
     impl Task for TestTask {
-        fn execute(&self, task_scheduler: Box<dyn 'static + TaskScheduler<Self>>) -> Pin<Box<dyn Future<Output = Result<()>>>> {
+        fn execute(&self, task_scheduler: Box<dyn 'static + TaskScheduler<Self>>) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
             match self {
                 TestTask::StepOne => Box::pin(async move {
                     println!("StepOne");
@@ -229,24 +246,9 @@ mod test {
         }
     }
 
-    impl SlicedStorable for TestTask {
-        const CHUNK_SIZE: u16 = 128;
-    }
-
-    impl Storable for TestTask {
-        fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-            serde_json::to_vec(self).unwrap().into()
-        }
-
-        fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-            serde_json::from_slice(bytes.as_ref()).unwrap()
-        }
-
-        const BOUND: dfinity_stable_structures::storable::Bound = dfinity_stable_structures::storable::Bound::Unbounded;
-    }
-
     #[tokio::test]
     async fn test_run_scheduler() {
+        MockContext::new().inject();
         let map = StableUnboundedMap::new(VectorMemory::default());
         let scheduler = Scheduler::new(map);
         scheduler.append_task(TestTask::StepOne.into());

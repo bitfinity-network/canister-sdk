@@ -1,0 +1,19 @@
+[package]
+name = "ic-task-scheduler"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+bincode = { workspace = true }
+ic-stable-structures = { path = "../ic-stable-structures" }
+ic-exports = { path = "../ic-exports" }
+ic-kit = { path = "../ic-kit" }
+parking_lot = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+candid = { workspace = true }
+rand = { workspace = true }
+tokio = { workspace = true, features = ["rt", "macros"] }

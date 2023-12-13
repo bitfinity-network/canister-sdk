@@ -23,11 +23,12 @@ members = [
     "ic-stable-structures/tests/dummy_canister",
     "ic-storage",
     "ic-storage/ic-storage-derive",
+    "ic-task-scheduler",
     "ic-test-utils",
 ]
 
 [workspace.package]
-version = "0.11.0"
+version = "0.11.1"
 edition = "2021"
 
 [workspace.dependencies]
