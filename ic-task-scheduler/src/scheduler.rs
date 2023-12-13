@@ -20,11 +20,15 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
             phantom: std::marker::PhantomData,
         }
     }
-
+    
     /// Execute all pending tasks.
     /// Each task is executed asynchronously in a dedicated ic_cdk::spaw call.
     /// Consequently, the scheduler does not wait for the tasks to finish.
     pub fn run(&self) -> Result<(), SchedulerError> {
+        self.run_with_timestamp(time_secs())
+    }
+
+    fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<(), SchedulerError> {
         let mut to_be_reprocessed = Vec::new();
         {
             let mut lock = self.pending_tasks.lock();
@@ -32,7 +36,6 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
                 let task = lock.remove(&key);
                 drop(lock);
                 if let Some(task) = task {
-                    let now_timestamp_secs = time_secs();
 
                     if task.options.execute_after_timestamp_in_secs > now_timestamp_secs {
                         to_be_reprocessed.push(task);
@@ -72,6 +75,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
     }
 
     #[cfg(not(test))]
+    #[inline(always)]
     fn spawn<F: 'static + std::future::Future<Output = ()>>(future: F) {
         ic_kit::ic::spawn(future);
     }
@@ -118,7 +122,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
 }
 
 #[cfg(test)]
-mod test {
+mod test_execution {
 
     use std::collections::HashMap;
     use std::future::Future;
@@ -130,26 +134,25 @@ mod test {
     use serde::{Deserialize, Serialize};
 
     use super::*;
-    use crate::task::TaskOptions;
 
     thread_local! {
         pub static STATE: Mutex<HashMap<u32, Vec<String>>> = Mutex::new(HashMap::new())
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone)]
-    pub enum TestTask {
+    pub enum SimpleTask {
         StepOne { id: u32 },
         StepTwo { id: u32 },
         StepThree { id: u32 },
     }
 
-    impl Task for TestTask {
+    impl Task for SimpleTask {
         fn execute(
             &self,
             task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
         ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
             match self {
-                TestTask::StepOne { id } => {
+                SimpleTask::StepOne { id } => {
                     let id = *id;
                     Box::pin(async move {
                         let msg = format!("{} - StepOne", id);
@@ -161,11 +164,11 @@ mod test {
                         });
                         tokio::time::sleep(Duration::from_millis(50)).await;
                         // Append the next task to be executed
-                        task_scheduler.append_task(TestTask::StepTwo { id }.into());
+                        task_scheduler.append_task(SimpleTask::StepTwo { id }.into());
                         Ok(())
                     })
                 }
-                TestTask::StepTwo { id } => {
+                SimpleTask::StepTwo { id } => {
                     let id = *id;
                     Box::pin(async move {
                         let msg = format!("{} - StepTwo", id);
@@ -177,12 +180,12 @@ mod test {
                         });
                         // More tasks can be appended to the scheduler. BEWARE of circular dependencies!!
                         tokio::time::sleep(Duration::from_millis(50)).await;
-                        task_scheduler.append_task(TestTask::StepThree { id }.into());
-                        task_scheduler.append_task(TestTask::StepThree { id }.into());
+                        task_scheduler.append_task(SimpleTask::StepThree { id }.into());
+                        task_scheduler.append_task(SimpleTask::StepThree { id }.into());
                         Ok(())
                     })
                 }
-                TestTask::StepThree { id } => {
+                SimpleTask::StepThree { id } => {
                     let id = *id;
                     Box::pin(async move {
                         let msg = format!("{} - Done", id);
@@ -209,7 +212,7 @@ mod test {
                 let map = StableUnboundedMap::new(VectorMemory::default());
                 let scheduler = Scheduler::new(map);
                 let id = random();
-                scheduler.append_task(TestTask::StepOne { id }.into());
+                scheduler.append_task(SimpleTask::StepOne { id }.into());
 
                 let mut completed = false;
 
@@ -237,22 +240,187 @@ mod test {
             .await
     }
 
-    #[tokio::test]
-    async fn test_task_option_execute_after_timestamp() {
+}
+
+#[cfg(test)]
+mod test_delay {
+
+    use std::collections::HashMap;
+    use std::future::Future;
+    use std::pin::Pin;
+    use std::time::Duration;
+
+    use ic_stable_structures::{StableUnboundedMap, VectorMemory};
+    use rand::random;
+    use serde::{Deserialize, Serialize};
+
+    use super::*;
+    use crate::task::TaskOptions;
+
+    thread_local! {
+        pub static STATE: Mutex<HashMap<u32, Vec<String>>> = Mutex::new(HashMap::new())
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    pub enum SimpleTask {
+        StepOne { id: u32 },
+    }
+
+    impl Task for SimpleTask {
+        fn execute(
+            &self,
+            _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
+        ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
+            match self {
+                SimpleTask::StepOne { id } => {
+                    let id = *id;
+                    Box::pin(async move {
+                        let msg = format!("{} - StepOne", id);
+                        println!("{}", msg);
+                        STATE.with(|state| {
+                            let mut state = state.lock();
+                            let entry = state.entry(id).or_insert_with(Vec::new);
+                            entry.push(msg);
+                        });
+                        Ok(())
+                    })
+                }
+            }
+        }
+    }
+
+      #[tokio::test]
+    async fn test_execute_after_timestamp() {
+        let local = tokio::task::LocalSet::new();
+        local
+            .run_until(async move {
+
         let map = StableUnboundedMap::new(VectorMemory::default());
         let scheduler = Scheduler::new(map);
         let id = random();
+        let timestamp: u64 = random();
+
         scheduler.append_task(
             (
-                TestTask::StepOne { id },
-                TaskOptions::new().with_execute_after_timestamp_in_secs(time_secs() + 2),
+                SimpleTask::StepOne { id },
+                TaskOptions::new().with_execute_after_timestamp_in_secs(timestamp + 10),
             )
                 .into(),
         );
 
-        scheduler.run().unwrap();
+        for i in 0..10 {
+            // Should not run the task because the timestamp is in the future
+            scheduler.run_with_timestamp(timestamp + i).unwrap();
+            tokio::time::sleep(Duration::from_millis(25)).await;
+            STATE.with(|state| {
+                let state = state.lock();
+                assert!(state.get(&id).cloned().unwrap_or_default().is_empty());
+                assert_eq!(1, scheduler.pending_tasks.lock().len());
+            });
+        }
+        
+        scheduler.run_with_timestamp(timestamp + 11).unwrap();
+        tokio::time::sleep(Duration::from_millis(25)).await;
+        STATE.with(|state| {
+            let state = state.lock();
+            let messages = state.get(&id).cloned().unwrap_or_default();
+                assert_eq!(
+                    messages,
+                    vec![
+                        format!("{} - StepOne", id),
+                    ]
+                );
+                assert!(scheduler.pending_tasks.lock().is_empty());
+        });
 
-        todo!()
+    }).await;
+    }
+
+   
+}
+
+#[cfg(test)]
+mod test_failure_and_retry {
+
+    use std::collections::HashMap;
+    use std::future::Future;
+    use std::pin::Pin;
+    use std::time::Duration;
+
+    use ic_stable_structures::{StableUnboundedMap, VectorMemory};
+    use rand::random;
+    use serde::{Deserialize, Serialize};
+
+    use super::*;
+    use crate::task::TaskOptions;
+
+    thread_local! {
+        pub static STATE: Mutex<HashMap<u32, Vec<String>>> = Mutex::new(HashMap::new())
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    pub enum SimpleTask {
+        StepOne { id: u32 },
+    }
+
+    impl Task for SimpleTask {
+        fn execute(
+            &self,
+            _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
+        ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
+            match self {
+                SimpleTask::StepOne { id } => {
+                    let id = *id;
+                    Box::pin(async move {
+                        let msg = format!("{} - StepOne", id);
+                        println!("{}", msg);
+                        STATE.with(|state| {
+                            let mut state = state.lock();
+                            let entry = state.entry(id).or_insert_with(Vec::new);
+                            entry.push(msg);
+                        });
+                        Ok(())
+                    })
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_run_scheduler() {
+        let local = tokio::task::LocalSet::new();
+        local
+            .run_until(async move {
+                let map = StableUnboundedMap::new(VectorMemory::default());
+                let scheduler = Scheduler::new(map);
+                let id = random();
+                scheduler.append_task(SimpleTask::StepOne { id }.into());
+
+                let mut completed = false;
+
+                while !completed {
+                    scheduler.run().unwrap();
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    STATE.with(|state| {
+                        let state = state.lock();
+                        let messages = state.get(&id).cloned().unwrap_or_default();
+                        if messages.len() == 4 {
+                            completed = true;
+                            assert_eq!(
+                                messages,
+                                vec![
+                                    format!("{} - StepOne", id),
+                                    format!("{} - StepTwo", id),
+                                    format!("{} - Done", id),
+                                    format!("{} - Done", id),
+                                ]
+                            );
+                            assert!(scheduler.pending_tasks.lock().is_empty());
+                        }
+                    });
+                }
+            })
+            .await
     }
 
     #[tokio::test]
@@ -262,7 +430,7 @@ mod test {
         let id = random();
         scheduler.append_task(
             (
-                TestTask::StepOne { id },
+                SimpleTask::StepOne { id },
                 TaskOptions::new().with_max_retries(3),
             )
                 .into(),
@@ -280,7 +448,7 @@ mod test {
         let id = random();
         scheduler.append_task(
             (
-                TestTask::StepOne { id },
+                SimpleTask::StepOne { id },
                 TaskOptions::new()
                     .with_max_retries(5)
                     .with_retry_delay_secs(2),
