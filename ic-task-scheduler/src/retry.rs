@@ -15,7 +15,7 @@ impl Default for RetryStrategy {
     fn default() -> Self {
         Self {
             retry_policy: RetryPolicy::None,
-            backoff_policy: BackoffPolicy::Fixed { ms: 2000 },
+            backoff_policy: BackoffPolicy::Fixed { secs: 2 },
         }
     }
 }
@@ -64,17 +64,17 @@ pub enum BackoffPolicy {
     /// No backoff, the retry will be attempted without waiting
     None,
     /// A fixed amount ot time will be waited between each retry attempt
-    Fixed { ms: u32 },
+    Fixed { secs: u32 },
     /// Permits to specify the amount of time between two consecutive retry attempts.
     /// The time to wait after 'i' retries is specified in the vector at position 'i'.
     /// If the number of retries is bigger than the vector length, then the last value in the vector is used.
     /// For example:
-    /// ms = [111,222,333] -> It waits 111 ms after the first failure, 222 ms after the second failure and then 333 ms for all following failures.
-    Variable { ms: Vec<u32> },
+    /// secs = [1,2,6] -> It waits 1 second after the first failure, 2 seconds after the second failure and then 6 seconds for all following failures.
+    Variable { secs: Vec<u32> },
     /// Implementation of BackoffPolicy that increases the back off period for each retry attempt in a given set using the exponential function.
     Exponential {
         /// The period to sleep on the first backoff.
-        ms: u32,
+        secs: u32,
         // The multiplier to use to generate the next backoff interval from the last.
         multiplier: u64,
     },
@@ -89,24 +89,24 @@ impl BackoffPolicy {
         } else {
             match self {
                 BackoffPolicy::None => Duration::ZERO,
-                BackoffPolicy::Fixed { ms } => {
-                    if *ms > 0 {
-                        Duration::from_millis(*ms as u64)
+                BackoffPolicy::Fixed { secs } => {
+                    if *secs > 0 {
+                        Duration::from_secs(*secs as u64)
                     } else {
                         Duration::ZERO
                     }
                 }
-                BackoffPolicy::Variable { ms } => {
+                BackoffPolicy::Variable { secs } => {
                     let index = (failed_attempts - 1) as usize;
-                    let option_wait_ms = if ms.len() > index {
-                        ms.get(index)
+                    let option_wait_secs = if secs.len() > index {
+                        secs.get(index)
                     } else {
-                        ms.last()
+                        secs.last()
                     };
-                    match option_wait_ms {
-                        Some(wait_ms) => {
-                            if *wait_ms > 0 {
-                                Duration::from_millis(*wait_ms as u64)
+                    match option_wait_secs {
+                        Some(wait_secs) => {
+                            if *wait_secs > 0 {
+                                Duration::from_secs(*wait_secs as u64)
                             } else {
                                 Duration::ZERO
                             }
@@ -114,11 +114,11 @@ impl BackoffPolicy {
                         None => Duration::ZERO,
                     }
                 }
-                BackoffPolicy::Exponential { ms, multiplier } => {
-                    if *ms > 0 {
+                BackoffPolicy::Exponential { secs, multiplier } => {
+                    if *secs > 0 {
                         let multiplier = multiplier.saturating_pow(failed_attempts - 1);
-                        let wait_ms = multiplier.saturating_mul(*ms as u64);
-                        Duration::from_millis(wait_ms)
+                        let wait_secs = multiplier.saturating_mul(*secs as u64);
+                        Duration::from_secs(wait_secs)
                     } else {
                         Duration::ZERO
                     }
@@ -181,31 +181,31 @@ pub mod test {
     fn backoff_policy_fixed_should_return_the_wait_time() {
         assert_eq!(
             Duration::ZERO,
-            BackoffPolicy::Fixed { ms: 100 }.should_wait(0)
+            BackoffPolicy::Fixed { secs: 100 }.should_wait(0)
         );
         assert_eq!(
-            Duration::from_millis(100),
-            BackoffPolicy::Fixed { ms: 100 }.should_wait(1)
+            Duration::from_secs(100),
+            BackoffPolicy::Fixed { secs: 100 }.should_wait(1)
         );
         assert_eq!(
-            Duration::from_millis(100),
-            BackoffPolicy::Fixed { ms: 100 }.should_wait(10)
+            Duration::from_secs(100),
+            BackoffPolicy::Fixed { secs: 100 }.should_wait(10)
         );
         assert_eq!(
-            Duration::from_millis(1123),
-            BackoffPolicy::Fixed { ms: 1123 }.should_wait(100)
-        );
-        assert_eq!(
-            Duration::ZERO,
-            BackoffPolicy::Fixed { ms: 0 }.should_wait(0)
+            Duration::from_secs(1123),
+            BackoffPolicy::Fixed { secs: 1123 }.should_wait(100)
         );
         assert_eq!(
             Duration::ZERO,
-            BackoffPolicy::Fixed { ms: 0 }.should_wait(1)
+            BackoffPolicy::Fixed { secs: 0 }.should_wait(0)
         );
         assert_eq!(
             Duration::ZERO,
-            BackoffPolicy::Fixed { ms: 0 }.should_wait(10)
+            BackoffPolicy::Fixed { secs: 0 }.should_wait(1)
+        );
+        assert_eq!(
+            Duration::ZERO,
+            BackoffPolicy::Fixed { secs: 0 }.should_wait(10)
         );
     }
 
@@ -213,97 +213,97 @@ pub mod test {
     fn backoff_policy_variable_should_return_the_wait_time() {
         assert_eq!(
             Duration::ZERO,
-            BackoffPolicy::Variable { ms: vec!() }.should_wait(0)
+            BackoffPolicy::Variable { secs: vec!() }.should_wait(0)
         );
         assert_eq!(
             Duration::ZERO,
-            BackoffPolicy::Variable { ms: vec!() }.should_wait(1)
+            BackoffPolicy::Variable { secs: vec!() }.should_wait(1)
         );
         assert_eq!(
             Duration::ZERO,
-            BackoffPolicy::Variable { ms: vec!() }.should_wait(200)
+            BackoffPolicy::Variable { secs: vec!() }.should_wait(200)
         );
 
         assert_eq!(
             Duration::ZERO,
-            BackoffPolicy::Variable { ms: vec!(0) }.should_wait(0)
+            BackoffPolicy::Variable { secs: vec!(0) }.should_wait(0)
         );
         assert_eq!(
             Duration::ZERO,
-            BackoffPolicy::Variable { ms: vec!(0) }.should_wait(1)
+            BackoffPolicy::Variable { secs: vec!(0) }.should_wait(1)
         );
         assert_eq!(
             Duration::ZERO,
-            BackoffPolicy::Variable { ms: vec!(0) }.should_wait(100)
+            BackoffPolicy::Variable { secs: vec!(0) }.should_wait(100)
         );
 
         assert_eq!(
             Duration::ZERO,
-            BackoffPolicy::Variable { ms: vec!(100) }.should_wait(0)
+            BackoffPolicy::Variable { secs: vec!(100) }.should_wait(0)
         );
         assert_eq!(
-            Duration::from_millis(100),
-            BackoffPolicy::Variable { ms: vec!(100) }.should_wait(1)
+            Duration::from_secs(100),
+            BackoffPolicy::Variable { secs: vec!(100) }.should_wait(1)
         );
         assert_eq!(
-            Duration::from_millis(100),
-            BackoffPolicy::Variable { ms: vec!(100) }.should_wait(2)
+            Duration::from_secs(100),
+            BackoffPolicy::Variable { secs: vec!(100) }.should_wait(2)
         );
         assert_eq!(
-            Duration::from_millis(100),
-            BackoffPolicy::Variable { ms: vec!(100) }.should_wait(10)
+            Duration::from_secs(100),
+            BackoffPolicy::Variable { secs: vec!(100) }.should_wait(10)
         );
         assert_eq!(
-            Duration::from_millis(100),
-            BackoffPolicy::Variable { ms: vec!(100) }.should_wait(100)
+            Duration::from_secs(100),
+            BackoffPolicy::Variable { secs: vec!(100) }.should_wait(100)
         );
 
         assert_eq!(
             Duration::ZERO,
             BackoffPolicy::Variable {
-                ms: vec!(111, 222, 0, 444)
+                secs: vec!(111, 222, 0, 444)
             }
             .should_wait(0)
         );
         assert_eq!(
-            Duration::from_millis(111),
+            Duration::from_secs(111),
             BackoffPolicy::Variable {
-                ms: vec!(111, 222, 0, 444)
+                secs: vec!(111, 222, 0, 444)
             }
             .should_wait(1)
         );
         assert_eq!(
-            Duration::from_millis(222),
+            Duration::from_secs(222),
             BackoffPolicy::Variable {
-                ms: vec!(111, 222, 0, 444)
+                secs: vec!(111, 222, 0, 444)
             }
             .should_wait(2)
         );
         assert_eq!(
             Duration::ZERO,
             BackoffPolicy::Variable {
-                ms: vec!(111, 222, 0, 444)
+                secs: vec!(111, 222, 0, 444)
             }
             .should_wait(3)
         );
         assert_eq!(
-            Duration::from_millis(444),
+            Duration::from_secs(444),
             BackoffPolicy::Variable {
-                ms: vec!(111, 222, 0, 444)
+                secs: vec!(111, 222, 0, 444)
             }
             .should_wait(4)
         );
         assert_eq!(
-            Duration::from_millis(444),
+            Duration::from_secs(444),
             BackoffPolicy::Variable {
-                ms: vec!(111, 222, 0, 444)
+                secs: vec!(111, 222, 0, 444)
             }
             .should_wait(5)
         );
         assert_eq!(
-            Duration::from_millis(444),
+            Duration::from_secs(444),
             BackoffPolicy::Variable {
-                ms: vec!(111, 222, 0, 444)
+                secs: vec!(111, 222, 0, 444)
             }
             .should_wait(100_000)
         );
@@ -314,31 +314,31 @@ pub mod test {
         assert_eq!(
             Duration::ZERO,
             BackoffPolicy::Exponential {
-                ms: 123,
+                secs: 123,
                 multiplier: 2
             }
             .should_wait(0)
         );
         assert_eq!(
-            Duration::from_millis(123),
+            Duration::from_secs(123),
             BackoffPolicy::Exponential {
-                ms: 123,
+                secs: 123,
                 multiplier: 2
             }
             .should_wait(1)
         );
         assert_eq!(
-            Duration::from_millis(246),
+            Duration::from_secs(246),
             BackoffPolicy::Exponential {
-                ms: 123,
+                secs: 123,
                 multiplier: 2
             }
             .should_wait(2)
         );
         assert_eq!(
-            Duration::from_millis(492),
+            Duration::from_secs(492),
             BackoffPolicy::Exponential {
-                ms: 123,
+                secs: 123,
                 multiplier: 2
             }
             .should_wait(3)
@@ -347,31 +347,31 @@ pub mod test {
         assert_eq!(
             Duration::ZERO,
             BackoffPolicy::Exponential {
-                ms: 1000,
+                secs: 1000,
                 multiplier: 3
             }
             .should_wait(0)
         );
         assert_eq!(
-            Duration::from_millis(1000),
+            Duration::from_secs(1000),
             BackoffPolicy::Exponential {
-                ms: 1000,
+                secs: 1000,
                 multiplier: 3
             }
             .should_wait(1)
         );
         assert_eq!(
-            Duration::from_millis(3000),
+            Duration::from_secs(3000),
             BackoffPolicy::Exponential {
-                ms: 1000,
+                secs: 1000,
                 multiplier: 3
             }
             .should_wait(2)
         );
         assert_eq!(
-            Duration::from_millis(9000),
+            Duration::from_secs(9000),
             BackoffPolicy::Exponential {
-                ms: 1000,
+                secs: 1000,
                 multiplier: 3
             }
             .should_wait(3)
@@ -382,15 +382,15 @@ pub mod test {
     fn retry_policy_should_return_whether_to_retry() {
         let retry_strategy = RetryStrategy {
             retry_policy: RetryPolicy::MaxRetries { retries: 1 },
-            backoff_policy: BackoffPolicy::Fixed { ms: 34 },
+            backoff_policy: BackoffPolicy::Fixed { secs: 34 },
         };
         assert_eq!((true, Duration::ZERO), retry_strategy.should_retry(0));
         assert_eq!(
-            (true, Duration::from_millis(34)),
+            (true, Duration::from_secs(34)),
             retry_strategy.should_retry(1)
         );
         assert_eq!(
-            (false, Duration::from_millis(34)),
+            (false, Duration::from_secs(34)),
             retry_strategy.should_retry(2)
         );
     }
