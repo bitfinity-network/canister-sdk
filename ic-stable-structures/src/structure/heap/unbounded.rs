@@ -61,6 +61,24 @@ where
     fn clear(&mut self) {
         self.0.clear()
     }
+
+    fn first_key(&self) -> Option<K> {
+        self.0.first_key_value().map(|(k, _)| k.clone())
+    }
+
+    fn first_key_value(&self) -> Option<(K, V)> {
+        self.0
+            .first_key_value()
+            .map(|(k, v)| (k.clone(), v.clone()))
+    }
+
+    fn last_key(&self) -> Option<K> {
+        self.0.keys().last().cloned()
+    }
+
+    fn last_key_value(&self) -> Option<(K, V)> {
+        self.0.last_key_value().map(|(k, v)| (k.clone(), v.clone()))
+    }
 }
 
 /// Iterator over values in unbounded map.

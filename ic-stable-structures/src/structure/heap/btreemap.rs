@@ -59,6 +59,10 @@ where
     fn clear(&mut self) {
         self.0.clear();
     }
+
+    fn last_key_value(&self) -> Option<(K, V)> {
+        self.0.last_key_value().map(|(k, v)| (k.clone(), v.clone()))
+    }
 }
 
 #[cfg(test)]

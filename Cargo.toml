@@ -23,11 +23,12 @@ members = [
     "ic-stable-structures/tests/dummy_canister",
     "ic-storage",
     "ic-storage/ic-storage-derive",
+    "ic-task-scheduler",
     "ic-test-utils",
 ]
 
 [workspace.package]
-version = "0.11.0"
+version = "0.11.1"
 edition = "2021"
 
 [workspace.dependencies]
@@ -36,6 +37,7 @@ arc-swap = "1.6"
 async-recursion = "1.0.2"
 async-trait = "0.1"
 auto_ops = "0.3"
+bincode = "1.3"
 criterion = "0.5.1"
 crypto-bigint = { version = "0.5", features = ["serde"] }
 dirs = "5.0"
