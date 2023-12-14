@@ -542,7 +542,11 @@ mod test {
                             retries - 1
                         );
                         assert_eq!(
-                            pending_tasks.get(&0).unwrap().options.execute_after_timestamp_in_secs,
+                            pending_tasks
+                                .get(&0)
+                                .unwrap()
+                                .options
+                                .execute_after_timestamp_in_secs,
                             timestamp + retry_delay_secs
                         );
                     }
@@ -552,8 +556,12 @@ mod test {
                         assert_eq!(0, scheduler.run_with_timestamp(timestamp + i).unwrap());
                     }
 
-                    assert_eq!(1, scheduler.run_with_timestamp(timestamp + retry_delay_secs).unwrap());
-
+                    assert_eq!(
+                        1,
+                        scheduler
+                            .run_with_timestamp(timestamp + retry_delay_secs)
+                            .unwrap()
+                    );
                 })
                 .await;
         }
