@@ -25,12 +25,14 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
     /// Execute all pending tasks.
     /// Each task is executed asynchronously in a dedicated ic_cdk::spawn call.
     /// This function does not wait for the tasks to complete.
-    pub fn run(&self) -> Result<(), SchedulerError> {
+    /// Returns the number of tasks that have been launched.
+    pub fn run(&self) -> Result<u32, SchedulerError> {
         self.run_with_timestamp(time_secs())
     }
 
-    fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<(), SchedulerError> {
+    fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<u32, SchedulerError> {
         let mut to_be_reprocessed = Vec::new();
+        let mut task_execution_started = 0;
         {
             let mut lock = self.pending_tasks.lock();
             while let Some(key) = lock.first_key() {
@@ -40,6 +42,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
                     if task.options.execute_after_timestamp_in_secs > now_timestamp_secs {
                         to_be_reprocessed.push(task);
                     } else {
+                        task_execution_started += 1;
                         let task_scheduler = self.clone();
                         Self::spawn(async move {
                             match task.task.execute(Box::new(task_scheduler.clone())).await {
@@ -63,7 +66,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
             }
         }
         self.append_tasks(to_be_reprocessed);
-        Ok(())
+        Ok(task_execution_started)
     }
 
     // We use tokio for testing instead of ic_kit::ic::spawn because the latter blocks the current thread
@@ -505,24 +508,54 @@ mod test {
                 .await;
         }
 
-        // #[tokio::test]
-        // async fn test_task_retry_delay() {
-        //     let map = StableUnboundedMap::new(VectorMemory::default());
-        //     let scheduler = Scheduler::new(map);
-        //     let id = random();
-        //     scheduler.append_task(
-        //         (
-        //             SimpleTask::StepOne { id },
-        //             TaskOptions::new()
-        //                 .with_max_retries(5)
-        //                 .with_retry_delay_secs(2),
-        //         )
-        //             .into(),
-        //     );
+        #[tokio::test]
+        async fn test_task_retry_delay() {
+            let local = tokio::task::LocalSet::new();
+            local
+                .run_until(async move {
+                    let map = StableUnboundedMap::new(VectorMemory::default());
+                    let scheduler = Scheduler::new(map);
+                    let id = random();
+                    let fails = 10;
+                    let retries = 10;
+                    let retry_delay_secs = 3;
 
-        //     scheduler.run().unwrap();
+                    scheduler.append_task(
+                        (
+                            SimpleTask::StepOne { id, fails },
+                            TaskOptions::new()
+                                .with_max_retries(retries)
+                                .with_retry_delay_secs(retry_delay_secs),
+                        )
+                            .into(),
+                    );
 
-        //     todo!()
-        // }
+                    let timestamp = random();
+                    assert_eq!(1, scheduler.run_with_timestamp(timestamp).unwrap());
+                    tokio::time::sleep(Duration::from_millis(25)).await;
+
+                    {
+                        let pending_tasks = scheduler.pending_tasks.lock();
+                        assert_eq!(pending_tasks.len(), 1);
+                        assert_eq!(
+                            pending_tasks.get(&0).unwrap().options.max_retries,
+                            retries - 1
+                        );
+                        assert_eq!(
+                            pending_tasks.get(&0).unwrap().options.execute_after_timestamp_in_secs,
+                            timestamp + retry_delay_secs
+                        );
+                    }
+
+                    // Should not run the task because the retry timestamp is in the future
+                    for i in 0..retry_delay_secs {
+                        assert_eq!(0, scheduler.run_with_timestamp(timestamp + i).unwrap());
+                    }
+
+                    assert_eq!(1, scheduler.run_with_timestamp(timestamp + retry_delay_secs).unwrap());
+
+                })
+                .await;
+        }
     }
 }
