@@ -5,6 +5,7 @@ use ic_stable_structures::{Bound, ChunkSize, SlicedStorable, Storable};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use crate::retry::{BackoffPolicy, RetryPolicy, RetryStrategy};
 use crate::scheduler::TaskScheduler;
 use crate::SchedulerError;
 
@@ -18,7 +19,7 @@ pub trait Task {
 }
 
 /// A scheduled task is a task that is ready to be executed.
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct ScheduledTask<T: Task> {
     pub(crate) task: T,
     pub(crate) options: TaskOptions,
@@ -68,21 +69,11 @@ impl<T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for Schedu
 }
 
 /// Scheduling options for a task
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct TaskOptions {
-    pub(crate) max_retries: u16,
-    pub(crate) retry_delay_secs: u64,
+    pub(crate) failures: u32,
     pub(crate) execute_after_timestamp_in_secs: u64,
-}
-
-impl Default for TaskOptions {
-    fn default() -> Self {
-        Self {
-            max_retries: 0,
-            retry_delay_secs: 2,
-            execute_after_timestamp_in_secs: 0,
-        }
-    }
+    pub(crate) retry_strategy: RetryStrategy,
 }
 
 impl TaskOptions {
@@ -90,15 +81,27 @@ impl TaskOptions {
         Self::default()
     }
 
-    /// Set the maximum number of retries for a failed task. Default is 0.
-    pub fn with_max_retries(mut self, max_retries: u16) -> Self {
-        self.max_retries = max_retries;
+    /// Set the retry policy for a failed task to RetryPolicy::MaxRetries.
+    pub fn with_max_retries_policy(mut self, retries: u32) -> Self {
+        self.retry_strategy.retry_policy = RetryPolicy::MaxRetries { retries };
         self
     }
 
-    /// Set the delay between retries for a failed task. Default is 2.
-    pub fn with_retry_delay_secs(mut self, retry_delay_secs: u64) -> Self {
-        self.retry_delay_secs = retry_delay_secs;
+    /// Set the retry policy for a failed task. Default is RetryPolicy::None.
+    pub fn with_retry_policy(mut self, retry_policy: RetryPolicy) -> Self {
+        self.retry_strategy.retry_policy = retry_policy;
+        self
+    }
+
+    /// Set the backoff policy for a failed task to BackoffPolicy::Fixed.
+    pub fn with_fixed_backoff_policy(mut self, secs: u32) -> Self {
+        self.retry_strategy.backoff_policy = BackoffPolicy::Fixed { secs };
+        self
+    }
+
+    /// Set the backoff policy for a failed task. Default is BackoffPolicy::Fixed{ secs: 2 }.
+    pub fn with_backoff_policy(mut self, backoff_policy: BackoffPolicy) -> Self {
+        self.retry_strategy.backoff_policy = backoff_policy;
         self
     }
 
@@ -109,5 +112,87 @@ impl TaskOptions {
     ) -> Self {
         self.execute_after_timestamp_in_secs = execute_after_timestamp_in_secs;
         self
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+    struct TestTask {}
+
+    impl Task for TestTask {
+        fn execute(
+            &self,
+            _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
+        ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
+            todo!()
+        }
+    }
+
+    #[test]
+    fn test_storable_task() {
+        {
+            let task = ScheduledTask::with_options(
+                TestTask {},
+                TaskOptions::new()
+                    .with_max_retries_policy(3)
+                    .with_fixed_backoff_policy(2),
+            );
+
+            let serialized = task.to_bytes();
+            let deserialized = ScheduledTask::<TestTask>::from_bytes(serialized);
+
+            assert_eq!(task, deserialized);
+        }
+
+        {
+            let task = ScheduledTask::with_options(
+                TestTask {},
+                TaskOptions::new()
+                    .with_retry_policy(RetryPolicy::None)
+                    .with_backoff_policy(BackoffPolicy::None),
+            );
+
+            let serialized = task.to_bytes();
+            let deserialized = ScheduledTask::<TestTask>::from_bytes(serialized);
+
+            assert_eq!(task, deserialized);
+        }
+
+        {
+            let task = ScheduledTask::with_options(
+                TestTask {},
+                TaskOptions::new()
+                    .with_retry_policy(RetryPolicy::None)
+                    .with_backoff_policy(BackoffPolicy::Exponential {
+                        secs: 2,
+                        multiplier: 2,
+                    }),
+            );
+
+            let serialized = task.to_bytes();
+            let deserialized = ScheduledTask::<TestTask>::from_bytes(serialized);
+
+            assert_eq!(task, deserialized);
+        }
+
+        {
+            let task = ScheduledTask::with_options(
+                TestTask {},
+                TaskOptions::new()
+                    .with_retry_policy(RetryPolicy::Infinite)
+                    .with_backoff_policy(BackoffPolicy::Variable {
+                        secs: vec![12, 56, 76],
+                    }),
+            );
+
+            let serialized = task.to_bytes();
+            let deserialized = ScheduledTask::<TestTask>::from_bytes(serialized);
+
+            assert_eq!(task, deserialized);
+        }
     }
 }

@@ -50,11 +50,15 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
                                     // processed_tasks.push(task);
                                 }
                                 Err(_) => {
-                                    if task.options.max_retries > 0 {
-                                        let mut task = task;
-                                        task.options.max_retries = task.options.max_retries - 1;
+                                    let mut task = task;
+                                    task.options.failures += 1;
+                                    let (should_retry, retry_delay) = task
+                                        .options
+                                        .retry_strategy
+                                        .should_retry(task.options.failures);
+                                    if should_retry {
                                         task.options.execute_after_timestamp_in_secs =
-                                            now_timestamp_secs + task.options.retry_delay_secs;
+                                            now_timestamp_secs + retry_delay.as_secs();
                                         task_scheduler.append_task(task)
                                     }
                                 }
@@ -95,7 +99,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
     fn clone(&self) -> Self {
         Self {
             pending_tasks: self.pending_tasks.clone(),
-            phantom: self.phantom.clone(),
+            phantom: self.phantom,
         }
     }
 }
@@ -119,7 +123,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
 
         for task in tasks {
             lock.insert(&key, &task);
-            key = key + 1;
+            key += 1;
         }
     }
 }
@@ -353,7 +357,7 @@ mod test {
         #[derive(Default, Clone)]
         struct Output {
             messages: Vec<String>,
-            failures: u16,
+            failures: u32,
         }
 
         thread_local! {
@@ -362,7 +366,7 @@ mod test {
 
         #[derive(Serialize, Deserialize, Debug, Clone)]
         pub enum SimpleTask {
-            StepOne { id: u32, fails: u16 },
+            StepOne { id: u32, fails: u32 },
         }
 
         impl Task for SimpleTask {
@@ -413,8 +417,8 @@ mod test {
                         (
                             SimpleTask::StepOne { id, fails },
                             TaskOptions::new()
-                                .with_max_retries(retries)
-                                .with_retry_delay_secs(0),
+                                .with_max_retries_policy(retries)
+                                .with_fixed_backoff_policy(0),
                         )
                             .into(),
                     );
@@ -435,10 +439,7 @@ mod test {
                         });
                         let pending_tasks = scheduler.pending_tasks.lock();
                         assert_eq!(pending_tasks.len(), 1);
-                        assert_eq!(
-                            pending_tasks.get(&0).unwrap().options.max_retries,
-                            retries - i
-                        );
+                        assert_eq!(pending_tasks.get(&0).unwrap().options.failures, i);
                     }
 
                     // After the last retries the task is removed
@@ -479,8 +480,8 @@ mod test {
                         (
                             SimpleTask::StepOne { id, fails },
                             TaskOptions::new()
-                                .with_max_retries(retries)
-                                .with_retry_delay_secs(0),
+                                .with_max_retries_policy(retries)
+                                .with_fixed_backoff_policy(0),
                         )
                             .into(),
                     );
@@ -518,14 +519,14 @@ mod test {
                     let id = random();
                     let fails = 10;
                     let retries = 10;
-                    let retry_delay_secs = 3;
+                    let retry_delay_secs = 3u64;
 
                     scheduler.append_task(
                         (
                             SimpleTask::StepOne { id, fails },
                             TaskOptions::new()
-                                .with_max_retries(retries)
-                                .with_retry_delay_secs(retry_delay_secs),
+                                .with_max_retries_policy(retries)
+                                .with_fixed_backoff_policy(retry_delay_secs as u32),
                         )
                             .into(),
                     );
@@ -537,10 +538,7 @@ mod test {
                     {
                         let pending_tasks = scheduler.pending_tasks.lock();
                         assert_eq!(pending_tasks.len(), 1);
-                        assert_eq!(
-                            pending_tasks.get(&0).unwrap().options.max_retries,
-                            retries - 1
-                        );
+                        assert_eq!(pending_tasks.get(&0).unwrap().options.failures, 1);
                         assert_eq!(
                             pending_tasks
                                 .get(&0)
