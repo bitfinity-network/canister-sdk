@@ -157,59 +157,23 @@ pub mod test {
 
     #[test]
     fn backoff_policy_fixed_should_return_the_wait_time() {
-        assert_eq!(
-            0,
-            BackoffPolicy::Fixed { secs: 100 }.should_wait(0)
-        );
-        assert_eq!(
-            100,
-            BackoffPolicy::Fixed { secs: 100 }.should_wait(1)
-        );
-        assert_eq!(
-            100,
-            BackoffPolicy::Fixed { secs: 100 }.should_wait(10)
-        );
-        assert_eq!(
-            1123,
-            BackoffPolicy::Fixed { secs: 1123 }.should_wait(100)
-        );
-        assert_eq!(
-            0,
-            BackoffPolicy::Fixed { secs: 0 }.should_wait(0)
-        );
-        assert_eq!(
-            0,
-            BackoffPolicy::Fixed { secs: 0 }.should_wait(1)
-        );
-        assert_eq!(
-            0,
-            BackoffPolicy::Fixed { secs: 0 }.should_wait(10)
-        );
+        assert_eq!(0, BackoffPolicy::Fixed { secs: 100 }.should_wait(0));
+        assert_eq!(100, BackoffPolicy::Fixed { secs: 100 }.should_wait(1));
+        assert_eq!(100, BackoffPolicy::Fixed { secs: 100 }.should_wait(10));
+        assert_eq!(1123, BackoffPolicy::Fixed { secs: 1123 }.should_wait(100));
+        assert_eq!(0, BackoffPolicy::Fixed { secs: 0 }.should_wait(0));
+        assert_eq!(0, BackoffPolicy::Fixed { secs: 0 }.should_wait(1));
+        assert_eq!(0, BackoffPolicy::Fixed { secs: 0 }.should_wait(10));
     }
 
     #[test]
     fn backoff_policy_variable_should_return_the_wait_time() {
-        assert_eq!(
-            0,
-            BackoffPolicy::Variable { secs: vec!() }.should_wait(0)
-        );
-        assert_eq!(
-            0,
-            BackoffPolicy::Variable { secs: vec!() }.should_wait(1)
-        );
-        assert_eq!(
-            0,
-            BackoffPolicy::Variable { secs: vec!() }.should_wait(200)
-        );
+        assert_eq!(0, BackoffPolicy::Variable { secs: vec!() }.should_wait(0));
+        assert_eq!(0, BackoffPolicy::Variable { secs: vec!() }.should_wait(1));
+        assert_eq!(0, BackoffPolicy::Variable { secs: vec!() }.should_wait(200));
 
-        assert_eq!(
-            0,
-            BackoffPolicy::Variable { secs: vec!(0) }.should_wait(0)
-        );
-        assert_eq!(
-            0,
-            BackoffPolicy::Variable { secs: vec!(0) }.should_wait(1)
-        );
+        assert_eq!(0, BackoffPolicy::Variable { secs: vec!(0) }.should_wait(0));
+        assert_eq!(0, BackoffPolicy::Variable { secs: vec!(0) }.should_wait(1));
         assert_eq!(
             0,
             BackoffPolicy::Variable { secs: vec!(0) }.should_wait(100)
@@ -363,13 +327,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::Fixed { secs: 34 },
         };
         assert_eq!((true, 0), retry_strategy.should_retry(0));
-        assert_eq!(
-            (true, 34),
-            retry_strategy.should_retry(1)
-        );
-        assert_eq!(
-            (false, 34),
-            retry_strategy.should_retry(2)
-        );
+        assert_eq!((true, 34), retry_strategy.should_retry(1));
+        assert_eq!((false, 34), retry_strategy.should_retry(2));
     }
 }
