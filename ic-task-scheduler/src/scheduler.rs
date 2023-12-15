@@ -58,7 +58,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
                                         .should_retry(task.options.failures);
                                     if should_retry {
                                         task.options.execute_after_timestamp_in_secs =
-                                            now_timestamp_secs + retry_delay.as_secs();
+                                            now_timestamp_secs + (retry_delay as u64);
                                         task_scheduler.append_task(task)
                                     }
                                 }
