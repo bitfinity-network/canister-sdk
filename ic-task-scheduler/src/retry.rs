@@ -38,7 +38,6 @@ pub enum RetryPolicy {
     MaxRetries { retries: u32 },
     /// The operation will be retried an infinite number of times.
     Infinite,
-    // Timeout,
 }
 
 impl RetryPolicy {
