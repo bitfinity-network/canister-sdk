@@ -1,4 +1,5 @@
 mod error;
+pub mod retry;
 pub mod scheduler;
 pub mod task;
 mod time;
