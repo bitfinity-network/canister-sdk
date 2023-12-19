@@ -364,8 +364,8 @@ pub fn init_log(settings: &LogSettings) -> Result<LoggerConfig, SetLoggerError> 
 }
 
 /// Take the log memory records for the circular buffer.
-pub fn take_memory_records(max_count: usize) -> Vec<String> {
-    writer::InMemoryWriter::take_records(max_count)
+pub fn take_memory_records(max_count: usize, from_offset: usize) -> Vec<String> {
+    writer::InMemoryWriter::take_records(max_count, from_offset)
 }
 
 #[cfg(test)]

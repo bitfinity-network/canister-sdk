@@ -46,8 +46,8 @@ const INIT_LOG_CAPACITY: usize = 128;
 
 type LogRecordsBuffer = AllocRingBuffer<String>;
 thread_local! {
-    static LOG_RECORDS: RefCell<LogRecordsBuffer> =
-        RefCell::new(LogRecordsBuffer::new(INIT_LOG_CAPACITY));
+    static LOG_RECORDS: RefCell<(usize, LogRecordsBuffer)> =
+        RefCell::new((0, LogRecordsBuffer::new(INIT_LOG_CAPACITY)));
 }
 
 /// Writer that stores strings in a thread_local memory circular buffer.
@@ -57,20 +57,25 @@ pub struct InMemoryWriter {}
 impl InMemoryWriter {
     pub fn init_buffer(capacity: usize) {
         LOG_RECORDS.with(|records| {
-            *records.borrow_mut() = LogRecordsBuffer::new(capacity);
+            *records.borrow_mut() = (0, LogRecordsBuffer::new(capacity));
         });
     }
 
-    pub fn take_records(max_count: usize) -> Vec<String> {
+    pub fn take_records(max_count: usize, from_offset: usize) -> Vec<String> {
         LOG_RECORDS.with(|records| {
-            let mut records = records.borrow_mut();
+            let records = records.borrow_mut();
+            let current_offset = records.0;
+
             let mut result = Vec::with_capacity(max_count);
-            for _ in 0..max_count {
-                if let Some(s) = records.dequeue() {
-                    result.push(s);
-                } else {
-                    break;
-                }
+
+            let buffer_capacity = records.1.capacity();
+            let offset = if from_offset > current_offset  {
+                current_offset - from_offset
+            } else {
+                buffer_capacity
+            };
+            for log in records.1.iter().skip(buffer_capacity.saturating_sub(offset)).take(max_count) {
+                result.push(log.clone());
             }
 
             result
@@ -81,9 +86,9 @@ impl InMemoryWriter {
 impl Writer for InMemoryWriter {
     fn print(&self, buf: &Buffer) -> std::io::Result<()> {
         LOG_RECORDS.with(|records| {
-            records
-                .borrow_mut()
-                .push(String::from_utf8_lossy(buf.bytes()).to_string());
+            let mut borrow = records                .borrow_mut();
+            borrow.0 += 1;
+            borrow.1.push(String::from_utf8_lossy(buf.bytes()).to_string());
         });
         Ok(())
     }
