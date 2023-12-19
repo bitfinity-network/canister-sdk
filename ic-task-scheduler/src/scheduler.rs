@@ -151,52 +151,52 @@ mod test {
         }
 
         #[derive(Serialize, Deserialize, Debug, Clone)]
-        pub enum SimpleTask {
-            StepOne { id: u32 },
-            StepTwo { id: u32 },
-            StepThree { id: u32 },
+        pub enum SimpleTaskSteps {
+            One { id: u32 },
+            Two { id: u32 },
+            Three { id: u32 },
         }
 
-        impl Task for SimpleTask {
+        impl Task for SimpleTaskSteps {
             fn execute(
                 &self,
                 task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
             ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
                 match self {
-                    SimpleTask::StepOne { id } => {
+                    SimpleTaskSteps::One { id } => {
                         let id = *id;
                         Box::pin(async move {
                             let msg = format!("{} - StepOne", id);
                             println!("{}", msg);
                             STATE.with(|state| {
                                 let mut state = state.lock();
-                                let entry = state.entry(id).or_insert_with(Vec::new);
+                                let entry = state.entry(id).or_default();
                                 entry.push(msg);
                             });
                             tokio::time::sleep(Duration::from_millis(50)).await;
                             // Append the next task to be executed
-                            task_scheduler.append_task(SimpleTask::StepTwo { id }.into());
+                            task_scheduler.append_task(SimpleTaskSteps::Two { id }.into());
                             Ok(())
                         })
                     }
-                    SimpleTask::StepTwo { id } => {
+                    SimpleTaskSteps::Two { id } => {
                         let id = *id;
                         Box::pin(async move {
                             let msg = format!("{} - StepTwo", id);
                             println!("{}", msg);
                             STATE.with(|state| {
                                 let mut state = state.lock();
-                                let entry = state.entry(id).or_insert_with(Vec::new);
+                                let entry = state.entry(id).or_default();
                                 entry.push(msg);
                             });
                             // More tasks can be appended to the scheduler. BEWARE of circular dependencies!!
                             tokio::time::sleep(Duration::from_millis(50)).await;
-                            task_scheduler.append_task(SimpleTask::StepThree { id }.into());
-                            task_scheduler.append_task(SimpleTask::StepThree { id }.into());
+                            task_scheduler.append_task(SimpleTaskSteps::Three { id }.into());
+                            task_scheduler.append_task(SimpleTaskSteps::Three { id }.into());
                             Ok(())
                         })
                     }
-                    SimpleTask::StepThree { id } => {
+                    SimpleTaskSteps::Three { id } => {
                         let id = *id;
                         Box::pin(async move {
                             let msg = format!("{} - Done", id);
@@ -204,7 +204,7 @@ mod test {
                             tokio::time::sleep(Duration::from_millis(10)).await;
                             STATE.with(|state| {
                                 let mut state = state.lock();
-                                let entry = state.entry(id).or_insert_with(Vec::new);
+                                let entry = state.entry(id).or_default();
                                 entry.push(msg);
                             });
                             // the last task does not append anything to the scheduler
@@ -223,7 +223,7 @@ mod test {
                     let map = StableUnboundedMap::new(VectorMemory::default());
                     let scheduler = Scheduler::new(map);
                     let id = random();
-                    scheduler.append_task(SimpleTask::StepOne { id }.into());
+                    scheduler.append_task(SimpleTaskSteps::One { id }.into());
 
                     let mut completed = false;
 
@@ -288,7 +288,7 @@ mod test {
                             println!("{}", msg);
                             STATE.with(|state| {
                                 let mut state = state.lock();
-                                let entry = state.entry(id).or_insert_with(Vec::new);
+                                let entry = state.entry(id).or_default();
                                 entry.push(msg);
                             });
                             Ok(())
@@ -381,7 +381,7 @@ mod test {
                         Box::pin(async move {
                             STATE.with(|state| {
                                 let mut state = state.lock();
-                                let output = state.entry(id).or_insert_with(Output::default);
+                                let output = state.entry(id).or_default();
                                 if fails > output.failures {
                                     output.failures += 1;
                                     let msg =
