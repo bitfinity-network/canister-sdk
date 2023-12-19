@@ -61,15 +61,16 @@ impl MemoryMappedFileMemoryManager {
         let file_path = self.base_path.join(id.as_ref());
         match created_memory_resources.entry(file_path) {
             Entry::Vacant(entry) => {
-                let file_path = entry.key().to_str().expect(&format!(
-                    "Cannot extract path from {}",
-                    entry.key().display()
-                ));
+                let file_path = entry.key().to_str().unwrap_or_else(|| {
+                    panic!("Cannot extract path from {}", entry.key().display())
+                });
                 let result = MemoryMappedFileMemory::new(file_path.to_owned(), self.is_persistent)
-                    .expect(&format!(
-                        "failed to initialize MemoryMappedFileMemory with path: {}",
-                        file_path
-                    ));
+                    .unwrap_or_else(|_| {
+                        panic!(
+                            "failed to initialize MemoryMappedFileMemory with path: {}",
+                            file_path
+                        )
+                    });
 
                 entry.insert(result.clone());
 

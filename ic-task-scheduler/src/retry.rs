@@ -94,8 +94,7 @@ impl BackoffPolicy {
                 BackoffPolicy::Exponential { secs, multiplier } => {
                     if *secs > 0 {
                         let multiplier = multiplier.saturating_pow(failed_attempts - 1);
-                        let wait_secs = secs.saturating_mul(multiplier);
-                        wait_secs
+                        secs.saturating_mul(multiplier)
                     } else {
                         0
                     }

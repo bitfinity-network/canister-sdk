@@ -11,5 +11,8 @@ pub fn time_secs() -> u64 {
 
     // ic::time() return the nano_sec, we need to change it to sec.
     #[cfg(target_family = "wasm")]
-    (ic_exports::ic_kit::ic::time() / crate::constant::E_9)
+    {
+        const E_9: u64 = 10u64.pow(9u32);
+        ic_kit::ic::time() / E_9
+    }
 }
