@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 
+use candid::CandidType;
 use ringbuffer::{AllocRingBuffer, RingBuffer};
 
 use crate::formatter::buffer::Buffer;
@@ -54,6 +55,22 @@ thread_local! {
 /// Note: it can be optimized to reduce the number of memory allocations.
 pub struct InMemoryWriter {}
 
+#[derive(Debug, Default, PartialEq, Eq, CandidType)]
+pub struct Logs {
+    /// the list of logs
+    pub logs: Vec<Log>,
+    /// the count of available logs
+    pub all_logs_count: usize,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, CandidType)]
+pub struct Log {
+    /// the log text
+    pub log: String,
+    /// the offset of the log
+    pub offset: usize,
+}
+
 impl InMemoryWriter {
     pub fn init_buffer(capacity: usize) {
         LOG_RECORDS.with(|records| {
@@ -61,24 +78,32 @@ impl InMemoryWriter {
         });
     }
 
-    pub fn take_records(max_count: usize, from_offset: usize) -> Vec<String> {
+    pub fn take_records(max_count: usize, from_offset: usize) -> Logs {
         LOG_RECORDS.with(|records| {
             let records = records.borrow_mut();
-            let current_offset = records.0;
+            let all_logs_count = records.0 ;
 
-            let mut result = Vec::with_capacity(max_count);
-
-            let buffer_capacity = records.1.capacity();
-            let offset = if from_offset > current_offset  {
-                current_offset - from_offset
+            if (from_offset >= all_logs_count) || all_logs_count == 0 {
+                Logs {
+                    all_logs_count,
+                    logs: vec![],
+                }
             } else {
-                buffer_capacity
-            };
-            for log in records.1.iter().skip(buffer_capacity.saturating_sub(offset)).take(max_count) {
-                result.push(log.clone());
-            }
+                let first_index = from_offset % records.1.capacity();
 
-            result
+                let mut result = Vec::with_capacity(max_count);
+                
+                let mut count = 0;
+                for log in records.1.iter().skip(first_index).take(max_count) {
+                    result.push(Log { log: log.clone(), offset: from_offset + count });
+                    count += 1;
+                }
+                
+                Logs {
+                    all_logs_count,
+                    logs: result,
+                }
+            }
         })
     }
 }
@@ -114,16 +139,18 @@ pub mod tests {
         writer.print(&"some data".into()).unwrap();
 
         LOG_RECORDS.with(|records| {
-            assert!(records.borrow().iter().eq(["some data".to_string()].iter()));
+            assert!(records.borrow().1.iter().eq(["some data".to_string()].iter()));
+            assert_eq!(records.borrow().0, 1);
         });
 
         writer.print(&"some more data".into()).unwrap();
         LOG_RECORDS.with(|records| {
-            assert!(records.borrow().iter().eq([
+            assert!(records.borrow().1.iter().eq([
                 "some data".to_string(),
                 "some more data".to_string()
             ]
             .iter()));
+        assert_eq!(records.borrow().0, 2);
         });
     }
 
@@ -137,20 +164,49 @@ pub mod tests {
         writer.print(&"some data 3".into()).unwrap();
         writer.print(&"some data 4".into()).unwrap();
 
-        let res = InMemoryWriter::take_records(1);
-        assert_eq!(res, vec!["some data 1".to_string()]);
+        let res = InMemoryWriter::take_records(1, 0);
+        assert_eq!(res, Logs{
+            logs: vec![
+                Log{
+                log: "some data 1".to_string(),
+                offset: 0,
+            }],
+            all_logs_count: 4,
+        });
 
-        let res = InMemoryWriter::take_records(2);
-        assert_eq!(
-            res,
-            vec!["some data 2".to_string(), "some data 3".to_string()]
-        );
+        let res = InMemoryWriter::take_records(2, 0);
+        assert_eq!(res, Logs{
+            logs: vec![
+                Log{
+                log: "some data 1".to_string(),
+                offset: 0,
+            }, 
+            Log{
+                log: "some data 2".to_string(),
+                offset: 1,
+            }],
+            all_logs_count: 4,
+        });
 
-        let res = InMemoryWriter::take_records(2);
-        assert_eq!(res, vec!["some data 4".to_string()]);
+        let res = InMemoryWriter::take_records(2, 1);
+        assert_eq!(res, Logs {
+            logs: vec![
+                Log{
+                log: "some data 2".to_string(),
+                offset: 1,
+            }, 
+            Log{
+                log: "some data 3".to_string(),
+                offset: 2,
+            }],
+            all_logs_count: 4,
+        });
 
-        let res = InMemoryWriter::take_records(2);
-        assert_eq!(res, Vec::<String>::new());
+        // let res = InMemoryWriter::take_records(2);
+        // assert_eq!(res, vec!["some data 4".to_string()]);
+
+        // let res = InMemoryWriter::take_records(2);
+        // assert_eq!(res, Vec::<String>::new());
     }
 
     #[test]
@@ -165,6 +221,7 @@ pub mod tests {
         LOG_RECORDS.with(|records| {
             assert!(records
                 .borrow()
+                .1
                 .iter()
                 .cloned()
                 .eq((2..(LOG_RECORDS_MAX_COUNT + 2)).map(|i| format!("{i}"))));

@@ -1,6 +1,6 @@
 use formatter::FormatFn;
 use ic_exports::candid::{CandidType, Deserialize};
-use writer::{ConsoleWriter, InMemoryWriter, MultiWriter, Writer};
+use writer::{ConsoleWriter, InMemoryWriter, MultiWriter, Writer, Logs};
 
 mod formatter;
 mod platform;
@@ -364,7 +364,7 @@ pub fn init_log(settings: &LogSettings) -> Result<LoggerConfig, SetLoggerError> 
 }
 
 /// Take the log memory records for the circular buffer.
-pub fn take_memory_records(max_count: usize, from_offset: usize) -> Vec<String> {
+pub fn take_memory_records(max_count: usize, from_offset: usize) -> Logs {
     writer::InMemoryWriter::take_records(max_count, from_offset)
 }
 

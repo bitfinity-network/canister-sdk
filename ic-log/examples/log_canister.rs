@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use candid::Principal;
 use ic_canister::{generate_idl, init, query, update, Canister, Idl, PreUpdate};
-use ic_log::{init_log, LogSettings, LoggerConfig};
+use ic_log::{init_log, LogSettings, LoggerConfig, writer::Logs};
 use log::{debug, error, info};
 
 #[derive(Canister)]
@@ -33,9 +33,9 @@ impl LogCanister {
     }
 
     #[query]
-    pub fn get_log_records(&self, count: usize) -> Vec<String> {
+    pub fn get_log_records(&self, count: usize) -> Logs {
         debug!("collecting {count} log records");
-        ic_log::take_memory_records(count)
+        ic_log::take_memory_records(count, 0)
     }
 
     #[update]
