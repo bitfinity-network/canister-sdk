@@ -89,17 +89,27 @@ impl InMemoryWriter {
                     logs: vec![],
                 }
             } else {
-                let first_index = from_offset % records.1.capacity();
-
                 let mut result = Vec::with_capacity(max_count);
 
-                let mut count = all_logs_count + first_index - records.1.len();
+                let from_offset = if (from_offset + records.1.len()) < all_logs_count {
+                    0
+                } else {
+                    if all_logs_count > records.1.len() {
+                        from_offset - (all_logs_count % records.1.capacity())
+                    } else {
+                        from_offset
+                    }
+                };
+
+                let first_index = from_offset % records.1.capacity();
+                let mut offset = all_logs_count + first_index - records.1.len();
+
                 for log in records.1.iter().skip(first_index).take(max_count) {
                     result.push(Log {
                         log: log.clone(),
-                        offset: count,
+                        offset,
                     });
-                    count += 1;
+                    offset += 1;
                 }
 
                 Logs {
@@ -296,8 +306,7 @@ pub mod tests {
                 logs: vec![Log {
                     log: "0".to_string(),
                     offset: 0,
-                },
-                ],
+                },],
                 all_logs_count: 2,
             }
         );
@@ -424,15 +433,15 @@ pub mod tests {
             res,
             Logs {
                 logs: vec![
-                    Log{
+                    Log {
                         log: "3".to_string(),
                         offset: 3,
                     },
-                    Log{
+                    Log {
                         log: "4".to_string(),
                         offset: 4,
                     },
-                    Log{
+                    Log {
                         log: "5".to_string(),
                         offset: 5,
                     },
@@ -450,7 +459,7 @@ pub mod tests {
             }
         );
 
-        let res = InMemoryWriter::take_records(size, size+5);
+        let res = InMemoryWriter::take_records(size, size + 5);
         assert_eq!(
             res,
             Logs {
@@ -468,7 +477,7 @@ pub mod tests {
         InMemoryWriter::init_buffer(size);
         let writer = InMemoryWriter {};
 
-        let all_logs_count = size*2;
+        let all_logs_count = size * 2;
 
         for i in 0..all_logs_count {
             writer.print(&format!("{i}").into()).unwrap();
@@ -486,81 +495,239 @@ pub mod tests {
             }
         );
 
-        // let res = InMemoryWriter::take_records(2, 0);
-        // assert_eq!(
-        //     res,
-        //     Logs {
-        //         logs: vec![
-        //             Log {
-        //                 log: "0".to_string(),
-        //                 offset: 0,
-        //             },
-        //             Log {
-        //                 log: "1".to_string(),
-        //                 offset: 1,
-        //             }
-        //         ],
-        //         all_logs_count,
-        //     }
-        // );
+        let res = InMemoryWriter::take_records(2, 0);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![
+                    Log {
+                        log: "6".to_string(),
+                        offset: 6,
+                    },
+                    Log {
+                        log: "7".to_string(),
+                        offset: 7,
+                    }
+                ],
+                all_logs_count,
+            }
+        );
 
-        // let res = InMemoryWriter::take_records(2, 1);
-        // assert_eq!(
-        //     res,
-        //     Logs {
-        //         logs: vec![
-        //             Log {
-        //                 log: "1".to_string(),
-        //                 offset: 1,
-        //             },
-        //             Log {
-        //                 log: "2".to_string(),
-        //                 offset: 2,
-        //             }
-        //         ],
-        //         all_logs_count,
-        //     }
-        // );
+        let res = InMemoryWriter::take_records(2, 1);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![
+                    Log {
+                        log: "6".to_string(),
+                        offset: 6,
+                    },
+                    Log {
+                        log: "7".to_string(),
+                        offset: 7,
+                    }
+                ],
+                all_logs_count,
+            }
+        );
 
-        // let res = InMemoryWriter::take_records(size, 3);
-        // assert_eq!(
-        //     res,
-        //     Logs {
-        //         logs: vec![
-        //             Log{
-        //                 log: "3".to_string(),
-        //                 offset: 3,
-        //             },
-        //             Log{
-        //                 log: "4".to_string(),
-        //                 offset: 4,
-        //             },
-        //             Log{
-        //                 log: "5".to_string(),
-        //                 offset: 5,
-        //             },
-        //         ],
-        //         all_logs_count,
-        //     }
-        // );
+        let res = InMemoryWriter::take_records(size, 9);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![
+                    Log {
+                        log: "9".to_string(),
+                        offset: 9,
+                    },
+                    Log {
+                        log: "10".to_string(),
+                        offset: 10,
+                    },
+                    Log {
+                        log: "11".to_string(),
+                        offset: 11,
+                    },
+                ],
+                all_logs_count,
+            }
+        );
 
-        // let res = InMemoryWriter::take_records(size, size);
-        // assert_eq!(
-        //     res,
-        //     Logs {
-        //         logs: vec![],
-        //         all_logs_count,
-        //     }
-        // );
+        let res = InMemoryWriter::take_records(size, all_logs_count);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![],
+                all_logs_count,
+            }
+        );
 
-        // let res = InMemoryWriter::take_records(size, size+5);
-        // assert_eq!(
-        //     res,
-        //     Logs {
-        //         logs: vec![],
-        //         all_logs_count,
-        //     }
-        // );
+        let res = InMemoryWriter::take_records(size, all_logs_count + 5);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![],
+                all_logs_count,
+            }
+        );
+    }
+
+    #[test]
+    fn test_memory_writer_take_data_with_overridden_buffer_not_multiple_of_size() {
+        clear_memory_records();
+
+        let size = 6;
+        InMemoryWriter::init_buffer(size);
+        let writer = InMemoryWriter {};
+
+        let mut all_logs_count = (size * 3) + 1;
+
+        for i in 0..all_logs_count {
+            writer.print(&format!("{i}").into()).unwrap();
+        }
+
+        let res = InMemoryWriter::take_records(1, 0);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![Log {
+                    log: "13".to_string(),
+                    offset: 13,
+                }],
+                all_logs_count,
+            }
+        );
+
+        let res = InMemoryWriter::take_records(2, 0);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![
+                    Log {
+                        log: "13".to_string(),
+                        offset: 13,
+                    },
+                    Log {
+                        log: "14".to_string(),
+                        offset: 14,
+                    }
+                ],
+                all_logs_count,
+            }
+        );
+
+        let res = InMemoryWriter::take_records(2, 13);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![
+                    Log {
+                        log: "13".to_string(),
+                        offset: 13,
+                    },
+                    Log {
+                        log: "14".to_string(),
+                        offset: 14,
+                    }
+                ],
+                all_logs_count,
+            }
+        );
+
+        let res = InMemoryWriter::take_records(5, 15);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![
+                    Log {
+                        log: "15".to_string(),
+                        offset: 15,
+                    },
+                    Log {
+                        log: "16".to_string(),
+                        offset: 16,
+                    },
+                    Log {
+                        log: "17".to_string(),
+                        offset: 17,
+                    },
+                    Log {
+                        log: "18".to_string(),
+                        offset: 18,
+                    },
+                ],
+                all_logs_count,
+            }
+        );
+
+        let res = InMemoryWriter::take_records(size, all_logs_count);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![],
+                all_logs_count,
+            }
+        );
+
+        let res = InMemoryWriter::take_records(size, all_logs_count + 1);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![],
+                all_logs_count,
+            }
+        );
+
+        writer.print(&format!("{all_logs_count}").into()).unwrap();
+        all_logs_count += 1;
+
+        let res = InMemoryWriter::take_records(2, 13);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![
+                    Log {
+                        log: "14".to_string(),
+                        offset: 14,
+                    },
+                    Log {
+                        log: "15".to_string(),
+                        offset: 15,
+                    }
+                ],
+                all_logs_count,
+            }
+        );
+
+        let res = InMemoryWriter::take_records(5, 15);
+        assert_eq!(
+            res,
+            Logs {
+                logs: vec![
+                    Log {
+                        log: "15".to_string(),
+                        offset: 15,
+                    },
+                    Log {
+                        log: "16".to_string(),
+                        offset: 16,
+                    },
+                    Log {
+                        log: "17".to_string(),
+                        offset: 17,
+                    },
+                    Log {
+                        log: "18".to_string(),
+                        offset: 18,
+                    },
+                    Log {
+                        log: "19".to_string(),
+                        offset: 19,
+                    },
+                ],
+                all_logs_count,
+            }
+        );
     }
 
     #[test]
