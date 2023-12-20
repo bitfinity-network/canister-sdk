@@ -155,14 +155,12 @@ pub mod tests {
     }
 
     #[test]
-    fn test_memory_writer_take_data() {
+    fn test_memory_writer_take_data_with_empty_buffer() {
         clear_memory_records();
 
-        let writer = InMemoryWriter {};
+        let _writer = InMemoryWriter {};
 
         // Empty buffer
-        {
-
             let res = InMemoryWriter::take_records(0, 0);
             assert_eq!(res, Logs{
                 logs: vec![],
@@ -193,12 +191,14 @@ pub mod tests {
                 all_logs_count: 0,
             });
 
-        }
-            
-        writer.print(&"some data 1".into()).unwrap();
+    }
 
-        // One entry in the buffer
-        {
+    #[test]
+    fn test_memory_writer_take_data_with_one_entry_in_buffer() {
+        clear_memory_records();
+
+        let writer = InMemoryWriter {};
+        writer.print(&"some data 1".into()).unwrap();
 
             let res = InMemoryWriter::take_records(0, 0);
             assert_eq!(res, Logs{
@@ -237,10 +237,13 @@ pub mod tests {
 
         }
 
+        #[test]
+        fn test_memory_writer_take_data_with_two_entries_in_buffer() {
+            clear_memory_records();
+    
+            let writer = InMemoryWriter {};
+            writer.print(&"some data 1".into()).unwrap();
         writer.print(&"some data 2".into()).unwrap();
-
-        // Two entries in the buffer
-        {
 
             let res = InMemoryWriter::take_records(0, 0);
             assert_eq!(res, Logs{
@@ -305,52 +308,55 @@ pub mod tests {
 
         }
 
-        writer.print(&"some data 3".into()).unwrap();
-        writer.print(&"some data 4".into()).unwrap();
+        #[test]
+        fn test_memory_writer_take_data_with_full_buffer() {
+            clear_memory_records();
+            let size = LOG_RECORDS_MAX_COUNT;
+            InMemoryWriter::init_buffer(size);
+            let writer = InMemoryWriter{};
+
+            for i in 0..size {
+                writer.print(&format!("{i}").into()).unwrap();
+            }
 
         let res = InMemoryWriter::take_records(1, 0);
         assert_eq!(res, Logs{
             logs: vec![
                 Log{
-                log: "some data 1".to_string(),
+                log: "0".to_string(),
                 offset: 0,
             }],
-            all_logs_count: 4,
+            all_logs_count: size,
         });
 
         let res = InMemoryWriter::take_records(2, 0);
         assert_eq!(res, Logs{
             logs: vec![
                 Log{
-                log: "some data 1".to_string(),
+                log: "0".to_string(),
                 offset: 0,
             }, 
             Log{
-                log: "some data 2".to_string(),
+                log: "1".to_string(),
                 offset: 1,
             }],
-            all_logs_count: 4,
+            all_logs_count: size,
         });
 
         let res = InMemoryWriter::take_records(2, 1);
         assert_eq!(res, Logs {
             logs: vec![
                 Log{
-                log: "some data 2".to_string(),
+                log: "1".to_string(),
                 offset: 1,
             }, 
             Log{
-                log: "some data 3".to_string(),
+                log: "2".to_string(),
                 offset: 2,
             }],
-            all_logs_count: 4,
+            all_logs_count: size,
         });
 
-        // let res = InMemoryWriter::take_records(2);
-        // assert_eq!(res, vec!["some data 4".to_string()]);
-
-        // let res = InMemoryWriter::take_records(2);
-        // assert_eq!(res, Vec::<String>::new());
     }
 
     #[test]
