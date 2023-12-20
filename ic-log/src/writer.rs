@@ -2,6 +2,7 @@ use std::cell::RefCell;
 
 use candid::CandidType;
 use ringbuffer::{AllocRingBuffer, RingBuffer};
+use serde::{Deserialize, Serialize};
 
 use crate::formatter::buffer::Buffer;
 use crate::platform;
@@ -55,7 +56,7 @@ thread_local! {
 /// Note: it can be optimized to reduce the number of memory allocations.
 pub struct InMemoryWriter {}
 
-#[derive(Debug, Default, PartialEq, Eq, CandidType)]
+#[derive(Debug, Default, PartialEq, Eq, CandidType, Serialize, Deserialize)]
 pub struct Logs {
     /// the list of logs
     pub logs: Vec<Log>,
@@ -63,7 +64,7 @@ pub struct Logs {
     pub all_logs_count: usize,
 }
 
-#[derive(Debug, Default, PartialEq, Eq, CandidType)]
+#[derive(Debug, Default, PartialEq, Eq, CandidType, Serialize, Deserialize)]
 pub struct Log {
     /// the log text
     pub log: String,
