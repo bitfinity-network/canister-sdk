@@ -1,6 +1,6 @@
 use formatter::FormatFn;
 use ic_exports::candid::{CandidType, Deserialize};
-use writer::{ConsoleWriter, InMemoryWriter, MultiWriter, Writer, Logs};
+use writer::{ConsoleWriter, InMemoryWriter, Logs, MultiWriter, Writer};
 
 mod formatter;
 mod platform;

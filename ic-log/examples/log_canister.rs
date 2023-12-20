@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use candid::Principal;
 use ic_canister::{generate_idl, init, query, update, Canister, Idl, PreUpdate};
-use ic_log::{init_log, LogSettings, LoggerConfig, writer::Logs};
+use ic_log::{init_log, writer::Logs, LogSettings, LoggerConfig};
 use log::{debug, error, info};
 
 #[derive(Canister)]
