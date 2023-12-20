@@ -93,12 +93,10 @@ impl InMemoryWriter {
 
                 let from_offset = if (from_offset + records.1.len()) < all_logs_count {
                     0
+                } else if all_logs_count > records.1.len() {
+                    from_offset - (all_logs_count % records.1.capacity())
                 } else {
-                    if all_logs_count > records.1.len() {
-                        from_offset - (all_logs_count % records.1.capacity())
-                    } else {
-                        from_offset
-                    }
+                    from_offset
                 };
 
                 let first_index = from_offset % records.1.capacity();
