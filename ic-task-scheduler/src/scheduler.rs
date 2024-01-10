@@ -610,7 +610,7 @@ mod test {
                     assert_eq!(pending_tasks.len(), 0);
                 })
                 .await;
-            assert_eq!(called.load(std::sync::atomic::Ordering::SeqCst), true);
+            assert!(called.load(std::sync::atomic::Ordering::SeqCst));
         }
     }
 }
