@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::sync::Arc;
 
 use ic_stable_structures::UnboundedMapStructure;
@@ -7,11 +8,13 @@ use crate::task::{ScheduledTask, Task};
 use crate::time::time_secs;
 use crate::SchedulerError;
 
+type SchedulerErrorCb = Box<dyn 'static + Fn(SchedulerError)>;
+
 /// A scheduler is responsible for executing tasks.
 pub struct Scheduler<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
-    failed_task_cb: Arc<Option<Box<dyn 'static + Fn(SchedulerError)>>>,
+    failed_task_cb: Rc<Option<SchedulerErrorCb>>,
 }
 
 impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> Scheduler<T, P> {
@@ -20,13 +23,13 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
         Self {
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
             phantom: std::marker::PhantomData,
-            failed_task_cb: Arc::new(None),
+            failed_task_cb: Rc::new(None),
         }
     }
 
     /// Set a callback to be called when a task fails.
     pub fn set_failed_task_cb<F: 'static + Fn(SchedulerError)>(&mut self, cb: F) {
-        self.failed_task_cb = Arc::new(Some(Box::new(cb)));
+        self.failed_task_cb = Rc::new(Some(Box::new(cb)));
     }
 
     /// Execute all pending tasks.
