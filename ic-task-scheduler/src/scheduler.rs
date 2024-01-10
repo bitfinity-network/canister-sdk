@@ -11,6 +11,7 @@ use crate::SchedulerError;
 pub struct Scheduler<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
+    failed_task_cb: Arc<Option<Box<dyn 'static + Fn(SchedulerError)>>>,
 }
 
 impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> Scheduler<T, P> {
@@ -19,7 +20,13 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
         Self {
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
             phantom: std::marker::PhantomData,
+            failed_task_cb: Arc::new(None),
         }
+    }
+
+    /// Set a callback to be called when a task fails.
+    pub fn set_failed_task_cb<F: 'static + Fn(SchedulerError)>(&mut self, cb: F) {
+        self.failed_task_cb = Arc::new(Some(Box::new(cb)));
     }
 
     /// Execute all pending tasks.
@@ -45,22 +52,23 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
                         task_execution_started += 1;
                         let task_scheduler = self.clone();
                         Self::spawn(async move {
-                            match task.task.execute(Box::new(task_scheduler.clone())).await {
-                                Ok(()) => {
-                                    // processed_tasks.push(task);
+                            if let Err(err) =
+                                task.task.execute(Box::new(task_scheduler.clone())).await
+                            {
+                                let mut task = task;
+                                task.options.failures += 1;
+                                let (should_retry, retry_delay) = task
+                                    .options
+                                    .retry_strategy
+                                    .should_retry(task.options.failures);
+                                if should_retry {
+                                    task.options.execute_after_timestamp_in_secs =
+                                        now_timestamp_secs + (retry_delay as u64);
+                                    task_scheduler.append_task(task)
                                 }
-                                Err(_) => {
-                                    let mut task = task;
-                                    task.options.failures += 1;
-                                    let (should_retry, retry_delay) = task
-                                        .options
-                                        .retry_strategy
-                                        .should_retry(task.options.failures);
-                                    if should_retry {
-                                        task.options.execute_after_timestamp_in_secs =
-                                            now_timestamp_secs + (retry_delay as u64);
-                                        task_scheduler.append_task(task)
-                                    }
+                                // send error to callback
+                                if let Some(cb) = &*task_scheduler.failed_task_cb {
+                                    cb(err);
                                 }
                             }
                         });
@@ -100,6 +108,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
         Self {
             pending_tasks: self.pending_tasks.clone(),
             phantom: self.phantom,
+            failed_task_cb: self.failed_task_cb.clone(),
         }
     }
 }
@@ -562,6 +571,43 @@ mod test {
                     );
                 })
                 .await;
+        }
+
+        #[tokio::test]
+        async fn test_should_call_error_cb() {
+            use std::sync::atomic::AtomicBool;
+
+            let local = tokio::task::LocalSet::new();
+            let called = Arc::new(AtomicBool::new(false));
+            let called_t = called.clone();
+            local
+                .run_until(async move {
+                    let map = StableUnboundedMap::new(VectorMemory::default());
+                    let mut scheduler = Scheduler::new(map);
+
+                    scheduler.set_failed_task_cb(move |_| {
+                        called_t.store(true, std::sync::atomic::Ordering::SeqCst);
+                    });
+
+                    let id = random();
+                    let fails = 10;
+
+                    scheduler.append_task(
+                        (
+                            SimpleTask::StepOne { id, fails },
+                            TaskOptions::new().with_fixed_backoff_policy(0),
+                        )
+                            .into(),
+                    );
+
+                    // beware that the the first execution is not a retry
+                    scheduler.run().unwrap();
+                    tokio::time::sleep(Duration::from_millis(25)).await;
+                    let pending_tasks = scheduler.pending_tasks.lock();
+                    assert_eq!(pending_tasks.len(), 0);
+                })
+                .await;
+            assert_eq!(called.load(std::sync::atomic::Ordering::SeqCst), true);
         }
     }
 }
