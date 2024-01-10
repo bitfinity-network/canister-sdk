@@ -12,11 +12,17 @@ use crate::memory::MemoryManager;
 
 const WASM_PAGE_SIZE_IN_BYTES: u64 = 65536;
 
+/// When creating mapping we reserve at once 1 TB of address space.
+/// This doesn't allocate any resources (except of address space which is not a problem for x64)
+/// but allows skip remapping/flushing when the file size grows.
+const DEFAULT_MEM_MAP_RESERVED_LENGTH: u64 = 1 << 40;
+
 /// Memory manager that uses one memory mapped filer per one memory id.
 pub struct MemoryMappedFileMemoryManager {
     base_path: PathBuf,
     is_persistent: bool,
     created_memory_resources: RwLock<BTreeMap<PathBuf, MemoryMappedFileMemory>>,
+    file_reserved_length: u64,
 }
 
 impl MemoryMappedFileMemoryManager {
@@ -27,7 +33,15 @@ impl MemoryMappedFileMemoryManager {
             base_path,
             is_persistent,
             created_memory_resources: Default::default(),
+            file_reserved_length: DEFAULT_MEM_MAP_RESERVED_LENGTH,
         }
+    }
+
+    /// Set reserved length for each memory-mapped file.
+    pub fn with_reserved_length(mut self, file_reserved_length: u64) -> Self {
+        self.file_reserved_length = file_reserved_length;
+
+        self
     }
 
     /// Flush and save the memory-mapped files to the given path.
@@ -64,13 +78,17 @@ impl MemoryMappedFileMemoryManager {
                 let file_path = entry.key().to_str().unwrap_or_else(|| {
                     panic!("Cannot extract path from {}", entry.key().display())
                 });
-                let result = MemoryMappedFileMemory::new(file_path.to_owned(), self.is_persistent)
-                    .unwrap_or_else(|err| {
-                        panic!(
-                            "failed to initialize MemoryMappedFileMemory with path: {}, {:?}",
-                            file_path, err
-                        )
-                    });
+                let result = MemoryMappedFileMemory::new(
+                    file_path.to_owned(),
+                    self.file_reserved_length,
+                    self.is_persistent,
+                )
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "failed to initialize MemoryMappedFileMemory with path: {}",
+                        file_path
+                    )
+                });
 
                 entry.insert(result.clone());
 
@@ -103,9 +121,10 @@ impl MemoryManager<MemoryMappedFileMemory, u8> for MemoryMappedFileMemoryManager
 pub struct MemoryMappedFileMemory(Arc<RwLock<MemoryMappedFile>>);
 
 impl MemoryMappedFileMemory {
-    pub fn new(path: String, is_persistent: bool) -> MemMapResult<Self> {
+    pub fn new(path: String, reserved_length: u64, is_persistent: bool) -> MemMapResult<Self> {
         Ok(Self(Arc::new(RwLock::new(MemoryMappedFile::new(
             path,
+            reserved_length,
             is_persistent,
         )?))))
     }
