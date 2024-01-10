@@ -67,7 +67,7 @@ impl MemoryMappedFileMemoryManager {
                 let result = MemoryMappedFileMemory::new(file_path.to_owned(), self.is_persistent)
                     .unwrap_or_else(|err| {
                         panic!(
-                            "failed to initialize MemoryMappedFileMemory with path: {}, {}",
+                            "failed to initialize MemoryMappedFileMemory with path: {}, {:?}",
                             file_path, err
                         )
                     });
