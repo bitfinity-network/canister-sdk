@@ -65,10 +65,10 @@ impl MemoryMappedFileMemoryManager {
                     panic!("Cannot extract path from {}", entry.key().display())
                 });
                 let result = MemoryMappedFileMemory::new(file_path.to_owned(), self.is_persistent)
-                    .unwrap_or_else(|_| {
+                    .unwrap_or_else(|err| {
                         panic!(
-                            "failed to initialize MemoryMappedFileMemory with path: {}",
-                            file_path
+                            "failed to initialize MemoryMappedFileMemory with path: {}, {}",
+                            file_path, err
                         )
                     });
 
