@@ -7,7 +7,7 @@ use ic_stable_structures::{
 use parking_lot::Mutex;
 use tempfile::{NamedTempFile, TempDir};
 
-const RESERVED_LENGTH: u64 = 64 * 1024;
+const RESERVED_LENGTH: u64 = 1024 * 1024 * 1024;
 
 #[test]
 fn test_persistent_memory_mapped_file_memory() {

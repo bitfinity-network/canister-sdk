@@ -17,7 +17,7 @@ pub(super) struct MemoryMappedFile {
     file: File,
     path: String,
     length: u64,
-    reserved_length: u64,
+    max_length: u64,
     is_persistent: bool,
     mapping: MmapMut,
 }
@@ -25,7 +25,9 @@ pub(super) struct MemoryMappedFile {
 impl MemoryMappedFile {
     /// Preconditions: file under the `path` should not be modified from any other place
     /// in this or different process.
-    pub fn new(path: String, reserved_length: u64, is_persistent: bool) -> MemMapResult<Self> {
+    /// `max_length` is used to reserve the memory address space to allow resizing the memory
+    /// without flushing data and re-mapping it again.
+    pub fn new(path: String, max_length: u64, is_persistent: bool) -> MemMapResult<Self> {
         if !is_persistent {
             _ = remove_file(&path);
         }
@@ -41,13 +43,13 @@ impl MemoryMappedFile {
         let mut mmap_opts = MmapOptions::new();
         // Safety: function preconditions should guarantee the safety of the operation:
         // mapping to a file is safe if the file isn't modified concurrently by this and other processes.
-        let mapping = unsafe { mmap_opts.len(reserved_length as _).map_mut(&file) }?;
+        let mapping = unsafe { mmap_opts.len(max_length as _).map_mut(&file) }?;
 
         Ok(Self {
             file,
             path,
             is_persistent,
-            reserved_length,
+            max_length,
             length,
             mapping,
         })
@@ -71,10 +73,10 @@ impl MemoryMappedFile {
             return Ok(self.length);
         }
 
-        if new_length > self.reserved_length {
+        if new_length > self.max_length {
             return Err(MemMapError::OutOfAddressSpace {
                 claimed: new_length,
-                limit: self.reserved_length as _,
+                limit: self.max_length as _,
             });
         }
 
@@ -157,6 +159,9 @@ mod tests {
 
     use super::*;
 
+    /// Default max length. It cannot be less than a page size.
+    const DEFAULT_MAX_LENGTH: u64 = PAGE_SIZE;
+
     fn with_temp_file(func: impl FnOnce(String)) {
         let file = NamedTempFile::new().unwrap();
         let path = file.into_temp_path();
@@ -167,7 +172,7 @@ mod tests {
     #[test]
     fn should_create_flush_memory_file() {
         with_temp_file(|path| {
-            let mut file_memory = MemoryMappedFile::new(path, PAGE_SIZE, true).unwrap();
+            let mut file_memory = MemoryMappedFile::new(path, DEFAULT_MAX_LENGTH, true).unwrap();
             file_memory.resize(PAGE_SIZE).unwrap();
             file_memory.flush().unwrap();
         })
@@ -176,7 +181,7 @@ mod tests {
     #[test]
     fn should_read_write_first_chunk() {
         with_temp_file(|path| {
-            let mut file_memory = MemoryMappedFile::new(path, PAGE_SIZE, true).unwrap();
+            let mut file_memory = MemoryMappedFile::new(path, DEFAULT_MAX_LENGTH, true).unwrap();
             file_memory.resize(PAGE_SIZE).unwrap();
 
             let slice = &mut [1, 2, 3];
@@ -199,7 +204,7 @@ mod tests {
     #[test]
     fn should_read_with_offset() {
         with_temp_file(|path| {
-            let mut file_memory = MemoryMappedFile::new(path, PAGE_SIZE, true).unwrap();
+            let mut file_memory = MemoryMappedFile::new(path, DEFAULT_MAX_LENGTH, true).unwrap();
             file_memory.resize(PAGE_SIZE).unwrap();
 
             file_memory.write(0, &[1, 2, 3, 4, 5]).unwrap();
@@ -221,7 +226,7 @@ mod tests {
     #[test]
     fn read_out_of_bounds_should_return_error() {
         with_temp_file(|path| {
-            let mut file_memory = MemoryMappedFile::new(path, PAGE_SIZE, true).unwrap();
+            let mut file_memory = MemoryMappedFile::new(path, DEFAULT_MAX_LENGTH, true).unwrap();
             file_memory.resize(PAGE_SIZE).unwrap();
 
             assert!(matches!(
@@ -242,7 +247,7 @@ mod tests {
     #[test]
     fn write_out_of_bounds_should_return_error() {
         with_temp_file(|path| {
-            let mut file_memory = MemoryMappedFile::new(path, PAGE_SIZE, true).unwrap();
+            let mut file_memory = MemoryMappedFile::new(path, DEFAULT_MAX_LENGTH, true).unwrap();
             file_memory.resize(PAGE_SIZE).unwrap();
 
             assert!(matches!(
@@ -317,7 +322,8 @@ mod tests {
     #[test]
     fn should_flush() {
         with_temp_file(|path| {
-            let mut file_memory = MemoryMappedFile::new(path.clone(), PAGE_SIZE, true).unwrap();
+            let mut file_memory =
+                MemoryMappedFile::new(path.clone(), DEFAULT_MAX_LENGTH, true).unwrap();
             file_memory.resize(PAGE_SIZE).unwrap();
 
             let mut data = create_data();
@@ -335,7 +341,8 @@ mod tests {
     #[test]
     fn should_copy_file() {
         with_temp_file(|path| {
-            let mut file_memory = MemoryMappedFile::new(path.clone(), PAGE_SIZE, true).unwrap();
+            let mut file_memory =
+                MemoryMappedFile::new(path.clone(), DEFAULT_MAX_LENGTH, true).unwrap();
             file_memory.resize(PAGE_SIZE).unwrap();
 
             let mut data = create_data();
@@ -355,7 +362,8 @@ mod tests {
     #[test]
     fn should_remove_file_for_non_persistent() {
         with_temp_file(|path| {
-            let mut file_memory = MemoryMappedFile::new(path.clone(), PAGE_SIZE, false).unwrap();
+            let mut file_memory =
+                MemoryMappedFile::new(path.clone(), DEFAULT_MAX_LENGTH, false).unwrap();
             file_memory.resize(PAGE_SIZE).unwrap();
 
             drop(file_memory);

@@ -22,7 +22,7 @@ pub struct MemoryMappedFileMemoryManager {
     base_path: PathBuf,
     is_persistent: bool,
     created_memory_resources: RwLock<BTreeMap<PathBuf, MemoryMappedFileMemory>>,
-    file_reserved_length: u64,
+    max_memory_length: u64,
 }
 
 impl MemoryMappedFileMemoryManager {
@@ -33,13 +33,14 @@ impl MemoryMappedFileMemoryManager {
             base_path,
             is_persistent,
             created_memory_resources: Default::default(),
-            file_reserved_length: DEFAULT_MEM_MAP_RESERVED_LENGTH,
+            max_memory_length: DEFAULT_MEM_MAP_RESERVED_LENGTH,
         }
     }
 
-    /// Set reserved length for each memory-mapped file.
-    pub fn with_reserved_length(mut self, file_reserved_length: u64) -> Self {
-        self.file_reserved_length = file_reserved_length;
+    /// Set reserved address space length in bytes for each memory-mapped file.
+    /// This is not the initial file size but an upper limit for a size.
+    pub fn with_max_memory_size_per_id(mut self, file_reserved_length: u64) -> Self {
+        self.max_memory_length = file_reserved_length;
 
         self
     }
@@ -80,7 +81,7 @@ impl MemoryMappedFileMemoryManager {
                 });
                 let result = MemoryMappedFileMemory::new(
                     file_path.to_owned(),
-                    self.file_reserved_length,
+                    self.max_memory_length,
                     self.is_persistent,
                 )
                 .unwrap_or_else(|_| {
@@ -121,10 +122,10 @@ impl MemoryManager<MemoryMappedFileMemory, u8> for MemoryMappedFileMemoryManager
 pub struct MemoryMappedFileMemory(Arc<RwLock<MemoryMappedFile>>);
 
 impl MemoryMappedFileMemory {
-    pub fn new(path: String, reserved_length: u64, is_persistent: bool) -> MemMapResult<Self> {
+    pub fn new(path: String, max_size: u64, is_persistent: bool) -> MemMapResult<Self> {
         Ok(Self(Arc::new(RwLock::new(MemoryMappedFile::new(
             path,
-            reserved_length,
+            max_size,
             is_persistent,
         )?))))
     }
