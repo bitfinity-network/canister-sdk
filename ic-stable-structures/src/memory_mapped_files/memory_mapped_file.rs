@@ -263,7 +263,7 @@ mod tests {
     #[test]
     fn should_expand() {
         with_temp_file(|path| {
-            let mut file_memory = MemoryMappedFile::new(path, PAGE_SIZE, true).unwrap();
+            let mut file_memory = MemoryMappedFile::new(path, PAGE_SIZE * 5, true).unwrap();
             file_memory.resize(PAGE_SIZE).unwrap();
             assert_eq!(file_memory.len(), PAGE_SIZE);
 
@@ -288,6 +288,19 @@ mod tests {
                 slice,
                 &[[42; PAGE_SIZE as _], [43; PAGE_SIZE as _]].concat()[..]
             )
+        })
+    }
+
+    #[test]
+    fn should_check_reserved_address_length() {
+        with_temp_file(|path| {
+            let reserved_size = PAGE_SIZE * 5;
+            let mut file_memory = MemoryMappedFile::new(path, reserved_size, true).unwrap();
+            let claimed_size = PAGE_SIZE * 6;
+            let result = file_memory.resize(claimed_size).unwrap_err();
+            assert!(
+                matches!(result, MemMapError::OutOfAddressSpace { claimed, limit } if claimed == claimed_size && limit == reserved_size)
+            );
         })
     }
 
