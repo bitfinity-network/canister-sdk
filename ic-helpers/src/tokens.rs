@@ -264,14 +264,7 @@ impl Tokens256 {
 
     /// Rounded square root of the value.
     pub fn sqrt(&self) -> Self {
-        #[cfg(target_arch = "wasm32")]
-        {
-            Self(self.0.sqrt_vartime())
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            Self(self.0.sqrt())
-        }
+        Self(self.0.sqrt_vartime())
     }
 
     /// Returns true if the value equals zero.
