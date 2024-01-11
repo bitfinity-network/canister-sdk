@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use std::sync::Arc;
 
 use ic_stable_structures::UnboundedMapStructure;
@@ -8,13 +7,13 @@ use crate::task::{ScheduledTask, Task};
 use crate::time::time_secs;
 use crate::SchedulerError;
 
-type SchedulerErrorCb = Box<dyn 'static + Fn(SchedulerError)>;
+type SchedulerErrorCb = Box<dyn 'static + Fn(SchedulerError) + Send>;
 
 /// A scheduler is responsible for executing tasks.
 pub struct Scheduler<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
-    failed_task_cb: Rc<Option<SchedulerErrorCb>>,
+    failed_task_callback: Arc<Option<SchedulerErrorCb>>,
 }
 
 impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> Scheduler<T, P> {
@@ -23,13 +22,13 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
         Self {
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
             phantom: std::marker::PhantomData,
-            failed_task_cb: Rc::new(None),
+            failed_task_callback: Arc::new(None),
         }
     }
 
     /// Set a callback to be called when a task fails.
-    pub fn set_failed_task_cb<F: 'static + Fn(SchedulerError)>(&mut self, cb: F) {
-        self.failed_task_cb = Rc::new(Some(Box::new(cb)));
+    pub fn set_failed_task_callback<F: 'static + Send + Fn(SchedulerError)>(&mut self, cb: F) {
+        self.failed_task_callback = Arc::new(Some(Box::new(cb)));
     }
 
     /// Execute all pending tasks.
@@ -70,7 +69,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
                                     task_scheduler.append_task(task)
                                 }
                                 // send error to callback
-                                if let Some(cb) = &*task_scheduler.failed_task_cb {
+                                if let Some(cb) = &*task_scheduler.failed_task_callback {
                                     cb(err);
                                 }
                             }
@@ -111,7 +110,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
         Self {
             pending_tasks: self.pending_tasks.clone(),
             phantom: self.phantom,
-            failed_task_cb: self.failed_task_cb.clone(),
+            failed_task_callback: self.failed_task_callback.clone(),
         }
     }
 }
@@ -588,7 +587,7 @@ mod test {
                     let map = StableUnboundedMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
 
-                    scheduler.set_failed_task_cb(move |_| {
+                    scheduler.set_failed_task_callback(move |_| {
                         called_t.store(true, std::sync::atomic::Ordering::SeqCst);
                     });
 
