@@ -7,11 +7,17 @@ use ic_stable_structures::{
 use parking_lot::Mutex;
 use tempfile::{NamedTempFile, TempDir};
 
+const RESERVED_LENGTH: u64 = 1024 * 1024 * 1024;
+
 #[test]
 fn test_persistent_memory_mapped_file_memory() {
     let file = NamedTempFile::new().unwrap();
-    let memory_resource =
-        MemoryMappedFileMemory::new(file.path().to_str().unwrap().to_owned(), true).unwrap();
+    let memory_resource = MemoryMappedFileMemory::new(
+        file.path().to_str().unwrap().to_owned(),
+        RESERVED_LENGTH,
+        true,
+    )
+    .unwrap();
     let memory_manager = IcMemoryManager::init(memory_resource);
 
     let mut vec = StableVec::<u32, _>::new(memory_manager.get(MemoryId::new(0))).unwrap();
@@ -25,8 +31,12 @@ fn test_persistent_memory_mapped_file_memory() {
     map.insert(4, 5);
     drop(memory_manager);
 
-    let memory_resource =
-        MemoryMappedFileMemory::new(file.path().to_str().unwrap().to_owned(), true).unwrap();
+    let memory_resource = MemoryMappedFileMemory::new(
+        file.path().to_str().unwrap().to_owned(),
+        RESERVED_LENGTH,
+        true,
+    )
+    .unwrap();
     let memory_manager = IcMemoryManager::init(memory_resource);
 
     let vec = StableVec::<u32, _>::new(memory_manager.get(MemoryId::new(0))).unwrap();
