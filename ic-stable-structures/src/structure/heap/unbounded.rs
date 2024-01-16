@@ -38,6 +38,8 @@ where
     K: Storable + Clone + Hash + Eq + PartialEq + Ord,
     V: SlicedStorable + Clone,
 {
+    type Iterator<'a> = HeapUnboundedIter<'a, K, V> where Self: 'a;
+
     fn get(&self, key: &K) -> Option<V> {
         self.0.get(key).cloned()
     }
@@ -78,6 +80,10 @@ where
 
     fn last_key_value(&self) -> Option<(K, V)> {
         self.0.last_key_value().map(|(k, v)| (k.clone(), v.clone()))
+    }
+
+    fn iter(&self) -> Self::Iterator<'_> {
+        self.iter()
     }
 }
 

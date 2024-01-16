@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// Defines the strategy to apply in case of a failure.
 /// This is applied, for example, when a task execution fails
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct RetryStrategy {
     pub retry_policy: RetryPolicy,
     pub backoff_policy: BackoffPolicy,
@@ -30,7 +30,7 @@ impl RetryStrategy {
 }
 
 // Defines the retry policy of a RetryStrategy
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 pub enum RetryPolicy {
     /// No Retry attempts defined
     None,

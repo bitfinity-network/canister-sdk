@@ -88,6 +88,8 @@ where
     V: SlicedStorable,
     M: Memory,
 {
+    type Iterator<'a> = StableUnboundedIter<'a, K, V, M> where Self: 'a;
+
     fn get(&self, key: &K) -> Option<V> {
         let first_chunk_key = Key::new(key);
         let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
@@ -177,6 +179,10 @@ where
             self.inner.remove(&key);
         }
         self.items_count = 0;
+    }
+
+    fn iter(&self) -> Self::Iterator<'_> {
+        self.iter()
     }
 }
 

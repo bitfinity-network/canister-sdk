@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::future::Future;
 use std::pin::Pin;
@@ -5,7 +6,9 @@ use std::sync::Arc;
 
 use ic_kit::RejectionCode;
 use ic_stable_structures::stable_structures::Memory;
-use ic_stable_structures::{MemoryManager, StableVec, UnboundedMapStructure, VecStructure};
+use ic_stable_structures::{
+    BTreeMapStructure, MemoryManager, StableBTreeMap, UnboundedMapStructure,
+};
 use parking_lot::Mutex;
 
 use crate::task::{ScheduledTask, Task};
@@ -30,7 +33,7 @@ where
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
     /// Queue containing the tasks to be executed in a loop
-    tasks_queue: Arc<RefCell<StableVec<u32, M>>>,
+    tasks_queue: Arc<RefCell<StableBTreeMap<u32, (), M>>>,
     /// Callback to be called when a task fails.
     failed_task_callback: Arc<Option<SchedulerErrorCallback<T>>>,
     /// Callback to be called to save the current canister state to prevent panicking tasks.
@@ -52,7 +55,9 @@ where
         Ok(Self {
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
             phantom: std::marker::PhantomData,
-            tasks_queue: Arc::new(RefCell::new(StableVec::new(memory_manager.get(memory_id))?)),
+            tasks_queue: Arc::new(RefCell::new(StableBTreeMap::new(
+                memory_manager.get(memory_id),
+            ))),
             failed_task_callback: Arc::new(None),
             save_state_query_callback: Arc::new(None),
         })
@@ -82,12 +87,18 @@ where
     async fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<u32> {
         let mut to_be_reprocessed = Vec::new();
         let mut task_execution_started = 0;
+
+        // delete unprocessed tasks and push tasks to execute
+        self.delete_unprocessed_tasks()?;
+        self.push_tasks_to_execute_to_queue(now_timestamp_secs)
+            .await?;
+
         {
             let mut lock = self.pending_tasks.lock();
             while let Some(key) = lock.first_key() {
                 let task = lock.remove(&key);
                 drop(lock);
-                if let Some(task) = task {
+                if let Some(mut task) = task {
                     if task.options.execute_after_timestamp_in_secs > now_timestamp_secs {
                         to_be_reprocessed.push(task);
                     } else {
@@ -97,7 +108,6 @@ where
                             if let Err(err) =
                                 task.task.execute(Box::new(task_scheduler.clone())).await
                             {
-                                let mut task = task;
                                 task.options.failures += 1;
                                 let (should_retry, retry_delay) = task
                                     .options
@@ -106,10 +116,17 @@ where
                                 if should_retry {
                                     task.options.execute_after_timestamp_in_secs =
                                         now_timestamp_secs + (retry_delay as u64);
-                                    task_scheduler.append_task(task)
+                                    task_scheduler.append_task(task.clone())
                                 } else if let Some(cb) = &*task_scheduler.failed_task_callback {
-                                    cb(task, err);
+                                    cb(task.clone(), err);
                                 }
+                            }
+                            // remove task from queue
+                            if let (Some(cb), Err(err)) = (
+                                &*task_scheduler.failed_task_callback,
+                                task_scheduler.remove_task_from_queue(key).await,
+                            ) {
+                                cb(task, err);
                             }
                         });
                     }
@@ -135,6 +152,38 @@ where
         ic_kit::ic::spawn(future);
     }
 
+    /// Append a task to the tasks queue and save the state
+    async fn push_tasks_to_execute_to_queue(&self, timestamp: u64) -> Result<()> {
+        // save tasks to be executed at this time
+        let tasks_to_be_executed: Vec<u32> = self
+            .pending_tasks
+            .lock()
+            .iter()
+            .filter_map(|(key, task)| {
+                if task.options.execute_after_timestamp_in_secs <= timestamp {
+                    Some(key)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let mut lock = self.tasks_queue.borrow_mut();
+        for task in tasks_to_be_executed {
+            lock.insert(task, ());
+        }
+        // save state
+        self.save_state().await
+    }
+
+    /// Remove a task from the tasks queue and save the state
+    async fn remove_task_from_queue(&self, task: u32) -> Result<()> {
+        let mut lock = self.tasks_queue.borrow_mut();
+        lock.remove(&task);
+        // save state
+        self.save_state().await
+    }
+
     /// Save the current state of the scheduler.
     async fn save_state(&self) -> Result<()> {
         if let Some(cb) = &*self.save_state_query_callback {
@@ -145,13 +194,14 @@ where
 
     /// Remove all the tasks in `pending_tasks` which are contained in `tasks_queue`.
     /// The also clear the values in `tasks_queue`
-    fn delete_pending_tasks(&self) -> Result<()> {
+    fn delete_unprocessed_tasks(&self) -> Result<()> {
         // delete the tasks in the pending tasks
-        for task in self.tasks_queue.borrow().iter() {
+        let queue: &RefCell<StableBTreeMap<u32, (), M>> = self.tasks_queue.borrow();
+        for (task, _) in queue.borrow().iter() {
             self.pending_tasks.lock().remove(&task);
         }
         // empty the task queue
-        self.tasks_queue.borrow_mut().clear()?;
+        self.tasks_queue.borrow_mut().clear();
 
         Ok(())
     }

@@ -3,7 +3,7 @@ use std::hash::Hash;
 use dfinity_stable_structures::{Memory, Storable};
 
 use crate::structure::stable_storage::StableUnboundedMap;
-use crate::{SlicedStorable, SyncLruCache, UnboundedMapStructure};
+use crate::{SlicedStorable, StableUnboundedIter, SyncLruCache, UnboundedMapStructure};
 
 /// A LRU Cache for StableUnboundedMaps
 pub struct CachedStableUnboundedMap<K, V, M>
@@ -47,6 +47,8 @@ where
     V: SlicedStorable + Clone + Send + Sync + 'static,
     M: Memory,
 {
+    type Iterator<'a> = StableUnboundedIter<'a, K, V, M> where Self: 'a;
+
     fn get(&self, key: &K) -> Option<V> {
         self.cache
             .get_or_insert_with(key, |key| self.inner.get(key))
@@ -103,6 +105,10 @@ where
     /// WARN: this bypasses the cache
     fn last_key_value(&self) -> Option<(K, V)> {
         self.inner.last_key_value()
+    }
+
+    fn iter(&self) -> Self::Iterator<'_> {
+        self.inner.iter()
     }
 }
 

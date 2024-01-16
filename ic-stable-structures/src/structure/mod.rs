@@ -143,6 +143,11 @@ pub trait MultimapStructure<K1, K2, V> {
 }
 
 pub trait UnboundedMapStructure<K, V> {
+    /// iterator over the whole map
+    type Iterator<'a>: Iterator<Item = (K, V)>
+    where
+        Self: 'a;
+
     /// Returns a value associated with `key` from heap memory.
     ///
     /// # Preconditions:
@@ -182,6 +187,9 @@ pub trait UnboundedMapStructure<K, V> {
 
     /// Remove all entries from the map.
     fn clear(&mut self);
+
+    /// Iterator over all items in the map.
+    fn iter(&self) -> Self::Iterator<'_>;
 }
 
 pub trait VecStructure<T> {
