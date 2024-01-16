@@ -1,29 +1,61 @@
+use std::cell::RefCell;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
-use ic_stable_structures::UnboundedMapStructure;
+use ic_kit::RejectionCode;
+use ic_stable_structures::stable_structures::Memory;
+use ic_stable_structures::{MemoryManager, StableVec, UnboundedMapStructure, VecStructure};
 use parking_lot::Mutex;
 
 use crate::task::{ScheduledTask, Task};
 use crate::time::time_secs;
-use crate::SchedulerError;
+use crate::{Result, SchedulerError};
 
 type SchedulerErrorCallback<T> = Box<dyn 'static + Fn(ScheduledTask<T>, SchedulerError) + Send>;
+//type SaveStateQueryCallback =
+//    Box<dyn 'static + Fn(dyn Future<Output = std::result::Result<(), RejectionCode>>) + Send>;
+
+type SaveStateQueryCallback = Box<
+    dyn Fn() -> Pin<Box<dyn Future<Output = std::result::Result<(), RejectionCode>>>> + Send + Sync,
+>;
 
 /// A scheduler is responsible for executing tasks.
-pub struct Scheduler<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> {
+pub struct Scheduler<T, P, M>
+where
+    T: 'static + Task,
+    P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>,
+    M: 'static + Memory,
+{
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
+    /// Queue containing the tasks to be executed in a loop
+    tasks_queue: Arc<RefCell<StableVec<u32, M>>>,
+    /// Callback to be called when a task fails.
     failed_task_callback: Arc<Option<SchedulerErrorCallback<T>>>,
+    /// Callback to be called to save the current canister state to prevent panicking tasks.
+    save_state_query_callback: Arc<Option<SaveStateQueryCallback>>,
 }
 
-impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> Scheduler<T, P> {
+impl<T, P, M> Scheduler<T, P, M>
+where
+    T: 'static + Task,
+    P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>,
+    M: 'static + Memory,
+{
     /// Create a new scheduler.
-    pub fn new(pending_tasks: P) -> Self {
-        Self {
+    pub fn new(
+        pending_tasks: P,
+        memory_manager: &dyn MemoryManager<M, u8>,
+        memory_id: u8,
+    ) -> Result<Self> {
+        Ok(Self {
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
             phantom: std::marker::PhantomData,
+            tasks_queue: Arc::new(RefCell::new(StableVec::new(memory_manager.get(memory_id))?)),
             failed_task_callback: Arc::new(None),
-        }
+            save_state_query_callback: Arc::new(None),
+        })
     }
 
     /// Set a callback to be called when a task fails.
@@ -34,15 +66,20 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
         self.failed_task_callback = Arc::new(Some(Box::new(cb)));
     }
 
+    /// Set a callback to be called to save the current canister state to prevent panicking tasks.
+    pub fn set_save_state_query_callback(&mut self, cb: SaveStateQueryCallback) {
+        self.save_state_query_callback = Arc::new(Some(Box::new(cb)));
+    }
+
     /// Execute all pending tasks.
     /// Each task is executed asynchronously in a dedicated ic_cdk::spawn call.
     /// This function does not wait for the tasks to complete.
     /// Returns the number of tasks that have been launched.
-    pub fn run(&self) -> Result<u32, SchedulerError> {
-        self.run_with_timestamp(time_secs())
+    pub async fn run(&self) -> Result<u32> {
+        self.run_with_timestamp(time_secs()).await
     }
 
-    fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<u32, SchedulerError> {
+    async fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<u32> {
         let mut to_be_reprocessed = Vec::new();
         let mut task_execution_started = 0;
         {
@@ -97,6 +134,27 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
     fn spawn<F: 'static + std::future::Future<Output = ()>>(future: F) {
         ic_kit::ic::spawn(future);
     }
+
+    /// Save the current state of the scheduler.
+    async fn save_state(&self) -> Result<()> {
+        if let Some(cb) = &*self.save_state_query_callback {
+            cb().await?;
+        }
+        Ok(())
+    }
+
+    /// Remove all the tasks in `pending_tasks` which are contained in `tasks_queue`.
+    /// The also clear the values in `tasks_queue`
+    fn delete_pending_tasks(&self) -> Result<()> {
+        // delete the tasks in the pending tasks
+        for task in self.tasks_queue.borrow().iter() {
+            self.pending_tasks.lock().remove(&task);
+        }
+        // empty the task queue
+        self.tasks_queue.borrow_mut().clear()?;
+
+        Ok(())
+    }
 }
 
 pub trait TaskScheduler<T: 'static + Task> {
@@ -104,20 +162,28 @@ pub trait TaskScheduler<T: 'static + Task> {
     fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>);
 }
 
-impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> Clone
-    for Scheduler<T, P>
+impl<T, P, M> Clone for Scheduler<T, P, M>
+where
+    T: 'static + Task,
+    P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>,
+    M: Memory,
 {
     fn clone(&self) -> Self {
         Self {
             pending_tasks: self.pending_tasks.clone(),
             phantom: self.phantom,
             failed_task_callback: self.failed_task_callback.clone(),
+            save_state_query_callback: self.save_state_query_callback.clone(),
+            tasks_queue: self.tasks_queue.clone(),
         }
     }
 }
 
-impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> TaskScheduler<T>
-    for Scheduler<T, P>
+impl<T, P, M> TaskScheduler<T> for Scheduler<T, P, M>
+where
+    T: 'static + Task,
+    P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>,
+    M: Memory,
 {
     fn append_task(&self, task: ScheduledTask<T>) {
         let mut lock = self.pending_tasks.lock();
@@ -143,14 +209,18 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
 #[cfg(test)]
 mod test {
 
+    use ic_stable_structures::stable_structures::DefaultMemoryImpl;
+    use ic_stable_structures::{default_ic_memory_manager, VirtualMemory};
+
     use super::*;
 
     mod test_execution {
 
+        use std::collections::HashMap;
         use std::future::Future;
         use std::pin::Pin;
+        use std::sync::atomic::AtomicBool;
         use std::time::Duration;
-        use std::{collections::HashMap, sync::atomic::AtomicBool};
 
         use ic_stable_structures::{StableUnboundedMap, VectorMemory};
         use rand::random;
@@ -173,7 +243,7 @@ mod test {
             fn execute(
                 &self,
                 task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
-            ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
+            ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
                 match self {
                     SimpleTaskSteps::One { id } => {
                         let id = *id;
@@ -232,15 +302,14 @@ mod test {
             let local = tokio::task::LocalSet::new();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
-                    let scheduler = Scheduler::new(map);
+                    let scheduler = scheduler();
                     let id = random();
                     scheduler.append_task(SimpleTaskSteps::One { id }.into());
 
                     let mut completed = false;
 
                     while !completed {
-                        scheduler.run().unwrap();
+                        scheduler.run().await.unwrap();
                         tokio::time::sleep(Duration::from_millis(100)).await;
                         STATE.with(|state| {
                             let state = state.lock();
@@ -270,8 +339,7 @@ mod test {
             let called_t = called.clone();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
-                    let mut scheduler = Scheduler::new(map);
+                    let mut scheduler = scheduler();
                     scheduler.set_failed_task_callback(move |_, _| {
                         called_t.store(true, std::sync::atomic::Ordering::SeqCst);
                     });
@@ -281,7 +349,7 @@ mod test {
                     let mut completed = false;
 
                     while !completed {
-                        scheduler.run().unwrap();
+                        scheduler.run().await.unwrap();
                         tokio::time::sleep(Duration::from_millis(100)).await;
                         STATE.with(|state| {
                             let state = state.lock();
@@ -304,6 +372,26 @@ mod test {
                 .await;
 
             assert!(!called.load(std::sync::atomic::Ordering::SeqCst));
+        }
+
+        fn scheduler() -> Scheduler<
+            SimpleTaskSteps,
+            StableUnboundedMap<
+                u32,
+                ScheduledTask<SimpleTaskSteps>,
+                std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
+            >,
+            VirtualMemory<DefaultMemoryImpl>,
+        > {
+            let map: StableUnboundedMap<
+                u32,
+                ScheduledTask<SimpleTaskSteps>,
+                std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
+            > = StableUnboundedMap::new(VectorMemory::default());
+            let memory_manager: ic_stable_structures::IcMemoryManager<
+                std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
+            > = default_ic_memory_manager();
+            Scheduler::new(map, &memory_manager, 1).unwrap()
         }
     }
 
@@ -334,7 +422,7 @@ mod test {
             fn execute(
                 &self,
                 _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
-            ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
+            ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
                 match self {
                     SimpleTask::StepOne { id } => {
                         let id = *id;
@@ -358,8 +446,7 @@ mod test {
             let local = tokio::task::LocalSet::new();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
-                    let scheduler = Scheduler::new(map);
+                    let scheduler = scheduler();
                     let id = random();
                     let timestamp: u64 = random();
 
@@ -373,7 +460,7 @@ mod test {
 
                     for i in 0..10 {
                         // Should not run the task because the execution timestamp is in the future
-                        scheduler.run_with_timestamp(timestamp + i).unwrap();
+                        scheduler.run_with_timestamp(timestamp + i).await.unwrap();
                         tokio::time::sleep(Duration::from_millis(25)).await;
                         STATE.with(|state| {
                             let state = state.lock();
@@ -382,7 +469,7 @@ mod test {
                         });
                     }
 
-                    scheduler.run_with_timestamp(timestamp + 11).unwrap();
+                    scheduler.run_with_timestamp(timestamp + 11).await.unwrap();
                     tokio::time::sleep(Duration::from_millis(25)).await;
                     STATE.with(|state| {
                         let state = state.lock();
@@ -392,6 +479,26 @@ mod test {
                     });
                 })
                 .await;
+        }
+
+        fn scheduler() -> Scheduler<
+            SimpleTask,
+            StableUnboundedMap<
+                u32,
+                ScheduledTask<SimpleTask>,
+                std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
+            >,
+            VirtualMemory<DefaultMemoryImpl>,
+        > {
+            let map: StableUnboundedMap<
+                u32,
+                ScheduledTask<SimpleTask>,
+                std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
+            > = StableUnboundedMap::new(VectorMemory::default());
+            let memory_manager: ic_stable_structures::IcMemoryManager<
+                std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
+            > = default_ic_memory_manager();
+            Scheduler::new(map, &memory_manager, 1).unwrap()
         }
     }
 
@@ -428,7 +535,7 @@ mod test {
             fn execute(
                 &self,
                 _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
-            ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
+            ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
                 match self {
                     SimpleTask::StepOne { id, fails } => {
                         let id = *id;
@@ -462,8 +569,7 @@ mod test {
             let local = tokio::task::LocalSet::new();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
-                    let scheduler = Scheduler::new(map);
+                    let scheduler = scheduler();
                     let id = random();
                     let fails = 10;
                     let retries = 3;
@@ -480,7 +586,7 @@ mod test {
 
                     // beware that the the first execution is not a retry
                     for i in 1..=retries {
-                        scheduler.run().unwrap();
+                        scheduler.run().await.unwrap();
                         tokio::time::sleep(Duration::from_millis(25)).await;
                         STATE.with(|state| {
                             let state = state.lock();
@@ -498,7 +604,7 @@ mod test {
                     }
 
                     // After the last retries the task is removed
-                    scheduler.run().unwrap();
+                    scheduler.run().await.unwrap();
                     tokio::time::sleep(Duration::from_millis(25)).await;
 
                     STATE.with(|state| {
@@ -525,8 +631,7 @@ mod test {
             let local = tokio::task::LocalSet::new();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
-                    let scheduler = Scheduler::new(map);
+                    let scheduler = scheduler();
                     let id = random();
                     let fails = 2;
                     let retries = 4;
@@ -543,7 +648,7 @@ mod test {
 
                     // beware that the the first execution is not a retry
                     for _ in 1..=retries {
-                        scheduler.run().unwrap();
+                        scheduler.run().await.unwrap();
                         tokio::time::sleep(Duration::from_millis(25)).await;
                     }
 
@@ -569,8 +674,7 @@ mod test {
             let local = tokio::task::LocalSet::new();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
-                    let scheduler = Scheduler::new(map);
+                    let scheduler = scheduler();
                     let id = random();
                     let fails = 10;
                     let retries = 10;
@@ -587,7 +691,7 @@ mod test {
                     );
 
                     let timestamp = random();
-                    assert_eq!(1, scheduler.run_with_timestamp(timestamp).unwrap());
+                    assert_eq!(1, scheduler.run_with_timestamp(timestamp).await.unwrap());
                     tokio::time::sleep(Duration::from_millis(25)).await;
 
                     {
@@ -606,13 +710,17 @@ mod test {
 
                     // Should not run the task because the retry timestamp is in the future
                     for i in 0..retry_delay_secs {
-                        assert_eq!(0, scheduler.run_with_timestamp(timestamp + i).unwrap());
+                        assert_eq!(
+                            0,
+                            scheduler.run_with_timestamp(timestamp + i).await.unwrap()
+                        );
                     }
 
                     assert_eq!(
                         1,
                         scheduler
                             .run_with_timestamp(timestamp + retry_delay_secs)
+                            .await
                             .unwrap()
                     );
                 })
@@ -628,8 +736,7 @@ mod test {
             let called_t = called.clone();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
-                    let mut scheduler = Scheduler::new(map);
+                    let mut scheduler = scheduler();
 
                     scheduler.set_failed_task_callback(move |_, _| {
                         called_t.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -647,7 +754,7 @@ mod test {
                     );
 
                     // beware that the the first execution is not a retry
-                    scheduler.run().unwrap();
+                    scheduler.run().await.unwrap();
                     tokio::time::sleep(Duration::from_millis(25)).await;
                     let pending_tasks = scheduler.pending_tasks.lock();
                     assert_eq!(pending_tasks.len(), 0);
@@ -665,8 +772,7 @@ mod test {
             let called_t = called.clone();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
-                    let mut scheduler = Scheduler::new(map);
+                    let mut scheduler = scheduler();
 
                     scheduler.set_failed_task_callback(move |_, _| {
                         called_t.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -688,7 +794,7 @@ mod test {
 
                     // beware that the the first execution is not a retry
                     for _ in 1..=retries {
-                        scheduler.run().unwrap();
+                        scheduler.run().await.unwrap();
                         tokio::time::sleep(Duration::from_millis(25)).await;
                     }
 
@@ -719,8 +825,7 @@ mod test {
             let called_t = called.clone();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
-                    let mut scheduler = Scheduler::new(map);
+                    let mut scheduler = scheduler();
 
                     scheduler.set_failed_task_callback(move |_, _| {
                         called_t.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -742,7 +847,7 @@ mod test {
 
                     // beware that the the first execution is not a retry
                     for i in 1..=retries {
-                        scheduler.run().unwrap();
+                        scheduler.run().await.unwrap();
                         tokio::time::sleep(Duration::from_millis(25)).await;
                         STATE.with(|state| {
                             let state = state.lock();
@@ -760,7 +865,7 @@ mod test {
                     }
 
                     // After the last retries the task is removed
-                    scheduler.run().unwrap();
+                    scheduler.run().await.unwrap();
                     tokio::time::sleep(Duration::from_millis(25)).await;
 
                     STATE.with(|state| {
@@ -781,6 +886,26 @@ mod test {
                 })
                 .await;
             assert_eq!(called.load(std::sync::atomic::Ordering::SeqCst), 1);
+        }
+
+        fn scheduler() -> Scheduler<
+            SimpleTask,
+            StableUnboundedMap<
+                u32,
+                ScheduledTask<SimpleTask>,
+                std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
+            >,
+            VirtualMemory<DefaultMemoryImpl>,
+        > {
+            let map: StableUnboundedMap<
+                u32,
+                ScheduledTask<SimpleTask>,
+                std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
+            > = StableUnboundedMap::new(VectorMemory::default());
+            let memory_manager: ic_stable_structures::IcMemoryManager<
+                std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
+            > = default_ic_memory_manager();
+            Scheduler::new(map, &memory_manager, 1).unwrap()
         }
     }
 }
