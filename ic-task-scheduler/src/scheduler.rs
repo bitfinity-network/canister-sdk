@@ -16,9 +16,6 @@ use crate::time::time_secs;
 use crate::{Result, SchedulerError};
 
 type SchedulerErrorCallback<T> = Box<dyn 'static + Fn(ScheduledTask<T>, SchedulerError) + Send>;
-//type SaveStateQueryCallback =
-//    Box<dyn 'static + Fn(dyn Future<Output = std::result::Result<(), RejectionCode>>) + Send>;
-
 type SaveStateQueryCallback = Box<
     dyn Fn() -> Pin<Box<dyn Future<Output = std::result::Result<(), RejectionCode>>>> + Send + Sync,
 >;
@@ -73,7 +70,7 @@ where
 
     /// Set a callback to be called to save the current canister state to prevent panicking tasks.
     pub fn set_save_state_query_callback(&mut self, cb: SaveStateQueryCallback) {
-        self.save_state_query_callback = Arc::new(Some(Box::new(cb)));
+        self.save_state_query_callback = Arc::new(Some(cb));
     }
 
     /// Execute all pending tasks.

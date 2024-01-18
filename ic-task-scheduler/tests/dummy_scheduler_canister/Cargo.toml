@@ -1,0 +1,18 @@
+[package]
+name = "dummy_scheduler_canister"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+export-api = []
+
+[dependencies]
+candid = { workspace = true }
+ic-canister = { path = "../../../ic-canister/ic-canister" }
+ic-cdk = { workspace = true }
+ic-exports = { path = "../../../ic-exports" }
+serde = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }
