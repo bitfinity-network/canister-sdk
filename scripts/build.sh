@@ -32,6 +32,15 @@ build_ic_stable_structures_dummy_canister() {
 
 }
 
+build_ic_stable_structures_dummy_scheduler_canister() {
+    echo "Building ic-stable-structures dummy_scheduler_canister"
+
+    cargo run -p dummy_scheduler_canister --features export-api > $WASM_DIR/dummy_scheduler_canister.did
+    cargo build -p dummy_scheduler_canister --target wasm32-unknown-unknown --features export-api --release
+    ic-wasm $WASM_DIR/dummy_scheduler_canister.wasm -o $WASM_DIR/dummy_scheduler_canister.wasm shrink
+
+}
+
 build_ic_log_test_canister() {
     echo "Building ic-log test canister"
 
@@ -64,6 +73,7 @@ main() {
 
     build_ic_canister_test_canisters
     build_ic_stable_structures_dummy_canister
+    build_ic_stable_structures_dummy_scheduler_canister
     build_ic_log_test_canister
     build_ic_payments_test_canister
 

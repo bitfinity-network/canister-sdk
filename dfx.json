@@ -35,6 +35,12 @@
       "candid": "target/wasm32-unknown-unknown/release/log_canister.did",
       "wasm": "target/wasm32-unknown-unknown/release/examples/log_canister.wasm",
       "type": "custom"
+    },
+    "dummy_scheduler_canister": {
+      "build": "",
+      "candid": "target/wasm32-unknown-unknown/release/dummy_scheduler_canister.did",
+      "wasm": "target/wasm32-unknown-unknown/release/dummy_scheduler_canister.wasm",
+      "type": "custom"
     }
   },
   "networks": {

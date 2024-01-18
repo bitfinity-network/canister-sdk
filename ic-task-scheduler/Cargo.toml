@@ -15,7 +15,8 @@ thiserror = { workspace = true }
 [dev-dependencies]
 anyhow = { workspace = true }
 candid = { workspace = true }
-ic-exports = { path = "../ic-exports" }
+ic-exports = { path = "../ic-exports", features = ["pocket-ic-tests-async"] }
 once_cell = { workspace = true }
 rand = { workspace = true }
-tokio = { workspace = true, features = ["rt", "macros", "time"] }
+tokio = { workspace = true, features = ["full"] }
+pocket-ic = { workspace = true }

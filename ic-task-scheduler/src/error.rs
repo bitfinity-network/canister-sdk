@@ -7,12 +7,12 @@ pub enum SchedulerError {
     TaskExecutionFailed(String),
     #[error("storage error: {0}")]
     StorageError(#[from] ic_stable_structures::Error),
-    #[error("ic call error")]
-    IcCallError(RejectionCode),
+    #[error("ic call error: {1}")]
+    IcCallError(RejectionCode, String),
 }
 
-impl From<RejectionCode> for SchedulerError {
-    fn from(code: RejectionCode) -> Self {
-        SchedulerError::IcCallError(code)
+impl From<(RejectionCode, String)> for SchedulerError {
+    fn from((code, message): (RejectionCode, String)) -> Self {
+        SchedulerError::IcCallError(code, message)
     }
 }

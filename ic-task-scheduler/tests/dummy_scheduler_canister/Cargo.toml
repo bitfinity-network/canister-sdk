@@ -11,7 +11,9 @@ export-api = []
 candid = { workspace = true }
 ic-canister = { path = "../../../ic-canister/ic-canister" }
 ic-cdk = { workspace = true }
+ic-stable-structures = { path = "../../../ic-stable-structures" }
 ic-exports = { path = "../../../ic-exports" }
+ic-task-scheduler = { path = "../../../ic-task-scheduler" }
 serde = { workspace = true }
 
 [dev-dependencies]

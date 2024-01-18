@@ -7,7 +7,7 @@ use std::sync::Arc;
 use ic_kit::RejectionCode;
 use ic_stable_structures::stable_structures::Memory;
 use ic_stable_structures::{
-    BTreeMapStructure, MemoryManager, StableBTreeMap, UnboundedMapStructure,
+    BTreeMapStructure, MemoryId, MemoryManager, StableBTreeMap, UnboundedMapStructure,
 };
 use parking_lot::Mutex;
 
@@ -16,10 +16,9 @@ use crate::time::time_secs;
 use crate::{Result, SchedulerError};
 
 type SchedulerErrorCallback<T> = Box<dyn 'static + Fn(ScheduledTask<T>, SchedulerError) + Send>;
-type SaveStateQueryCallback = Box<
-    dyn Fn() -> Pin<Box<dyn Future<Output = std::result::Result<(), RejectionCode>>>> + Send + Sync,
->;
-
+type SaveStateQueryCallback = dyn Fn() -> Pin<Box<dyn Future<Output = std::result::Result<(), (RejectionCode, String)>>>>
+    + Send
+    + Sync;
 /// A scheduler is responsible for executing tasks.
 pub struct Scheduler<T, P, M>
 where
@@ -34,7 +33,7 @@ where
     /// Callback to be called when a task fails.
     failed_task_callback: Arc<Option<SchedulerErrorCallback<T>>>,
     /// Callback to be called to save the current canister state to prevent panicking tasks.
-    save_state_query_callback: Arc<Option<SaveStateQueryCallback>>,
+    save_state_query_callback: Arc<Option<Box<SaveStateQueryCallback>>>,
 }
 
 impl<T, P, M> Scheduler<T, P, M>
@@ -46,14 +45,14 @@ where
     /// Create a new scheduler.
     pub fn new(
         pending_tasks: P,
-        memory_manager: &dyn MemoryManager<M, u8>,
-        memory_id: u8,
+        memory_manager: &dyn MemoryManager<M, MemoryId>,
+        task_queue_memory_id: MemoryId,
     ) -> Result<Self> {
         Ok(Self {
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
             phantom: std::marker::PhantomData,
             tasks_queue: Arc::new(RefCell::new(StableBTreeMap::new(
-                memory_manager.get(memory_id),
+                memory_manager.get(task_queue_memory_id),
             ))),
             failed_task_callback: Arc::new(None),
             save_state_query_callback: Arc::new(None),
@@ -69,7 +68,7 @@ where
     }
 
     /// Set a callback to be called to save the current canister state to prevent panicking tasks.
-    pub fn set_save_state_query_callback(&mut self, cb: SaveStateQueryCallback) {
+    pub fn set_save_state_query_callback(&mut self, cb: Box<SaveStateQueryCallback>) {
         self.save_state_query_callback = Arc::new(Some(cb));
     }
 
@@ -344,6 +343,36 @@ mod test {
             }
         }
 
+        thread_local! {
+            static SAVE_STATE_CB_CALLED: AtomicBool = AtomicBool::new(false);
+        }
+
+        #[tokio::test]
+        async fn test_should_call_save_state_cb() {
+            let mut scheduler = scheduler();
+            scheduler.set_save_state_query_callback(Box::new(save_state_cb));
+
+            assert!(scheduler.save_state_query_callback.is_some());
+            assert!(scheduler.save_state().await.is_ok());
+
+            SAVE_STATE_CB_CALLED.with(|called| {
+                assert!(called.load(std::sync::atomic::Ordering::SeqCst));
+            });
+        }
+
+        async fn save_state() -> std::result::Result<(), (RejectionCode, String)> {
+            SAVE_STATE_CB_CALLED.with(|called| {
+                called.store(true, std::sync::atomic::Ordering::SeqCst);
+            });
+            Ok(())
+        }
+
+        fn save_state_cb(
+        ) -> Pin<Box<dyn Future<Output = std::result::Result<(), (RejectionCode, String)>>>>
+        {
+            Box::pin(async { save_state().await })
+        }
+
         #[tokio::test]
         async fn test_run_scheduler() {
             let local = tokio::task::LocalSet::new();
@@ -438,7 +467,7 @@ mod test {
             let memory_manager: ic_stable_structures::IcMemoryManager<
                 std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
             > = default_ic_memory_manager();
-            Scheduler::new(map, &memory_manager, 1).unwrap()
+            Scheduler::new(map, &memory_manager, MemoryId::new(1)).unwrap()
         }
     }
 
@@ -545,7 +574,7 @@ mod test {
             let memory_manager: ic_stable_structures::IcMemoryManager<
                 std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
             > = default_ic_memory_manager();
-            Scheduler::new(map, &memory_manager, 1).unwrap()
+            Scheduler::new(map, &memory_manager, MemoryId::new(1)).unwrap()
         }
     }
 
@@ -952,7 +981,7 @@ mod test {
             let memory_manager: ic_stable_structures::IcMemoryManager<
                 std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
             > = default_ic_memory_manager();
-            Scheduler::new(map, &memory_manager, 1).unwrap()
+            Scheduler::new(map, &memory_manager, MemoryId::new(1)).unwrap()
         }
     }
 }
