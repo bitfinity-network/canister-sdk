@@ -1,6 +1,8 @@
 mod scheduler;
 mod wasm_utils;
 
+use std::time::Duration;
+
 use candid::{CandidType, Decode, Encode, Principal};
 use ic_exports::ic_kit::ic;
 use ic_exports::pocket_ic;
@@ -45,13 +47,13 @@ impl PocketIcTestContext {
         Decode!(&res, Result).expect("failed to decode item from candid")
     }
 
-    pub async fn save_state_called(&self) -> bool {
+    pub async fn scheduled_state_called(&self) -> bool {
         let args = Encode!(&()).unwrap();
         let res = self
             .query_as(
                 ic::caller(),
                 self.dummy_scheduler_canister,
-                "save_state_called",
+                "scheduled_state_called",
                 args,
             )
             .await;
@@ -59,18 +61,65 @@ impl PocketIcTestContext {
         res
     }
 
-    pub async fn failed_task_called(&self) -> bool {
+    pub async fn completed_tasks(&self) -> Vec<u32> {
         let args = Encode!(&()).unwrap();
         let res = self
             .query_as(
                 ic::caller(),
                 self.dummy_scheduler_canister,
-                "failed_task_called",
+                "completed_tasks",
                 args,
             )
             .await;
 
         res
+    }
+
+    pub async fn panicked_tasks(&self) -> Vec<u32> {
+        let args = Encode!(&()).unwrap();
+        let res = self
+            .query_as(
+                ic::caller(),
+                self.dummy_scheduler_canister,
+                "panicked_tasks",
+                args,
+            )
+            .await;
+
+        res
+    }
+
+    pub async fn failed_tasks(&self) -> Vec<u32> {
+        let args = Encode!(&()).unwrap();
+        let res = self
+            .query_as(
+                ic::caller(),
+                self.dummy_scheduler_canister,
+                "failed_tasks",
+                args,
+            )
+            .await;
+
+        res
+    }
+
+    pub async fn executed_tasks(&self) -> Vec<u32> {
+        let args = Encode!(&()).unwrap();
+        let res = self
+            .query_as(
+                ic::caller(),
+                self.dummy_scheduler_canister,
+                "executed_tasks",
+                args,
+            )
+            .await;
+
+        res
+    }
+
+    pub async fn run_scheduler(&self) {
+        self.client.advance_time(Duration::from_millis(5000)).await;
+        self.client.tick().await;
     }
 }
 

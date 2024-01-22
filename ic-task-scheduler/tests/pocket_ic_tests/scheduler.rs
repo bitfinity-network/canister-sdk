@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use candid::Principal;
 use ic_kit::mock_principals::alice;
 
@@ -19,10 +17,13 @@ async fn test_should_remove_panicking_task() {
     let test_ctx = deploy_dummy_scheduler_canister().await.unwrap();
     CANISTER.with_borrow_mut(|principal| *principal = test_ctx.dummy_scheduler_canister);
 
-    // set error callback
-    std::thread::sleep(Duration::from_millis(500));
+    for _ in 0..10 {
+        test_ctx.run_scheduler().await;
+    }
 
-    // check states
-    assert!(test_ctx.save_state_called().await);
-    assert!(test_ctx.failed_task_called().await);
+    assert!(test_ctx.scheduled_state_called().await);
+    assert_eq!(test_ctx.executed_tasks().await, vec![0, 2, 1, 3, 3, 2, 1]);
+    assert_eq!(test_ctx.panicked_tasks().await, vec![1]);
+    assert_eq!(test_ctx.completed_tasks().await, vec![0, 2]);
+    assert_eq!(test_ctx.failed_tasks().await, vec![3]);
 }

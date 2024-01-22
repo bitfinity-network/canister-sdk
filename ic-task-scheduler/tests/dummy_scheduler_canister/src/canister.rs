@@ -1,75 +1,76 @@
-use std::{cell::RefCell, future::Future, pin::Pin, sync::Arc, time::Duration};
+use std::cell::RefCell;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use candid::Principal;
-use ic_canister::{generate_idl, init, query, Canister, Idl, PreUpdate};
+use ic_canister::{generate_idl, init, post_upgrade, query, update, Canister, Idl, PreUpdate};
 use ic_exports::ic_kit::RejectionCode;
-use ic_stable_structures::{
-    default_ic_memory_manager, stable_structures::DefaultMemoryImpl, IcMemoryManager, MemoryId,
-    StableUnboundedMap, VirtualMemory,
-};
-use ic_task_scheduler::{
-    scheduler::{Scheduler, TaskScheduler},
-    task::{ScheduledTask, Task, TaskOptions},
-    SchedulerError,
-};
+use ic_stable_structures::stable_structures::DefaultMemoryImpl;
+use ic_stable_structures::{IcMemoryManager, MemoryId, StableUnboundedMap, VirtualMemory};
+use ic_task_scheduler::scheduler::{Scheduler, TaskExecutionState, TaskScheduler};
+use ic_task_scheduler::task::{ScheduledTask, Task, TaskOptions};
+use ic_task_scheduler::SchedulerError;
 use serde::{Deserialize, Serialize};
 
-type Storage = StableUnboundedMap<u32, ScheduledTask<PanicTask>, VirtualMemory<DefaultMemoryImpl>>;
-type PanickingScheduler = Scheduler<PanicTask, Storage, DefaultMemoryImpl>;
+type Storage = StableUnboundedMap<u32, ScheduledTask<DummyTask>, VirtualMemory<DefaultMemoryImpl>>;
+type PanickingScheduler = Scheduler<DummyTask, Storage>;
 
 const SCHEDULER_STORAGE_MEMORY_ID: MemoryId = MemoryId::new(1);
-const TASK_QUEUE_MEMORY_ID: MemoryId = MemoryId::new(2);
 
 thread_local! {
     pub static MEMORY_MANAGER: IcMemoryManager<DefaultMemoryImpl> = IcMemoryManager::init(DefaultMemoryImpl::default());
 
-    static SCHEDULER: RefCell<Arc<PanickingScheduler>> = {
-        let mut map: Storage = Storage::new(MEMORY_MANAGER.with(|mm| mm.get(SCHEDULER_STORAGE_MEMORY_ID)));
+    static SCHEDULER: RefCell<Arc<Mutex<PanickingScheduler>>> = {
+        let map: Storage = Storage::new(MEMORY_MANAGER.with(|mm| mm.get(SCHEDULER_STORAGE_MEMORY_ID)));
 
-        let memory_manager = default_ic_memory_manager();
-
-        let mut scheduler = PanickingScheduler::new(
+        let scheduler = PanickingScheduler::new(
             map,
-            &memory_manager,
-            TASK_QUEUE_MEMORY_ID
+            Box::new(save_state_cb)
         ).unwrap();
-        scheduler.set_failed_task_callback(move |_, _| {
-            FAILED_TASK_CALLED.with_borrow_mut(|called| {
-                *called = true;
-            });
-        });
-        scheduler.set_save_state_query_callback(Box::new(save_state_cb));
-        scheduler.append_task(
-            (
-                PanicTask::StepOne { id: 1 },
-                TaskOptions::new()
-                    .with_max_retries_policy(0)
-                    .with_fixed_backoff_policy(0),
-            )
-                .into(),
-        );
-        RefCell::new(Arc::new(scheduler))
+
+        scheduler.append_task((DummyTask::GoodTask, TaskOptions::new()).into());
+        scheduler.append_task((DummyTask::Panicking, TaskOptions::new()).into());
+        scheduler.append_task((DummyTask::GoodTask, TaskOptions::new()).into());
+        scheduler.append_task((DummyTask::FailTask, TaskOptions::new()).into());
+
+        RefCell::new(Arc::new(Mutex::new(scheduler)))
     };
 
-    static SAVE_STATE_CALLED: RefCell<bool> = RefCell::new(false);
-
-    static FAILED_TASK_CALLED : RefCell<bool> = RefCell::new(false);
+    static SCHEDULED_STATE_CALLED: RefCell<bool> = RefCell::new(false);
+    static COMPLETED_TASKS: RefCell<Vec<u32>> = RefCell::new(vec![]);
+    static FAILED_TASKS: RefCell<Vec<u32>> = RefCell::new(vec![]);
+    static PANICKED_TASKS : RefCell<Vec<u32>> = RefCell::new(vec![]);
+    static EXECUTING_TASKS : RefCell<Vec<u32>> = RefCell::new(vec![]);
 
     static PRINCIPAL : RefCell<Principal> = RefCell::new(Principal::anonymous());
 
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum PanicTask {
-    StepOne { id: u32 },
+pub enum DummyTask {
+    Panicking,
+    GoodTask,
+    FailTask,
 }
 
-impl Task for PanicTask {
+impl Task for DummyTask {
     fn execute(
         &self,
         _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
     ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
-        panic!("PanicTask::execute")
+        match self {
+            Self::GoodTask => Box::pin(async move { Ok(()) }),
+            Self::Panicking => Box::pin(async move {
+                panic!("PanicTask::execute");
+            }),
+            Self::FailTask => Box::pin(async move {
+                Err(SchedulerError::TaskExecutionFailed(
+                    "i dunno why".to_string(),
+                ))
+            }),
+        }
     }
 }
 
@@ -84,9 +85,7 @@ impl PreUpdate for DummyCanister {}
 impl DummyCanister {
     #[init]
     pub fn init(&self) {
-        ic_exports::ic_cdk_timers::set_timer(Duration::from_millis(10), || {
-            ic_cdk::spawn(Self::run_scheduler())
-        });
+        self.set_timers();
 
         // set principal
         PRINCIPAL.with_borrow_mut(|principal| {
@@ -94,9 +93,20 @@ impl DummyCanister {
         });
     }
 
-    #[query]
+    #[post_upgrade]
+    pub fn post_upgrade(&self) {
+        self.set_timers();
+    }
+
+    fn set_timers(&self) {
+        ic_exports::ic_cdk_timers::set_timer_interval(Duration::from_millis(10), || {
+            ic_cdk::spawn(Self::do_run_scheduler())
+        });
+    }
+
+    #[update]
     pub fn save_state(&self) -> bool {
-        SAVE_STATE_CALLED.with_borrow_mut(|called| {
+        SCHEDULED_STATE_CALLED.with_borrow_mut(|called| {
             *called = true;
         });
 
@@ -104,18 +114,40 @@ impl DummyCanister {
     }
 
     #[query]
-    pub fn save_state_called(&self) -> bool {
-        SAVE_STATE_CALLED.with_borrow(|called| *called)
+    pub fn scheduled_state_called(&self) -> bool {
+        SCHEDULED_STATE_CALLED.with_borrow(|called| *called)
     }
 
     #[query]
-    pub fn failed_task_called(&self) -> bool {
-        FAILED_TASK_CALLED.with_borrow(|called| *called)
+    pub fn panicked_tasks(&self) -> Vec<u32> {
+        PANICKED_TASKS.with_borrow(|tasks| tasks.clone())
     }
 
-    async fn run_scheduler() {
-        let scheduler = SCHEDULER.with_borrow_mut(|scheduler| scheduler.clone());
-        scheduler.run().await.unwrap();
+    #[query]
+    pub fn completed_tasks(&self) -> Vec<u32> {
+        COMPLETED_TASKS.with_borrow(|tasks| tasks.clone())
+    }
+
+    #[query]
+    pub fn failed_tasks(&self) -> Vec<u32> {
+        FAILED_TASKS.with_borrow(|tasks| tasks.clone())
+    }
+
+    #[query]
+    pub fn executed_tasks(&self) -> Vec<u32> {
+        EXECUTING_TASKS.with_borrow(|tasks| tasks.clone())
+    }
+
+    #[update]
+    pub async fn run_scheduler(&self) {
+        Self::do_run_scheduler().await
+    }
+
+    async fn do_run_scheduler() {
+        let scheduler = SCHEDULER.with_borrow(|scheduler| scheduler.clone());
+        let mut lock = scheduler.lock().unwrap();
+
+        lock.run().await.unwrap();
     }
 
     pub fn idl() -> Idl {
@@ -123,11 +155,36 @@ impl DummyCanister {
     }
 }
 
-async fn save_state() -> Result<(), (RejectionCode, String)> {
+async fn save_state(state: TaskExecutionState) -> Result<(), (RejectionCode, String)> {
     let canister = PRINCIPAL.with_borrow(|principal| *principal);
+    match state {
+        TaskExecutionState::Completed(id) => {
+            COMPLETED_TASKS.with_borrow_mut(|tasks| {
+                tasks.push(id);
+            });
+        }
+        TaskExecutionState::Panicked(id) => {
+            PANICKED_TASKS.with_borrow_mut(|tasks| {
+                tasks.push(id);
+            });
+        }
+        TaskExecutionState::Failed(id, _) => {
+            FAILED_TASKS.with_borrow_mut(|tasks| {
+                tasks.push(id);
+            });
+        }
+        TaskExecutionState::Executing(id) => {
+            EXECUTING_TASKS.with_borrow_mut(|tasks| {
+                tasks.push(id);
+            });
+        }
+        TaskExecutionState::Scheduled => {}
+    }
     ic_exports::ic_cdk::call(canister, "save_state", ()).await
 }
 
-fn save_state_cb() -> Pin<Box<dyn Future<Output = Result<(), (RejectionCode, String)>>>> {
-    Box::pin(async { save_state().await })
+fn save_state_cb(
+    state: TaskExecutionState,
+) -> Pin<Box<dyn Future<Output = Result<(), (RejectionCode, String)>>>> {
+    Box::pin(async { save_state(state).await })
 }
