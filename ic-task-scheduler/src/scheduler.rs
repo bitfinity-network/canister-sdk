@@ -139,8 +139,13 @@ where
                         .retry_strategy
                         .should_retry(task.options.failures);
                     if should_retry {
+                        // remove task, but don't report state
+                        task_scheduler.remove_task_from_processing_tasks(key);
+
+                        // re-add task to the queue
                         task.options.execute_after_timestamp_in_secs =
                             now_timestamp_secs + (retry_delay as u64);
+
                         task_scheduler.append_task(task.clone())
                     } else {
                         // report error
@@ -151,12 +156,13 @@ where
 
                         return;
                     }
+                } else {
+                    // remove task from queue
+                    task_scheduler
+                        .remove_completed_task_from_processing_tasks(key)
+                        .await
+                        .unwrap();
                 }
-                // remove task from queue
-                task_scheduler
-                    .remove_task_from_processing_tasks(key)
-                    .await
-                    .unwrap();
             });
         }
 
@@ -261,12 +267,8 @@ where
     }
 
     /// Remove a task from the tasks queue and save the state marking it as completed
-    async fn remove_task_from_processing_tasks(&mut self, task: u32) -> Result<()> {
-        TASKS_RUNNING.with_borrow_mut(|tasks| {
-            tasks.remove(&task);
-        });
-        let mut lock = self.pending_tasks.lock();
-        lock.remove(&task);
+    async fn remove_completed_task_from_processing_tasks(&mut self, task: u32) -> Result<()> {
+        self.remove_task_from_processing_tasks(task);
         // save state
         self.report_state(TaskExecutionState::Completed(task)).await
     }
@@ -277,16 +279,20 @@ where
         task: u32,
         error: SchedulerError,
     ) -> Result<()> {
-        TASKS_RUNNING.with_borrow_mut(|tasks| {
-            tasks.remove(&task);
-        });
-
-        let mut lock = self.pending_tasks.lock();
-        lock.remove(&task);
+        self.remove_task_from_processing_tasks(task);
 
         // save state
         self.report_state(TaskExecutionState::Failed(task, error))
             .await
+    }
+
+    /// Remove a task from the tasks queue
+    fn remove_task_from_processing_tasks(&mut self, task: u32) {
+        TASKS_RUNNING.with_borrow_mut(|tasks| {
+            tasks.remove(&task);
+        });
+        let mut lock = self.pending_tasks.lock();
+        lock.remove(&task);
     }
 
     /// Remove a task from `tasks_running` and from `pending_tasks`
@@ -1048,6 +1054,13 @@ mod test {
                         });
                         let pending_tasks = scheduler.pending_tasks.lock();
                         assert_eq!(pending_tasks.len(), 1);
+                        println!(
+                            "{:?}",
+                            pending_tasks
+                                .iter()
+                                .map(|(k, v)| (k, v.options.failures))
+                                .collect::<Vec<_>>()
+                        );
                         assert_eq!(pending_tasks.get(&0).unwrap().options.failures, i);
                     }
 
