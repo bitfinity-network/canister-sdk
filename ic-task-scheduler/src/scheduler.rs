@@ -180,7 +180,7 @@ where
     /// then keep in the hashset only the first half of the tasks.
     async fn split_processing_tasks(&mut self) -> Result<()> {
         // move tasks_being_processed to tasks_to_be_processed
-        let tasks_to_be_processed = TASKS_RUNNING.with_borrow_mut(|tasks| std::mem::take(tasks));
+        let tasks_to_be_processed = TASKS_RUNNING.with_borrow_mut(std::mem::take);
         let tasks_len = TASKS_TO_BE_PROCESSED.with_borrow_mut(|tasks| {
             *tasks = tasks_to_be_processed;
             tasks.len()
@@ -300,7 +300,7 @@ where
 
     /// Save the current state of the scheduler.
     async fn report_state(&self, state: TaskExecutionState) -> Result<()> {
-        (&*self.on_execution_state_changed_callback)(state).await?;
+        (*self.on_execution_state_changed_callback)(state).await?;
 
         Ok(())
     }
