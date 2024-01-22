@@ -49,72 +49,57 @@ impl PocketIcTestContext {
 
     pub async fn scheduled_state_called(&self) -> bool {
         let args = Encode!(&()).unwrap();
-        let res = self
-            .query_as(
-                ic::caller(),
-                self.dummy_scheduler_canister,
-                "scheduled_state_called",
-                args,
-            )
-            .await;
-
-        res
+        self.query_as(
+            ic::caller(),
+            self.dummy_scheduler_canister,
+            "scheduled_state_called",
+            args,
+        )
+        .await
     }
 
     pub async fn completed_tasks(&self) -> Vec<u32> {
         let args = Encode!(&()).unwrap();
-        let res = self
-            .query_as(
-                ic::caller(),
-                self.dummy_scheduler_canister,
-                "completed_tasks",
-                args,
-            )
-            .await;
-
-        res
+        self.query_as(
+            ic::caller(),
+            self.dummy_scheduler_canister,
+            "completed_tasks",
+            args,
+        )
+        .await
     }
 
     pub async fn panicked_tasks(&self) -> Vec<u32> {
         let args = Encode!(&()).unwrap();
-        let res = self
-            .query_as(
-                ic::caller(),
-                self.dummy_scheduler_canister,
-                "panicked_tasks",
-                args,
-            )
-            .await;
-
-        res
+        self.query_as(
+            ic::caller(),
+            self.dummy_scheduler_canister,
+            "panicked_tasks",
+            args,
+        )
+        .await
     }
 
     pub async fn failed_tasks(&self) -> Vec<u32> {
         let args = Encode!(&()).unwrap();
-        let res = self
-            .query_as(
-                ic::caller(),
-                self.dummy_scheduler_canister,
-                "failed_tasks",
-                args,
-            )
-            .await;
-
-        res
+        self.query_as(
+            ic::caller(),
+            self.dummy_scheduler_canister,
+            "failed_tasks",
+            args,
+        )
+        .await
     }
 
     pub async fn executed_tasks(&self) -> Vec<u32> {
         let args = Encode!(&()).unwrap();
-        let res = self
-            .query_as(
-                ic::caller(),
-                self.dummy_scheduler_canister,
-                "executed_tasks",
-                args,
-            )
-            .await;
-
-        res
+        self.query_as(
+            ic::caller(),
+            self.dummy_scheduler_canister,
+            "executed_tasks",
+            args,
+        )
+        .await
     }
 
     pub async fn run_scheduler(&self) {
