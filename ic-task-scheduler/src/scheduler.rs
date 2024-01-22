@@ -352,9 +352,13 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::type_complexity)]
 mod test {
 
     use super::*;
+
+    type SaveStateCb =
+        Pin<Box<dyn Future<Output = std::result::Result<(), (RejectionCode, String)>>>>;
 
     mod test_execution {
 
@@ -475,10 +479,7 @@ mod test {
             Ok(())
         }
 
-        fn report_state_cb(
-            state: TaskExecutionState,
-        ) -> Pin<Box<dyn Future<Output = std::result::Result<(), (RejectionCode, String)>>>>
-        {
+        fn report_state_cb(state: TaskExecutionState) -> SaveStateCb {
             Box::pin(async { report_state(state).await })
         }
 
@@ -691,10 +692,7 @@ mod test {
             Ok(())
         }
 
-        fn report_state_cb(
-            state: TaskExecutionState,
-        ) -> Pin<Box<dyn Future<Output = std::result::Result<(), (RejectionCode, String)>>>>
-        {
+        fn report_state_cb(state: TaskExecutionState) -> SaveStateCb {
             Box::pin(async { report_state(state).await })
         }
     }
@@ -1111,10 +1109,7 @@ mod test {
             Ok(())
         }
 
-        fn report_state_cb(
-            state: TaskExecutionState,
-        ) -> Pin<Box<dyn Future<Output = std::result::Result<(), (RejectionCode, String)>>>>
-        {
+        fn report_state_cb(state: TaskExecutionState) -> SaveStateCb {
             Box::pin(async { report_state(state).await })
         }
     }
