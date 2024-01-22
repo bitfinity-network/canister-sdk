@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use candid::Principal;
@@ -22,7 +21,7 @@ const SCHEDULER_STORAGE_MEMORY_ID: MemoryId = MemoryId::new(1);
 thread_local! {
     pub static MEMORY_MANAGER: IcMemoryManager<DefaultMemoryImpl> = IcMemoryManager::init(DefaultMemoryImpl::default());
 
-    static SCHEDULER: RefCell<Arc<Mutex<PanickingScheduler>>> = {
+    static SCHEDULER: RefCell<PanickingScheduler> = {
         let map: Storage = Storage::new(MEMORY_MANAGER.with(|mm| mm.get(SCHEDULER_STORAGE_MEMORY_ID)));
 
         let scheduler = PanickingScheduler::new(
@@ -35,7 +34,7 @@ thread_local! {
         scheduler.append_task((DummyTask::GoodTask, TaskOptions::new()).into());
         scheduler.append_task((DummyTask::FailTask, TaskOptions::new()).into());
 
-        RefCell::new(Arc::new(Mutex::new(scheduler)))
+        RefCell::new(scheduler)
     };
 
     static SCHEDULED_STATE_CALLED: RefCell<bool> = RefCell::new(false);
@@ -144,10 +143,8 @@ impl DummyCanister {
     }
 
     async fn do_run_scheduler() {
-        let scheduler = SCHEDULER.with_borrow(|scheduler| scheduler.clone());
-        let mut lock = scheduler.lock().unwrap();
-
-        lock.run().await.unwrap();
+        let mut scheduler = SCHEDULER.with_borrow(|scheduler| scheduler.clone());
+        scheduler.run().await.unwrap();
     }
 
     pub fn idl() -> Idl {
@@ -183,8 +180,8 @@ async fn save_state(state: TaskExecutionState) -> Result<(), (RejectionCode, Str
     ic_exports::ic_cdk::call(canister, "save_state", ()).await
 }
 
-fn save_state_cb(
-    state: TaskExecutionState,
-) -> Pin<Box<dyn Future<Output = Result<(), (RejectionCode, String)>>>> {
+type SaveStateCb = Pin<Box<dyn Future<Output = Result<(), (RejectionCode, String)>>>>;
+
+fn save_state_cb(state: TaskExecutionState) -> SaveStateCb {
     Box::pin(async { save_state(state).await })
 }
