@@ -1,23 +1,17 @@
-use std::cell::RefCell;
-use std::collections::HashSet;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
 use ic_kit::RejectionCode;
-use ic_stable_structures::IterableUnboundedMapStructure;
+use ic_stable_structures::{BTreeMapStructure as _, HeapBTreeMap, IterableUnboundedMapStructure};
 use parking_lot::Mutex;
 
 use crate::task::{ScheduledTask, Task};
 use crate::time::time_secs;
 use crate::{Result, SchedulerError};
 
-thread_local! {
-    /// Queue containing tasks to be processed
-    static TASKS_TO_BE_PROCESSED: RefCell<HashSet<u32>> = RefCell::new(HashSet::new());
-    /// Tasks which are currently being processed
-    static TASKS_RUNNING: RefCell<HashSet<u32>> = RefCell::new(HashSet::new());
-}
+/// Internal type used to store tasks to be processed and processing tasks
+type TaskQueue = Arc<Mutex<HeapBTreeMap<u32, (), ()>>>;
 
 /// The state of a task execution.
 /// This is reported when the `SaveStateQueryCallback` is called.
@@ -49,6 +43,10 @@ where
 {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
+    /// Queue containing tasks to be processed
+    tasks_to_be_processed: TaskQueue,
+    /// Tasks which are currently being processed
+    tasks_running: TaskQueue,
     /// Callback to be called to save the current canister state to prevent panicking tasks.
     on_execution_state_changed_callback: Arc<Box<SaveStateQueryCallback>>,
 }
@@ -72,6 +70,8 @@ where
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
             phantom: std::marker::PhantomData,
             on_execution_state_changed_callback: Arc::new(on_execution_state_changed_callback),
+            tasks_to_be_processed: Arc::new(Mutex::new(HeapBTreeMap::new(()))),
+            tasks_running: Arc::new(Mutex::new(HeapBTreeMap::new(()))),
         })
     }
 
@@ -87,7 +87,8 @@ where
         let mut task_execution_started = 0;
 
         // checks tasks that are still in tasks running (something bad happened in the last cycle)
-        match TASKS_RUNNING.with_borrow(|tasks| tasks.len()) {
+        let tasks_running_count = self.tasks_running.lock().len();
+        match tasks_running_count {
             0 => {
                 // HAPPY PATH: if there are no processing tasks, initialize the tasks o be processed
                 self.init_tasks_to_be_processed(now_timestamp_secs).await?;
@@ -95,7 +96,7 @@ where
             1 => {
                 // if there is only one processing task, we can assume that it panicked
                 // delete that task and mark it as panicked
-                let task = TASKS_RUNNING.with_borrow(|tasks| *tasks.iter().next().unwrap());
+                let task = self.tasks_running.lock().iter().next().unwrap().0;
                 self.delete_unprocessable_task(task).await?;
 
                 // eventually reschedule the tasks to be processed
@@ -108,7 +109,13 @@ where
         }
 
         // iterate over tasks to be processed, and execute it one by one
-        for task_id in TASKS_TO_BE_PROCESSED.with_borrow(|tasks| tasks.clone()) {
+        let tasks_to_be_processed: Vec<u32> = self
+            .tasks_to_be_processed
+            .lock()
+            .iter()
+            .map(|(key, _)| key)
+            .collect();
+        for task_id in tasks_to_be_processed {
             let lock = self.pending_tasks.lock();
             let mut task = match lock.get(&task_id) {
                 Some(task) => task,
@@ -180,33 +187,36 @@ where
     /// then keep in the hashset only the first half of the tasks.
     async fn split_processing_tasks(&mut self) -> Result<()> {
         // move tasks_being_processed to tasks_to_be_processed
-        let tasks_to_be_processed = TASKS_RUNNING.with_borrow_mut(std::mem::take);
-        let tasks_len = TASKS_TO_BE_PROCESSED.with_borrow_mut(|tasks| {
-            *tasks = tasks_to_be_processed;
-            tasks.len()
-        });
+        {
+            let mut tasks_running_lock = self.tasks_running.lock();
+            let mut tasks_to_be_processed_lock = self.tasks_running.lock();
+            tasks_to_be_processed_lock.clear();
+            for (key, _) in tasks_running_lock.iter() {
+                tasks_to_be_processed_lock.insert(key, ());
+            }
+            // clear tasks_running
+            tasks_running_lock.clear();
+            drop(tasks_running_lock);
 
-        let total_tasks_half = tasks_len / 2;
-
-        let second_half: Vec<u32> = TASKS_TO_BE_PROCESSED.with_borrow(|tasks| {
-            tasks
+            // remove second half
+            let total_tasks_half = (tasks_to_be_processed_lock.len() / 2) as usize;
+            let second_half: Vec<u32> = tasks_to_be_processed_lock
                 .iter()
                 .enumerate()
-                .filter_map(|(i, task)| {
+                .filter_map(|(i, (task, _))| {
                     if i > total_tasks_half {
-                        Some(*task)
+                        Some(task)
                     } else {
                         None
                     }
                 })
-                .collect()
-        });
+                .collect();
 
-        TASKS_TO_BE_PROCESSED.with_borrow_mut(|tasks| {
             for task in second_half {
-                tasks.remove(&task);
+                tasks_to_be_processed_lock.remove(&task);
             }
-        });
+            drop(tasks_to_be_processed_lock);
+        }
 
         // save state
         self.report_state(TaskExecutionState::Scheduled).await
@@ -217,39 +227,41 @@ where
     ///
     /// Then reset processing tasks to an empty set
     async fn init_tasks_to_be_processed(&mut self, timestamp: u64) -> Result<()> {
-        // save tasks to be executed at this time
-        let tasks_to_be_executed: Vec<u32> = self
-            .pending_tasks
-            .lock()
-            .iter()
-            .filter_map(|(key, task)| {
-                if task.options.execute_after_timestamp_in_secs <= timestamp {
-                    Some(key)
-                } else {
-                    None
-                }
-            })
-            .collect();
+        {
+            // save tasks to be executed at this time
+            let tasks_to_be_executed: Vec<u32> = self
+                .pending_tasks
+                .lock()
+                .iter()
+                .filter_map(|(key, task)| {
+                    if task.options.execute_after_timestamp_in_secs <= timestamp {
+                        Some(key)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
 
-        // clear and insert tasks
-        TASKS_TO_BE_PROCESSED.with_borrow_mut(|tasks| {
-            tasks.clear();
+            // clear and insert tasks
+            let mut tasks_to_be_processed_lock = self.tasks_to_be_processed.lock();
+            tasks_to_be_processed_lock.clear();
             for task in tasks_to_be_executed {
-                tasks.insert(task);
+                tasks_to_be_processed_lock.insert(task, ());
             }
-        });
-        TASKS_RUNNING.with_borrow_mut(|tasks| tasks.clear());
+            drop(tasks_to_be_processed_lock);
+
+            self.tasks_running.lock().clear();
+        }
         // save state
         self.report_state(TaskExecutionState::Scheduled).await
     }
 
     /// Remove a task from `to_be_processed` and move it into the `processing` set. Then save the current task
     async fn put_task_to_processing_tasks(&mut self, task: u32) -> Result<()> {
-        let task_removed = TASKS_TO_BE_PROCESSED.with_borrow_mut(|tasks| tasks.remove(&task));
+        let task_removed = self.tasks_to_be_processed.lock().remove(&task).is_some();
+
         if task_removed {
-            TASKS_RUNNING.with_borrow_mut(|tasks| {
-                tasks.insert(task);
-            });
+            self.tasks_running.lock().insert(task, ());
             // save state
             self.report_state(TaskExecutionState::Executing(task)).await
         } else {
@@ -279,19 +291,16 @@ where
 
     /// Remove a task from the tasks queue
     fn remove_task_from_processing_tasks(&mut self, task: u32) {
-        TASKS_RUNNING.with_borrow_mut(|tasks| {
-            tasks.remove(&task);
-        });
-        let mut lock = self.pending_tasks.lock();
-        lock.remove(&task);
+        // delete the task from tasks_running
+        self.tasks_running.lock().remove(&task);
+        // delete the task from pending_tasks
+        self.pending_tasks.lock().remove(&task);
     }
 
     /// Remove a task from `tasks_running` and from `pending_tasks`
     async fn delete_unprocessable_task(&mut self, task: u32) -> Result<()> {
         // delete the task from tasks_running
-        TASKS_RUNNING.with_borrow_mut(|tasks| {
-            tasks.remove(&task);
-        });
+        self.tasks_running.lock().remove(&task);
         // delete the task from pending_tasks
         self.pending_tasks.lock().remove(&task);
         // save state
@@ -320,6 +329,8 @@ where
         Self {
             pending_tasks: self.pending_tasks.clone(),
             phantom: self.phantom,
+            tasks_running: self.tasks_running.clone(),
+            tasks_to_be_processed: self.tasks_to_be_processed.clone(),
             on_execution_state_changed_callback: self.on_execution_state_changed_callback.clone(),
         }
     }
