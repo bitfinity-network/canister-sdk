@@ -5,7 +5,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use ic_kit::RejectionCode;
-use ic_stable_structures::UnboundedMapStructure;
+use ic_stable_structures::IterableUnboundedMapStructure;
 use parking_lot::Mutex;
 
 use crate::task::{ScheduledTask, Task};
@@ -45,7 +45,7 @@ type SaveStateQueryCallback = dyn Fn(
 pub struct Scheduler<T, P>
 where
     T: 'static + Task,
-    P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>,
+    P: 'static + IterableUnboundedMapStructure<u32, ScheduledTask<T>>,
 {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
@@ -56,7 +56,7 @@ where
 impl<T, P> Scheduler<T, P>
 where
     T: 'static + Task,
-    P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>,
+    P: 'static + IterableUnboundedMapStructure<u32, ScheduledTask<T>>,
 {
     /// Create a new scheduler.
     ///
@@ -314,7 +314,7 @@ pub trait TaskScheduler<T: 'static + Task> {
 impl<T, P> Clone for Scheduler<T, P>
 where
     T: 'static + Task,
-    P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>,
+    P: 'static + IterableUnboundedMapStructure<u32, ScheduledTask<T>>,
 {
     fn clone(&self) -> Self {
         Self {
@@ -328,7 +328,7 @@ where
 impl<T, P> TaskScheduler<T> for Scheduler<T, P>
 where
     T: 'static + Task,
-    P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>,
+    P: 'static + IterableUnboundedMapStructure<u32, ScheduledTask<T>>,
 {
     fn append_task(&self, task: ScheduledTask<T>) {
         let mut lock = self.pending_tasks.lock();
@@ -583,7 +583,7 @@ mod test {
         use std::pin::Pin;
         use std::time::Duration;
 
-        use ic_stable_structures::{StableUnboundedMap, VectorMemory};
+        use ic_stable_structures::{StableUnboundedMap, UnboundedMapStructure as _, VectorMemory};
         use rand::random;
         use serde::{Deserialize, Serialize};
 
@@ -705,7 +705,7 @@ mod test {
         use std::pin::Pin;
         use std::time::Duration;
 
-        use ic_stable_structures::{StableUnboundedMap, VectorMemory};
+        use ic_stable_structures::{StableUnboundedMap, UnboundedMapStructure as _, VectorMemory};
         use rand::random;
         use serde::{Deserialize, Serialize};
 
