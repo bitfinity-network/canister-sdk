@@ -62,6 +62,20 @@ where
         StableUnboundedIter(self.inner.iter().peekable())
     }
 
+    /// Returns number of chunks, used to store the entity.
+    pub fn chunks_number_of(&self, key: &K) -> Option<ChunkIndex> {
+        let first_chunk_key = Key::new(key);
+        let max_chunk_key = first_chunk_key.clone().with_max_chunk_index();
+
+        // first item in this iter will be the last chunk of the key.
+        self.inner
+            .iter_upper_bound(&max_chunk_key)
+            .filter_map(|(k, _)| {
+                (k.prefix() == max_chunk_key.prefix()).then_some(k.chunk_index() + 1)
+            })
+            .next()
+    }
+
     /// Returns an iterator pointing to the first element below the given bound.
     /// Returns an empty iterator if there are no keys below the given bound.
     pub fn iter_upper_bound(&self, bound: &K) -> StableUnboundedIter<'_, K, V, M> {
@@ -305,6 +319,19 @@ impl<K: Storable> Key<K> {
     /// Result of the `<K as Storable>::to_bytes(key)` call.
     pub fn key_data(&self) -> &[u8] {
         &self.data[Self::BOUNDS.size_prefix_len..self.data.len() - CHUNK_INDEX_LEN]
+    }
+
+    /// Chunk index of the key.
+    pub fn chunk_index(&self) -> ChunkIndex {
+        // last `CHUNK_INDEX_LEN` bytes is chunk index
+        let chunk_index_bytes = &self.data[(self.data.len() - CHUNK_INDEX_LEN)..];
+
+        let chunk_index_arr = chunk_index_bytes
+            .try_into()
+            .expect("the slice is always CHUNK_INDEX_LEN length");
+
+        // store chunk index in big-endian format to preserve order of chunks in BTreeMap
+        ChunkIndex::from_be_bytes(chunk_index_arr)
     }
 }
 
@@ -613,5 +640,40 @@ mod tests {
         assert_eq!(map.first_key_value(), Some((3u32, str_3)));
         assert_eq!(map.last_key(), Some(4u32));
         assert_eq!(map.last_key_value(), Some((4u32, str_4)));
+    }
+
+    #[test]
+    fn test_chunks_number_calculation() {
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
+
+        // No chunks if there is no key.
+        assert!(map.chunks_number_of(&42).is_none());
+
+        // Exact number of chunks.
+        let expected_chunks_number = 42;
+        let val = str_val(StringValue::CHUNK_SIZE as usize * expected_chunks_number);
+        map.insert(&10_u64, &val);
+        assert_eq!(map.chunks_number_of(&10), Some(expected_chunks_number as _));
+
+        // One more partially filled chunk.
+        let expected_chunks_number = 42;
+        let val = str_val(StringValue::CHUNK_SIZE as usize * expected_chunks_number + 5);
+        map.insert(&10_u64, &val);
+        assert_eq!(
+            map.chunks_number_of(&10),
+            Some(expected_chunks_number as u16 + 1)
+        );
+
+        // Make the key to be between other keys.
+        map.insert(&5_u64, &val);
+        map.insert(&15_u64, &val);
+        assert_eq!(
+            map.chunks_number_of(&10),
+            Some(expected_chunks_number as u16 + 1)
+        );
+
+        // No chunks if there is no key.
+        map.remove(&10_u64);
+        assert!(map.chunks_number_of(&10).is_none());
     }
 }
