@@ -12,17 +12,20 @@ use crate::memory::MemoryManager;
 
 const WASM_PAGE_SIZE_IN_BYTES: u64 = 65536;
 
-/// When creating mapping we reserve at once 1 TB of address space.
+/// When creating mapping we reserve a fixed amount of address space.
 /// This doesn't allocate any resources (except of address space which is not a problem for x64)
 /// but allows skip remapping/flushing when the file size grows.
-const DEFAULT_MEM_MAP_RESERVED_LENGTH: u64 = 1 << 40;
+#[cfg(not(target_pointer_width = "32"))]
+const DEFAULT_MEM_MAP_RESERVED_LENGTH: usize = 1 << 40; // 1 TB
+#[cfg(target_pointer_width = "32")]
+const DEFAULT_MEM_MAP_RESERVED_LENGTH: usize = 1 << 28; // 256 MB
 
 /// Memory manager that uses one memory mapped filer per one memory id.
 pub struct MemoryMappedFileMemoryManager {
     base_path: PathBuf,
     is_persistent: bool,
     created_memory_resources: RwLock<BTreeMap<PathBuf, MemoryMappedFileMemory>>,
-    max_memory_length: u64,
+    max_memory_length: usize,
 }
 
 impl MemoryMappedFileMemoryManager {
@@ -39,7 +42,7 @@ impl MemoryMappedFileMemoryManager {
 
     /// Set reserved address space length in bytes for each memory-mapped file.
     /// This is not the initial file size but an upper limit for a size.
-    pub fn with_max_memory_size_per_id(mut self, file_reserved_length: u64) -> Self {
+    pub fn with_max_memory_size_per_id(mut self, file_reserved_length: usize) -> Self {
         self.max_memory_length = file_reserved_length;
 
         self
@@ -122,7 +125,7 @@ impl MemoryManager<MemoryMappedFileMemory, u8> for MemoryMappedFileMemoryManager
 pub struct MemoryMappedFileMemory(Arc<RwLock<MemoryMappedFile>>);
 
 impl MemoryMappedFileMemory {
-    pub fn new(path: String, max_size: u64, is_persistent: bool) -> MemMapResult<Self> {
+    pub fn new(path: String, max_size: usize, is_persistent: bool) -> MemMapResult<Self> {
         Ok(Self(Arc::new(RwLock::new(MemoryMappedFile::new(
             path,
             max_size,
@@ -141,13 +144,13 @@ impl MemoryMappedFileMemory {
 
 impl Memory for MemoryMappedFileMemory {
     fn size(&self) -> u64 {
-        self.0.read().len() / WASM_PAGE_SIZE_IN_BYTES
+        self.0.read().len() as u64 / WASM_PAGE_SIZE_IN_BYTES
     }
 
     fn grow(&self, pages: u64) -> i64 {
         let mut memory = self.0.write();
         let old_size = memory.len();
-        let bytes_to_add = pages * WASM_PAGE_SIZE_IN_BYTES;
+        let bytes_to_add = (pages * WASM_PAGE_SIZE_IN_BYTES) as usize;
         let new_length = memory
             .resize(old_size + bytes_to_add)
             .expect("failed to resize memory-mapped file");
@@ -155,20 +158,20 @@ impl Memory for MemoryMappedFileMemory {
             .zero_range(old_size, bytes_to_add)
             .expect("should succeed to zero new memory");
 
-        (new_length / WASM_PAGE_SIZE_IN_BYTES) as i64
+        (new_length as u64 / WASM_PAGE_SIZE_IN_BYTES) as i64
     }
 
     fn read(&self, offset: u64, dst: &mut [u8]) {
         self.0
             .read()
-            .read(offset, dst)
+            .read(offset as usize, dst)
             .expect("invalid memory-mapped file read")
     }
 
     fn write(&self, offset: u64, src: &[u8]) {
         self.0
             .write()
-            .write(offset, src)
+            .write(offset as usize, src)
             .expect("invalid memory-mapped file write")
     }
 }

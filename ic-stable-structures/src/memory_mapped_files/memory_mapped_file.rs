@@ -8,7 +8,7 @@ use super::error::{MemMapError, MemMapResult};
 /// By default we use chunk size equal to the default page size.
 /// Since our structures are usually pretty small it doesn't seem
 /// that we will benefit from using huge page size (2 MB or 1 GB)
-const PAGE_SIZE: u64 = 4096;
+const PAGE_SIZE: usize = 4096;
 
 /// Memory mapped file implementation.
 /// If `is_persistent` flag is true then after the
@@ -16,8 +16,8 @@ const PAGE_SIZE: u64 = 4096;
 pub(super) struct MemoryMappedFile {
     file: File,
     path: String,
-    length: u64,
-    max_length: u64,
+    length: usize,
+    max_length: usize,
     is_persistent: bool,
     mapping: MmapMut,
 }
@@ -27,7 +27,7 @@ impl MemoryMappedFile {
     /// in this or different process.
     /// `max_length` is used to reserve the memory address space to allow resizing the memory
     /// without flushing data and re-mapping it again.
-    pub fn new(path: String, max_length: u64, is_persistent: bool) -> MemMapResult<Self> {
+    pub fn new(path: String, max_length: usize, is_persistent: bool) -> MemMapResult<Self> {
         if !is_persistent {
             _ = remove_file(&path);
         }
@@ -38,12 +38,12 @@ impl MemoryMappedFile {
             .write(true)
             .read(true)
             .open(&path)?;
-        let length = file.metadata()?.len();
+        let length = file.metadata()?.len() as usize;
 
         let mut mmap_opts = MmapOptions::new();
         // Safety: function preconditions should guarantee the safety of the operation:
         // mapping to a file is safe if the file isn't modified concurrently by this and other processes.
-        let mapping = unsafe { mmap_opts.len(max_length as _).map_mut(&file) }?;
+        let mapping = unsafe { mmap_opts.len(max_length).map_mut(&file) }?;
 
         Ok(Self {
             file,
@@ -56,7 +56,7 @@ impl MemoryMappedFile {
     }
 
     /// Returns the current length in bytes
-    pub fn len(&self) -> u64 {
+    pub fn len(&self) -> usize {
         self.length
     }
 
@@ -64,7 +64,7 @@ impl MemoryMappedFile {
     /// `new_length` should be `PAGE_SIZE` multiple.
     /// If `new_length` is less or equal than the current length
     /// nothing happens.
-    pub fn resize(&mut self, new_length: u64) -> MemMapResult<u64> {
+    pub fn resize(&mut self, new_length: usize) -> MemMapResult<usize> {
         if new_length % PAGE_SIZE != 0 {
             return Err(MemMapError::SizeShouldBePageSizeMultiple);
         }
@@ -76,46 +76,46 @@ impl MemoryMappedFile {
         if new_length > self.max_length {
             return Err(MemMapError::OutOfAddressSpace {
                 claimed: new_length,
-                limit: self.max_length as _,
+                limit: self.max_length,
             });
         }
 
         // There is no need to remap after changing the size
-        self.file.set_len(new_length)?;
+        self.file.set_len(new_length as u64)?;
         self.length = new_length;
 
         Ok(self.length)
     }
 
     /// Read data starting at `offset` to the given buffer.
-    pub fn read(&self, offset: u64, dst: &mut [u8]) -> MemMapResult<()> {
-        if offset + dst.len() as u64 > self.len() {
+    pub fn read(&self, offset: usize, dst: &mut [u8]) -> MemMapResult<()> {
+        if offset + dst.len() > self.len() {
             return Err(MemMapError::AccessOutOfBounds);
         }
 
-        dst.copy_from_slice(&self.mapping[offset as usize..offset as usize + dst.len()]);
+        dst.copy_from_slice(&self.mapping[offset..offset + dst.len()]);
 
         Ok(())
     }
 
     /// Write data from `src` to the memory starting at `offset`.
-    pub fn write(&mut self, offset: u64, src: &[u8]) -> MemMapResult<()> {
-        if offset + src.len() as u64 > self.len() {
+    pub fn write(&mut self, offset: usize, src: &[u8]) -> MemMapResult<()> {
+        if offset + src.len() > self.len() {
             return Err(MemMapError::AccessOutOfBounds);
         }
 
-        self.mapping[offset as usize..offset as usize + src.len()].copy_from_slice(src);
+        self.mapping[offset..offset + src.len()].copy_from_slice(src);
 
         Ok(())
     }
 
     /// Fill range with zeros.
-    pub fn zero_range(&mut self, offset: u64, count: u64) -> MemMapResult<()> {
+    pub fn zero_range(&mut self, offset: usize, count: usize) -> MemMapResult<()> {
         if offset + count > self.length {
             return Err(MemMapError::AccessOutOfBounds);
         }
 
-        self.mapping[offset as _..(offset + count) as _].fill(0);
+        self.mapping[offset..(offset + count)].fill(0);
 
         Ok(())
     }
@@ -160,7 +160,7 @@ mod tests {
     use super::*;
 
     /// Default max length. It cannot be less than a page size.
-    const DEFAULT_MAX_LENGTH: u64 = PAGE_SIZE;
+    const DEFAULT_MAX_LENGTH: usize = PAGE_SIZE;
 
     fn with_temp_file(func: impl FnOnce(String)) {
         let file = NamedTempFile::new().unwrap();
@@ -230,11 +230,11 @@ mod tests {
             file_memory.resize(PAGE_SIZE).unwrap();
 
             assert!(matches!(
-                file_memory.read(0, &mut [0; PAGE_SIZE as usize + 1]),
+                file_memory.read(0, &mut [0; PAGE_SIZE + 1]),
                 Err(MemMapError::AccessOutOfBounds)
             ));
             assert!(matches!(
-                file_memory.read(1, &mut [0; PAGE_SIZE as usize]),
+                file_memory.read(1, &mut [0; PAGE_SIZE]),
                 Err(MemMapError::AccessOutOfBounds)
             ));
             assert!(matches!(
@@ -251,11 +251,11 @@ mod tests {
             file_memory.resize(PAGE_SIZE).unwrap();
 
             assert!(matches!(
-                file_memory.write(0, &[0; PAGE_SIZE as usize + 1]),
+                file_memory.write(0, &[0; PAGE_SIZE + 1]),
                 Err(MemMapError::AccessOutOfBounds)
             ));
             assert!(matches!(
-                file_memory.write(1, &[0; PAGE_SIZE as usize]),
+                file_memory.write(1, &[0; PAGE_SIZE]),
                 Err(MemMapError::AccessOutOfBounds)
             ));
             assert!(matches!(
@@ -273,11 +273,11 @@ mod tests {
             assert_eq!(file_memory.len(), PAGE_SIZE);
 
             // Fill first chunk
-            let slice = &mut [42; PAGE_SIZE as _];
+            let slice = &mut [42; PAGE_SIZE];
             file_memory.write(0, slice).unwrap();
             slice.fill(0);
             file_memory.read(0, slice).unwrap();
-            assert_eq!(slice, &[42; PAGE_SIZE as _]);
+            assert_eq!(slice, &[42; PAGE_SIZE]);
 
             file_memory.resize(PAGE_SIZE * 2).unwrap();
             assert_eq!(file_memory.len(), PAGE_SIZE * 2);
@@ -286,12 +286,12 @@ mod tests {
             slice.fill(43);
             file_memory.write(PAGE_SIZE, slice).unwrap();
 
-            let slice = &mut [0; (PAGE_SIZE * 2) as _];
+            let slice = &mut [0; (PAGE_SIZE * 2)];
             file_memory.read(0, slice).unwrap();
 
             assert_eq!(
                 slice,
-                &[[42; PAGE_SIZE as _], [43; PAGE_SIZE as _]].concat()[..]
+                &[[42; PAGE_SIZE], [43; PAGE_SIZE]].concat()[..]
             )
         })
     }
@@ -310,7 +310,7 @@ mod tests {
     }
 
     fn create_data() -> Vec<u8> {
-        (0..PAGE_SIZE).map(|i| (i % u8::MAX as u64) as u8).collect()
+        (0..PAGE_SIZE).map(|i| (i % u8::MAX as usize) as u8).collect()
     }
 
     fn check_data(data: &[u8]) {
