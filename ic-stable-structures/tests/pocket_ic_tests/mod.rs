@@ -3,8 +3,7 @@ use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use did::*;
 use ic_exports::ic_kit::mock_principals::alice;
 use ic_exports::ic_kit::{ic, inject};
-use ic_exports::pocket_ic;
-use pocket_ic::{PocketIc, WasmResult};
+use ic_exports::pocket_ic::{self, PocketIc, WasmResult};
 use wasm_utils::get_dummy_canister_bytecode;
 
 mod btreemap;
