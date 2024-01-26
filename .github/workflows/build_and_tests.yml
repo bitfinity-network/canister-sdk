@@ -17,12 +17,15 @@ jobs:
     name: Build and Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+
+      - uses: actions/checkout@v4
+      
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
-          target: wasm32-unknown-unknown
+          components: clippy, rustfmt
+          target: wasm32-unknown-unknown, i686-unknown-linux-gnu
+
       - name: machine setup
         run: |
           cargo install ic-wasm
@@ -38,4 +41,6 @@ jobs:
       - name: test
         run: |
           ./scripts/test.sh
-
+      - name: test i686-unknown-linux-gnu
+        run: |
+          ./scripts/test.sh --target i686-unknown-linux-gnu
