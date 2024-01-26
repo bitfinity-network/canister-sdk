@@ -289,10 +289,7 @@ mod tests {
             let slice = &mut [0; (PAGE_SIZE * 2)];
             file_memory.read(0, slice).unwrap();
 
-            assert_eq!(
-                slice,
-                &[[42; PAGE_SIZE], [43; PAGE_SIZE]].concat()[..]
-            )
+            assert_eq!(slice, &[[42; PAGE_SIZE], [43; PAGE_SIZE]].concat()[..])
         })
     }
 
@@ -310,7 +307,9 @@ mod tests {
     }
 
     fn create_data() -> Vec<u8> {
-        (0..PAGE_SIZE).map(|i| (i % u8::MAX as usize) as u8).collect()
+        (0..PAGE_SIZE)
+            .map(|i| (i % u8::MAX as usize) as u8)
+            .collect()
     }
 
     fn check_data(data: &[u8]) {

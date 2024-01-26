@@ -147,10 +147,11 @@ mod test {
 
     mod test_execution {
 
+        use std::collections::HashMap;
         use std::future::Future;
         use std::pin::Pin;
+        use std::sync::atomic::AtomicBool;
         use std::time::Duration;
-        use std::{collections::HashMap, sync::atomic::AtomicBool};
 
         use ic_stable_structures::{StableUnboundedMap, VectorMemory};
         use rand::random;
