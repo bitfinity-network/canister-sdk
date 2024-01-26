@@ -18,7 +18,7 @@ const WASM_PAGE_SIZE_IN_BYTES: u64 = 65536;
 #[cfg(not(target_pointer_width = "32"))]
 const DEFAULT_MEM_MAP_RESERVED_LENGTH: usize = 1 << 40; // 1 TB
 #[cfg(target_pointer_width = "32")]
-const DEFAULT_MEM_MAP_RESERVED_LENGTH: usize = 1 << 28; // 256 MB
+const DEFAULT_MEM_MAP_RESERVED_LENGTH: usize = 1 << 20; // 1 MB
 
 /// Memory manager that uses one memory mapped filer per one memory id.
 pub struct MemoryMappedFileMemoryManager {
