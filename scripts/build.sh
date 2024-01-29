@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 set -e
+set -x #echo on
+
 export RUST_BACKTRACE=full
 
 WASM_DIR="target/wasm32-unknown-unknown/release"

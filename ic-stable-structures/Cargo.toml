@@ -29,5 +29,5 @@ harness = false
 
 [features]
 # Enables the integration tests based on pocket-ic
-pocket-ic = []
+pocket-ic = ["ic-exports/pocket-ic-tests"]
 memory-mapped-files-memory = ["memmap2"]
