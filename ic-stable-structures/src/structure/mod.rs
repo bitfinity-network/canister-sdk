@@ -177,6 +177,9 @@ pub trait UnboundedMapStructure<K, V> {
     /// Number of items in the map.
     fn len(&self) -> u64;
 
+    /// Retuns total number of chunks, used to store all the items.
+    fn total_chunks_number(&self) -> u64;
+
     // Returns true if there are no values in the map.
     fn is_empty(&self) -> bool;
 

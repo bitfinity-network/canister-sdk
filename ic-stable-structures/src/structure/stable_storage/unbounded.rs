@@ -167,6 +167,10 @@ where
         self.items_count
     }
 
+    fn total_chunks_number(&self) -> u64 {
+        self.inner.len()
+    }
+
     fn is_empty(&self) -> bool {
         self.items_count == 0
     }
@@ -613,5 +617,40 @@ mod tests {
         assert_eq!(map.first_key_value(), Some((3u32, str_3)));
         assert_eq!(map.last_key(), Some(4u32));
         assert_eq!(map.last_key_value(), Some((4u32, str_4)));
+    }
+
+    #[test]
+    fn test_chunks_number_calculation() {
+        let mut map = StableUnboundedMap::new(VectorMemory::default());
+
+        // No chunks if there is no items.
+        assert_eq!(map.total_chunks_number(), 0);
+
+        // Exact number of chunks.
+        let expected_chunks_number = 42;
+        let val = str_val(StringValue::CHUNK_SIZE as usize * expected_chunks_number);
+        map.insert(&10_u64, &val);
+        assert_eq!(map.total_chunks_number(), expected_chunks_number as u64);
+
+        // One more partially filled chunk.
+        let expected_chunks_number = 42;
+        let val = str_val(StringValue::CHUNK_SIZE as usize * expected_chunks_number + 5);
+        map.insert(&10_u64, &val);
+        assert_eq!(map.total_chunks_number(), expected_chunks_number as u64 + 1);
+
+        // Make the key to be between other keys.
+        map.insert(&5_u64, &val);
+        map.insert(&15_u64, &val);
+        assert_eq!(
+            map.total_chunks_number(),
+            (expected_chunks_number as u64 + 1) * 3
+        );
+
+        // No chunks if there is no key.
+        map.remove(&10_u64);
+        assert_eq!(
+            map.total_chunks_number(),
+            (expected_chunks_number as u64 + 1) * 2
+        );
     }
 }
