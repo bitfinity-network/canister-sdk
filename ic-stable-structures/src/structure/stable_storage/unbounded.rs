@@ -62,6 +62,11 @@ where
         StableUnboundedIter(self.inner.iter().peekable())
     }
 
+    /// Retuns total number of chunks, used to store all the items.
+    pub fn total_chunks_number(&self) -> u64 {
+        self.inner.len()
+    }
+
     /// Returns number of chunks, used to store the entity.
     pub fn chunks_number_of(&self, key: &K) -> Option<ChunkIndex> {
         let first_chunk_key = Key::new(key);
@@ -648,12 +653,14 @@ mod tests {
 
         // No chunks if there is no key.
         assert!(map.chunks_number_of(&42).is_none());
+        assert_eq!(map.total_chunks_number(), 0);
 
         // Exact number of chunks.
         let expected_chunks_number = 42;
         let val = str_val(StringValue::CHUNK_SIZE as usize * expected_chunks_number);
         map.insert(&10_u64, &val);
         assert_eq!(map.chunks_number_of(&10), Some(expected_chunks_number as _));
+        assert_eq!(map.total_chunks_number(), expected_chunks_number as u64);
 
         // One more partially filled chunk.
         let expected_chunks_number = 42;
@@ -663,6 +670,7 @@ mod tests {
             map.chunks_number_of(&10),
             Some(expected_chunks_number as u16 + 1)
         );
+        assert_eq!(map.total_chunks_number(), expected_chunks_number as u64 + 1);
 
         // Make the key to be between other keys.
         map.insert(&5_u64, &val);
@@ -671,9 +679,17 @@ mod tests {
             map.chunks_number_of(&10),
             Some(expected_chunks_number as u16 + 1)
         );
+        assert_eq!(
+            map.total_chunks_number(),
+            (expected_chunks_number as u64 + 1) * 3
+        );
 
         // No chunks if there is no key.
         map.remove(&10_u64);
         assert!(map.chunks_number_of(&10).is_none());
+        assert_eq!(
+            map.total_chunks_number(),
+            (expected_chunks_number as u64 + 1) * 2
+        );
     }
 }
