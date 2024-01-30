@@ -62,11 +62,6 @@ where
         StableUnboundedIter(self.inner.iter().peekable())
     }
 
-    /// Retuns total number of chunks, used to store all the items.
-    pub fn total_chunks_number(&self) -> u64 {
-        self.inner.len()
-    }
-
     /// Returns number of chunks, used to store the entity.
     pub fn chunks_number_of(&self, key: &K) -> Option<ChunkIndex> {
         let first_chunk_key = Key::new(key);
@@ -184,6 +179,10 @@ where
 
     fn len(&self) -> u64 {
         self.items_count
+    }
+
+    fn total_chunks_number(&self) -> u64 {
+        self.inner.len()
     }
 
     fn is_empty(&self) -> bool {

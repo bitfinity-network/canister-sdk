@@ -76,6 +76,10 @@ where
         self.inner.len()
     }
 
+    fn total_chunks_number(&self) -> u64 {
+        self.inner.len()
+    }
+
     fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
