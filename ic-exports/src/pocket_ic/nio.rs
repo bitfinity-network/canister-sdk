@@ -8,6 +8,8 @@ use ic_cdk::api::management_canister::provisional::CanisterId;
 use pocket_ic::common::rest::{BlobCompression, BlobId};
 use pocket_ic::{CallError, PocketIc, UserError, WasmResult};
 
+use super::create_pocket_ic_client;
+
 /// Client which performs blocking IO from PocketIc inside a tokio blocking tasks.
 #[derive(Clone)]
 pub struct PocketIcAsync(Arc<PocketIcAsyncClient>);
@@ -18,7 +20,9 @@ impl PocketIcAsync {
     ///
     /// If server is not installed, PocketIcAsync::init() should be used instead.
     pub async fn new() -> Self {
-        let client = tokio::task::spawn_blocking(PocketIc::new).await.unwrap();
+        let client = tokio::task::spawn_blocking(create_pocket_ic_client)
+            .await
+            .unwrap();
         Self(Arc::new(PocketIcAsyncClient::new(client)))
     }
 

@@ -6,6 +6,7 @@ use std::{env, fs};
 use flate2::read::GzDecoder;
 use log::*;
 use once_cell::sync::Lazy;
+use pocket_ic::common::rest::SubnetConfigSet;
 pub use pocket_ic::*;
 
 #[cfg(feature = "pocket-ic-tests-async")]
@@ -54,7 +55,17 @@ pub fn init_pocket_ic() -> PocketIc {
         panic!("pocket-ic is not initialized");
     }
 
-    PocketIc::new()
+    create_pocket_ic_client()
+}
+
+pub fn create_pocket_ic_client() -> PocketIc {
+    let config = SubnetConfigSet {
+        nns: true,
+        sns: true,
+        application: 1,
+        ..Default::default()
+    };
+    PocketIc::from_config(config)
 }
 
 fn default_pocket_ic_server_dir() -> PathBuf {
