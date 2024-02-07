@@ -59,6 +59,8 @@ pub fn init_pocket_ic() -> PocketIc {
 }
 
 pub fn create_pocket_ic_client() -> PocketIc {
+    // Adding nns allows using root key of the instance
+    // while test speed doesn't seem to be affected
     let config = SubnetConfigSet {
         nns: true,
         sns: true,
