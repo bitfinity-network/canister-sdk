@@ -35,7 +35,6 @@ impl MemoryMappedFile {
         let file = OpenOptions::new()
             .create(true)
             .append(true)
-            .write(true)
             .read(true)
             .open(&path)?;
         let length = file.metadata()?.len() as usize;
