@@ -135,7 +135,7 @@ mod test {
             canister_id: Principal::anonymous(),
             method_name: "some".to_owned(),
             arg: vec![],
-            nonce: None
+            nonce: None,
         };
 
         let signature = identity.sign(&envelop).unwrap();

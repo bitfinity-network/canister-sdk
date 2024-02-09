@@ -44,7 +44,10 @@ async fn withdraw_with_error() {
     setup_error();
     TestBalances.credit(alice(), 3000u64.into()).unwrap();
 
-    terminal.withdraw(alice(), 1000u64.into()).await.unwrap_err();
+    terminal
+        .withdraw(alice(), 1000u64.into())
+        .await
+        .unwrap_err();
     assert_eq!(TestBalances::balance_of(alice()), 3000u64);
 }
 
@@ -69,7 +72,13 @@ fn update_minting_account() {
         minting_account: minting_account(),
     };
 
-    let transfer = Transfer::new(&token_config, alice(), minting_account(), None, 1000u64.into());
+    let transfer = Transfer::new(
+        &token_config,
+        alice(),
+        minting_account(),
+        None,
+        1000u64.into(),
+    );
 
     assert_eq!(transfer.fee, 0u64);
     assert_eq!(transfer.effective_fee(), 0u64);

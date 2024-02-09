@@ -140,8 +140,9 @@ async fn retry_with_failure() {
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
         counter.fetch_add(1, Ordering::Relaxed);
         if counter.load(Ordering::Relaxed) >= 2 {
-            let response: Result<Nat, TransferError> =
-                Err(TransferError::InsufficientFunds { balance: 0u64.into() });
+            let response: Result<Nat, TransferError> = Err(TransferError::InsufficientFunds {
+                balance: 0u64.into(),
+            });
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
@@ -161,7 +162,9 @@ async fn retry_with_failure() {
     assert_eq!(
         err,
         PaymentError::TransferFailed(TransferFailReason::Rejected(
-            TransferError::InsufficientFunds { balance: 0u64.into() }
+            TransferError::InsufficientFunds {
+                balance: 0u64.into()
+            }
         ))
     );
     assert_eq!(TestBalances::balance_of(alice()), 0u64);

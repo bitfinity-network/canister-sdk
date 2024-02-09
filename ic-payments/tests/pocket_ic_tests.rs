@@ -150,7 +150,9 @@ mod tests {
         assert_eq!(
             decoded,
             Err(PaymentError::TransferFailed(TransferFailReason::Rejected(
-                TransferError::InsufficientFunds { balance: 0u64.into() }
+                TransferError::InsufficientFunds {
+                    balance: 0u64.into()
+                }
             )))
         );
 

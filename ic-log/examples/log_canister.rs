@@ -94,8 +94,7 @@ impl LoggerConfigService {
 
 fn main() {
     let canister_e_idl = LogCanister::idl();
-    let idl =
-        candid::pretty::candid::compile(&canister_e_idl.env.env, &Some(canister_e_idl.actor));
+    let idl = candid::pretty::candid::compile(&canister_e_idl.env.env, &Some(canister_e_idl.actor));
 
     println!("{}", idl);
 }

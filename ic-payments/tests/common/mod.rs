@@ -129,7 +129,9 @@ pub fn setup_error() {
         token_principal(),
         "icrc1_transfer",
         move |_: (TransferArg,)| {
-            Err::<Nat, TransferError>(TransferError::InsufficientFunds { balance: 0u64.into() })
+            Err::<Nat, TransferError>(TransferError::InsufficientFunds {
+                balance: 0u64.into(),
+            })
         },
     );
 }
