@@ -24,7 +24,7 @@ impl Default for PaymentState {
             terminal: TokenTerminal::new(
                 TokenConfiguration {
                     principal: Principal::management_canister(),
-                    fee: 0.into(),
+                    fee: 0u64.into(),
                     minting_account: Principal::management_canister().into(),
                 },
                 TestBalances::default(),
@@ -66,7 +66,7 @@ impl PaymentCanister {
     pub async fn init(&self, token_canister: Principal) {
         let config = TokenConfiguration {
             principal: token_canister,
-            fee: 0.into(),
+            fee: 0u64.into(),
             minting_account: Account {
                 owner: Principal::management_canister(),
                 subaccount: None,

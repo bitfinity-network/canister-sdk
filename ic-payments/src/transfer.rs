@@ -87,10 +87,10 @@ impl Transfer {
     /// # use ic_exports::icrc_types::icrc1::account::{Account, Subaccount};
     /// # use candid::Principal;
     /// # let token_config = ic_payments::TokenConfiguration { principal:
-    /// # Principal::management_canister(), fee: 0.into(), minting_account: Account { owner: Principal::management_canister().into(), subaccount: None }};
+    /// # Principal::management_canister(), fee: 0u64.into(), minting_account: Account { owner: Principal::management_canister().into(), subaccount: None }};
     /// # let caller = Principal::management_canister();
     /// # let to = caller.into();
-    /// let transfer = Transfer::new(&token_config, caller, to, None, 10_000.into())
+    /// let transfer = Transfer::new(&token_config, caller, to, None, 10_000u64.into())
     ///     .with_operation(Operation::CreditOnSuccess)
     ///     .double_step();
     /// ```
@@ -234,7 +234,7 @@ impl Transfer {
             ));
         }
 
-        if self.final_amount()? == 0 {
+        if self.final_amount()? == 0u64 {
             return Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
                     minimum_required: self.min_amount(),
@@ -255,13 +255,13 @@ impl Transfer {
     ///    the transfer requires two transactions to be completed.
     pub fn effective_fee(&self) -> Nat {
         match self.r#type {
-            TransferType::DoubleStep(Stage::First, _) => self.fee.clone() * 2,
+            TransferType::DoubleStep(Stage::First, _) => self.fee.clone() * 2u64,
             _ => self.fee.clone(),
         }
     }
 
     fn min_amount(&self) -> Nat {
-        self.effective_fee() + 1
+        self.effective_fee() + 1u64
     }
 
     /// Amount to be transferred.
@@ -272,7 +272,7 @@ impl Transfer {
     pub(crate) fn amount_minus_fee(&self) -> Nat {
         match self.amount > self.fee {
             true => self.amount.clone() - self.fee.clone(),
-            false => 0.into(),
+            false => 0u64.into(),
         }
     }
 
@@ -368,8 +368,8 @@ mod tests {
                 owner: bob(),
                 subaccount: None,
             },
-            amount: 1000.into(),
-            fee: 0.into(),
+            amount: 1000u64.into(),
+            fee: 0u64.into(),
             operation: Operation::None,
             r#type: TransferType::SingleStep,
             created_at: 0,
@@ -377,27 +377,27 @@ mod tests {
         };
 
         assert!(transfer.validate().is_ok());
-        transfer.fee = 100.into();
+        transfer.fee = 100u64.into();
         assert!(transfer.validate().is_ok());
-        transfer.fee = 999.into();
+        transfer.fee = 999u64.into();
         assert!(transfer.validate().is_ok());
-        transfer.fee = 1000.into();
+        transfer.fee = 1000u64.into();
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: 1001.into(),
-                    actual: 1000.into()
+                    minimum_required: 1001u64.into(),
+                    actual: 1000u64.into()
                 }
             ))
         );
-        transfer.fee = 10000.into();
+        transfer.fee = 10000u64.into();
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: 10001.into(),
-                    actual: 1000.into()
+                    minimum_required: 10001u64.into(),
+                    actual: 1000u64.into()
                 }
             ))
         );
@@ -406,8 +406,8 @@ mod tests {
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: transfer.fee + 1,
-                    actual: 1000.into(),
+                    minimum_required: transfer.fee + 1u64,
+                    actual: 1000u64.into(),
                 }
             ))
         );
@@ -424,8 +424,8 @@ mod tests {
                 owner: bob(),
                 subaccount: None,
             },
-            amount: 1000.into(),
-            fee: 0.into(),
+            amount: 1000u64.into(),
+            fee: 0u64.into(),
             operation: Operation::None,
             r#type: TransferType::DoubleStep(
                 Stage::First,
@@ -439,27 +439,27 @@ mod tests {
         };
 
         assert!(transfer.validate().is_ok());
-        transfer.fee = 100.into();
+        transfer.fee = 100u64.into();
         assert!(transfer.validate().is_ok());
-        transfer.fee = 499.into();
+        transfer.fee = 499u64.into();
         assert!(transfer.validate().is_ok());
-        transfer.fee = 500.into();
+        transfer.fee = 500u64.into();
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: 1001.into(),
-                    actual: 1000.into()
+                    minimum_required: 1001u64.into(),
+                    actual: 1000u64.into()
                 }
             ))
         );
-        transfer.fee = 10000.into();
+        transfer.fee = 10000u64.into();
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: 20001.into(),
-                    actual: 1000.into()
+                    minimum_required: 20001u64.into(),
+                    actual: 1000u64.into()
                 }
             ))
         );
@@ -469,7 +469,7 @@ mod tests {
             Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
                     minimum_required: u128::MAX.into(),
-                    actual: 1000.into()
+                    actual: 1000u64.into()
                 }
             ))
         );
@@ -486,8 +486,8 @@ mod tests {
                 owner: bob(),
                 subaccount: None,
             },
-            amount: 1000.into(),
-            fee: 0.into(),
+            amount: 1000u64.into(),
+            fee: 0u64.into(),
             operation: Operation::None,
             r#type: TransferType::DoubleStep(
                 Stage::Second,
@@ -501,27 +501,27 @@ mod tests {
         };
 
         assert!(transfer.validate().is_ok());
-        transfer.fee = 100.into();
+        transfer.fee = 100u64.into();
         assert!(transfer.validate().is_ok());
-        transfer.fee = 999.into();
+        transfer.fee = 999u64.into();
         assert!(transfer.validate().is_ok());
-        transfer.fee = 1000.into();
+        transfer.fee = 1000u64.into();
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: 1001.into(),
-                    actual: 1000.into()
+                    minimum_required: 1001u64.into(),
+                    actual: 1000u64.into()
                 }
             ))
         );
-        transfer.fee = 10000.into();
+        transfer.fee = 10000u64.into();
         assert_eq!(
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: 10001.into(),
-                    actual: 1000.into()
+                    minimum_required: 10001u64.into(),
+                    actual: 1000u64.into()
                 }
             ))
         );
@@ -530,8 +530,8 @@ mod tests {
             transfer.validate(),
             Err(InternalPaymentError::InvalidParameters(
                 ParametersError::AmountTooSmall {
-                    minimum_required: transfer.fee + 1,
-                    actual: 1000.into(),
+                    minimum_required: transfer.fee + 1u64,
+                    actual: 1000u64.into(),
                 }
             ))
         );
@@ -548,8 +548,8 @@ mod tests {
                 owner: john(),
                 subaccount: Some([1; 32]),
             },
-            amount: 1000.into(),
-            fee: 0.into(),
+            amount: 1000u64.into(),
+            fee: 0u64.into(),
             operation: Operation::None,
             r#type: TransferType::SingleStep,
             created_at: 0,
@@ -573,8 +573,8 @@ mod tests {
                 owner: bob(),
                 subaccount: None,
             },
-            amount: 1000.into(),
-            fee: 0.into(),
+            amount: 1000u64.into(),
+            fee: 0u64.into(),
             operation: Operation::None,
             r#type: TransferType::SingleStep,
             created_at: 0,
@@ -622,7 +622,7 @@ mod tests {
     fn id_unique_over_amount() {
         let t1 = simple_transfer();
         let t2 = Transfer {
-            amount: 123.into(),
+            amount: 123u64.into(),
             ..simple_transfer()
         };
 
@@ -644,7 +644,7 @@ mod tests {
     fn id_not_unique_over_fee() {
         let t1 = simple_transfer();
         let t2 = Transfer {
-            fee: 123.into(),
+            fee: 123u64.into(),
             ..simple_transfer()
         };
 
@@ -654,11 +654,11 @@ mod tests {
     #[test]
     fn effective_fee_considers_type() {
         MockContext::new().with_id(alice()).inject();
-        let t = simple_transfer().with_fee(10.into());
-        assert_eq!(t.effective_fee(), 10);
+        let t = simple_transfer().with_fee(10u64.into());
+        assert_eq!(t.effective_fee(), 10u64);
 
         let t = t.double_step();
-        assert_eq!(t.effective_fee(), 20);
+        assert_eq!(t.effective_fee(), 20u64);
     }
 
     #[test]
@@ -667,7 +667,7 @@ mod tests {
         let t = Transfer::new(
             &TokenConfiguration {
                 principal: bob(),
-                fee: 10.into(),
+                fee: 10u64.into(),
                 minting_account: Account {
                     owner: alice(),
                     subaccount: None,
@@ -679,15 +679,15 @@ mod tests {
                 subaccount: None,
             },
             None,
-            1000.into(),
+            1000u64.into(),
         );
 
-        assert_eq!(t.effective_fee(), 0);
+        assert_eq!(t.effective_fee(), 0u64);
 
         let t = Transfer::new(
             &TokenConfiguration {
                 principal: bob(),
-                fee: 10.into(),
+                fee: 10u64.into(),
                 minting_account: Account {
                     owner: john(),
                     subaccount: None,
@@ -699,9 +699,9 @@ mod tests {
                 subaccount: None,
             },
             None,
-            1000.into(),
+            1000u64.into(),
         );
 
-        assert_eq!(t.effective_fee(), 0);
+        assert_eq!(t.effective_fee(), 0u64);
     }
 }

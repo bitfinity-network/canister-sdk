@@ -23,15 +23,15 @@ async fn credit_on_success() {
     setup_success(1);
     let transfer = Transfer {
         caller: alice(),
-        amount: 1000.into(),
-        fee: 10.into(),
+        amount: 1000u64.into(),
+        fee: 10u64.into(),
         operation: Operation::CreditOnSuccess,
         ..simple_transfer()
     }
     .double_step();
 
     terminal.transfer(transfer, 1).await.unwrap();
-    assert_eq!(TestBalances::balance_of(alice()), 980);
+    assert_eq!(TestBalances::balance_of(alice()), 980u64);
 }
 
 #[tokio::test]
@@ -46,7 +46,7 @@ async fn second_stage_rejected() {
         move |_: (TransferArg,)| {
             let count = counter.fetch_add(1, Ordering::Relaxed);
             if count == 0 {
-                Ok::<Nat, TransferError>(1.into())
+                Ok::<Nat, TransferError>(1u64.into())
             } else {
                 Err::<Nat, TransferError>(TransferError::TemporarilyUnavailable)
             }
@@ -55,8 +55,8 @@ async fn second_stage_rejected() {
 
     let transfer = Transfer {
         caller: alice(),
-        amount: 1000.into(),
-        fee: 10.into(),
+        amount: 1000u64.into(),
+        fee: 10u64.into(),
         operation: Operation::CreditOnSuccess,
         ..simple_transfer()
     }
@@ -65,7 +65,7 @@ async fn second_stage_rejected() {
     let err = terminal.transfer(transfer, 1).await.unwrap_err();
     assert_eq!(err, PaymentError::Recoverable(RecoveryDetails::IcError));
     assert_eq!(counter_clone.load(Ordering::Relaxed), 2);
-    assert_eq!(TestBalances::balance_of(alice()), 0);
+    assert_eq!(TestBalances::balance_of(alice()), 0u64);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 1);
 }
 
@@ -75,15 +75,15 @@ async fn credit_on_error() {
     setup_error();
     let transfer = Transfer {
         caller: alice(),
-        amount: 1000.into(),
-        fee: 10.into(),
+        amount: 1000u64.into(),
+        fee: 10u64.into(),
         operation: Operation::CreditOnError,
         ..simple_transfer()
     }
     .double_step();
 
     terminal.transfer(transfer, 1).await.unwrap_err();
-    assert_eq!(TestBalances::balance_of(alice()), 1000);
+    assert_eq!(TestBalances::balance_of(alice()), 1000u64);
 }
 
 #[tokio::test]
@@ -97,7 +97,7 @@ async fn credit_on_error_second_stage_failed() {
         move |_: (TransferArg,)| {
             let count = counter.fetch_add(1, Ordering::Relaxed);
             if count == 0 {
-                Ok::<Nat, TransferError>(1.into())
+                Ok::<Nat, TransferError>(1u64.into())
             } else {
                 Err::<Nat, TransferError>(TransferError::TemporarilyUnavailable)
             }
@@ -106,15 +106,15 @@ async fn credit_on_error_second_stage_failed() {
 
     let transfer = Transfer {
         caller: alice(),
-        amount: 1000.into(),
-        fee: 10.into(),
+        amount: 1000u64.into(),
+        fee: 10u64.into(),
         operation: Operation::CreditOnError,
         ..simple_transfer()
     }
     .double_step();
 
     terminal.transfer(transfer, 1).await.unwrap_err();
-    assert_eq!(TestBalances::balance_of(alice()), 0);
+    assert_eq!(TestBalances::balance_of(alice()), 0u64);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 1);
 }
 
@@ -128,8 +128,8 @@ async fn recover_first_stage() {
 
     let transfer = Transfer {
         caller: alice(),
-        amount: 1000.into(),
-        fee: 10.into(),
+        amount: 1000u64.into(),
+        fee: 10u64.into(),
         operation: Operation::CreditOnSuccess,
         ..simple_transfer()
     }
@@ -141,8 +141,8 @@ async fn recover_first_stage() {
 
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].as_ref().unwrap().0, 1);
-    assert_eq!(TestBalances::balance_of(alice()), 980);
+    assert_eq!(results[0].as_ref().unwrap().0, 1u64);
+    assert_eq!(TestBalances::balance_of(alice()), 980u64);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
 
@@ -152,7 +152,7 @@ async fn recover_second_stage() {
     let counter = Arc::new(AtomicUsize::new(0));
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
         if counter.fetch_add(1, Ordering::Relaxed) == 0 {
-            let response: Result<Nat, TransferError> = Ok(1.into());
+            let response: Result<Nat, TransferError> = Ok(1u64.into());
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
@@ -162,8 +162,8 @@ async fn recover_second_stage() {
 
     let transfer = Transfer {
         caller: alice(),
-        amount: 1000.into(),
-        fee: 10.into(),
+        amount: 1000u64.into(),
+        fee: 10u64.into(),
         operation: Operation::CreditOnSuccess,
         ..simple_transfer()
     }
@@ -175,8 +175,8 @@ async fn recover_second_stage() {
     let results = terminal.recover_all().await;
 
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].as_ref().unwrap().0, 2);
-    assert_eq!(TestBalances::balance_of(alice()), 980);
+    assert_eq!(results[0].as_ref().unwrap().0, 2u64);
+    assert_eq!(TestBalances::balance_of(alice()), 980u64);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
 }
 
@@ -212,8 +212,8 @@ async fn recover_first_stage_old_zero_balance() {
 
     let transfer = Transfer {
         caller: alice(),
-        amount: 1000.into(),
-        fee: 10.into(),
+        amount: 1000u64.into(),
+        fee: 10u64.into(),
         operation: Operation::CreditOnSuccess,
         ..simple_transfer()
     }
@@ -231,7 +231,7 @@ async fn recover_first_stage_old_zero_balance() {
         results[0].as_ref().unwrap_err(),
         &PaymentError::TransferFailed(TransferFailReason::Unknown)
     );
-    assert_eq!(TestBalances::balance_of(alice()), 0);
+    assert_eq!(TestBalances::balance_of(alice()), 0u64);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
 }
@@ -246,8 +246,8 @@ async fn recover_first_stage_old_non_zero_balance() {
 
     let transfer = Transfer {
         caller: alice(),
-        amount: 1000.into(),
-        fee: 10.into(),
+        amount: 1000u64.into(),
+        fee: 10u64.into(),
         operation: Operation::CreditOnSuccess,
         ..simple_transfer()
     }
@@ -261,8 +261,8 @@ async fn recover_first_stage_old_non_zero_balance() {
     let was_called = setup_recovery_responses(interim_acc, 990, 3);
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].as_ref().unwrap().0, 3);
-    assert_eq!(TestBalances::balance_of(alice()), 980);
+    assert_eq!(results[0].as_ref().unwrap().0, 3u64);
+    assert_eq!(TestBalances::balance_of(alice()), 980u64);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
 }
@@ -274,7 +274,7 @@ async fn recover_second_stage_old_non_zero_balance() {
     let call_counter = Arc::new(AtomicUsize::new(0));
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
         if call_counter.fetch_add(1, Ordering::Relaxed) == 0 {
-            let response: Result<Nat, TransferError> = Ok(1.into());
+            let response: Result<Nat, TransferError> = Ok(1u64.into());
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
@@ -284,8 +284,8 @@ async fn recover_second_stage_old_non_zero_balance() {
 
     let transfer = Transfer {
         caller: alice(),
-        amount: 1000.into(),
-        fee: 10.into(),
+        amount: 1000u64.into(),
+        fee: 10u64.into(),
         operation: Operation::CreditOnSuccess,
         ..simple_transfer()
     }
@@ -299,8 +299,8 @@ async fn recover_second_stage_old_non_zero_balance() {
     let was_called = setup_recovery_responses(interim_acc, 990, 3);
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].as_ref().unwrap().0, 3);
-    assert_eq!(TestBalances::balance_of(alice()), 980);
+    assert_eq!(results[0].as_ref().unwrap().0, 3u64);
+    assert_eq!(TestBalances::balance_of(alice()), 980u64);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
 }
@@ -312,7 +312,7 @@ async fn recover_second_stage_old_zero_balance() {
     let call_counter = Arc::new(AtomicUsize::new(0));
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
         if call_counter.fetch_add(1, Ordering::Relaxed) == 0 {
-            let response: Result<Nat, TransferError> = Ok(1.into());
+            let response: Result<Nat, TransferError> = Ok(1u64.into());
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
@@ -322,8 +322,8 @@ async fn recover_second_stage_old_zero_balance() {
 
     let transfer = Transfer {
         caller: alice(),
-        amount: 1000.into(),
-        fee: 10.into(),
+        amount: 1000u64.into(),
+        fee: 10u64.into(),
         operation: Operation::CreditOnSuccess,
         ..simple_transfer()
     }
@@ -338,7 +338,7 @@ async fn recover_second_stage_old_zero_balance() {
     let results = terminal.recover_all().await;
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].as_ref().unwrap().0, UNKNOWN_TX_ID);
-    assert_eq!(TestBalances::balance_of(alice()), 980);
+    assert_eq!(TestBalances::balance_of(alice()), 980u64);
     assert_eq!(StableRecoveryList::<0>.take_all().len(), 0);
     assert!(was_called.load(Ordering::Relaxed));
 }
@@ -383,8 +383,8 @@ async fn recover_multiple_transfers() {
     for _ in 0..TRANSFER_COUNT {
         let transfer = Transfer {
             caller: alice(),
-            amount: 1000.into(),
-            fee: 10.into(),
+            amount: 1000u64.into(),
+            fee: 10u64.into(),
             operation: Operation::CreditOnSuccess,
             ..simple_transfer()
         }
@@ -407,7 +407,7 @@ async fn recover_multiple_transfers() {
     register_virtual_responder::<_, _, Nat>(
         token_principal(),
         "icrc1_balance_of",
-        move |(_,): (Account,)| 990.into(),
+        move |(_,): (Account,)| 990u64.into(),
     );
 
     setup_success(123);
