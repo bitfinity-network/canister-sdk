@@ -104,7 +104,7 @@ mod tests {
             metadata: vec![],
             archive_options: ArchiveOptions::default(),
         };
-        let args = Encode!(&args, &Nat::from(1_000_000_000)).unwrap();
+        let args = Encode!(&args, &Nat::from(1_000_000_000u64)).unwrap();
         let principal = env.create_canister();
         env.install_canister(principal, token_wasm().clone(), args, None);
 
@@ -143,14 +143,16 @@ mod tests {
         let payload = Encode!(&()).unwrap();
         execute_ingress_as(&env, payment, payment, "configure", payload);
 
-        let payload = Encode!(&Nat::from(1_000_000)).unwrap();
+        let payload = Encode!(&Nat::from(1_000_000u64)).unwrap();
         let response = execute_ingress_as(&env, bob(), payment, "deposit", payload);
         let decoded = Decode!(&response, Result<(Nat, Nat), PaymentError>).unwrap();
 
         assert_eq!(
             decoded,
             Err(PaymentError::TransferFailed(TransferFailReason::Rejected(
-                TransferError::InsufficientFunds { balance: 0.into() }
+                TransferError::InsufficientFunds {
+                    balance: 0u64.into()
+                }
             )))
         );
 
@@ -164,7 +166,7 @@ mod tests {
             fee: None,
             created_at_time: None,
             memo: None,
-            amount: 2_000_000.into()
+            amount: 2_000_000u64.into()
         })
         .unwrap();
         let response = execute_ingress_as(&env, bob(), token, "icrc1_transfer", payload);
@@ -172,26 +174,26 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let payload = Encode!(&Nat::from(2_000_000)).unwrap();
+        let payload = Encode!(&Nat::from(2_000_000u64)).unwrap();
         let response = execute_ingress_as(&env, bob(), payment, "deposit", payload);
         let (_, transferred) = Decode!(&response, Result<(Nat, Nat), PaymentError>)
             .unwrap()
             .unwrap();
-        assert_eq!(transferred, Nat::from(1_999_900));
+        assert_eq!(transferred, Nat::from(1_999_900u64));
 
         let payload = Encode!(&()).unwrap();
         let response = execute_ingress_as(&env, bob(), payment, "get_balance", payload);
         let (local_balance, token_balance) = Decode!(&response, Nat, Nat).unwrap();
 
-        assert_eq!(local_balance, Nat::from(1_999_900));
-        assert_eq!(token_balance, Nat::from(1_999_900));
+        assert_eq!(local_balance, Nat::from(1_999_900u64));
+        assert_eq!(token_balance, Nat::from(1_999_900u64));
 
-        let payload = Encode!(&Nat::from(1_999_900)).unwrap();
+        let payload = Encode!(&Nat::from(1_999_900u64)).unwrap();
         let response = execute_ingress_as(&env, bob(), payment, "withdraw", payload);
         let (_, transferred) = Decode!(&response, Result<(Nat, Nat), PaymentError>)
             .unwrap()
             .unwrap();
-        assert_eq!(transferred, Nat::from(1_999_700));
+        assert_eq!(transferred, Nat::from(1_999_700u64));
 
         let user_balance = get_token_principal_balance(&env, token, bob()).unwrap();
         let canister_balance =
@@ -199,7 +201,7 @@ mod tests {
 
         const FEES: u128 = 100 * 4;
         assert_eq!(user_balance, INIT_BALANCE - FEES);
-        assert_eq!(canister_balance, 0);
+        assert_eq!(canister_balance, 0u64);
     }
 
     fn execute_ingress_as(

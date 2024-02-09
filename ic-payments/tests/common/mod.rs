@@ -58,7 +58,7 @@ impl TestBalances {
             v.borrow()
                 .iter()
                 .filter(|entry| entry.of() == principal)
-                .fold(0.into(), |acc, item| item.perform(acc))
+                .fold(0u64.into(), |acc, item| item.perform(acc))
         })
     }
 }
@@ -81,7 +81,7 @@ pub fn minting_account() -> Account {
 pub fn token_config() -> TokenConfiguration {
     TokenConfiguration {
         principal: token_principal(),
-        fee: 100.into(),
+        fee: 100u64.into(),
         minting_account: minting_account(),
     }
 }
@@ -95,7 +95,7 @@ pub fn simple_transfer() -> Transfer {
         owner: alice(),
         subaccount: None,
     };
-    Transfer::new(&token_config(), alice(), to, None, 1000.into())
+    Transfer::new(&token_config(), alice(), to, None, 1000u64.into())
 }
 
 pub fn init_context() -> &'static MockContext {
@@ -109,7 +109,7 @@ pub fn init_test() -> TokenTerminal<TestBalances, StableRecoveryList<0>> {
     TokenTerminal::new(
         TokenConfiguration {
             principal: token_principal(),
-            fee: 10.into(),
+            fee: 10u64.into(),
             minting_account: minting_account(),
         },
         TestBalances {},
@@ -129,7 +129,9 @@ pub fn setup_error() {
         token_principal(),
         "icrc1_transfer",
         move |_: (TransferArg,)| {
-            Err::<Nat, TransferError>(TransferError::InsufficientFunds { balance: 0.into() })
+            Err::<Nat, TransferError>(TransferError::InsufficientFunds {
+                balance: 0u64.into(),
+            })
         },
     );
 }

@@ -115,7 +115,7 @@ pub fn idl() -> String {
     let mut canister_a_idl = <CanisterB as CanisterA>::get_idl();
     canister_a_idl.merge(&canister_b_idl);
 
-    candid::bindings::candid::compile(&canister_a_idl.env.env, &Some(canister_a_idl.actor))
+    candid::pretty::candid::compile(&canister_a_idl.env.env, &Some(canister_a_idl.actor))
 }
 
 #[cfg(test)]

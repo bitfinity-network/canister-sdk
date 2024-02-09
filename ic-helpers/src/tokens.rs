@@ -503,7 +503,7 @@ mod tests {
 
     #[test]
     fn tokens256_from_nat() {
-        let num = (Nat::from(u64::MAX) + Nat::from(1)) * 7;
+        let num = (Nat::from(u64::MAX) + Nat::from(1u64)) * 7u64;
         let converted = Tokens256::from_nat(&num).unwrap();
         let expected = ((u64::MAX as u128 + 1) * 7).into();
         assert_eq!(converted, expected);

@@ -18,7 +18,7 @@ async fn successful_transfer() {
     setup_success(1);
 
     let result = terminal.transfer(simple_transfer(), 1).await;
-    assert_eq!(result, Ok(1.into()));
+    assert_eq!(result, Ok(1u64.into()));
 }
 
 #[tokio::test]
@@ -78,7 +78,7 @@ async fn token_rejects_transaction() {
     let mut terminal = init_test();
     register_virtual_responder(token_principal(), "icrc1_transfer", |_: (TransferArg,)| {
         Err::<Nat, TransferError>(TransferError::InsufficientFunds {
-            balance: 100.into(),
+            balance: 100u64.into(),
         })
     });
 
@@ -87,7 +87,7 @@ async fn token_rejects_transaction() {
         result,
         Err(PaymentError::TransferFailed(TransferFailReason::Rejected(
             TransferError::InsufficientFunds {
-                balance: 100.into()
+                balance: 100u64.into()
             }
         )))
     );
@@ -98,12 +98,12 @@ async fn token_rejects_with_bad_fee() {
     let mut terminal = init_test();
     register_virtual_responder(token_principal(), "icrc1_transfer", |_: (TransferArg,)| {
         Err::<Nat, TransferError>(TransferError::BadFee {
-            expected_fee: 10.into(),
+            expected_fee: 10u64.into(),
         })
     });
 
     let result = terminal.transfer(simple_transfer(), 1).await;
-    assert_eq!(result, Err(PaymentError::BadFee(10.into())));
+    assert_eq!(result, Err(PaymentError::BadFee(10u64.into())));
 }
 
 #[tokio::test]
@@ -111,7 +111,7 @@ async fn token_rejects_with_duplicate() {
     let mut terminal = init_test();
     register_virtual_responder(token_principal(), "icrc1_transfer", |_: (TransferArg,)| {
         Err::<Nat, TransferError>(TransferError::Duplicate {
-            duplicate_of: 3.into(),
+            duplicate_of: 3u64.into(),
         })
     });
 
@@ -120,7 +120,7 @@ async fn token_rejects_with_duplicate() {
         result,
         Err(PaymentError::TransferFailed(TransferFailReason::Rejected(
             TransferError::Duplicate {
-                duplicate_of: 3.into(),
+                duplicate_of: 3u64.into(),
             }
         )))
     );
@@ -138,7 +138,7 @@ async fn no_retries_on_error() {
         move |_: (TransferArg,)| {
             counter.fetch_add(1, Ordering::Relaxed);
             Err::<Nat, TransferError>(TransferError::InsufficientFunds {
-                balance: 100.into(),
+                balance: 100u64.into(),
             })
         },
     );

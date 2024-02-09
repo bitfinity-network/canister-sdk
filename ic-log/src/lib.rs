@@ -1,3 +1,4 @@
+use env_filter::Filter;
 use formatter::FormatFn;
 use ic_exports::candid::{CandidType, Deserialize};
 use writer::{ConsoleWriter, InMemoryWriter, Logs, MultiWriter, Writer};
@@ -10,7 +11,6 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 use arc_swap::{ArcSwap, ArcSwapAny};
-use env_logger::filter::{self, Filter};
 use log::{LevelFilter, Log, Metadata, Record, SetLoggerError};
 
 use crate::formatter::Formatter;
@@ -64,7 +64,7 @@ pub struct Logger {
 /// ```
 #[derive(Default)]
 pub struct Builder {
-    filter: filter::Builder,
+    filter: env_filter::Builder,
     writer: MultiWriter,
     format: formatter::Builder,
 }
@@ -235,7 +235,7 @@ impl LoggerConfig {
     /// - info
     /// - debug,crate1::mod1=error,crate1::mod2,crate2=debug
     pub fn update_filters(&self, filters: &str) {
-        let new_filter = filter::Builder::default().parse(filters).build();
+        let new_filter = env_filter::Builder::default().parse(filters).build();
         let max_level = new_filter.filter();
         self.filter.swap(Arc::new(new_filter));
         log::set_max_level(max_level);

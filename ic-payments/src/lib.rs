@@ -144,7 +144,7 @@ pub struct TokenConfiguration {
 impl TokenConfiguration {
     pub(crate) fn get_fee(&self, from_acc: &Account, to_acc: &Account) -> Nat {
         if *from_acc == self.minting_account || *to_acc == self.minting_account {
-            0.into()
+            0u64.into()
         } else {
             self.fee.clone()
         }
