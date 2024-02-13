@@ -26,7 +26,7 @@ thread_local! {
 
         let scheduler = PanickingScheduler::new(
             map,
-            Box::new(save_state_cb)
+            Some(Box::new(save_state_cb))
         ).unwrap();
 
         scheduler.append_task((DummyTask::GoodTask, TaskOptions::new()).into());

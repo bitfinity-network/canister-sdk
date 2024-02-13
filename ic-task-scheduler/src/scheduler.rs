@@ -48,7 +48,7 @@ where
     /// Tasks which are currently being processed
     tasks_running: TaskQueue,
     /// Callback to be called to save the current canister state to prevent panicking tasks.
-    on_execution_state_changed_callback: Arc<Box<OnStateChangeCallback>>,
+    on_execution_state_changed_callback: Option<Arc<Box<OnStateChangeCallback>>>,
 }
 
 impl<T, P> Scheduler<T, P>
@@ -63,12 +63,12 @@ where
     /// panics. This allows the scheduler to deal with panicking tasks.
     pub fn new(
         pending_tasks: P,
-        on_execution_state_changed_callback: Box<OnStateChangeCallback>,
+        on_execution_state_changed_callback: Option<Box<OnStateChangeCallback>>,
     ) -> Result<Self> {
         Ok(Self {
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
             phantom: std::marker::PhantomData,
-            on_execution_state_changed_callback: Arc::new(on_execution_state_changed_callback),
+            on_execution_state_changed_callback: on_execution_state_changed_callback.map(Arc::new),
             tasks_to_be_processed: Arc::new(Mutex::new(HeapBTreeMap::new(()))),
             tasks_running: Arc::new(Mutex::new(HeapBTreeMap::new(()))),
         })
@@ -308,7 +308,11 @@ where
 
     /// Save the current state of the scheduler.
     async fn report_state(&self, state: TaskExecutionState) -> Result<()> {
-        (*self.on_execution_state_changed_callback)(state).await?;
+        if let Some(ref on_execution_state_changed_callback) =
+            self.on_execution_state_changed_callback
+        {
+            (*on_execution_state_changed_callback)(state).await?;
+        }
 
         Ok(())
     }
@@ -581,7 +585,7 @@ mod test {
                 ScheduledTask<SimpleTaskSteps>,
                 std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
             > = StableUnboundedMap::new(VectorMemory::default());
-            Scheduler::new(map, Box::new(report_state_cb)).unwrap()
+            Scheduler::new(map, Some(Box::new(report_state_cb))).unwrap()
         }
     }
 
@@ -688,7 +692,7 @@ mod test {
                 std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
             > = StableUnboundedMap::new(VectorMemory::default());
 
-            Scheduler::new(map, Box::new(report_state_cb)).unwrap()
+            Scheduler::new(map, Some(Box::new(report_state_cb))).unwrap()
         }
 
         async fn report_state(
@@ -1105,7 +1109,7 @@ mod test {
                 ScheduledTask<SimpleTask>,
                 std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
             > = StableUnboundedMap::new(VectorMemory::default());
-            Scheduler::new(map, Box::new(report_state_cb)).unwrap()
+            Scheduler::new(map, Some(Box::new(report_state_cb))).unwrap()
         }
 
         async fn report_state(
