@@ -42,3 +42,6 @@ reqwest = { workspace = true, optional = true, features = [
   "trust-dns",
 ] }
 tokio = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }

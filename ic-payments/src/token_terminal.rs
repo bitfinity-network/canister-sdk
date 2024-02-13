@@ -438,7 +438,7 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         n_retries: usize,
     ) -> Result<TxId, PaymentError> {
         match expected_fee {
-            v if v == 0 => self.set_minting_account(self.get_minting_account(v).await?),
+            v if v == 0u64 => self.set_minting_account(self.get_minting_account(v).await?),
             v if v == self.token_config.fee => {
                 self.set_minting_account(self.get_minting_account(v).await?)
             }
@@ -477,12 +477,12 @@ impl<T: Balances, R: RecoveryList> TokenTerminal<T, R> {
         let interim_balance = icrc1::get_icrc1_balance(self.token_config.principal, acc).await?;
 
         match stage {
-            Stage::First if interim_balance == 0 => self.reject(
+            Stage::First if interim_balance == 0u64 => self.reject(
                 tx,
                 InternalPaymentError::TransferFailed(TransferFailReason::Unknown),
             ),
             Stage::First => self.complete(tx, UNKNOWN_TX_ID.into(), N_RETRIES).await,
-            Stage::Second if interim_balance == 0 => {
+            Stage::Second if interim_balance == 0u64 => {
                 self.complete(tx, UNKNOWN_TX_ID.into(), N_RETRIES).await
             }
             Stage::Second => Ok(self

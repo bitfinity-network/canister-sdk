@@ -32,11 +32,12 @@ impl IcContext {
     }
 
     #[inline(always)]
+    #[allow(clippy::transmute_ptr_to_ref)]
     fn as_mut(&self) -> &mut Self {
         unsafe {
             let const_ptr = self as *const Self;
             let mut_ptr = const_ptr as *mut Self;
-            &mut *mut_ptr
+            ::std::mem::transmute::<*mut Self, &mut Self>(mut_ptr)
         }
     }
 }

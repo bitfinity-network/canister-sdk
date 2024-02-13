@@ -62,7 +62,7 @@ pub fn idl() -> String {
 
     metrics_idl.merge(&canister_c_idl);
 
-    candid::bindings::candid::compile(&metrics_idl.env.env, &Some(metrics_idl.actor))
+    candid::pretty::candid::compile(&metrics_idl.env.env, &Some(metrics_idl.actor))
 }
 
 #[cfg(test)]

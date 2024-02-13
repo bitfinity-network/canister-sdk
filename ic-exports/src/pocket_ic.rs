@@ -6,12 +6,13 @@ use std::{env, fs};
 use flate2::read::GzDecoder;
 use log::*;
 use once_cell::sync::Lazy;
+use pocket_ic::common::rest::SubnetConfigSet;
 pub use pocket_ic::*;
 
 #[cfg(feature = "pocket-ic-tests-async")]
 pub mod nio;
 
-const DFINITY_REVISION: &str = "69e1408347723dbaa7a6cd2faa9b65c42abbe861";
+const POCKET_IC_SERVER_VERSION: &str = "3.0.0";
 
 /// Returns the pocket-ic client.
 /// If pocket-ic server binary is not present, it downloads it and sets
@@ -54,13 +55,25 @@ pub fn init_pocket_ic() -> PocketIc {
         panic!("pocket-ic is not initialized");
     }
 
-    PocketIc::new()
+    create_pocket_ic_client()
+}
+
+pub fn create_pocket_ic_client() -> PocketIc {
+    // Adding nns allows using root key of the instance
+    // while test speed doesn't seem to be affected
+    let config = SubnetConfigSet {
+        nns: true,
+        sns: true,
+        application: 1,
+        ..Default::default()
+    };
+    PocketIc::from_config(config)
 }
 
 fn default_pocket_ic_server_dir() -> PathBuf {
     env::temp_dir()
         .join("pocket-ic-server")
-        .join(DFINITY_REVISION)
+        .join(POCKET_IC_SERVER_VERSION)
 }
 
 fn default_pocket_ic_server_binary_path() -> PathBuf {
@@ -86,7 +99,7 @@ fn download_binary(pocket_ic_dir: PathBuf) -> PathBuf {
         _ => panic!("pocket-ic requires linux or macos"),
     };
 
-    let download_url = format!("https://download.dfinity.systems/ic/{DFINITY_REVISION}/openssl-static-binaries/x86_64-{platform}/pocket-ic.gz");
+    let download_url = format!("https://github.com/dfinity/pocketic/releases/download/{POCKET_IC_SERVER_VERSION}/pocket-ic-x86_64-{platform}.gz");
 
     // Download file
     let gz_binary = {

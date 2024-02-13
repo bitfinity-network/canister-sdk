@@ -14,6 +14,7 @@ pub fn inject(ctx: MockContext) {
 
 /// Return the mutable reference to the context of the current thread.
 #[inline]
+#[allow(clippy::transmute_ptr_to_ref)]
 pub fn get_context() -> &'static mut MockContext {
     CONTEXT.with(|cell| {
         let borrow = cell.borrow();
@@ -24,7 +25,7 @@ pub fn get_context() -> &'static mut MockContext {
         unsafe {
             let const_ptr = ctx as *const MockContext;
             let mut_ptr = const_ptr as *mut MockContext;
-            &mut *mut_ptr
+            ::std::mem::transmute::<*mut MockContext, &mut MockContext>(mut_ptr)
         }
     })
 }

@@ -11,10 +11,10 @@ async fn deposit_with_success() {
     let mut terminal = init_test();
     setup_success(1);
 
-    let (tx_id, amount) = terminal.deposit(alice(), 1000.into()).await.unwrap();
-    assert_eq!(tx_id, 1);
-    assert_eq!(amount, 990);
-    assert_eq!(TestBalances::balance_of(alice()), 990);
+    let (tx_id, amount) = terminal.deposit(alice(), 1000u64.into()).await.unwrap();
+    assert_eq!(tx_id, 1u64);
+    assert_eq!(amount, 990u64);
+    assert_eq!(TestBalances::balance_of(alice()), 990u64);
 }
 
 #[tokio::test]
@@ -22,42 +22,45 @@ async fn deposit_with_error() {
     let mut terminal = init_test();
     setup_error();
 
-    terminal.deposit(alice(), 1000.into()).await.unwrap_err();
-    assert_eq!(TestBalances::balance_of(alice()), 0);
+    terminal.deposit(alice(), 1000u64.into()).await.unwrap_err();
+    assert_eq!(TestBalances::balance_of(alice()), 0u64);
 }
 
 #[tokio::test]
 async fn withdraw_with_success() {
     let mut terminal = init_test();
     setup_success(1);
-    TestBalances.credit(alice(), 3000.into()).unwrap();
+    TestBalances.credit(alice(), 3000u64.into()).unwrap();
 
-    let (tx_id, amount) = terminal.withdraw(alice(), 1000.into()).await.unwrap();
-    assert_eq!(tx_id, 1);
-    assert_eq!(amount, 980);
-    assert_eq!(TestBalances::balance_of(alice()), 2000);
+    let (tx_id, amount) = terminal.withdraw(alice(), 1000u64.into()).await.unwrap();
+    assert_eq!(tx_id, 1u64);
+    assert_eq!(amount, 980u64);
+    assert_eq!(TestBalances::balance_of(alice()), 2000u64);
 }
 
 #[tokio::test]
 async fn withdraw_with_error() {
     let mut terminal = init_test();
     setup_error();
-    TestBalances.credit(alice(), 3000.into()).unwrap();
+    TestBalances.credit(alice(), 3000u64.into()).unwrap();
 
-    terminal.withdraw(alice(), 1000.into()).await.unwrap_err();
-    assert_eq!(TestBalances::balance_of(alice()), 3000);
+    terminal
+        .withdraw(alice(), 1000u64.into())
+        .await
+        .unwrap_err();
+    assert_eq!(TestBalances::balance_of(alice()), 3000u64);
 }
 
 #[test]
 fn update_fees() {
     let mut terminal = init_test();
-    let transfer = simple_transfer().with_fee(15.into());
+    let transfer = simple_transfer().with_fee(15u64.into());
 
     StableRecoveryList::<0>.push(transfer);
 
-    terminal.set_fee(20.into());
+    terminal.set_fee(20u64.into());
 
-    assert_eq!(StableRecoveryList::<0>.list()[0].fee, 20);
+    assert_eq!(StableRecoveryList::<0>.list()[0].fee, 20u64);
 }
 
 #[test]
@@ -65,14 +68,20 @@ fn update_minting_account() {
     let mut terminal = init_test();
     let token_config = TokenConfiguration {
         principal: token_principal(),
-        fee: 10.into(),
+        fee: 10u64.into(),
         minting_account: minting_account(),
     };
 
-    let transfer = Transfer::new(&token_config, alice(), minting_account(), None, 1000.into());
+    let transfer = Transfer::new(
+        &token_config,
+        alice(),
+        minting_account(),
+        None,
+        1000u64.into(),
+    );
 
-    assert_eq!(transfer.fee, 0);
-    assert_eq!(transfer.effective_fee(), 0);
+    assert_eq!(transfer.fee, 0u64);
+    assert_eq!(transfer.effective_fee(), 0u64);
 
     StableRecoveryList::<0>.push(transfer);
 
@@ -81,6 +90,6 @@ fn update_minting_account() {
         subaccount: Some([12; 32]),
     });
 
-    assert_eq!(StableRecoveryList::<0>.list()[0].fee, 10);
-    assert_eq!(StableRecoveryList::<0>.list()[0].effective_fee(), 10);
+    assert_eq!(StableRecoveryList::<0>.list()[0].fee, 10u64);
+    assert_eq!(StableRecoveryList::<0>.list()[0].effective_fee(), 10u64);
 }
