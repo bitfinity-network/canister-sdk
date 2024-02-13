@@ -29,7 +29,7 @@ pub enum TaskExecutionState {
     Panicked(u32),
 }
 
-type SaveStateQueryCallback = dyn Fn(
+type OnStateChangeCallback = dyn Fn(
         TaskExecutionState,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<(), (RejectionCode, String)>>>>
     + Send
@@ -48,7 +48,7 @@ where
     /// Tasks which are currently being processed
     tasks_running: TaskQueue,
     /// Callback to be called to save the current canister state to prevent panicking tasks.
-    on_execution_state_changed_callback: Arc<Box<SaveStateQueryCallback>>,
+    on_execution_state_changed_callback: Arc<Box<OnStateChangeCallback>>,
 }
 
 impl<T, P> Scheduler<T, P>
@@ -58,13 +58,12 @@ where
 {
     /// Create a new scheduler.
     ///
-    /// A callback must be passed and it'll be called to save and report the current state of the scheduler.
-    ///
-    /// ATTENTION! In order to prevent scheduler panic this callback should always make a query to a canister endpoint.
-    /// This because the current scheduler state should be saved while running tasks
+    /// A callback `on_execution_state_changed_callback` is called every time the state of a task is changed.
+    /// By performing an inter-canister call in the callback, you can force the state to be persisted even in case of
+    /// panics. This allows the scheduler to deal with panicking tasks.
     pub fn new(
         pending_tasks: P,
-        on_execution_state_changed_callback: Box<SaveStateQueryCallback>,
+        on_execution_state_changed_callback: Box<OnStateChangeCallback>,
     ) -> Result<Self> {
         Ok(Self {
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),

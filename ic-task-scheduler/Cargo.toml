@@ -18,5 +18,4 @@ candid = { workspace = true }
 ic-exports = { path = "../ic-exports", features = ["pocket-ic-tests-async"] }
 once_cell = { workspace = true }
 rand = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
-pocket-ic = { workspace = true }
+tokio = { workspace = true, features = ["rt", "macros", "time"] }
