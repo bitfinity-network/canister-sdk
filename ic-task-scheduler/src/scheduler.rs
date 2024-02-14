@@ -1,8 +1,9 @@
+use std::collections::HashSet;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use ic_stable_structures::{BTreeMapStructure as _, HeapBTreeMap, IterableUnboundedMapStructure};
+use ic_stable_structures::IterableUnboundedMapStructure;
 use parking_lot::Mutex;
 
 use crate::task::{ScheduledTask, Task};
@@ -10,7 +11,7 @@ use crate::time::time_secs;
 use crate::{Result, SchedulerError};
 
 /// Internal type used to store tasks to be processed and processing tasks
-type TaskQueue = Arc<Mutex<HeapBTreeMap<u32, (), ()>>>;
+type TaskQueue = Arc<Mutex<HashSet<u32>>>;
 
 /// The state of a task execution.
 /// This is reported when the `SaveStateQueryCallback` is called.
@@ -65,8 +66,8 @@ where
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
             phantom: std::marker::PhantomData,
             on_execution_state_changed_callback: on_execution_state_changed_callback.map(Arc::new),
-            tasks_to_be_processed: Arc::new(Mutex::new(HeapBTreeMap::new(()))),
-            tasks_running: Arc::new(Mutex::new(HeapBTreeMap::new(()))),
+            tasks_to_be_processed: Arc::new(Mutex::new(HashSet::new())),
+            tasks_running: Arc::new(Mutex::new(HashSet::new())),
         })
     }
 
@@ -91,7 +92,7 @@ where
             1 => {
                 // if there is only one processing task, we can assume that it panicked
                 // delete that task and mark it as panicked
-                let task = self.tasks_running.lock().iter().next().unwrap().0;
+                let task = *self.tasks_running.lock().iter().next().unwrap();
                 self.delete_unprocessable_task(task).await?;
 
                 // eventually reschedule the tasks to be processed
@@ -108,7 +109,7 @@ where
             .tasks_to_be_processed
             .lock()
             .iter()
-            .map(|(key, _)| key)
+            .map(|key| *key)
             .collect();
         for task_id in tasks_to_be_processed {
             let lock = self.pending_tasks.lock();
@@ -186,8 +187,8 @@ where
             let mut tasks_running_lock = self.tasks_running.lock();
             let mut tasks_to_be_processed_lock = self.tasks_running.lock();
             tasks_to_be_processed_lock.clear();
-            for (key, _) in tasks_running_lock.iter() {
-                tasks_to_be_processed_lock.insert(key, ());
+            for key in tasks_running_lock.iter() {
+                tasks_to_be_processed_lock.insert(*key);
             }
             // clear tasks_running
             tasks_running_lock.clear();
@@ -198,9 +199,9 @@ where
             let second_half: Vec<u32> = tasks_to_be_processed_lock
                 .iter()
                 .enumerate()
-                .filter_map(|(i, (task, _))| {
+                .filter_map(|(i, task)| {
                     if i > total_tasks_half {
-                        Some(task)
+                        Some(*task)
                     } else {
                         None
                     }
@@ -241,7 +242,7 @@ where
             let mut tasks_to_be_processed_lock = self.tasks_to_be_processed.lock();
             tasks_to_be_processed_lock.clear();
             for task in tasks_to_be_executed {
-                tasks_to_be_processed_lock.insert(task, ());
+                tasks_to_be_processed_lock.insert(task);
             }
             drop(tasks_to_be_processed_lock);
 
@@ -253,10 +254,10 @@ where
 
     /// Remove a task from `to_be_processed` and move it into the `processing` set. Then save the current task
     async fn put_task_to_processing_tasks(&mut self, task: u32) -> Result<()> {
-        let task_removed = self.tasks_to_be_processed.lock().remove(&task).is_some();
+        let task_removed = self.tasks_to_be_processed.lock().remove(&task);
 
         if task_removed {
-            self.tasks_running.lock().insert(task, ());
+            self.tasks_running.lock().insert(task);
             // save state
             self.report_state(TaskExecutionState::Executing(task)).await
         } else {

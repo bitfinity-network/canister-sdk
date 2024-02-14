@@ -1,4 +1,5 @@
 use candid::Principal;
+use ic_kit::mock_principals::alice;
 
 use crate::pocket_ic_tests::deploy_dummy_scheduler_canister;
 
@@ -8,6 +9,10 @@ thread_local! {
 
 #[tokio::test]
 async fn test_should_remove_panicking_task() {
+    ic_exports::ic_kit::MockContext::new()
+        .with_caller(alice())
+        .with_id(alice())
+        .inject();
     let test_ctx = deploy_dummy_scheduler_canister().await.unwrap();
     CANISTER.with_borrow_mut(|principal| *principal = test_ctx.dummy_scheduler_canister);
 
@@ -16,7 +21,7 @@ async fn test_should_remove_panicking_task() {
     }
 
     assert!(test_ctx.scheduled_state_called().await);
-    assert_eq!(test_ctx.executed_tasks().await, vec![0, 1, 2, 3]);
+    assert_eq!(test_ctx.executed_tasks().await, vec![3, 0, 1, 2]);
     assert_eq!(test_ctx.panicked_tasks().await, vec![1]);
     assert_eq!(test_ctx.completed_tasks().await, vec![0, 2]);
     assert_eq!(test_ctx.failed_tasks().await, vec![3]);
