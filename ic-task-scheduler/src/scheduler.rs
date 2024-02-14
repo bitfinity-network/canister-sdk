@@ -105,12 +105,8 @@ where
         }
 
         // iterate over tasks to be processed, and execute it one by one
-        let tasks_to_be_processed: Vec<u32> = self
-            .tasks_to_be_processed
-            .lock()
-            .iter()
-            .map(|key| *key)
-            .collect();
+        let tasks_to_be_processed: Vec<u32> =
+            self.tasks_to_be_processed.lock().iter().copied().collect();
         for task_id in tasks_to_be_processed {
             let lock = self.pending_tasks.lock();
             let mut task = match lock.get(&task_id) {
@@ -195,7 +191,7 @@ where
             drop(tasks_running_lock);
 
             // remove second half
-            let total_tasks_half = (tasks_to_be_processed_lock.len() / 2) as usize;
+            let total_tasks_half = tasks_to_be_processed_lock.len() / 2;
             let second_half: Vec<u32> = tasks_to_be_processed_lock
                 .iter()
                 .enumerate()
@@ -363,7 +359,6 @@ where
 }
 
 #[cfg(test)]
-#[allow(clippy::type_complexity)]
 mod test {
 
     use super::*;
@@ -566,14 +561,16 @@ mod test {
             });
         }
 
-        fn scheduler() -> Scheduler<
+        type TestScheduler = Scheduler<
             SimpleTaskSteps,
             StableUnboundedMap<
                 u32,
                 ScheduledTask<SimpleTaskSteps>,
                 std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
             >,
-        > {
+        >;
+
+        fn scheduler() -> TestScheduler {
             let map: StableUnboundedMap<
                 u32,
                 ScheduledTask<SimpleTaskSteps>,
@@ -672,14 +669,16 @@ mod test {
                 .await;
         }
 
-        fn scheduler() -> Scheduler<
+        type TestScheduler = Scheduler<
             SimpleTask,
             StableUnboundedMap<
                 u32,
                 ScheduledTask<SimpleTask>,
                 std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
             >,
-        > {
+        >;
+
+        fn scheduler() -> TestScheduler {
             let map: StableUnboundedMap<
                 u32,
                 ScheduledTask<SimpleTask>,
@@ -1088,14 +1087,16 @@ mod test {
             });
         }
 
-        fn scheduler() -> Scheduler<
+        type TestScheduler = Scheduler<
             SimpleTask,
             StableUnboundedMap<
                 u32,
                 ScheduledTask<SimpleTask>,
                 std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
             >,
-        > {
+        >;
+
+        fn scheduler() -> TestScheduler {
             let map: StableUnboundedMap<
                 u32,
                 ScheduledTask<SimpleTask>,
