@@ -4,7 +4,6 @@ mod wasm_utils;
 use std::time::Duration;
 
 use candid::{CandidType, Decode, Encode, Principal};
-use ic_exports::ic_kit::ic;
 use ic_exports::pocket_ic;
 use ic_exports::pocket_ic::nio::PocketIcAsync;
 use ic_kit::mock_principals::alice;
@@ -50,7 +49,7 @@ impl PocketIcTestContext {
     pub async fn scheduled_state_called(&self) -> bool {
         let args = Encode!(&()).unwrap();
         self.query_as(
-            ic::caller(),
+            alice(),
             self.dummy_scheduler_canister,
             "scheduled_state_called",
             args,
@@ -61,7 +60,7 @@ impl PocketIcTestContext {
     pub async fn completed_tasks(&self) -> Vec<u32> {
         let args = Encode!(&()).unwrap();
         self.query_as(
-            ic::caller(),
+            alice(),
             self.dummy_scheduler_canister,
             "completed_tasks",
             args,
@@ -72,7 +71,7 @@ impl PocketIcTestContext {
     pub async fn panicked_tasks(&self) -> Vec<u32> {
         let args = Encode!(&()).unwrap();
         self.query_as(
-            ic::caller(),
+            alice(),
             self.dummy_scheduler_canister,
             "panicked_tasks",
             args,
@@ -82,19 +81,14 @@ impl PocketIcTestContext {
 
     pub async fn failed_tasks(&self) -> Vec<u32> {
         let args = Encode!(&()).unwrap();
-        self.query_as(
-            ic::caller(),
-            self.dummy_scheduler_canister,
-            "failed_tasks",
-            args,
-        )
-        .await
+        self.query_as(alice(), self.dummy_scheduler_canister, "failed_tasks", args)
+            .await
     }
 
     pub async fn executed_tasks(&self) -> Vec<u32> {
         let args = Encode!(&()).unwrap();
         self.query_as(
-            ic::caller(),
+            alice(),
             self.dummy_scheduler_canister,
             "executed_tasks",
             args,
