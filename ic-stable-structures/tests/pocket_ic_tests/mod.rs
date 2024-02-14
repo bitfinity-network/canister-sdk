@@ -203,7 +203,7 @@ impl PocketIcTestContext {
     }
 }
 
-pub fn with_pocket_ic_context<'a, F>(f: F) -> Result<()>
+pub fn with_pocket_ic_context<F>(f: F) -> Result<()>
 where
     F: FnOnce(&PocketIcTestContext) -> Result<()>,
 {
