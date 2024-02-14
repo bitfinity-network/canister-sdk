@@ -2,7 +2,6 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use ic_kit::RejectionCode;
 use ic_stable_structures::{BTreeMapStructure as _, HeapBTreeMap, IterableUnboundedMapStructure};
 use parking_lot::Mutex;
 
@@ -29,11 +28,8 @@ pub enum TaskExecutionState {
     Panicked(u32),
 }
 
-type OnStateChangeCallback = dyn Fn(
-        TaskExecutionState,
-    ) -> Pin<Box<dyn Future<Output = std::result::Result<(), (RejectionCode, String)>>>>
-    + Send
-    + Sync;
+type OnStateChangeCallback =
+    dyn Fn(TaskExecutionState) -> Pin<Box<dyn Future<Output = Result<()>>>> + Send + Sync;
 
 /// A scheduler is responsible for executing tasks.
 pub struct Scheduler<T, P>
@@ -371,8 +367,7 @@ mod test {
 
     use super::*;
 
-    type SaveStateCb =
-        Pin<Box<dyn Future<Output = std::result::Result<(), (RejectionCode, String)>>>>;
+    type SaveStateCb = Pin<Box<dyn Future<Output = Result<()>>>>;
 
     mod test_execution {
 
@@ -481,9 +476,7 @@ mod test {
             });
         }
 
-        async fn report_state(
-            state: TaskExecutionState,
-        ) -> std::result::Result<(), (RejectionCode, String)> {
+        async fn report_state(state: TaskExecutionState) -> Result<()> {
             if let TaskExecutionState::Failed(id, err) = state {
                 REPORT_STATE_CB_CALLED.with(|called| {
                     called.replace(Some(TaskExecutionState::Failed(id, err)));
@@ -695,9 +688,7 @@ mod test {
             Scheduler::new(map, Some(Box::new(report_state_cb))).unwrap()
         }
 
-        async fn report_state(
-            state: TaskExecutionState,
-        ) -> std::result::Result<(), (RejectionCode, String)> {
+        async fn report_state(state: TaskExecutionState) -> Result<()> {
             if let TaskExecutionState::Failed(id, err) = state {
                 REPORT_STATE_CB_CALLED.with(|called| {
                     called.replace(Some(TaskExecutionState::Failed(id, err)));
@@ -1112,9 +1103,7 @@ mod test {
             Scheduler::new(map, Some(Box::new(report_state_cb))).unwrap()
         }
 
-        async fn report_state(
-            state: TaskExecutionState,
-        ) -> std::result::Result<(), (RejectionCode, String)> {
+        async fn report_state(state: TaskExecutionState) -> Result<()> {
             if let TaskExecutionState::Failed(id, err) = state {
                 REPORT_STATE_CB_CALLED.with(|called| {
                     called.replace(Some(TaskExecutionState::Failed(id, err)));

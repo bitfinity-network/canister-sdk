@@ -5,7 +5,6 @@ use std::time::Duration;
 
 use candid::Principal;
 use ic_canister::{generate_idl, init, post_upgrade, query, update, Canister, Idl, PreUpdate};
-use ic_exports::ic_kit::RejectionCode;
 use ic_stable_structures::stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{IcMemoryManager, MemoryId, StableUnboundedMap, VirtualMemory};
 use ic_task_scheduler::scheduler::{Scheduler, TaskExecutionState, TaskScheduler};
@@ -152,7 +151,7 @@ impl DummyCanister {
     }
 }
 
-async fn save_state(state: TaskExecutionState) -> Result<(), (RejectionCode, String)> {
+async fn save_state(state: TaskExecutionState) -> ic_task_scheduler::Result<()> {
     let canister = PRINCIPAL.with_borrow(|principal| *principal);
     match state {
         TaskExecutionState::Completed(id) => {
@@ -177,10 +176,12 @@ async fn save_state(state: TaskExecutionState) -> Result<(), (RejectionCode, Str
         }
         TaskExecutionState::Scheduled => {}
     }
-    ic_exports::ic_cdk::call(canister, "save_state", ()).await
+    ic_exports::ic_cdk::call(canister, "save_state", ())
+        .await
+        .map_err(|(_, msg)| ic_task_scheduler::SchedulerError::TaskExecutionFailed(msg))
 }
 
-type SaveStateCb = Pin<Box<dyn Future<Output = Result<(), (RejectionCode, String)>>>>;
+type SaveStateCb = Pin<Box<dyn Future<Output = ic_task_scheduler::Result<()>>>>;
 
 fn save_state_cb(state: TaskExecutionState) -> SaveStateCb {
     Box::pin(async { save_state(state).await })
