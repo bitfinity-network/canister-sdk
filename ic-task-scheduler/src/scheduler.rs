@@ -85,7 +85,7 @@ where
     async fn run_with_timestamp(&mut self, now_timestamp_secs: u64) -> Result<u32> {
         let mut task_execution_started = 0;
 
-        // checks tasks that are still in tasks running (something bad happened in the last cycle)
+        // checks tasks that are still in tasks running (this could indicate a panic happened in the previous run)
         let tasks_running_count = self.tasks_running.lock().len();
         match tasks_running_count {
             0 => {
