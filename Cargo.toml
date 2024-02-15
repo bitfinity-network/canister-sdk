@@ -75,15 +75,11 @@ tokio-test = "0.4"
 
 # IC dependencies
 candid = "0.10"
+dfinity-stable-structures = { package = "ic-stable-structures", version = "0.6" }
 ic-agent = { version = "0.33" }
 ic-cdk = "0.12"
 ic-cdk-macros = "0.8"
 ic-cdk-timers = "0.6"
 icrc-ledger-types = "0.1.0"
 ic-ledger-types = "0.9"
-dfinity-stable-structures = { package = "ic-stable-structures", version = "0.6" }
-
-# version 2.1 of pocket-ic mistakenly imports native-tls which makes it incompatible with i686 testing
-# We'll switch to the official pocket-ic package once they fixed the issue
-# pocket-ic = "2.1"
-pocket-ic = { git = "https://github.com/bitfinity-network/ic", branch = "bitfinity", package = "pocket-ic" }
+pocket-ic = "2.2"
