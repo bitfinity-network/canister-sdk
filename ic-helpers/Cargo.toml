@@ -5,23 +5,17 @@ edition.workspace = true
 
 [dependencies]
 async-trait = { workspace = true }
+auto_ops = { workspace = true }
 candid = { workspace = true }
+crypto-bigint = { workspace = true }
+ic-canister = { path = "../ic-canister/ic-canister" }
+ic-exports = { path = "../ic-exports" }
+k256 = { workspace = true }
+num-bigint = { workspace = true }
 num-traits = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-k256 = { workspace = true }
-auto_ops = { workspace = true }
-crypto-bigint = { workspace = true }
-num-bigint = { workspace = true }
-
-ic-exports = { path = "../ic-exports" }
-ic-canister = { path = "../ic-canister/ic-canister" }
-ic-storage = { path = "../ic-storage" }
-
-# This dependency is not used direcly, but we must enable `custom` feature for it to compile for wasm32 target.
-[target.'cfg(target = "wasm32-unknown-unknown")'.dependencies]
-getrandom = { workspace = true }
 
 [dev-dependencies]
 hex = { workspace = true }

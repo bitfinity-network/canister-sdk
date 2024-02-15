@@ -5,11 +5,7 @@ edition.workspace = true
 
 [dependencies]
 candid = { workspace = true }
-thiserror = { workspace = true }
-serde = { workspace = true }
-
-ic-storage-derive = {path = "ic-storage-derive"}
 ic-exports = { path = "../ic-exports" }
-
-[dev-dependencies]
-ic-canister = {path = "../ic-canister/ic-canister"}
+ic-storage-derive = {path = "ic-storage-derive"}
+serde = { workspace = true }
+thiserror = { workspace = true }

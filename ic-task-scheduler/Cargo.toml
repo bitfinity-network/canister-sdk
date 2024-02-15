@@ -5,9 +5,8 @@ edition.workspace = true
 
 [dependencies]
 bincode = { workspace = true }
-ic-stable-structures = { path = "../ic-stable-structures" }
 ic-kit = { path = "../ic-kit" }
-log = { workspace = true }
+ic-stable-structures = { path = "../ic-stable-structures" }
 parking_lot = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }

@@ -4,15 +4,14 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-ic-exports = { path = "../ic-exports", features = ["icrc"] }
+async-recursion = { workspace = true }
+candid = { workspace = true }
 ic-canister = { path = "../ic-canister/ic-canister" }
-sha2 = { workspace = true }
-ic-storage = { path = "../ic-storage" }
+ic-exports = { path = "../ic-exports", features = ["icrc"] }
 ic-stable-structures = { path = "../ic-stable-structures/" }
 serde = { workspace = true }
-candid = { workspace = true }
+sha2 = { workspace = true }
 thiserror = { workspace = true }
-async-recursion = { workspace = true }
 
 [dev-dependencies]
 ic-exports = { path = "../ic-exports", features = ["pocket-ic-tests"] }

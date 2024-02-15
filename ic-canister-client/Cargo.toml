@@ -18,6 +18,5 @@ ic-agent = { workspace = true, optional = true }
 ic-canister = { path = "../ic-canister/ic-canister" }
 ic-exports = { path = "../ic-exports" }
 serde = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true, features = ["sync"] }
