@@ -12,13 +12,11 @@ debug-logs = []
 
 [dependencies]
 candid = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
-
-ic-exports = { path = "../ic-exports" }
 ic-canister = { path = "../ic-canister/ic-canister" }
 ic-canister-macros = { path = "../ic-canister/ic-canister-macros" }
-ic-storage = { path = "../ic-storage" }
+ic-exports = { path = "../ic-exports" }
 ic-helpers = { path = "../ic-helpers" }
 ic-metrics = { path = "../ic-metrics" }
+ic-storage = { path = "../ic-storage" }
+serde = { workspace = true }
+thiserror = { workspace = true }

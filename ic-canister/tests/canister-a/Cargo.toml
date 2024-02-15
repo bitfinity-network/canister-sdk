@@ -9,12 +9,10 @@ export-api = []
 
 [dependencies]
 candid = { workspace = true }
+ic-canister = { path = "../../ic-canister" }
+ic-exports = { path = "../../../ic-exports" }
+ic-storage = { path = "../../../ic-storage" }
 serde = { workspace = true }
 
-ic-exports = {path = "../../../ic-exports"}
-ic-storage = {path = "../../../ic-storage"}
-ic-canister = {path = "../../ic-canister"}
-ic-helpers = {path = "../../../ic-helpers"}
-
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt", "macros"]}
+tokio = { workspace = true, features = ["rt", "macros"] }

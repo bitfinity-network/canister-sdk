@@ -8,15 +8,12 @@ default = []
 export-api = []
 
 [dependencies]
-serde = { workspace = true }
 candid = { workspace = true }
-
-ic-exports = {path = "../../../ic-exports"}
-ic-storage = {path = "../../../ic-storage"}
-ic-canister = {path = "../../ic-canister"}
-ic-helpers = {path = "../../../ic-helpers"}
-canister-a = {path = "../canister-a", features = ["export-api"]}
-
+canister-a = { path = "../canister-a", features = ["export-api"] }
+ic-canister = { path = "../../ic-canister" }
+ic-exports = { path = "../../../ic-exports" }
+ic-storage = { path = "../../../ic-storage" }
+serde = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt", "macros"]}
+tokio = { workspace = true, features = ["rt", "macros"] }

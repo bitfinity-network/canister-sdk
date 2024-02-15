@@ -18,17 +18,13 @@ candid = { workspace = true }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 ic-cdk-timers = { workspace = true }
-serde = { workspace = true }
-pocket-ic = { workspace = true, optional = true }
-
-
-ic-ledger-types = { workspace = true, optional = true }
-icrc-ledger-types = { workspace = true, optional = true }
-
-ic-kit = { path = "../ic-kit" }
-
 # Do not remove: This fixes the getrandom deployment in wasm canisters
 ic-crypto-getrandom-for-wasm = { path = "../ic-crypto-getrandom-for-wasm" }
+ic-kit = { path = "../ic-kit" }
+ic-ledger-types = { workspace = true, optional = true }
+icrc-ledger-types = { workspace = true, optional = true }
+pocket-ic = { workspace = true, optional = true }
+serde = { workspace = true }
 
 # dependencies for `pocket-ic-tests` feature
 flate2 = { workspace = true, optional = true }

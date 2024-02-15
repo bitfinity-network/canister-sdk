@@ -61,17 +61,16 @@ quote = "1.0"
 rand = "0.8"
 reqwest = { version = "0.11", default-features = false }
 ringbuffer = "0.15"
+schnellru = { version = "0.2", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11.2"
 serde_json = "1.0"
 serde_tokenstream = "0.2"
 sha2 = "0.10"
-schnellru = { version = "0.2", default-features = false }
 syn = "2.0"
 tempfile = "3.6"
 thiserror = "1.0"
 tokio = "1.0"
-tokio-test = "0.4"
 
 # IC dependencies
 candid = "0.10"
@@ -80,6 +79,6 @@ ic-agent = { version = "0.33" }
 ic-cdk = "0.12"
 ic-cdk-macros = "0.8"
 ic-cdk-timers = "0.6"
-icrc-ledger-types = "0.1.0"
 ic-ledger-types = "0.9"
+icrc-ledger-types = "0.1.0"
 pocket-ic = "2.2"
