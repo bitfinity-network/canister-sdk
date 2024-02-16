@@ -187,6 +187,16 @@ pub trait UnboundedMapStructure<K, V> {
     fn clear(&mut self);
 }
 
+pub trait IterableUnboundedMapStructure<K, V>: UnboundedMapStructure<K, V> {
+    /// Map iterator type
+    type Iterator<'a>: Iterator<Item = (K, V)>
+    where
+        Self: 'a;
+
+    /// Returns iterator over the whole collection
+    fn iter(&self) -> Self::Iterator<'_>;
+}
+
 pub trait VecStructure<T> {
     /// Returns if vector is empty
     fn is_empty(&self) -> bool;
