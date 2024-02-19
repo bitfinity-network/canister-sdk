@@ -10,7 +10,7 @@ use crate::scheduler::TaskScheduler;
 use crate::SchedulerError;
 
 /// A sync task is a unit of work that can be executed by the scheduler.
-pub trait Task: Clone {
+pub trait Task {
     /// Execute the task and return the next task to execute.
     fn execute(
         &self,
@@ -19,7 +19,7 @@ pub trait Task: Clone {
 }
 
 /// A scheduled task is a task that is ready to be executed.
-#[derive(Default, Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct ScheduledTask<T: Task> {
     pub(crate) task: T,
     pub(crate) options: TaskOptions,
@@ -69,7 +69,7 @@ impl<T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for Schedu
 }
 
 /// Scheduling options for a task
-#[derive(Default, Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct TaskOptions {
     pub(crate) failures: u32,
     pub(crate) execute_after_timestamp_in_secs: u64,
@@ -120,7 +120,7 @@ mod test {
 
     use super::*;
 
-    #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+    #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
     struct TestTask {}
 
     impl Task for TestTask {

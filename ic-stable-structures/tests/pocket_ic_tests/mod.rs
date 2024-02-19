@@ -2,6 +2,7 @@ use anyhow::Result;
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use did::*;
 use ic_exports::ic_kit::mock_principals::alice;
+use ic_exports::ic_kit::{ic, inject};
 use ic_exports::pocket_ic::{self, PocketIc, WasmResult};
 use wasm_utils::get_dummy_canister_bytecode;
 
@@ -67,14 +68,24 @@ impl PocketIcTestContext {
 
     pub fn get_tx_from_btreemap(&self, key: u64) -> Result<Option<BoundedTransaction>> {
         let args = Encode!(&key).unwrap();
-        let res = self.query_as(alice(), self.dummy_canister, "get_tx_from_btreemap", args);
+        let res = self.query_as(
+            ic::caller(),
+            self.dummy_canister,
+            "get_tx_from_btreemap",
+            args,
+        );
 
         Ok(res)
     }
 
     pub fn insert_tx_to_btreemap(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&BoundedTransaction { from, to, value }).unwrap();
-        let res = self.update_call_as(alice(), self.dummy_canister, "insert_tx_to_btreemap", args);
+        let res = self.update_call_as(
+            ic::caller(),
+            self.dummy_canister,
+            "insert_tx_to_btreemap",
+            args,
+        );
 
         Ok(res)
     }
@@ -82,7 +93,7 @@ impl PocketIcTestContext {
     pub fn get_tx_from_cached_btreemap(&self, key: u64) -> Result<Option<BoundedTransaction>> {
         let args = Encode!(&key).unwrap();
         let res = self.query_as(
-            alice(),
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_cached_btreemap",
             args,
@@ -94,7 +105,7 @@ impl PocketIcTestContext {
     pub fn insert_tx_to_cached_btreemap(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&BoundedTransaction { from, to, value }).unwrap();
         let res = self.update_call_as(
-            alice(),
+            ic::caller(),
             self.dummy_canister,
             "insert_tx_to_cached_btreemap",
             args,
@@ -105,14 +116,14 @@ impl PocketIcTestContext {
 
     pub fn get_tx_from_cell(&self) -> Result<BoundedTransaction> {
         let args = Encode!(&()).unwrap();
-        let res = self.query_as(alice(), self.dummy_canister, "get_tx_from_cell", args);
+        let res = self.query_as(ic::caller(), self.dummy_canister, "get_tx_from_cell", args);
 
         Ok(res)
     }
 
     pub fn insert_tx_to_cell(&self, from: u8, to: u8, value: u8) -> Result<BoundedTransaction> {
         let args = Encode!(&BoundedTransaction { from, to, value }).unwrap();
-        let res = self.update_call_as(alice(), self.dummy_canister, "insert_tx_to_cell", args);
+        let res = self.update_call_as(ic::caller(), self.dummy_canister, "insert_tx_to_cell", args);
 
         Ok(res)
     }
@@ -120,7 +131,7 @@ impl PocketIcTestContext {
     pub fn get_tx_from_unboundedmap(&self, key: u64) -> Result<Option<UnboundedTransaction>> {
         let args = Encode!(&key).unwrap();
         let res = self.query_as(
-            alice(),
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_unboundedmap",
             args,
@@ -132,7 +143,7 @@ impl PocketIcTestContext {
     pub fn insert_tx_to_unboundedmap(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&UnboundedTransaction { from, to, value }).unwrap();
         let res = self.update_call_as(
-            alice(),
+            ic::caller(),
             self.dummy_canister,
             "insert_tx_to_unboundedmap",
             args,
@@ -143,28 +154,38 @@ impl PocketIcTestContext {
 
     pub fn get_tx_from_multimap(&self, key: u64) -> Result<Option<BoundedTransaction>> {
         let args = Encode!(&key).unwrap();
-        let res = self.query_as(alice(), self.dummy_canister, "get_tx_from_multimap", args);
+        let res = self.query_as(
+            ic::caller(),
+            self.dummy_canister,
+            "get_tx_from_multimap",
+            args,
+        );
 
         Ok(res)
     }
 
     pub fn insert_tx_to_multimap(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&BoundedTransaction { from, to, value }).unwrap();
-        let res = self.update_call_as(alice(), self.dummy_canister, "insert_tx_to_multimap", args);
+        let res = self.update_call_as(
+            ic::caller(),
+            self.dummy_canister,
+            "insert_tx_to_multimap",
+            args,
+        );
 
         Ok(res)
     }
 
     pub fn get_tx_from_vec(&self, index: u64) -> Result<Option<BoundedTransaction>> {
         let args = Encode!(&index).unwrap();
-        let res = self.query_as(alice(), self.dummy_canister, "get_tx_from_vec", args);
+        let res = self.query_as(ic::caller(), self.dummy_canister, "get_tx_from_vec", args);
 
         Ok(res)
     }
 
     pub fn push_tx_to_vec(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&BoundedTransaction { from, to, value }).unwrap();
-        let res = self.update_call_as(alice(), self.dummy_canister, "push_tx_to_vec", args);
+        let res = self.update_call_as(ic::caller(), self.dummy_canister, "push_tx_to_vec", args);
 
         Ok(res)
     }
@@ -172,7 +193,7 @@ impl PocketIcTestContext {
     pub fn get_tx_from_ring_buffer(&self, index: u64) -> Result<Option<BoundedTransaction>> {
         let args = Encode!(&index).unwrap();
         let res = self.query_as(
-            alice(),
+            ic::caller(),
             self.dummy_canister,
             "get_tx_from_ring_buffer",
             args,
@@ -183,30 +204,40 @@ impl PocketIcTestContext {
 
     pub fn push_tx_to_ring_buffer(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&BoundedTransaction { from, to, value }).unwrap();
-        let res = self.update_call_as(alice(), self.dummy_canister, "push_tx_to_ring_buffer", args);
+        let res = self.update_call_as(
+            ic::caller(),
+            self.dummy_canister,
+            "push_tx_to_ring_buffer",
+            args,
+        );
 
         Ok(res)
     }
 
     pub fn get_tx_from_log(&self, index: u64) -> Result<Option<BoundedTransaction>> {
         let args = Encode!(&index).unwrap();
-        let res = self.query_as(alice(), self.dummy_canister, "get_tx_from_log", args);
+        let res = self.query_as(ic::caller(), self.dummy_canister, "get_tx_from_log", args);
 
         Ok(res)
     }
 
     pub fn push_tx_to_log(&self, from: u8, to: u8, value: u8) -> Result<u64> {
         let args = Encode!(&BoundedTransaction { from, to, value }).unwrap();
-        let res = self.update_call_as(alice(), self.dummy_canister, "push_tx_to_log", args);
+        let res = self.update_call_as(ic::caller(), self.dummy_canister, "push_tx_to_log", args);
 
         Ok(res)
     }
 }
 
-pub fn with_pocket_ic_context<F>(f: F) -> Result<()>
+pub fn with_pocket_ic_context<'a, F>(f: F) -> Result<()>
 where
-    F: FnOnce(&PocketIcTestContext) -> Result<()>,
+    F: FnOnce(&'a mut ic_exports::ic_kit::MockContext, &PocketIcTestContext) -> Result<()>,
 {
+    ic_exports::ic_kit::MockContext::new()
+        .with_caller(alice())
+        .with_id(alice())
+        .inject();
+
     let env = pocket_ic::init_pocket_ic();
     let dummy_canister = deploy_dummy_canister(&env).unwrap();
 
@@ -215,7 +246,9 @@ where
         dummy_canister,
     };
 
-    f(&test_ctx)?;
+    let ctx = inject::get_context();
+
+    f(ctx, &test_ctx)?;
 
     Ok(())
 }

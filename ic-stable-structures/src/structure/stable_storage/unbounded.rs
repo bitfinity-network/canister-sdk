@@ -6,7 +6,7 @@ use std::mem;
 use dfinity_stable_structures::storable::Bound;
 use dfinity_stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 
-use crate::structure::{IterableUnboundedMapStructure, UnboundedMapStructure};
+use crate::structure::UnboundedMapStructure;
 use crate::{Bounds, SlicedStorable};
 
 type ChunkIndex = u16;
@@ -181,19 +181,6 @@ where
             self.inner.remove(&key);
         }
         self.items_count = 0;
-    }
-}
-
-impl<K, V, M> IterableUnboundedMapStructure<K, V> for StableUnboundedMap<K, V, M>
-where
-    K: Storable,
-    V: SlicedStorable,
-    M: Memory,
-{
-    type Iterator<'a> = StableUnboundedIter<'a, K, V, M> where Self: 'a;
-
-    fn iter(&self) -> Self::Iterator<'_> {
-        self.iter()
     }
 }
 
