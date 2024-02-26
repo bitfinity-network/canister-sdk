@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use candid::Principal;
+use ic_cdk::api::management_canister::main::CanisterSettings;
 use ic_cdk::api::management_canister::provisional::CanisterId;
 use pocket_ic::common::rest::{BlobCompression, BlobId};
 use pocket_ic::{CallError, PocketIc, UserError, WasmResult};
@@ -188,21 +189,17 @@ impl PocketIcAsync {
             .unwrap()
     }
 
-    // todo: implement after pocket-ic will update `ic-cdk` dependency version.
-    // because currently they use `0.10` and canister-sdk uses `0.11`.
-    // Issue: https://infinityswap.atlassian.net/browse/EPROD-601
-    //
-    /// Create a canister with custom settings.
-    // pub async fn create_canister_with_settings(
-    //     &self,
-    //     settings: Option<CanisterSettings>,
-    //     sender: Option<Principal>,
-    // ) -> CanisterId {
-    //     let client = self.0.clone();
-    //     tokio::task::spawn_blocking(move || client.create_canister_with_settings(settings, sender))
-    //         .await
-    //         .unwrap()
-    // }
+    // Create a canister with custom settings.
+    pub async fn create_canister_with_settings(
+        &self,
+        settings: Option<CanisterSettings>,
+        sender: Option<Principal>,
+    ) -> CanisterId {
+        let client = self.0.clone();
+        tokio::task::spawn_blocking(move || client.create_canister_with_settings(sender, settings))
+            .await
+            .unwrap()
+    }
 
     /// Install a WASM module on an existing canister.
     pub async fn install_canister(
