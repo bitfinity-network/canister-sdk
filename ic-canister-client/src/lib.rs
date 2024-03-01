@@ -20,6 +20,5 @@ pub use ic_agent;
 pub use ic_client::IcCanisterClient;
 #[cfg(feature = "pocket-ic-client")]
 pub use pocket_ic::PocketIcClient;
-
 #[cfg(feature = "state-machine-tests-client")]
 pub use state_machine_tests::StateMachineCanisterClient;

@@ -8,7 +8,7 @@ pub use ic_test_state_machine_client::*;
 use log::*;
 use once_cell::sync::OnceCell;
 
-pub const IC_STATE_MACHINE_BINARY_HASH: &str = "d33ce10e3896f223045bc44320c794308c32a13e";
+pub const IC_STATE_MACHINE_BINARY_HASH: &str = "48da85ee6c03e8c15f3e90b21bf9ccae7b753ee6";
 
 /// Returns the path to the ic-test-state-machine binary.
 /// If the binary is not present, it downloads it.
