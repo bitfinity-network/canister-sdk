@@ -10,6 +10,7 @@ description = "Client for interacting with an IC Canister"
 default = []
 ic-agent-client = ["dep:ic-agent"]
 pocket-ic-client = ["dep:tokio", "ic-exports/pocket-ic-tests-async"]
+state-machine-tests-client = ["dep:tokio", "ic-exports/ic-test-state-machine"]
 
 [dependencies]
 async-trait = { workspace = true }
