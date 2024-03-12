@@ -19,7 +19,7 @@ pub trait Task {
 }
 
 /// A scheduled task is a task that is ready to be executed.
-#[derive(Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct ScheduledTask<T: Task> {
     pub(crate) task: T,
     pub(crate) options: TaskOptions,
@@ -50,7 +50,58 @@ impl<T: Task> From<(T, TaskOptions)> for ScheduledTask<T> {
     }
 }
 
-impl<T: 'static + Task + Serialize + DeserializeOwned> Storable for ScheduledTask<T> {
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+pub struct InnerScheduledTask<T: Task> {
+    pub(crate) task: T,
+    pub(crate) options: TaskOptions,
+    pub(crate) status: TaskStatus,
+}
+
+impl<T: Task> InnerScheduledTask<T> {
+    
+    /// Creates a new InnerScheduledTask with the given status
+    pub fn with_status(task: ScheduledTask<T>, status: TaskStatus) -> Self {
+        Self {
+            task: task.task,
+            options: task.options,
+            status,
+        }
+    }
+
+    /// Creates a new InnerScheduledTask with Waiting status
+    pub fn waiting(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
+        Self {
+            task: task.task,
+            options: task.options,
+            status: TaskStatus::Waiting {
+                timestamp_secs,
+            },
+        }
+    }
+
+    /// Creates a new InnerScheduledTask with SelectedForExecution status
+    pub fn selected_for_execution(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
+        Self {
+            task: task.task,
+            options: task.options,
+            status: TaskStatus::SelectedForExecution {
+                timestamp_secs,
+            },
+        }
+    }
+
+    /// Creates a new InnerScheduledTask with Running status
+    pub fn running(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
+        Self {
+            task: task.task,
+            options: task.options,
+            status: TaskStatus::Running {
+                timestamp_secs,
+            },
+        }
+    }
+}
+impl<T: 'static + Task + Serialize + DeserializeOwned> Storable for InnerScheduledTask<T> {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         bincode::serialize(self)
             .expect("failed to serialize ScheduledTask")
@@ -64,8 +115,49 @@ impl<T: 'static + Task + Serialize + DeserializeOwned> Storable for ScheduledTas
     const BOUND: Bound = Bound::Unbounded;
 }
 
-impl<T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for ScheduledTask<T> {
+impl<T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for InnerScheduledTask<T> {
     const CHUNK_SIZE: ChunkSize = 128;
+}
+
+/// The status of a task in the scheduler
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+pub enum TaskStatus {
+    Waiting {
+        timestamp_secs: u64
+    },
+    SelectedForExecution {
+        timestamp_secs: u64
+    },
+    Running {
+        timestamp_secs: u64
+    },
+}
+
+impl TaskStatus {
+
+    /// Creates a new TaskStatus::Waiting with the given timestamp in seconds
+    pub fn waiting(timestamp_secs: u64) -> Self {
+        Self::Waiting { timestamp_secs }
+    }
+
+    /// Creates a new TaskStatus::SelectedForExecution with the given timestamp in seconds
+    pub fn selected_for_execution(timestamp_secs: u64) -> Self {
+        Self::SelectedForExecution { timestamp_secs }
+    }
+
+    /// Creates a new TaskStatus::Running with the given timestamp in seconds
+    pub fn running(timestamp_secs: u64) -> Self {
+        Self::Running { timestamp_secs }
+    }
+
+    /// Returns the timestamp of the status
+    pub fn timestamp_secs(&self) -> u64 {
+        match self {
+            TaskStatus::Waiting { timestamp_secs } => *timestamp_secs,
+            TaskStatus::SelectedForExecution { timestamp_secs } => *timestamp_secs,
+            TaskStatus::Running { timestamp_secs } => *timestamp_secs,
+        }
+    }
 }
 
 /// Scheduling options for a task
@@ -135,62 +227,66 @@ mod test {
     #[test]
     fn test_storable_task() {
         {
-            let task = ScheduledTask::with_options(
-                TestTask {},
-                TaskOptions::new()
-                    .with_max_retries_policy(3)
-                    .with_fixed_backoff_policy(2),
-            );
+            let task = InnerScheduledTask{
+                task: TestTask {},
+                options: TaskOptions::new()
+                .with_max_retries_policy(3)
+                .with_fixed_backoff_policy(2),
+                status: TaskStatus::Waiting {  timestamp_secs: 0 }
+            };
 
             let serialized = task.to_bytes();
-            let deserialized = ScheduledTask::<TestTask>::from_bytes(serialized);
+            let deserialized = InnerScheduledTask::<TestTask>::from_bytes(serialized);
 
             assert_eq!(task, deserialized);
         }
 
         {
-            let task = ScheduledTask::with_options(
-                TestTask {},
-                TaskOptions::new()
-                    .with_retry_policy(RetryPolicy::None)
-                    .with_backoff_policy(BackoffPolicy::None),
-            );
+            let task = InnerScheduledTask{
+                task: TestTask {},
+                options: TaskOptions::new()
+                .with_retry_policy(RetryPolicy::None)
+                .with_backoff_policy(BackoffPolicy::None),
+                status: TaskStatus::Waiting { timestamp_secs: 0 }
+            };
 
             let serialized = task.to_bytes();
-            let deserialized = ScheduledTask::<TestTask>::from_bytes(serialized);
+            let deserialized = InnerScheduledTask::<TestTask>::from_bytes(serialized);
 
             assert_eq!(task, deserialized);
         }
 
         {
-            let task = ScheduledTask::with_options(
-                TestTask {},
-                TaskOptions::new()
-                    .with_retry_policy(RetryPolicy::None)
-                    .with_backoff_policy(BackoffPolicy::Exponential {
-                        secs: 2,
-                        multiplier: 2,
-                    }),
-            );
+            let task = InnerScheduledTask {
+                task: TestTask {},
+                options: TaskOptions::new()
+                .with_retry_policy(RetryPolicy::None)
+                .with_backoff_policy(BackoffPolicy::Exponential {
+                    secs: 2,
+                    multiplier: 2,
+                }),
+                status: TaskStatus::SelectedForExecution { timestamp_secs: 1230 }
+            };
 
             let serialized = task.to_bytes();
-            let deserialized = ScheduledTask::<TestTask>::from_bytes(serialized);
+            let deserialized = InnerScheduledTask::<TestTask>::from_bytes(serialized);
 
             assert_eq!(task, deserialized);
         }
 
         {
-            let task = ScheduledTask::with_options(
-                TestTask {},
-                TaskOptions::new()
-                    .with_retry_policy(RetryPolicy::Infinite)
-                    .with_backoff_policy(BackoffPolicy::Variable {
-                        secs: vec![12, 56, 76],
-                    }),
-            );
+            let task = InnerScheduledTask {
+                task: TestTask {},
+                options: TaskOptions::new()
+                .with_retry_policy(RetryPolicy::Infinite)
+                .with_backoff_policy(BackoffPolicy::Variable {
+                    secs: vec![12, 56, 76],
+                }),
+                status: TaskStatus::Running { timestamp_secs: 21230 }
+            };
 
             let serialized = task.to_bytes();
-            let deserialized = ScheduledTask::<TestTask>::from_bytes(serialized);
+            let deserialized = InnerScheduledTask::<TestTask>::from_bytes(serialized);
 
             assert_eq!(task, deserialized);
         }

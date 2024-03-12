@@ -3,20 +3,20 @@ use std::sync::Arc;
 use ic_stable_structures::UnboundedMapStructure;
 use parking_lot::Mutex;
 
-use crate::task::{ScheduledTask, Task};
+use crate::task::{InnerScheduledTask, ScheduledTask, Task};
 use crate::time::time_secs;
 use crate::SchedulerError;
 
 type SchedulerErrorCallback<T> = Box<dyn 'static + Fn(ScheduledTask<T>, SchedulerError) + Send>;
 
 /// A scheduler is responsible for executing tasks.
-pub struct Scheduler<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> {
+pub struct Scheduler<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTask<T>>> {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
     failed_task_callback: Arc<Option<SchedulerErrorCallback<T>>>,
 }
 
-impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> Scheduler<T, P> {
+impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTask<T>>> Scheduler<T, P> {
     /// Create a new scheduler.
     pub fn new(pending_tasks: P) -> Self {
         Self {
@@ -51,6 +51,10 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
                 let task = lock.remove(&key);
                 drop(lock);
                 if let Some(task) = task {
+                    let task = ScheduledTask {
+                        task: task.task,
+                        options: task.options,
+                    };
                     if task.options.execute_after_timestamp_in_secs > now_timestamp_secs {
                         to_be_reprocessed.push(task);
                     } else {
@@ -104,7 +108,7 @@ pub trait TaskScheduler<T: 'static + Task> {
     fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>);
 }
 
-impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> Clone
+impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTask<T>>> Clone
     for Scheduler<T, P>
 {
     fn clone(&self) -> Self {
@@ -116,13 +120,14 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
     }
 }
 
-impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>>> TaskScheduler<T>
+impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTask<T>>> TaskScheduler<T>
     for Scheduler<T, P>
 {
     fn append_task(&self, task: ScheduledTask<T>) {
+        let time_secs = time_secs();
         let mut lock = self.pending_tasks.lock();
         let key = lock.last_key().map(|val| val + 1).unwrap_or_default();
-        lock.insert(&key, &task);
+        lock.insert(&key, &InnerScheduledTask::waiting(task, time_secs));
     }
 
     fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>) {
@@ -130,11 +135,12 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, ScheduledTask<T>
             return;
         };
 
+        let time_secs = time_secs();
         let mut lock = self.pending_tasks.lock();
         let mut key = lock.last_key().map(|val| val + 1).unwrap_or_default();
 
         for task in tasks {
-            lock.insert(&key, &task);
+            lock.insert(&key, &InnerScheduledTask::waiting(task, time_secs));
             key += 1;
         }
     }
