@@ -52,6 +52,7 @@ impl<T: Task> From<(T, TaskOptions)> for ScheduledTask<T> {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct InnerScheduledTask<T: Task> {
+    pub(crate) id: u32,
     pub(crate) task: T,
     pub(crate) options: TaskOptions,
     pub(crate) status: TaskStatus,
@@ -59,8 +60,9 @@ pub struct InnerScheduledTask<T: Task> {
 
 impl<T: Task> InnerScheduledTask<T> {
     /// Creates a new InnerScheduledTask with the given status
-    pub fn with_status(task: ScheduledTask<T>, status: TaskStatus) -> Self {
+    pub fn with_status(id: u32, task: ScheduledTask<T>, status: TaskStatus) -> Self {
         Self {
+            id,
             task: task.task,
             options: task.options,
             status,
@@ -68,8 +70,9 @@ impl<T: Task> InnerScheduledTask<T> {
     }
 
     /// Creates a new InnerScheduledTask with Waiting status
-    pub fn waiting(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
+    pub fn waiting(id: u32, task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
         Self {
+            id,
             task: task.task,
             options: task.options,
             status: TaskStatus::Waiting { timestamp_secs },
@@ -77,8 +80,9 @@ impl<T: Task> InnerScheduledTask<T> {
     }
 
     /// Creates a new InnerScheduledTask with Complete status
-    pub fn completed(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
+    pub fn completed(id: u32, task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
         Self {
+            id,
             task: task.task,
             options: task.options,
             status: TaskStatus::Completed { timestamp_secs },
@@ -86,8 +90,9 @@ impl<T: Task> InnerScheduledTask<T> {
     }
 
     /// Creates a new InnerScheduledTask with TimeoutOrPanic status
-    pub fn timeout_or_panic(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
+    pub fn timeout_or_panic(id: u32, task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
         Self {
+            id,
             task: task.task,
             options: task.options,
             status: TaskStatus::TimeoutOrPanic { timestamp_secs },
@@ -95,12 +100,33 @@ impl<T: Task> InnerScheduledTask<T> {
     }
 
     /// Creates a new InnerScheduledTask with Running status
-    pub fn running(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
+    pub fn running(id: u32, task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
         Self {
+            id,
             task: task.task,
             options: task.options,
             status: TaskStatus::Running { timestamp_secs },
         }
+    }
+
+    /// Returs the status of the task
+    pub fn status(&self) -> &TaskStatus {
+        &self.status
+    }
+
+    /// Returs the options of the task
+    pub fn options(&self) -> &TaskOptions {
+        &self.options
+    }
+
+    /// Returs the task
+    pub fn task(&self) -> &T {
+        &self.task
+    }
+
+    /// Returs the task id
+    pub fn id(&self) -> u32 {
+        self.id
     }
 }
 
@@ -249,6 +275,7 @@ mod test {
     fn test_storable_task() {
         {
             let task = InnerScheduledTask {
+                id: 0,
                 task: TestTask {},
                 options: TaskOptions::new()
                     .with_max_retries_policy(3)
@@ -264,6 +291,7 @@ mod test {
 
         {
             let task = InnerScheduledTask {
+                id: 0,
                 task: TestTask {},
                 options: TaskOptions::new()
                     .with_retry_policy(RetryPolicy::None)
@@ -279,6 +307,7 @@ mod test {
 
         {
             let task = InnerScheduledTask {
+                id: 0,
                 task: TestTask {},
                 options: TaskOptions::new()
                     .with_retry_policy(RetryPolicy::None)
@@ -299,6 +328,7 @@ mod test {
 
         {
             let task = InnerScheduledTask {
+                id: 0,
                 task: TestTask {},
                 options: TaskOptions::new()
                     .with_retry_policy(RetryPolicy::Infinite)

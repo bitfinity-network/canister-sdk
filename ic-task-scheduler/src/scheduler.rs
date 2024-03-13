@@ -150,8 +150,10 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
 }
 
 pub trait TaskScheduler<T: 'static + Task> {
-    fn append_task(&self, task: ScheduledTask<T>);
-    fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>);
+    /// Append a task to the scheduler and return the key of the task.
+    fn append_task(&self, task: ScheduledTask<T>) -> u32;
+    /// Append a list of tasks to the scheduler and return the keys of the tasks.
+    fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>) -> Vec<u32>;
 }
 
 impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>>
@@ -169,26 +171,30 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
 impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>>
     TaskScheduler<T> for Scheduler<T, P>
 {
-    fn append_task(&self, task: ScheduledTask<T>) {
+    fn append_task(&self, task: ScheduledTask<T>) -> u32 {
         let time_secs = time_secs();
         let mut lock = self.pending_tasks.lock();
         let key = lock.last_key().map(|val| val + 1).unwrap_or_default();
-        lock.insert(&key, &InnerScheduledTask::waiting(task, time_secs));
+        lock.insert(&key, &InnerScheduledTask::waiting(key, task, time_secs));
+        key
     }
 
-    fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>) {
+    fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>) -> Vec<u32> {
         if tasks.is_empty() {
-            return;
+            return vec![];
         };
 
         let time_secs = time_secs();
         let mut lock = self.pending_tasks.lock();
         let mut key = lock.last_key().map(|val| val + 1).unwrap_or_default();
 
+        let mut keys = Vec::with_capacity(tasks.len());
         for task in tasks {
-            lock.insert(&key, &InnerScheduledTask::waiting(task, time_secs));
+            lock.insert(&key, &InnerScheduledTask::waiting(key, task, time_secs));
+            keys.push(key);
             key += 1;
         }
+        keys
     }
 }
 
