@@ -3,7 +3,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 
-use candid::Principal;
+use candid::{CandidType, Principal};
 use ic_canister::{generate_idl, init, post_upgrade, query, update, Canister, Idl, PreUpdate};
 use ic_stable_structures::stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{IcMemoryManager, MemoryId, StableUnboundedMap, VirtualMemory};
@@ -28,6 +28,7 @@ thread_local! {
             map,
         );
 
+        scheduler.set_running_task_timeout(10);
         scheduler.on_completion_callback(save_state_cb);
 
         scheduler.append_task((DummyTask::GoodTask, TaskOptions::new()).into());
@@ -48,7 +49,7 @@ thread_local! {
 
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(CandidType, Serialize, Deserialize, Debug, Clone)]
 pub enum DummyTask {
     Panicking,
     GoodTask,
@@ -138,6 +139,12 @@ impl DummyCanister {
         EXECUTING_TASKS.with_borrow(|tasks| tasks.clone())
     }
 
+    #[query]
+    pub fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<DummyTask>> {
+        let scheduler = SCHEDULER.with_borrow(|scheduler| scheduler.clone());
+        scheduler.get_task(task_id)
+    }
+
     #[update]
     pub fn run_scheduler(&self) {
         Self::do_run_scheduler();
@@ -174,6 +181,7 @@ fn save_state_cb(task: InnerScheduledTask<DummyTask>) {
                 tasks.push(task.id());
             });
         }
+        TaskStatus::Scheduled { .. } => {}
     };
 
     // match task.status {

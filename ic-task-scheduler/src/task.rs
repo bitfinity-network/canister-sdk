@@ -1,6 +1,7 @@
 use std::future::Future;
 use std::pin::Pin;
 
+use candid::CandidType;
 use ic_stable_structures::{Bound, ChunkSize, SlicedStorable, Storable};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -19,7 +20,7 @@ pub trait Task {
 }
 
 /// A scheduled task is a task that is ready to be executed.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(CandidType, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct ScheduledTask<T: Task> {
     pub(crate) task: T,
     pub(crate) options: TaskOptions,
@@ -50,7 +51,7 @@ impl<T: Task> From<(T, TaskOptions)> for ScheduledTask<T> {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(CandidType, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct InnerScheduledTask<T: Task> {
     pub(crate) id: u32,
     pub(crate) task: T,
@@ -149,12 +150,14 @@ impl<T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for InnerS
 }
 
 /// The status of a task in the scheduler
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(CandidType, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum TaskStatus {
     /// The task is waiting to be executed
     Waiting { timestamp_secs: u64 },
     /// The task execution completed successfully
     Completed { timestamp_secs: u64 },
+    /// The task was scheduled to be runned
+    Scheduled { timestamp_secs: u64 },
     /// The task is running
     Running { timestamp_secs: u64 },
     /// The task execution failed and no more retries are allowed
@@ -190,6 +193,11 @@ impl TaskStatus {
         Self::Running { timestamp_secs }
     }
 
+    /// Creates a new TaskStatus::Scheduled with the given timestamp in seconds
+    pub fn scheduled(timestamp_secs: u64) -> Self {
+        Self::Scheduled { timestamp_secs }
+    }
+
     /// Creates a new TaskStatus::TimeoutOrPanic with the given timestamp in seconds
     pub fn timeout_or_panic(timestamp_secs: u64) -> Self {
         Self::TimeoutOrPanic { timestamp_secs }
@@ -203,12 +211,13 @@ impl TaskStatus {
             TaskStatus::Running { timestamp_secs } => *timestamp_secs,
             TaskStatus::TimeoutOrPanic { timestamp_secs } => *timestamp_secs,
             TaskStatus::Failed { timestamp_secs, .. } => *timestamp_secs,
+            TaskStatus::Scheduled { timestamp_secs, .. } => *timestamp_secs,
         }
     }
 }
 
 /// Scheduling options for a task
-#[derive(Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(CandidType, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct TaskOptions {
     pub(crate) failures: u32,
     pub(crate) execute_after_timestamp_in_secs: u64,

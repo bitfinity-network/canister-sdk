@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use ic_stable_structures::IterableUnboundedMapStructure;
@@ -9,7 +10,7 @@ use crate::SchedulerError;
 
 type TaskCompletionCallback<T> = Box<dyn 'static + Fn(InnerScheduledTask<T>) + Send>;
 
-pub const RUNNING_TASK_TIMEOUT_SECS: u64 = 60;
+const DEFAULT_RUNNING_TASK_TIMEOUT_SECS: u64 = 120;
 
 /// A scheduler is responsible for executing tasks.
 pub struct Scheduler<
@@ -19,6 +20,7 @@ pub struct Scheduler<
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
     on_completion_callback: Arc<Option<TaskCompletionCallback<T>>>,
+    running_task_timeout_secs: AtomicU64,
 }
 
 impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>>
@@ -30,7 +32,15 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
             phantom: std::marker::PhantomData,
             on_completion_callback: Arc::new(None),
+            running_task_timeout_secs: AtomicU64::new(DEFAULT_RUNNING_TASK_TIMEOUT_SECS),
         }
+    }
+
+    /// Set the timeout of a running task. If a task is running for more time the timeout, it will be
+    /// considered as stuck or panicked.
+    /// The default value is 120 seconds.
+    pub fn set_running_task_timeout(&mut self, timeout_secs: u64) {
+        self.running_task_timeout_secs.store(timeout_secs, Ordering::Relaxed);
     }
 
     /// Set a callback to be called when a task execution completes.
@@ -42,55 +52,82 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
     /// Each task is executed asynchronously in a dedicated ic_cdk::spawn call.
     /// This function does not wait for the tasks to complete.
     /// Returns the number of tasks that have been launched.
-    pub fn run(&self) -> Result<u32, SchedulerError> {
+    pub fn run(&self) -> Result<usize, SchedulerError> {
         self.run_with_timestamp(time_secs())
     }
 
-    fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<u32, SchedulerError> {
-        let mut task_execution_started = 0;
+    fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<usize, SchedulerError> {
+        let mut to_be_scheduled_tasks = Vec::new();
         let mut out_of_time_tasks = Vec::new();
-        let mut lock = self.pending_tasks.lock();
+        let running_task_timeout_secs = self.running_task_timeout_secs.load(Ordering::Relaxed);
 
-        for (task_key, task) in lock.iter() {
-            match task.status {
-                TaskStatus::Waiting { .. } => {
-                    if task.options.execute_after_timestamp_in_secs <= now_timestamp_secs {
-                        task_execution_started += 1;
-                        self.process_pending_task(task_key);
+        {
+            let lock = self.pending_tasks.lock();
+            for (task_key, task) in lock.iter() {
+                match task.status {
+                    TaskStatus::Waiting { .. } => {
+                        if task.options.execute_after_timestamp_in_secs <= now_timestamp_secs {
+                            to_be_scheduled_tasks.push(task_key);
+                        }
                     }
-                }
-                TaskStatus::Running { timestamp_secs } => {
-                    if timestamp_secs + RUNNING_TASK_TIMEOUT_SECS < now_timestamp_secs {
-                        out_of_time_tasks.push(task_key);
+                    TaskStatus::Running { timestamp_secs } | TaskStatus::Scheduled { timestamp_secs } => {
+                        ic_cdk::println!(
+                            "Task {} was in scheduled or running status for more than {} seconds",
+                            task_key, running_task_timeout_secs
+                        );
+                        if timestamp_secs + running_task_timeout_secs < now_timestamp_secs {
+                            out_of_time_tasks.push(task_key);
+                        }
                     }
+                    TaskStatus::Completed { .. }
+                    | TaskStatus::TimeoutOrPanic { .. }
+                    | TaskStatus::Failed { .. } => (),
                 }
-                TaskStatus::Completed { .. }
-                | TaskStatus::TimeoutOrPanic { .. }
-                | TaskStatus::Failed { .. } => (),
             }
         }
 
-        for task_key in out_of_time_tasks.into_iter() {
-            if let Some(mut task) = lock.remove(&task_key) {
-                task.status = TaskStatus::timeout_or_panic(now_timestamp_secs);
-                if let Some(cb) = &*self.on_completion_callback {
-                    cb(task);
+        // Process the tasks that are ready to be scheduled
+        for task_key in to_be_scheduled_tasks.iter() {
+            self.process_pending_task(*task_key, now_timestamp_secs);
+        }
+
+        // Remove the tasks that are out of time
+        {
+            let mut lock = self.pending_tasks.lock();
+            for task_key in out_of_time_tasks.into_iter() {
+                if let Some(mut task) = lock.remove(&task_key) {
+                    task.status = TaskStatus::timeout_or_panic(now_timestamp_secs);
+                    if let Some(cb) = &*self.on_completion_callback {
+                        cb(task);
+                    }
                 }
             }
         }
 
-        Ok(task_execution_started)
+        Ok(to_be_scheduled_tasks.len())
     }
 
-    fn process_pending_task(&self, task_key: u32) {
+    fn process_pending_task(&self, task_key: u32, now_timestamp_secs: u64) {
         let task_scheduler = self.clone();
+
+        // Set the task as scheduled
+        {
+            let mut lock = task_scheduler.pending_tasks.lock();
+            let task = lock.get(&task_key);
+            if let Some(mut task) = task {
+                if let TaskStatus::Waiting { .. } = task.status {
+                    task.status = TaskStatus::scheduled(now_timestamp_secs);
+                    lock.insert(&task_key, &task);
+                }
+            }
+        }
 
         Self::spawn(async move {
             let now_timestamp_secs = time_secs();
 
             let task = task_scheduler.pending_tasks.lock().get(&task_key);
             if let Some(mut task) = task {
-                if let TaskStatus::Waiting { .. } = task.status {
+                if let TaskStatus::Scheduled { .. } = task.status {
                     task.status = TaskStatus::running(now_timestamp_secs);
                     task_scheduler.pending_tasks.lock().insert(&task_key, &task);
 
@@ -145,7 +182,9 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
     #[cfg(not(test))]
     #[inline(always)]
     fn spawn<F: 'static + std::future::Future<Output = ()>>(future: F) {
-        ic_kit::ic::spawn(future);
+        ic_cdk_timers::set_timer(std::time::Duration::from_millis(0), || {
+            ic_kit::ic::spawn(future);
+        });
     }
 }
 
@@ -154,6 +193,8 @@ pub trait TaskScheduler<T: 'static + Task> {
     fn append_task(&self, task: ScheduledTask<T>) -> u32;
     /// Append a list of tasks to the scheduler and return the keys of the tasks.
     fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>) -> Vec<u32>;
+    /// Get a task by its key.
+    fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<T>>;
 }
 
 impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>>
@@ -164,6 +205,9 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
             pending_tasks: self.pending_tasks.clone(),
             phantom: self.phantom,
             on_completion_callback: self.on_completion_callback.clone(),
+            running_task_timeout_secs: AtomicU64::new(
+                self.running_task_timeout_secs.load(Ordering::Relaxed),
+            ),
         }
     }
 }
@@ -196,6 +240,11 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
         }
         keys
     }
+    
+    fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<T>> {
+        self.pending_tasks.lock().get(&task_id)
+    }
+
 }
 
 #[cfg(test)]
