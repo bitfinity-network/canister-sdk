@@ -58,7 +58,6 @@ pub struct InnerScheduledTask<T: Task> {
 }
 
 impl<T: Task> InnerScheduledTask<T> {
-    
     /// Creates a new InnerScheduledTask with the given status
     pub fn with_status(task: ScheduledTask<T>, status: TaskStatus) -> Self {
         Self {
@@ -73,9 +72,7 @@ impl<T: Task> InnerScheduledTask<T> {
         Self {
             task: task.task,
             options: task.options,
-            status: TaskStatus::Waiting {
-                timestamp_secs,
-            },
+            status: TaskStatus::Waiting { timestamp_secs },
         }
     }
 
@@ -84,9 +81,7 @@ impl<T: Task> InnerScheduledTask<T> {
         Self {
             task: task.task,
             options: task.options,
-            status: TaskStatus::Completed {
-                timestamp_secs,
-            },
+            status: TaskStatus::Completed { timestamp_secs },
         }
     }
 
@@ -95,21 +90,16 @@ impl<T: Task> InnerScheduledTask<T> {
         Self {
             task: task.task,
             options: task.options,
-            status: TaskStatus::TimeoutOrPanic {
-                timestamp_secs,
-            },
+            status: TaskStatus::TimeoutOrPanic { timestamp_secs },
         }
     }
-
 
     /// Creates a new InnerScheduledTask with Running status
     pub fn running(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
         Self {
             task: task.task,
             options: task.options,
-            status: TaskStatus::Running {
-                timestamp_secs,
-            },
+            status: TaskStatus::Running { timestamp_secs },
         }
     }
 }
@@ -136,30 +126,21 @@ impl<T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for InnerS
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum TaskStatus {
     /// The task is waiting to be executed
-    Waiting {
-        timestamp_secs: u64
-    },
+    Waiting { timestamp_secs: u64 },
     /// The task execution completed successfully
-    Completed {
-        timestamp_secs: u64
-    },
+    Completed { timestamp_secs: u64 },
     /// The task is running
-    Running {
-        timestamp_secs: u64
-    },
+    Running { timestamp_secs: u64 },
     /// The task execution failed and no more retries are allowed
     Failed {
         timestamp_secs: u64,
-        error: SchedulerError
+        error: SchedulerError,
     },
     /// The task has been running for long time. It could be stuck or panicking
-    TimeoutOrPanic {
-        timestamp_secs: u64
-    },
+    TimeoutOrPanic { timestamp_secs: u64 },
 }
 
 impl TaskStatus {
-
     /// Creates a new TaskStatus::Waiting with the given timestamp in seconds
     pub fn waiting(timestamp_secs: u64) -> Self {
         Self::Waiting { timestamp_secs }
@@ -172,7 +153,10 @@ impl TaskStatus {
 
     /// Creates a new TaskStatus::Failed with the given timestamp in seconds and error
     pub fn failed(timestamp_secs: u64, error: SchedulerError) -> Self {
-        Self::Failed { timestamp_secs, error }
+        Self::Failed {
+            timestamp_secs,
+            error,
+        }
     }
 
     /// Creates a new TaskStatus::Running with the given timestamp in seconds
@@ -264,27 +248,12 @@ mod test {
     #[test]
     fn test_storable_task() {
         {
-            let task = InnerScheduledTask{
+            let task = InnerScheduledTask {
                 task: TestTask {},
                 options: TaskOptions::new()
-                .with_max_retries_policy(3)
-                .with_fixed_backoff_policy(2),
-                status: TaskStatus::Waiting {  timestamp_secs: 0 }
-            };
-
-            let serialized = task.to_bytes();
-            let deserialized = InnerScheduledTask::<TestTask>::from_bytes(serialized);
-
-            assert_eq!(task, deserialized);
-        }
-
-        {
-            let task = InnerScheduledTask{
-                task: TestTask {},
-                options: TaskOptions::new()
-                .with_retry_policy(RetryPolicy::None)
-                .with_backoff_policy(BackoffPolicy::None),
-                status: TaskStatus::Waiting { timestamp_secs: 0 }
+                    .with_max_retries_policy(3)
+                    .with_fixed_backoff_policy(2),
+                status: TaskStatus::Waiting { timestamp_secs: 0 },
             };
 
             let serialized = task.to_bytes();
@@ -297,12 +266,9 @@ mod test {
             let task = InnerScheduledTask {
                 task: TestTask {},
                 options: TaskOptions::new()
-                .with_retry_policy(RetryPolicy::None)
-                .with_backoff_policy(BackoffPolicy::Exponential {
-                    secs: 2,
-                    multiplier: 2,
-                }),
-                status: TaskStatus::Completed { timestamp_secs: 1230 }
+                    .with_retry_policy(RetryPolicy::None)
+                    .with_backoff_policy(BackoffPolicy::None),
+                status: TaskStatus::Waiting { timestamp_secs: 0 },
             };
 
             let serialized = task.to_bytes();
@@ -315,11 +281,33 @@ mod test {
             let task = InnerScheduledTask {
                 task: TestTask {},
                 options: TaskOptions::new()
-                .with_retry_policy(RetryPolicy::Infinite)
-                .with_backoff_policy(BackoffPolicy::Variable {
-                    secs: vec![12, 56, 76],
-                }),
-                status: TaskStatus::Running { timestamp_secs: 21230 }
+                    .with_retry_policy(RetryPolicy::None)
+                    .with_backoff_policy(BackoffPolicy::Exponential {
+                        secs: 2,
+                        multiplier: 2,
+                    }),
+                status: TaskStatus::Completed {
+                    timestamp_secs: 1230,
+                },
+            };
+
+            let serialized = task.to_bytes();
+            let deserialized = InnerScheduledTask::<TestTask>::from_bytes(serialized);
+
+            assert_eq!(task, deserialized);
+        }
+
+        {
+            let task = InnerScheduledTask {
+                task: TestTask {},
+                options: TaskOptions::new()
+                    .with_retry_policy(RetryPolicy::Infinite)
+                    .with_backoff_policy(BackoffPolicy::Variable {
+                        secs: vec![12, 56, 76],
+                    }),
+                status: TaskStatus::Running {
+                    timestamp_secs: 21230,
+                },
             };
 
             let serialized = task.to_bytes();

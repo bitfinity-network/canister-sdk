@@ -7,8 +7,7 @@ use crate::task::{InnerScheduledTask, ScheduledTask, Task, TaskStatus};
 use crate::time::time_secs;
 use crate::SchedulerError;
 
-type TaskCompletionCallback<T> =
-    Box<dyn 'static + Fn(InnerScheduledTask<T>) + Send>;
+type TaskCompletionCallback<T> = Box<dyn 'static + Fn(InnerScheduledTask<T>) + Send>;
 
 pub const RUNNING_TASK_TIMEOUT_SECS: u64 = 60;
 
@@ -35,12 +34,7 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
     }
 
     /// Set a callback to be called when a task execution completes.
-    pub fn on_completion_callback<
-        F: 'static + Send + Fn(InnerScheduledTask<T>),
-    >(
-        &mut self,
-        cb: F,
-    ) {
+    pub fn on_completion_callback<F: 'static + Send + Fn(InnerScheduledTask<T>)>(&mut self, cb: F) {
         self.on_completion_callback = Arc::new(Some(Box::new(cb)));
     }
 
@@ -53,7 +47,6 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
     }
 
     fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<u32, SchedulerError> {
-
         let mut task_execution_started = 0;
         let mut out_of_time_tasks = Vec::new();
         let mut lock = self.pending_tasks.lock();
@@ -71,7 +64,9 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
                         out_of_time_tasks.push(task_key);
                     }
                 }
-                TaskStatus::Completed { .. } | TaskStatus::TimeoutOrPanic { .. } | TaskStatus::Failed { .. }=> (),
+                TaskStatus::Completed { .. }
+                | TaskStatus::TimeoutOrPanic { .. }
+                | TaskStatus::Failed { .. } => (),
             }
         }
 
@@ -100,34 +95,35 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
                     lock.insert(&task_key, &task);
                     drop(lock);
 
-                    let completed_task = match task.task.execute(Box::new(task_scheduler.clone())).await {
-                        Ok(()) => {
-                            let mut lock = task_scheduler.pending_tasks.lock();
-                            let mut task = lock.remove(&task_key).unwrap();
-                            task.status = TaskStatus::completed(now_timestamp_secs);
-                            Some(task)
-                        }
-                        Err(err) => {
-                            let mut lock = task_scheduler.pending_tasks.lock();
-                            task.options.failures += 1;
-                            let (should_retry, retry_delay) = task
-                                .options
-                                .retry_strategy
-                                .should_retry(task.options.failures);
-
-                            if should_retry {
-                                task.options.execute_after_timestamp_in_secs =
-                                    now_timestamp_secs + (retry_delay as u64);
-                                task.status = TaskStatus::waiting(now_timestamp_secs);
-                                lock.insert(&task_key, &task);
-                                None
-                            } else {
+                    let completed_task =
+                        match task.task.execute(Box::new(task_scheduler.clone())).await {
+                            Ok(()) => {
+                                let mut lock = task_scheduler.pending_tasks.lock();
                                 let mut task = lock.remove(&task_key).unwrap();
-                                task.status = TaskStatus::failed(now_timestamp_secs, err);
+                                task.status = TaskStatus::completed(now_timestamp_secs);
                                 Some(task)
                             }
-                        }
-                    };
+                            Err(err) => {
+                                let mut lock = task_scheduler.pending_tasks.lock();
+                                task.options.failures += 1;
+                                let (should_retry, retry_delay) = task
+                                    .options
+                                    .retry_strategy
+                                    .should_retry(task.options.failures);
+
+                                if should_retry {
+                                    task.options.execute_after_timestamp_in_secs =
+                                        now_timestamp_secs + (retry_delay as u64);
+                                    task.status = TaskStatus::waiting(now_timestamp_secs);
+                                    lock.insert(&task_key, &task);
+                                    None
+                                } else {
+                                    let mut task = lock.remove(&task_key).unwrap();
+                                    task.status = TaskStatus::failed(now_timestamp_secs, err);
+                                    Some(task)
+                                }
+                            }
+                        };
 
                     if let Some(task) = completed_task {
                         if let Some(cb) = &*task_scheduler.on_completion_callback {
@@ -374,7 +370,7 @@ mod test {
         use std::pin::Pin;
         use std::time::Duration;
 
-        use ic_stable_structures::{StableUnboundedMap, VectorMemory, UnboundedMapStructure};
+        use ic_stable_structures::{StableUnboundedMap, UnboundedMapStructure, VectorMemory};
         use rand::random;
         use serde::{Deserialize, Serialize};
 
@@ -462,7 +458,7 @@ mod test {
         use std::pin::Pin;
         use std::time::Duration;
 
-        use ic_stable_structures::{StableUnboundedMap, VectorMemory, UnboundedMapStructure};
+        use ic_stable_structures::{StableUnboundedMap, UnboundedMapStructure, VectorMemory};
         use rand::random;
         use serde::{Deserialize, Serialize};
 
@@ -659,8 +655,8 @@ mod test {
                                 .get(&0)
                                 .unwrap()
                                 .options
-                                .execute_after_timestamp_in_secs >= 
-                            timestamp + retry_delay_secs
+                                .execute_after_timestamp_in_secs
+                                >= timestamp + retry_delay_secs
                         );
                     }
 
