@@ -1,22 +1,22 @@
 use std::sync::Arc;
 
-use ic_stable_structures::UnboundedMapStructure;
+use ic_stable_structures::{IterableUnboundedMapStructure, UnboundedMapStructure};
 use parking_lot::Mutex;
 
-use crate::task::{InnerScheduledTask, ScheduledTask, Task};
+use crate::task::{InnerScheduledTask, ScheduledTask, Task, TaskStatus};
 use crate::time::time_secs;
 use crate::SchedulerError;
 
-type SchedulerErrorCallback<T> = Box<dyn 'static + Fn(ScheduledTask<T>, SchedulerError) + Send>;
+type SchedulerErrorCallback<T> = Box<dyn 'static + Fn(InnerScheduledTask<T>, SchedulerError) + Send>;
 
 /// A scheduler is responsible for executing tasks.
-pub struct Scheduler<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTask<T>>> {
+pub struct Scheduler<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>> {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
     failed_task_callback: Arc<Option<SchedulerErrorCallback<T>>>,
 }
 
-impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTask<T>>> Scheduler<T, P> {
+impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>> Scheduler<T, P> {
     /// Create a new scheduler.
     pub fn new(pending_tasks: P) -> Self {
         Self {
@@ -27,7 +27,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTa
     }
 
     /// Set a callback to be called when a task fails.
-    pub fn set_failed_task_callback<F: 'static + Send + Fn(ScheduledTask<T>, SchedulerError)>(
+    pub fn set_failed_task_callback<F: 'static + Send + Fn(InnerScheduledTask<T>, SchedulerError)>(
         &mut self,
         cb: F,
     ) {
@@ -43,24 +43,31 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTa
     }
 
     fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<u32, SchedulerError> {
-        let mut to_be_reprocessed = Vec::new();
+
         let mut task_execution_started = 0;
         {
             let mut lock = self.pending_tasks.lock();
-            while let Some(key) = lock.first_key() {
-                let task = lock.remove(&key);
-                drop(lock);
-                if let Some(task) = task {
-                    let task = ScheduledTask {
-                        task: task.task,
-                        options: task.options,
-                    };
-                    if task.options.execute_after_timestamp_in_secs > now_timestamp_secs {
-                        to_be_reprocessed.push(task);
-                    } else {
+
+            let mut selected_tasks = Vec::new();
+
+            for (task_key, mut task) in lock.iter() {
+
+                if let TaskStatus::Waiting { timestamp_secs } = task.status {
+
+                    if !(task.options.execute_after_timestamp_in_secs > now_timestamp_secs) {
                         task_execution_started += 1;
                         let task_scheduler = self.clone();
+                        task.status = TaskStatus::SelectedForExecution { timestamp_secs: now_timestamp_secs };
+
+                        lock.insert(&task_key, &task);
+
                         Self::spawn(async move {
+
+                            if let Some(mut task) = task_scheduler.pending_tasks.lock().remove(&task_key) {
+                                task.status = TaskStatus::Running { timestamp_secs: now_timestamp_secs };
+
+                            }
+
                             if let Err(err) =
                                 task.task.execute(Box::new(task_scheduler.clone())).await
                             {
@@ -73,7 +80,6 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTa
                                 if should_retry {
                                     task.options.execute_after_timestamp_in_secs =
                                         now_timestamp_secs + (retry_delay as u64);
-                                    task_scheduler.append_task(task)
                                 } else if let Some(cb) = &*task_scheduler.failed_task_callback {
                                     cb(task, err);
                                 }
@@ -81,10 +87,8 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTa
                         });
                     }
                 }
-                lock = self.pending_tasks.lock();
             }
         }
-        self.append_tasks(to_be_reprocessed);
         Ok(task_execution_started)
     }
 
@@ -108,7 +112,7 @@ pub trait TaskScheduler<T: 'static + Task> {
     fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>);
 }
 
-impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTask<T>>> Clone
+impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>> Clone
     for Scheduler<T, P>
 {
     fn clone(&self) -> Self {
@@ -120,7 +124,7 @@ impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTa
     }
 }
 
-impl<T: 'static + Task, P: 'static + UnboundedMapStructure<u32, InnerScheduledTask<T>>> TaskScheduler<T>
+impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>> TaskScheduler<T>
     for Scheduler<T, P>
 {
     fn append_task(&self, task: ScheduledTask<T>) {
