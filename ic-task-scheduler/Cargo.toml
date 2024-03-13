@@ -7,6 +7,7 @@ edition.workspace = true
 bincode = { workspace = true }
 ic-kit = { path = "../ic-kit" }
 ic-stable-structures = { path = "../ic-stable-structures" }
+ic-cdk-timers = { workspace = true }
 parking_lot = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }

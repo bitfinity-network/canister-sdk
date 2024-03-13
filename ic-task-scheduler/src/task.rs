@@ -79,16 +79,28 @@ impl<T: Task> InnerScheduledTask<T> {
         }
     }
 
-    /// Creates a new InnerScheduledTask with SelectedForExecution status
-    pub fn selected_for_execution(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
+    /// Creates a new InnerScheduledTask with Complete status
+    pub fn completed(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
         Self {
             task: task.task,
             options: task.options,
-            status: TaskStatus::SelectedForExecution {
+            status: TaskStatus::Completed {
                 timestamp_secs,
             },
         }
     }
+
+    /// Creates a new InnerScheduledTask with TimeoutOrPanic status
+    pub fn timeout_or_panic(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
+        Self {
+            task: task.task,
+            options: task.options,
+            status: TaskStatus::TimeoutOrPanic {
+                timestamp_secs,
+            },
+        }
+    }
+
 
     /// Creates a new InnerScheduledTask with Running status
     pub fn running(task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
@@ -101,6 +113,7 @@ impl<T: Task> InnerScheduledTask<T> {
         }
     }
 }
+
 impl<T: 'static + Task + Serialize + DeserializeOwned> Storable for InnerScheduledTask<T> {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         bincode::serialize(self)
@@ -122,13 +135,25 @@ impl<T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for InnerS
 /// The status of a task in the scheduler
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum TaskStatus {
+    /// The task is waiting to be executed
     Waiting {
         timestamp_secs: u64
     },
-    SelectedForExecution {
+    /// The task execution completed successfully
+    Completed {
         timestamp_secs: u64
     },
+    /// The task is running
     Running {
+        timestamp_secs: u64
+    },
+    /// The task execution failed and no more retries are allowed
+    Failed {
+        timestamp_secs: u64,
+        error: SchedulerError
+    },
+    /// The task has been running for long time. It could be stuck or panicking
+    TimeoutOrPanic {
         timestamp_secs: u64
     },
 }
@@ -140,9 +165,14 @@ impl TaskStatus {
         Self::Waiting { timestamp_secs }
     }
 
-    /// Creates a new TaskStatus::SelectedForExecution with the given timestamp in seconds
-    pub fn selected_for_execution(timestamp_secs: u64) -> Self {
-        Self::SelectedForExecution { timestamp_secs }
+    /// Creates a new TaskStatus::Completed with the given timestamp in seconds
+    pub fn completed(timestamp_secs: u64) -> Self {
+        Self::Completed { timestamp_secs }
+    }
+
+    /// Creates a new TaskStatus::Failed with the given timestamp in seconds and error
+    pub fn failed(timestamp_secs: u64, error: SchedulerError) -> Self {
+        Self::Failed { timestamp_secs, error }
     }
 
     /// Creates a new TaskStatus::Running with the given timestamp in seconds
@@ -150,12 +180,19 @@ impl TaskStatus {
         Self::Running { timestamp_secs }
     }
 
+    /// Creates a new TaskStatus::TimeoutOrPanic with the given timestamp in seconds
+    pub fn timeout_or_panic(timestamp_secs: u64) -> Self {
+        Self::TimeoutOrPanic { timestamp_secs }
+    }
+
     /// Returns the timestamp of the status
     pub fn timestamp_secs(&self) -> u64 {
         match self {
             TaskStatus::Waiting { timestamp_secs } => *timestamp_secs,
-            TaskStatus::SelectedForExecution { timestamp_secs } => *timestamp_secs,
+            TaskStatus::Completed { timestamp_secs } => *timestamp_secs,
             TaskStatus::Running { timestamp_secs } => *timestamp_secs,
+            TaskStatus::TimeoutOrPanic { timestamp_secs } => *timestamp_secs,
+            TaskStatus::Failed { timestamp_secs, .. } => *timestamp_secs,
         }
     }
 }
@@ -265,7 +302,7 @@ mod test {
                     secs: 2,
                     multiplier: 2,
                 }),
-                status: TaskStatus::SelectedForExecution { timestamp_secs: 1230 }
+                status: TaskStatus::Completed { timestamp_secs: 1230 }
             };
 
             let serialized = task.to_bytes();

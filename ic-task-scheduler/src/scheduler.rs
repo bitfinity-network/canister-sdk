@@ -1,22 +1,30 @@
 use std::sync::Arc;
 
-use ic_stable_structures::{IterableUnboundedMapStructure, UnboundedMapStructure};
+use ic_stable_structures::IterableUnboundedMapStructure;
 use parking_lot::Mutex;
 
 use crate::task::{InnerScheduledTask, ScheduledTask, Task, TaskStatus};
 use crate::time::time_secs;
 use crate::SchedulerError;
 
-type SchedulerErrorCallback<T> = Box<dyn 'static + Fn(InnerScheduledTask<T>, SchedulerError) + Send>;
+type SchedulerErrorCallback<T> =
+    Box<dyn 'static + Fn(InnerScheduledTask<T>) + Send>;
+
+pub const RUNNING_TASK_TIMEOUT_SECS: u64 = 60;
 
 /// A scheduler is responsible for executing tasks.
-pub struct Scheduler<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>> {
+pub struct Scheduler<
+    T: 'static + Task,
+    P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>,
+> {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
     failed_task_callback: Arc<Option<SchedulerErrorCallback<T>>>,
 }
 
-impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>> Scheduler<T, P> {
+impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>>
+    Scheduler<T, P>
+{
     /// Create a new scheduler.
     pub fn new(pending_tasks: P) -> Self {
         Self {
@@ -27,7 +35,9 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
     }
 
     /// Set a callback to be called when a task fails.
-    pub fn set_failed_task_callback<F: 'static + Send + Fn(InnerScheduledTask<T>, SchedulerError)>(
+    pub fn set_failed_task_callback<
+        F: 'static + Send + Fn(InnerScheduledTask<T>),
+    >(
         &mut self,
         cb: F,
     ) {
@@ -45,51 +55,88 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
     fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<u32, SchedulerError> {
 
         let mut task_execution_started = 0;
-        {
-            let mut lock = self.pending_tasks.lock();
+        let mut out_of_time_tasks = Vec::new();
+        let mut lock = self.pending_tasks.lock();
 
-            let mut selected_tasks = Vec::new();
-
-            for (task_key, mut task) in lock.iter() {
-
-                if let TaskStatus::Waiting { timestamp_secs } = task.status {
-
-                    if !(task.options.execute_after_timestamp_in_secs > now_timestamp_secs) {
+        for (task_key, task) in lock.iter() {
+            match task.status {
+                TaskStatus::Waiting { .. } => {
+                    if task.options.execute_after_timestamp_in_secs <= now_timestamp_secs {
                         task_execution_started += 1;
-                        let task_scheduler = self.clone();
-                        task.status = TaskStatus::SelectedForExecution { timestamp_secs: now_timestamp_secs };
-
-                        lock.insert(&task_key, &task);
-
-                        Self::spawn(async move {
-
-                            if let Some(mut task) = task_scheduler.pending_tasks.lock().remove(&task_key) {
-                                task.status = TaskStatus::Running { timestamp_secs: now_timestamp_secs };
-
-                            }
-
-                            if let Err(err) =
-                                task.task.execute(Box::new(task_scheduler.clone())).await
-                            {
-                                let mut task = task;
-                                task.options.failures += 1;
-                                let (should_retry, retry_delay) = task
-                                    .options
-                                    .retry_strategy
-                                    .should_retry(task.options.failures);
-                                if should_retry {
-                                    task.options.execute_after_timestamp_in_secs =
-                                        now_timestamp_secs + (retry_delay as u64);
-                                } else if let Some(cb) = &*task_scheduler.failed_task_callback {
-                                    cb(task, err);
-                                }
-                            }
-                        });
+                        self.process_pending_task(task_key);
                     }
+                }
+                TaskStatus::Running { timestamp_secs } => {
+                    if timestamp_secs + RUNNING_TASK_TIMEOUT_SECS < now_timestamp_secs {
+                        out_of_time_tasks.push(task_key);
+                    }
+                }
+                TaskStatus::Completed { .. } | TaskStatus::TimeoutOrPanic { .. } | TaskStatus::Failed { .. }=> (),
+            }
+        }
+
+        for task_key in out_of_time_tasks.into_iter() {
+            if let Some(mut task) = lock.remove(&task_key) {
+                task.status = TaskStatus::timeout_or_panic(now_timestamp_secs);
+                if let Some(cb) = &*self.failed_task_callback {
+                    cb(task);
                 }
             }
         }
+
         Ok(task_execution_started)
+    }
+
+    fn process_pending_task(&self, task_key: u32) {
+        let task_scheduler = self.clone();
+
+        Self::spawn(async move {
+            let now_timestamp_secs = time_secs();
+            let mut lock = task_scheduler.pending_tasks.lock();
+
+            if let Some(mut task) = lock.get(&task_key) {
+                if let TaskStatus::Waiting { .. } = task.status {
+                    task.status = TaskStatus::running(now_timestamp_secs);
+                    lock.insert(&task_key, &task);
+                    drop(lock);
+
+                    let completed_task = match task.task.execute(Box::new(task_scheduler.clone())).await {
+                        Ok(()) => {
+                            let mut lock = task_scheduler.pending_tasks.lock();
+                            let mut task = lock.remove(&task_key).unwrap();
+                            task.status = TaskStatus::completed(now_timestamp_secs);
+                            Some(task)
+                        }
+                        Err(err) => {
+                            let mut lock = task_scheduler.pending_tasks.lock();
+                            task.options.failures += 1;
+                            let (should_retry, retry_delay) = task
+                                .options
+                                .retry_strategy
+                                .should_retry(task.options.failures);
+
+                            if should_retry {
+                                task.options.execute_after_timestamp_in_secs =
+                                    now_timestamp_secs + (retry_delay as u64);
+                                task.status = TaskStatus::waiting(now_timestamp_secs);
+                                lock.insert(&task_key, &task);
+                                None
+                            } else {
+                                let mut task = lock.remove(&task_key).unwrap();
+                                task.status = TaskStatus::failed(now_timestamp_secs, err);
+                                Some(task)
+                            }
+                        }
+                    };
+
+                    if let Some(task) = completed_task {
+                        if let Some(cb) = &*task_scheduler.failed_task_callback {
+                            cb(task);
+                        }
+                    }
+                }
+            }
+        });
     }
 
     // We use tokio for testing instead of ic_kit::ic::spawn because the latter blocks the current thread
@@ -112,8 +159,8 @@ pub trait TaskScheduler<T: 'static + Task> {
     fn append_tasks(&self, tasks: Vec<ScheduledTask<T>>);
 }
 
-impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>> Clone
-    for Scheduler<T, P>
+impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>>
+    Clone for Scheduler<T, P>
 {
     fn clone(&self) -> Self {
         Self {
@@ -124,8 +171,8 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
     }
 }
 
-impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>> TaskScheduler<T>
-    for Scheduler<T, P>
+impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>>
+    TaskScheduler<T> for Scheduler<T, P>
 {
     fn append_task(&self, task: ScheduledTask<T>) {
         let time_secs = time_secs();
@@ -283,7 +330,7 @@ mod test {
                 .run_until(async move {
                     let map = StableUnboundedMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
-                    scheduler.set_failed_task_callback(move |_, _| {
+                    scheduler.set_failed_task_callback(move |_| {
                         called_t.store(true, std::sync::atomic::Ordering::SeqCst);
                     });
                     let id = random();
@@ -325,7 +372,7 @@ mod test {
         use std::pin::Pin;
         use std::time::Duration;
 
-        use ic_stable_structures::{StableUnboundedMap, VectorMemory};
+        use ic_stable_structures::{StableUnboundedMap, VectorMemory, UnboundedMapStructure};
         use rand::random;
         use serde::{Deserialize, Serialize};
 
@@ -413,7 +460,7 @@ mod test {
         use std::pin::Pin;
         use std::time::Duration;
 
-        use ic_stable_structures::{StableUnboundedMap, VectorMemory};
+        use ic_stable_structures::{StableUnboundedMap, VectorMemory, UnboundedMapStructure};
         use rand::random;
         use serde::{Deserialize, Serialize};
 
@@ -642,7 +689,7 @@ mod test {
                     let map = StableUnboundedMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
 
-                    scheduler.set_failed_task_callback(move |_, _| {
+                    scheduler.set_failed_task_callback(move |_| {
                         called_t.store(true, std::sync::atomic::Ordering::SeqCst);
                     });
 
@@ -679,7 +726,7 @@ mod test {
                     let map = StableUnboundedMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
 
-                    scheduler.set_failed_task_callback(move |_, _| {
+                    scheduler.set_failed_task_callback(move |_| {
                         called_t.store(true, std::sync::atomic::Ordering::SeqCst);
                     });
 
@@ -733,7 +780,7 @@ mod test {
                     let map = StableUnboundedMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
 
-                    scheduler.set_failed_task_callback(move |_, _| {
+                    scheduler.set_failed_task_callback(move |_| {
                         called_t.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                     });
 
