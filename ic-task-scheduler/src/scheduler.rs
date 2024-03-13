@@ -87,13 +87,12 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
 
         Self::spawn(async move {
             let now_timestamp_secs = time_secs();
-            let mut lock = task_scheduler.pending_tasks.lock();
 
-            if let Some(mut task) = lock.get(&task_key) {
+            let task = task_scheduler.pending_tasks.lock().get(&task_key);
+            if let Some(mut task) = task {
                 if let TaskStatus::Waiting { .. } = task.status {
                     task.status = TaskStatus::running(now_timestamp_secs);
-                    lock.insert(&task_key, &task);
-                    drop(lock);
+                    task_scheduler.pending_tasks.lock().insert(&task_key, &task);
 
                     let completed_task =
                         match task.task.execute(Box::new(task_scheduler.clone())).await {
