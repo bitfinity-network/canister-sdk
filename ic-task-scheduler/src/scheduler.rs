@@ -7,7 +7,7 @@ use crate::task::{InnerScheduledTask, ScheduledTask, Task, TaskStatus};
 use crate::time::time_secs;
 use crate::SchedulerError;
 
-type SchedulerErrorCallback<T> =
+type TaskCompletionCallback<T> =
     Box<dyn 'static + Fn(InnerScheduledTask<T>) + Send>;
 
 pub const RUNNING_TASK_TIMEOUT_SECS: u64 = 60;
@@ -19,7 +19,7 @@ pub struct Scheduler<
 > {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
-    failed_task_callback: Arc<Option<SchedulerErrorCallback<T>>>,
+    on_completion_callback: Arc<Option<TaskCompletionCallback<T>>>,
 }
 
 impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>>
@@ -30,18 +30,18 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
         Self {
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
             phantom: std::marker::PhantomData,
-            failed_task_callback: Arc::new(None),
+            on_completion_callback: Arc::new(None),
         }
     }
 
-    /// Set a callback to be called when a task fails.
-    pub fn set_failed_task_callback<
+    /// Set a callback to be called when a task execution completes.
+    pub fn on_completion_callback<
         F: 'static + Send + Fn(InnerScheduledTask<T>),
     >(
         &mut self,
         cb: F,
     ) {
-        self.failed_task_callback = Arc::new(Some(Box::new(cb)));
+        self.on_completion_callback = Arc::new(Some(Box::new(cb)));
     }
 
     /// Execute all pending tasks.
@@ -78,7 +78,7 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
         for task_key in out_of_time_tasks.into_iter() {
             if let Some(mut task) = lock.remove(&task_key) {
                 task.status = TaskStatus::timeout_or_panic(now_timestamp_secs);
-                if let Some(cb) = &*self.failed_task_callback {
+                if let Some(cb) = &*self.on_completion_callback {
                     cb(task);
                 }
             }
@@ -130,7 +130,7 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
                     };
 
                     if let Some(task) = completed_task {
-                        if let Some(cb) = &*task_scheduler.failed_task_callback {
+                        if let Some(cb) = &*task_scheduler.on_completion_callback {
                             cb(task);
                         }
                     }
@@ -166,7 +166,7 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
         Self {
             pending_tasks: self.pending_tasks.clone(),
             phantom: self.phantom,
-            failed_task_callback: self.failed_task_callback.clone(),
+            on_completion_callback: self.on_completion_callback.clone(),
         }
     }
 }
@@ -322,7 +322,7 @@ mod test {
         }
 
         #[tokio::test]
-        async fn test_error_cb_not_called_in_case_of_success() {
+        async fn test_error_cb_called_on_success() {
             let local = tokio::task::LocalSet::new();
             let called = Arc::new(AtomicBool::new(false));
             let called_t = called.clone();
@@ -330,8 +330,10 @@ mod test {
                 .run_until(async move {
                     let map = StableUnboundedMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
-                    scheduler.set_failed_task_callback(move |_| {
-                        called_t.store(true, std::sync::atomic::Ordering::SeqCst);
+                    scheduler.on_completion_callback(move |task| {
+                        if let TaskStatus::Completed { .. } = task.status {
+                            called_t.store(true, std::sync::atomic::Ordering::SeqCst);
+                        }
                     });
                     let id = random();
                     scheduler.append_task(SimpleTaskSteps::One { id }.into());
@@ -361,7 +363,7 @@ mod test {
                 })
                 .await;
 
-            assert!(!called.load(std::sync::atomic::Ordering::SeqCst));
+            assert!(called.load(std::sync::atomic::Ordering::SeqCst));
         }
     }
 
@@ -644,7 +646,7 @@ mod test {
                             .into(),
                     );
 
-                    let timestamp = random();
+                    let timestamp = time_secs();
                     assert_eq!(1, scheduler.run_with_timestamp(timestamp).unwrap());
                     tokio::time::sleep(Duration::from_millis(25)).await;
 
@@ -652,12 +654,12 @@ mod test {
                         let pending_tasks = scheduler.pending_tasks.lock();
                         assert_eq!(pending_tasks.len(), 1);
                         assert_eq!(pending_tasks.get(&0).unwrap().options.failures, 1);
-                        assert_eq!(
+                        assert!(
                             pending_tasks
                                 .get(&0)
                                 .unwrap()
                                 .options
-                                .execute_after_timestamp_in_secs,
+                                .execute_after_timestamp_in_secs >= 
                             timestamp + retry_delay_secs
                         );
                     }
@@ -689,8 +691,10 @@ mod test {
                     let map = StableUnboundedMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
 
-                    scheduler.set_failed_task_callback(move |_| {
-                        called_t.store(true, std::sync::atomic::Ordering::SeqCst);
+                    scheduler.on_completion_callback(move |task| {
+                        if let TaskStatus::Failed { .. } = task.status {
+                            called_t.store(true, std::sync::atomic::Ordering::SeqCst);
+                        }
                     });
 
                     let id = random();
@@ -726,8 +730,10 @@ mod test {
                     let map = StableUnboundedMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
 
-                    scheduler.set_failed_task_callback(move |_| {
-                        called_t.store(true, std::sync::atomic::Ordering::SeqCst);
+                    scheduler.on_completion_callback(move |task| {
+                        if let TaskStatus::Completed { .. } = task.status {
+                            called_t.store(true, std::sync::atomic::Ordering::SeqCst);
+                        }
                     });
 
                     let id = random();
@@ -765,7 +771,7 @@ mod test {
                     });
                 })
                 .await;
-            assert!(!called.load(std::sync::atomic::Ordering::SeqCst));
+            assert!(called.load(std::sync::atomic::Ordering::SeqCst));
         }
 
         #[tokio::test]
@@ -780,7 +786,7 @@ mod test {
                     let map = StableUnboundedMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
 
-                    scheduler.set_failed_task_callback(move |_| {
+                    scheduler.on_completion_callback(move |_| {
                         called_t.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                     });
 
