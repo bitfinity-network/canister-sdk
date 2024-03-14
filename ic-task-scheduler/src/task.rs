@@ -70,46 +70,6 @@ impl<T: Task> InnerScheduledTask<T> {
         }
     }
 
-    /// Creates a new InnerScheduledTask with Waiting status
-    pub fn waiting(id: u32, task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
-        Self {
-            id,
-            task: task.task,
-            options: task.options,
-            status: TaskStatus::Waiting { timestamp_secs },
-        }
-    }
-
-    /// Creates a new InnerScheduledTask with Complete status
-    pub fn completed(id: u32, task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
-        Self {
-            id,
-            task: task.task,
-            options: task.options,
-            status: TaskStatus::Completed { timestamp_secs },
-        }
-    }
-
-    /// Creates a new InnerScheduledTask with TimeoutOrPanic status
-    pub fn timeout_or_panic(id: u32, task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
-        Self {
-            id,
-            task: task.task,
-            options: task.options,
-            status: TaskStatus::TimeoutOrPanic { timestamp_secs },
-        }
-    }
-
-    /// Creates a new InnerScheduledTask with Running status
-    pub fn running(id: u32, task: ScheduledTask<T>, timestamp_secs: u64) -> Self {
-        Self {
-            id,
-            task: task.task,
-            options: task.options,
-            status: TaskStatus::Running { timestamp_secs },
-        }
-    }
-
     /// Returs the status of the task
     pub fn status(&self) -> &TaskStatus {
         &self.status

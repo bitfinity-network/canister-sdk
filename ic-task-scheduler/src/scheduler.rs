@@ -239,7 +239,16 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
         let time_secs = time_secs();
         let mut lock = self.pending_tasks.lock();
         let key = lock.last_key().map(|val| val + 1).unwrap_or_default();
-        lock.insert(&key, &InnerScheduledTask::waiting(key, task, time_secs));
+        lock.insert(
+            &key,
+            &InnerScheduledTask::with_status(
+                key,
+                task,
+                TaskStatus::Waiting {
+                    timestamp_secs: time_secs,
+                },
+            ),
+        );
         key
     }
 
@@ -254,7 +263,16 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
 
         let mut keys = Vec::with_capacity(tasks.len());
         for task in tasks {
-            lock.insert(&key, &InnerScheduledTask::waiting(key, task, time_secs));
+            lock.insert(
+                &key,
+                &InnerScheduledTask::with_status(
+                    key,
+                    task,
+                    TaskStatus::Waiting {
+                        timestamp_secs: time_secs,
+                    },
+                ),
+            );
             keys.push(key);
             key += 1;
         }
