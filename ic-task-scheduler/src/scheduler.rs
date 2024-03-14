@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use ic_stable_structures::IterableUnboundedMapStructure;
+use log::{debug, warn};
 use parking_lot::Mutex;
 
 use crate::task::{InnerScheduledTask, ScheduledTask, Task, TaskStatus};
@@ -40,6 +41,7 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
     /// considered as stuck or panicked.
     /// The default value is 120 seconds.
     pub fn set_running_task_timeout(&mut self, timeout_secs: u64) {
+        debug!("Setting running task timeout to {} seconds", timeout_secs);
         self.running_task_timeout_secs.store(timeout_secs, Ordering::Relaxed);
     }
 
@@ -57,6 +59,7 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
     }
 
     fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<usize, SchedulerError> {
+        debug!("Scheduler - Running tasks");
         let mut to_be_scheduled_tasks = Vec::new();
         let mut out_of_time_tasks = Vec::new();
         let running_task_timeout_secs = self.running_task_timeout_secs.load(Ordering::Relaxed);
@@ -67,12 +70,16 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
                 match task.status {
                     TaskStatus::Waiting { .. } => {
                         if task.options.execute_after_timestamp_in_secs <= now_timestamp_secs {
+                            debug!(
+                                "Scheduler - Task {} scheduled to be processed",
+                                task_key
+                            );
                             to_be_scheduled_tasks.push(task_key);
                         }
                     }
                     TaskStatus::Running { timestamp_secs } | TaskStatus::Scheduled { timestamp_secs } => {
-                        ic_cdk::println!(
-                            "Task {} was in scheduled or running status for more than {} seconds",
+                        warn!(
+                            "Scheduler - Task {} was in Scheduled or Running status for more than {} seconds",
                             task_key, running_task_timeout_secs
                         );
                         if timestamp_secs + running_task_timeout_secs < now_timestamp_secs {
@@ -116,6 +123,7 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
             let task = lock.get(&task_key);
             if let Some(mut task) = task {
                 if let TaskStatus::Waiting { .. } = task.status {
+                    debug!("Scheduler - Task {} status changed: Waiting -> Scheduled", task_key);
                     task.status = TaskStatus::scheduled(now_timestamp_secs);
                     lock.insert(&task_key, &task);
                 }
@@ -128,12 +136,14 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
             let task = task_scheduler.pending_tasks.lock().get(&task_key);
             if let Some(mut task) = task {
                 if let TaskStatus::Scheduled { .. } = task.status {
+                    debug!("Scheduler - Task {} status changed: Scheduled -> Running", task_key);
                     task.status = TaskStatus::running(now_timestamp_secs);
                     task_scheduler.pending_tasks.lock().insert(&task_key, &task);
 
                     let completed_task =
                         match task.task.execute(Box::new(task_scheduler.clone())).await {
                             Ok(()) => {
+                                debug!("Scheduler - Task {} execution succeeded. Status changed: Running -> Completed", task_key);
                                 let mut lock = task_scheduler.pending_tasks.lock();
                                 let mut task = lock.remove(&task_key).unwrap();
                                 task.status = TaskStatus::completed(now_timestamp_secs);
@@ -148,12 +158,14 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
                                     .should_retry(task.options.failures);
 
                                 if should_retry {
+                                    debug!("Scheduler - Task {} execution failed. Execution will be retried. Status changed: Running -> Waiting", task_key);
                                     task.options.execute_after_timestamp_in_secs =
                                         now_timestamp_secs + (retry_delay as u64);
                                     task.status = TaskStatus::waiting(now_timestamp_secs);
                                     lock.insert(&task_key, &task);
                                     None
                                 } else {
+                                    debug!("Scheduler - Task {} execution failed. Status changed: Running -> Failed", task_key);
                                     let mut task = lock.remove(&task_key).unwrap();
                                     task.status = TaskStatus::failed(now_timestamp_secs, err);
                                     Some(task)

@@ -21,8 +21,6 @@ async fn test_should_remove_panicking_task() {
 
     }
 
-    // assert!(test_ctx.scheduled_state_called().await);
-    // assert_eq!(test_ctx.executed_tasks().await, vec![3, 0, 1, 2]);
     assert_eq!(test_ctx.panicked_tasks().await, vec![1]);
     assert_eq!(test_ctx.completed_tasks().await, vec![0, 2]);
     assert_eq!(test_ctx.failed_tasks().await, vec![3]);

@@ -10,6 +10,7 @@ ic-cdk = { workspace = true }
 ic-cdk-timers = { workspace = true }
 ic-kit = { path = "../ic-kit" }
 ic-stable-structures = { path = "../ic-stable-structures" }
+log = { workspace = true }
 parking_lot = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }

@@ -39,11 +39,9 @@ thread_local! {
         RefCell::new(scheduler)
     };
 
-    static SCHEDULED_STATE_CALLED: RefCell<bool> = RefCell::new(false);
     static COMPLETED_TASKS: RefCell<Vec<u32>> = RefCell::new(vec![]);
     static FAILED_TASKS: RefCell<Vec<u32>> = RefCell::new(vec![]);
     static PANICKED_TASKS : RefCell<Vec<u32>> = RefCell::new(vec![]);
-    static EXECUTING_TASKS : RefCell<Vec<u32>> = RefCell::new(vec![]);
 
     static PRINCIPAL : RefCell<Principal> = RefCell::new(Principal::anonymous());
 
@@ -105,20 +103,6 @@ impl DummyCanister {
         });
     }
 
-    #[update]
-    pub fn save_state(&self) -> bool {
-        SCHEDULED_STATE_CALLED.with_borrow_mut(|called| {
-            *called = true;
-        });
-
-        true
-    }
-
-    #[query]
-    pub fn scheduled_state_called(&self) -> bool {
-        SCHEDULED_STATE_CALLED.with_borrow(|called| *called)
-    }
-
     #[query]
     pub fn panicked_tasks(&self) -> Vec<u32> {
         PANICKED_TASKS.with_borrow(|tasks| tasks.clone())
@@ -132,11 +116,6 @@ impl DummyCanister {
     #[query]
     pub fn failed_tasks(&self) -> Vec<u32> {
         FAILED_TASKS.with_borrow(|tasks| tasks.clone())
-    }
-
-    #[query]
-    pub fn executed_tasks(&self) -> Vec<u32> {
-        EXECUTING_TASKS.with_borrow(|tasks| tasks.clone())
     }
 
     #[query]
@@ -161,6 +140,7 @@ impl DummyCanister {
 }
 
 fn save_state_cb(task: InnerScheduledTask<DummyTask>) {
+
     match task.status() {
         TaskStatus::Waiting { .. } => {}
         TaskStatus::Completed { .. } => {
@@ -168,9 +148,7 @@ fn save_state_cb(task: InnerScheduledTask<DummyTask>) {
                 tasks.push(task.id());
             });
         }
-        TaskStatus::Running { .. } => EXECUTING_TASKS.with_borrow_mut(|tasks| {
-            tasks.push(task.id());
-        }),
+        TaskStatus::Running { .. } => {},
         TaskStatus::Failed { .. } => {
             FAILED_TASKS.with_borrow_mut(|tasks| {
                 tasks.push(task.id());
@@ -184,31 +162,4 @@ fn save_state_cb(task: InnerScheduledTask<DummyTask>) {
         TaskStatus::Scheduled { .. } => {}
     };
 
-    // match task.status {
-    //     TaskExecutionState::Completed(id) => {
-    //         COMPLETED_TASKS.with_borrow_mut(|tasks| {
-    //             tasks.push(id);
-    //         });
-    //     }
-    //     TaskExecutionState::Panicked(id) => {
-    //         PANICKED_TASKS.with_borrow_mut(|tasks| {
-    //             tasks.push(id);
-    //         });
-    //     }
-    //     TaskExecutionState::Failed(id, _) => {
-    //         FAILED_TASKS.with_borrow_mut(|tasks| {
-    //             tasks.push(id);
-    //         });
-    //     }
-    //     TaskExecutionState::Executing(id) => {
-    //         EXECUTING_TASKS.with_borrow_mut(|tasks| {
-    //             tasks.push(id);
-    //         });
-    //     }
-    //     TaskExecutionState::Scheduled => {}
-    // }
-    // let canister = PRINCIPAL.with_borrow(|principal| *principal);
-    // ic_exports::ic_cdk::call(canister, "save_state", ())
-    //     .await
-    //     .map_err(|(_, msg)| ic_task_scheduler::SchedulerError::TaskExecutionFailed(msg))
 }

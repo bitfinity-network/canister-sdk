@@ -25,10 +25,6 @@ impl PocketIcTestContext {
         &self.client
     }
 
-    pub async fn scheduled_state_called(&self) -> bool {
-        self.canister_client.query("scheduled_state_called", ()).await.unwrap()
-    }
-
     pub async fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<DummyTask>> {
         self.canister_client.query("get_task", (task_id, )).await.unwrap()
     }
@@ -43,10 +39,6 @@ impl PocketIcTestContext {
 
     pub async fn failed_tasks(&self) -> Vec<u32> {
         self.canister_client.query("failed_tasks", ()).await.unwrap()
-    }
-
-    pub async fn executed_tasks(&self) -> Vec<u32> {
-        self.canister_client.query("executed_tasks", ()).await.unwrap()
     }
 
     pub async fn run_scheduler(&self) {
@@ -85,8 +77,6 @@ async fn deploy_dummy_scheduler_canister() -> anyhow::Result<PocketIcTestContext
     Ok(env)
 }
 
-
-const TODO_REMOVE_DUPLICATED_CODE: &str = "TODO: remove duplicated code";
 
 #[derive(CandidType, Serialize, Deserialize, Debug, Clone)]
 pub enum DummyTask {
