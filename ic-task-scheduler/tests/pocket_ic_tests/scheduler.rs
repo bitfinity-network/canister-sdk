@@ -46,31 +46,12 @@ async fn test_should_remove_panicking_task() {
 
     let task_ids = test_ctx.schedule_tasks(tasks.clone()).await;
 
-    let tasks_map = task_ids
+    let tasks_map: BTreeMap<u32, DummyTask> = task_ids
         .into_iter()
         .enumerate()
         .map(|(id, key)| (key, tasks[id]))
         .collect::<BTreeMap<_, _>>();
     assert_eq!(tasks.len(), tasks_map.len());
-
-    let mut expected_panicked_tasks = tasks_map
-        .iter()
-        .filter(|(_, task)| task == &&DummyTask::Panicking)
-        .map(|(id, _)| *id)
-        .collect::<Vec<_>>();
-    let mut expected_completed_tasks = tasks_map
-        .iter()
-        .filter(|(_, task)| task == &&DummyTask::GoodTask)
-        .map(|(id, _)| *id)
-        .collect::<Vec<_>>();
-    let mut expected_failed_tasks = tasks_map
-        .iter()
-        .filter(|(_, task)| task == &&DummyTask::FailTask)
-        .map(|(id, _)| *id)
-        .collect::<Vec<_>>();
-    expected_panicked_tasks.sort();
-    expected_completed_tasks.sort();
-    expected_failed_tasks.sort();
 
     // Act
     for _ in 0..10 {
@@ -81,20 +62,40 @@ async fn test_should_remove_panicking_task() {
     }
 
     // Assert
-    let mut panicked_tasks = test_ctx.panicked_tasks().await;
-    let mut completed_tasks = test_ctx.completed_tasks().await;
-    let mut failed_tasks = test_ctx.failed_tasks().await;
-
-    panicked_tasks.sort();
-    completed_tasks.sort();
-    failed_tasks.sort();
+    let panicked_tasks = test_ctx.panicked_tasks().await;
+    let completed_tasks = test_ctx.completed_tasks().await;
+    let failed_tasks = test_ctx.failed_tasks().await;
 
     assert_eq!(
         panicked_tasks.len() + completed_tasks.len() + failed_tasks.len(),
         tasks_map.len()
     );
 
-    assert_eq!(panicked_tasks, expected_panicked_tasks);
-    assert_eq!(completed_tasks, expected_completed_tasks);
-    assert_eq!(failed_tasks, expected_failed_tasks);
+    compare(panicked_tasks, &tasks_map, DummyTask::Panicking);
+    compare(completed_tasks, &tasks_map, DummyTask::GoodTask);
+    compare(failed_tasks, &tasks_map, DummyTask::FailTask);
+}
+
+fn compare(mut found: Vec<u32>, tasks_map: &BTreeMap<u32, DummyTask>, expected_task: DummyTask) {
+    let mut expected = tasks_map
+        .iter()
+        .filter(|(_, task)| task == &&expected_task)
+        .map(|(id, _)| *id)
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        expected.len(),
+        found.len(),
+        "Task: {:?}, Expected: {:?}, Found: {:?}",
+        expected_task,
+        expected,
+        found
+    );
+    expected.sort();
+    found.sort();
+    assert_eq!(
+        expected, found,
+        "Task: {:?}, Expected: {:?}, Found: {:?}",
+        expected_task, expected, found
+    );
 }
