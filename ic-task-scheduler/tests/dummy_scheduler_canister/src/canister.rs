@@ -122,10 +122,7 @@ impl DummyCanister {
     #[update]
     pub fn schedule_tasks(&self, tasks: Vec<DummyTask>) -> Vec<u32> {
         let scheduler = SCHEDULER.with_borrow(|scheduler| scheduler.clone());
-        let scheduled_tasks = tasks
-            .into_iter()
-            .map(|task| ScheduledTask::new(task))
-            .collect();
+        let scheduled_tasks = tasks.into_iter().map(ScheduledTask::new).collect();
         scheduler.append_tasks(scheduled_tasks)
     }
 
