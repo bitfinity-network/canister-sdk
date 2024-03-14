@@ -79,7 +79,7 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
                     }
                     TaskStatus::Running { timestamp_secs } | TaskStatus::Scheduled { timestamp_secs } => {
                         warn!(
-                            "Scheduler - Task {} was in Scheduled or Running status for more than {} seconds",
+                            "Scheduler - Task {} was in Scheduled or Running status for more than {} seconds, it could be stuck or panicked. Removing it from the scheduler.",
                             task_key, running_task_timeout_secs
                         );
                         if timestamp_secs + running_task_timeout_secs < now_timestamp_secs {

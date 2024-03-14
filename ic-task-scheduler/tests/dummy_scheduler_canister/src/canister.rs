@@ -8,7 +8,7 @@ use ic_canister::{generate_idl, init, post_upgrade, query, update, Canister, Idl
 use ic_stable_structures::stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{IcMemoryManager, MemoryId, StableUnboundedMap, VirtualMemory};
 use ic_task_scheduler::scheduler::{Scheduler, TaskScheduler};
-use ic_task_scheduler::task::{InnerScheduledTask, Task, TaskOptions, TaskStatus};
+use ic_task_scheduler::task::{InnerScheduledTask, ScheduledTask, Task, TaskStatus};
 use ic_task_scheduler::SchedulerError;
 use serde::{Deserialize, Serialize};
 
@@ -28,13 +28,8 @@ thread_local! {
             map,
         );
 
-        scheduler.set_running_task_timeout(10);
+        scheduler.set_running_task_timeout(30);
         scheduler.on_completion_callback(save_state_cb);
-
-        scheduler.append_task((DummyTask::GoodTask, TaskOptions::new()).into());
-        scheduler.append_task((DummyTask::Panicking, TaskOptions::new()).into());
-        scheduler.append_task((DummyTask::GoodTask, TaskOptions::new()).into());
-        scheduler.append_task((DummyTask::FailTask, TaskOptions::new()).into());
 
         RefCell::new(scheduler)
     };
@@ -122,6 +117,13 @@ impl DummyCanister {
     pub fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<DummyTask>> {
         let scheduler = SCHEDULER.with_borrow(|scheduler| scheduler.clone());
         scheduler.get_task(task_id)
+    }
+
+    #[update]
+    pub fn schedule_tasks(&self, tasks: Vec<DummyTask>) -> Vec<u32> {
+        let scheduler = SCHEDULER.with_borrow(|scheduler| scheduler.clone());
+        let scheduled_tasks = tasks.into_iter().map(|task| ScheduledTask::new(task)).collect();
+        scheduler.append_tasks(scheduled_tasks)
     }
 
     #[update]

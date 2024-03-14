@@ -41,33 +41,38 @@ impl PocketIcTestContext {
         self.canister_client.query("failed_tasks", ()).await.unwrap()
     }
 
+    pub async fn schedule_tasks(&self, tasks: Vec<DummyTask>) -> Vec<u32> {
+        self.canister_client.update("schedule_tasks", (tasks, )).await.unwrap()
+    }
+
     pub async fn run_scheduler(&self) {
         self.client.advance_time(Duration::from_millis(5000)).await;
         self.client.tick().await;
     }
+
 }
 
 async fn deploy_dummy_scheduler_canister() -> anyhow::Result<PocketIcTestContext> {
     let client = PocketIcAsync::init().await;
-    let dummy_wasm = get_dummy_scheduler_canister_bytecode();
     println!("Creating dummy canister");
-
-    let args = Encode!(&())?;
-
+    
     let sender = alice();
     let canister = client.create_canister(Some(sender)).await;
     println!("Canister created with principal {}", canister);
-
+    
     let canister_client = ic_canister_client::PocketIcClient::from_client(client.clone(), canister, alice());
-
+    
     let env = PocketIcTestContext {
         canister_client,
         client,
         dummy_scheduler_canister: canister,
     };
-
-    env.client().add_cycles(canister, 10_u128.pow(12)).await;
+    
+    env.client().add_cycles(canister, 10_u128.pow(14)).await;
     println!("cycles added");
+    
+    let dummy_wasm = get_dummy_scheduler_canister_bytecode();
+    let args = Encode!(&())?;
     env.client()
         .install_canister(canister, dummy_wasm.to_vec(), args, Some(sender))
         .await;
@@ -78,7 +83,7 @@ async fn deploy_dummy_scheduler_canister() -> anyhow::Result<PocketIcTestContext
 }
 
 
-#[derive(CandidType, Serialize, Deserialize, Debug, Clone)]
+#[derive(CandidType, Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DummyTask {
     Panicking,
     GoodTask,
