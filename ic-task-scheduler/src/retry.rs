@@ -1,10 +1,11 @@
 use core::fmt::Debug;
 
+use candid::CandidType;
 use serde::{Deserialize, Serialize};
 
 /// Defines the strategy to apply in case of a failure.
 /// This is applied, for example, when a task execution fails
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[derive(CandidType, Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct RetryStrategy {
     pub retry_policy: RetryPolicy,
     pub backoff_policy: BackoffPolicy,
@@ -30,7 +31,7 @@ impl RetryStrategy {
 }
 
 // Defines the retry policy of a RetryStrategy
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[derive(CandidType, Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum RetryPolicy {
     /// No Retry attempts defined
     None,
@@ -55,7 +56,7 @@ impl RetryPolicy {
 }
 
 // Defines the backoff policy of a RetryStrategy
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(CandidType, Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum BackoffPolicy {
     /// No backoff, the retry will be attempted without waiting
     None,

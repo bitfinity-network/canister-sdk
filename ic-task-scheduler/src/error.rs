@@ -1,9 +1,12 @@
+use candid::CandidType;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(CandidType, Debug, Error, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SchedulerError {
     #[error("TaskExecutionFailed: {0}")]
     TaskExecutionFailed(String),
-    #[error("storage error: {0}")]
-    StorageError(#[from] ic_stable_structures::Error),
 }
+
+/// Result type for the scheduler
+pub type Result<T> = std::result::Result<T, SchedulerError>;

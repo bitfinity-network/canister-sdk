@@ -31,9 +31,9 @@
       "type": "custom"
     },
     "log_canister": {
-      "build": "bash scripts/build_log_canister.sh",
+      "build": "",
       "candid": "target/wasm32-unknown-unknown/release/log_canister.did",
-      "wasm": "target/wasm32-unknown-unknown/release/examples/log_canister.wasm",
+      "wasm": "target/wasm32-unknown-unknown/release/log_canister.wasm",
       "type": "custom"
     },
     "dummy_scheduler_canister": {
