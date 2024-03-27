@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use crate::MockContext;
 
-thread_local!(static CONTEXT: RefCell<Option<MockContext>> = RefCell::new(None));
+thread_local!(static CONTEXT: RefCell<Option<MockContext>> = const { RefCell::new(None) });
 
 /// Inject the given context to be used in the current thread.
 #[inline]

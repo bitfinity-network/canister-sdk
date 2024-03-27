@@ -77,7 +77,7 @@ where
     }
 
     fn total_chunks_number(&self) -> u64 {
-        self.inner.len()
+        self.inner.total_chunks_number()
     }
 
     fn is_empty(&self) -> bool {
@@ -320,5 +320,17 @@ mod tests {
         assert_eq!(map.first_key_value(), Some((3u32, str_3)));
         assert_eq!(map.last_key(), Some(4u32));
         assert_eq!(map.last_key_value(), Some((4u32, str_4)));
+    }
+
+    #[test]
+    fn should_return_chunks_number() {
+        let mut cached = CachedStableUnboundedMap::new(VectorMemory::default(), 128);
+        assert_eq!(cached.total_chunks_number(), 0);
+
+        let val = str_val(StringValue::CHUNK_SIZE as usize * 2);
+        cached.insert(&0u64, &val);
+
+        assert_eq!(cached.len(), 1);
+        assert_eq!(cached.total_chunks_number(), 2);
     }
 }

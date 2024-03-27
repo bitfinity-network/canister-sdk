@@ -68,7 +68,7 @@ impl LogCanister {
 type ForceNotSendAndNotSync = PhantomData<Rc<()>>;
 
 thread_local! {
-    static LOGGER_CONFIG: RefCell<Option<LoggerConfig>> = RefCell::new(None);
+    static LOGGER_CONFIG: RefCell<Option<LoggerConfig>> = const { RefCell::new(None) };
 }
 
 #[derive(Debug, Default)]

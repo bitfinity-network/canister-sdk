@@ -6,7 +6,7 @@ use rand::Rng;
 use crate::pocket_ic_tests::{deploy_dummy_scheduler_canister, DummyTask};
 
 thread_local! {
-    static CANISTER: std::cell::RefCell<Principal> = std::cell::RefCell::new(Principal::anonymous());
+    static CANISTER: std::cell::RefCell<Principal> = const { std::cell::RefCell::new(Principal::anonymous()) };
 }
 
 #[tokio::test]
