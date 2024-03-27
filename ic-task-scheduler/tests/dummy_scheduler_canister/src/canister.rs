@@ -34,11 +34,11 @@ thread_local! {
         RefCell::new(scheduler)
     };
 
-    static COMPLETED_TASKS: RefCell<Vec<u32>> = RefCell::new(vec![]);
-    static FAILED_TASKS: RefCell<Vec<u32>> = RefCell::new(vec![]);
-    static PANICKED_TASKS : RefCell<Vec<u32>> = RefCell::new(vec![]);
+    static COMPLETED_TASKS: RefCell<Vec<u32>> = const { RefCell::new(vec![]) };
+    static FAILED_TASKS: RefCell<Vec<u32>> = const { RefCell::new(vec![]) };
+    static PANICKED_TASKS : RefCell<Vec<u32>> = const { RefCell::new(vec![]) };
 
-    static PRINCIPAL : RefCell<Principal> = RefCell::new(Principal::anonymous());
+    static PRINCIPAL : RefCell<Principal> = const { RefCell::new(Principal::anonymous()) };
 
 }
 

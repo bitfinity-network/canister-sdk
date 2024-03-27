@@ -64,7 +64,7 @@ impl TestBalances {
 }
 
 thread_local! {
-    static BALANCES: RefCell<Vec<BalanceOperation>> = RefCell::new(vec![]);
+    static BALANCES: RefCell<Vec<BalanceOperation>> = const { RefCell::new(vec![]) };
 }
 
 pub fn token_principal() -> Principal {
