@@ -7,7 +7,7 @@
 //! canister code.
 //!
 //! Depending on this crate converts the compile time error into a runtime error, by
-//! registering a custom `getrandom` implementation which always fails. This matches the
+//! registering a custom `getrandom` implementation. This matches the
 //! behavior of `getrandom` 0.1. For code that is not being compiled to
 //! `wasm32-unknown-unknown`, this crate has no effect whatsoever.
 //!
@@ -25,14 +25,39 @@
     target_vendor = "unknown",
     target_os = "unknown"
 ))]
-/// A getrandom implementation that always fails
-pub fn always_fail(_buf: &mut [u8]) -> Result<(), getrandom::Error> {
-    Err(getrandom::Error::UNSUPPORTED)
-}
+getrandom::register_custom_getrandom!(custom_getrandom_impl::custom_rand);
 
 #[cfg(all(
     target_family = "wasm",
     target_vendor = "unknown",
     target_os = "unknown"
 ))]
-getrandom::register_custom_getrandom!(always_fail);
+pub mod custom_getrandom_impl {
+    use std::cell::RefCell;
+    use std::time::Duration;
+
+    use candid::Principal;
+    use rand::rngs::StdRng;
+    use rand::{RngCore, SeedableRng};
+
+    thread_local! {
+        static RNG: RefCell<Option<StdRng>> = const { RefCell::new(None) };
+    }
+
+    pub fn custom_rand(buf: &mut [u8]) -> Result<(), getrandom::Error> {
+        ic_cdk_timers::set_timer(Duration::from_secs(0), || {
+            ic_cdk::spawn(generate_randomness())
+        });
+        RNG.with(|rng| rng.borrow_mut().as_mut().unwrap().fill_bytes(buf));
+        Ok(())
+    }
+
+    async fn generate_randomness() {
+        let (seed,) = ic_cdk::call(Principal::management_canister(), "raw_rand", ())
+            .await
+            .unwrap();
+        RNG.with(|rng| {
+            *rng.borrow_mut() = Some(StdRng::from_seed(seed));
+        });
+    }
+}
