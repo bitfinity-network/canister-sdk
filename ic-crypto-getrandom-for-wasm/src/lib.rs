@@ -25,14 +25,14 @@
     target_vendor = "unknown",
     target_os = "unknown"
 ))]
-getrandom::register_custom_getrandom!(custom_getrandom_impl::custom_rand);
+pub use custom_getrandom_impl::register_custom_getrandom;
 
 #[cfg(all(
     target_family = "wasm",
     target_vendor = "unknown",
     target_os = "unknown"
 ))]
-pub mod custom_getrandom_impl {
+mod custom_getrandom_impl {
     use std::cell::RefCell;
     use std::time::Duration;
 
@@ -44,10 +44,14 @@ pub mod custom_getrandom_impl {
         static RNG: RefCell<Option<StdRng>> = const { RefCell::new(None) };
     }
 
-    pub fn custom_rand(buf: &mut [u8]) -> Result<(), getrandom::Error> {
+    pub fn register_custom_getrandom() {
         ic_cdk_timers::set_timer(Duration::from_secs(0), || {
             ic_cdk::spawn(generate_randomness())
         });
+        getrandom::register_custom_getrandom!(custom_rand);
+    }
+
+    fn custom_rand(buf: &mut [u8]) -> Result<(), getrandom::Error> {
         RNG.with(|rng| rng.borrow_mut().as_mut().unwrap().fill_bytes(buf));
         Ok(())
     }
