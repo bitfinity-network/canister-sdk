@@ -19,6 +19,17 @@
 //! See the [getrandom
 //! documentation](https://docs.rs/getrandom/latest/getrandom/macro.register_custom_getrandom.html)
 //! for more details on custom implementations.
+//!
+//! To register this custom implementation, call the function inside of your canister's `init` method
+//! or wherever canister initialization happens, with conditional compilation, like this:
+//!
+//! ```ignore
+//! #[init]
+//! pub fn init(&mut self) {
+//!    #[cfg(target_family = "wasm")]
+//!    ic_crypto_getrandom_for_wasm::register_custom_getrandom();
+//! }
+//! ```
 
 #[cfg(all(
     target_family = "wasm",
