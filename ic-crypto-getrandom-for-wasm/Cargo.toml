@@ -5,7 +5,6 @@ edition.workspace = true
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 getrandom = { version = "0.2", features = ["custom"] }
-rand = { workspace = true, features = ["getrandom"] }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 getrandom = { version = "0.2" }
