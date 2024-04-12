@@ -48,11 +48,11 @@ mod custom_getrandom_impl {
     use std::time::Duration;
 
     use candid::Principal;
-    use rand::rngs::StdRng;
     use rand::{RngCore, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
 
     thread_local! {
-        static RNG: RefCell<Option<StdRng>> = const { RefCell::new(None) };
+        static RNG: RefCell<Option<ChaCha20Rng>> = const { RefCell::new(None) };
     }
 
     pub fn register_custom_getrandom() {
@@ -63,16 +63,22 @@ mod custom_getrandom_impl {
     }
 
     fn custom_rand(buf: &mut [u8]) -> Result<(), getrandom::Error> {
-        RNG.with(|rng| rng.borrow_mut().as_mut().unwrap().fill_bytes(buf));
-        Ok(())
+        RNG.with(|rng| {
+            if let Some(ref mut rng) = *rng.borrow_mut() {
+                rng.fill_bytes(buf);
+                Ok(())
+            } else {
+                Err(getrandom::Error::UNSUPPORTED)
+            }
+        })
     }
 
     async fn generate_randomness() {
         let (seed,) = ic_cdk::call(Principal::management_canister(), "raw_rand", ())
             .await
-            .unwrap();
+            .expect("Failed to generate seed from IC method `raw_rand`.");
         RNG.with(|rng| {
-            *rng.borrow_mut() = Some(StdRng::from_seed(seed));
+            *rng.borrow_mut() = Some(ChaCha20Rng::from_seed(seed));
         });
     }
 }

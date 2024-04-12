@@ -9,6 +9,7 @@ getrandom = { version = "0.2", features = ["custom"] }
 ic-cdk = { workspace = true }
 ic-cdk-timers = { workspace = true }
 rand = { workspace = true, features = ["getrandom"] }
+rand_chacha = "0.3"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 getrandom = { version = "0.2" }
