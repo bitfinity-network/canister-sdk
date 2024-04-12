@@ -44,41 +44,11 @@ pub use custom_getrandom_impl::register_custom_getrandom;
     target_os = "unknown"
 ))]
 mod custom_getrandom_impl {
-    use std::cell::RefCell;
-    use std::time::Duration;
-
-    use candid::Principal;
-    use rand::{RngCore, SeedableRng};
-    use rand_chacha::ChaCha20Rng;
-
-    thread_local! {
-        static RNG: RefCell<Option<ChaCha20Rng>> = const { RefCell::new(None) };
-    }
-
     pub fn register_custom_getrandom() {
-        ic_cdk_timers::set_timer(Duration::from_secs(0), || {
-            ic_cdk::spawn(generate_randomness())
-        });
-        getrandom::register_custom_getrandom!(custom_rand);
+        getrandom::register_custom_getrandom!(always_fail);
     }
-
-    fn custom_rand(buf: &mut [u8]) -> Result<(), getrandom::Error> {
-        RNG.with(|rng| {
-            if let Some(ref mut rng) = *rng.borrow_mut() {
-                rng.fill_bytes(buf);
-                Ok(())
-            } else {
-                Err(getrandom::Error::UNSUPPORTED)
-            }
-        })
-    }
-
-    async fn generate_randomness() {
-        let (seed,) = ic_cdk::call(Principal::management_canister(), "raw_rand", ())
-            .await
-            .expect("Failed to generate seed from IC method `raw_rand`.");
-        RNG.with(|rng| {
-            *rng.borrow_mut() = Some(ChaCha20Rng::from_seed(seed));
-        });
+    /// A getrandom implementation that always fails
+    fn always_fail(_buf: &mut [u8]) -> Result<(), getrandom::Error> {
+        Err(getrandom::Error::UNSUPPORTED)
     }
 }
