@@ -29,7 +29,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
 
 [workspace.dependencies]
@@ -60,7 +60,7 @@ parking_lot = "0.12"
 proc-macro2 = "1.0"
 quote = "1.0"
 rand = "0.8"
-reqwest = { version = "0.11", default-features = false }
+reqwest = { version = "0.12", default-features = false }
 ringbuffer = "0.15"
 schnellru = { version = "0.2", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
