@@ -7,7 +7,7 @@
 //! canister code.
 //!
 //! Depending on this crate converts the compile time error into a runtime error, by
-//! registering a custom `getrandom` implementation which always fails. This matches the
+//! registering a custom `getrandom` implementation. This matches the
 //! behavior of `getrandom` 0.1. For code that is not being compiled to
 //! `wasm32-unknown-unknown`, this crate has no effect whatsoever.
 //!
@@ -19,20 +19,36 @@
 //! See the [getrandom
 //! documentation](https://docs.rs/getrandom/latest/getrandom/macro.register_custom_getrandom.html)
 //! for more details on custom implementations.
+//!
+//! To register this custom implementation, call the function inside of your canister's `init` method
+//! or wherever canister initialization happens, with conditional compilation, like this:
+//!
+//! ```ignore
+//! #[init]
+//! pub fn init(&mut self) {
+//!    #[cfg(target_family = "wasm")]
+//!    ic_crypto_getrandom_for_wasm::register_custom_getrandom();
+//! }
+//! ```
 
 #[cfg(all(
     target_family = "wasm",
     target_vendor = "unknown",
     target_os = "unknown"
 ))]
-/// A getrandom implementation that always fails
-pub fn always_fail(_buf: &mut [u8]) -> Result<(), getrandom::Error> {
-    Err(getrandom::Error::UNSUPPORTED)
+pub use custom_getrandom_impl::register_custom_getrandom;
+
+#[cfg(all(
+    target_family = "wasm",
+    target_vendor = "unknown",
+    target_os = "unknown"
+))]
+mod custom_getrandom_impl {
+    pub fn register_custom_getrandom() {
+        getrandom::register_custom_getrandom!(always_fail);
+    }
+    /// A getrandom implementation that always fails
+    fn always_fail(_buf: &mut [u8]) -> Result<(), getrandom::Error> {
+        Err(getrandom::Error::UNSUPPORTED)
+    }
 }
-
-#[cfg(all(
-    target_family = "wasm",
-    target_vendor = "unknown",
-    target_os = "unknown"
-))]
-getrandom::register_custom_getrandom!(always_fail);
