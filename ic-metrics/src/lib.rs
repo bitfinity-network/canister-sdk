@@ -96,6 +96,9 @@ pub trait Metrics: Canister {
     }
 
     /// This function updates the metrics at intervals with the specified timer
+    ///
+    /// This function is only available for the wasm target and won't do
+    /// anything on other targets
     fn update_metrics_timer(&mut self, timer: std::time::Duration) {
         if cfg!(target_family = "wasm") {
             use ic_exports::ic_cdk_timers;
