@@ -96,18 +96,19 @@ pub trait Metrics: Canister {
     }
 
     /// This function updates the metrics at intervals with the specified timer
-    #[cfg(target_family = "wasm")]
     fn update_metrics_timer(&mut self, timer: std::time::Duration) {
-        use ic_exports::ic_cdk_timers;
-        let metrics = MetricsStorage::get();
+        if cfg!(target_family = "wasm") {
+            use ic_exports::ic_cdk_timers;
+            let metrics = MetricsStorage::get();
 
-        // Set the interval
-        let interval = Interval::from_secs(timer.as_secs());
-        metrics.borrow_mut().metrics.interval = interval;
+            // Set the interval
+            let interval = Interval::from_secs(timer.as_secs());
+            metrics.borrow_mut().metrics.interval = interval;
 
-        ic_cdk_timers::set_timer_interval(timer, move || {
-            metrics.borrow_mut().metrics.insert(curr_values());
-        });
+            ic_cdk_timers::set_timer_interval(timer, move || {
+                metrics.borrow_mut().metrics.insert(curr_values());
+            });
+        }
     }
 
     fn set_interval(interval: Interval) {

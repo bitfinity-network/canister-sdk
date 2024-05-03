@@ -30,6 +30,7 @@ pub trait CallHandler {
 }
 
 /// A method that is constructed using nested calls.
+#[derive(Default)]
 pub struct Method {
     /// An optional name for the method.
     name: Option<String>,
@@ -70,18 +71,6 @@ pub struct Canister {
 }
 
 impl Method {
-    /// Create a new method.
-    #[inline]
-    pub const fn new() -> Self {
-        Method {
-            name: None,
-            atoms: Vec::new(),
-            expected_args: None,
-            expected_cycles: None,
-            response: None,
-        }
-    }
-
     /// Put a name for the method. Setting a name on the method makes the CallHandler for this
     /// method skip this method if it's trying to make a call to a method with a different name.
     ///
@@ -407,14 +396,14 @@ mod tests {
     #[test]
     #[should_panic]
     fn method_repetitive_call_to_name() {
-        Method::new().name("A").name("B");
+        Method::default().name("A").name("B");
     }
 
     #[test]
     fn method_name() {
-        let nameless = Method::new();
+        let nameless = Method::default();
         assert!(nameless.accept(&Principal::management_canister(), "XXX"));
-        let named = Method::new().name("deposit");
+        let named = Method::default().name("deposit");
         assert!(!named.accept(&Principal::management_canister(), "XXX"));
         assert!(named.accept(&Principal::management_canister(), "deposit"));
     }
@@ -423,7 +412,7 @@ mod tests {
     fn cycles_consume_all() {
         let alice = Principal::from_text("ai7t5-aibaq-aaaaa-aaaaa-c").unwrap();
 
-        let method = Method::new();
+        let method = Method::default();
         let (_, refunded) = method.perform(
             &alice,
             2000,
@@ -434,7 +423,7 @@ mod tests {
         );
         assert_eq!(refunded, 2000);
 
-        let method = Method::new().cycles_consume_all();
+        let method = Method::default().cycles_consume_all();
         let (_, refunded) = method.perform(
             &alice,
             2000,
@@ -449,7 +438,7 @@ mod tests {
     #[test]
     fn cycles_consume() {
         let alice = Principal::from_text("ai7t5-aibaq-aaaaa-aaaaa-c").unwrap();
-        let method = Method::new().cycles_consume(100);
+        let method = Method::default().cycles_consume(100);
         let (_, refunded) = method.perform(
             &alice,
             2000,
@@ -460,7 +449,7 @@ mod tests {
         );
         assert_eq!(refunded, 1900);
 
-        let method = Method::new().cycles_consume(100).cycles_consume(150);
+        let method = Method::default().cycles_consume(100).cycles_consume(150);
         let (_, refunded) = method.perform(
             &alice,
             2000,
@@ -476,7 +465,7 @@ mod tests {
     #[should_panic]
     fn cycles_refund_panic() {
         let alice = Principal::from_text("ai7t5-aibaq-aaaaa-aaaaa-c").unwrap();
-        let method = Method::new().cycles_refund(3000);
+        let method = Method::default().cycles_refund(3000);
         method
             .perform(
                 &alice,
@@ -493,7 +482,7 @@ mod tests {
     #[test]
     fn cycles_refund() {
         let alice = Principal::from_text("ai7t5-aibaq-aaaaa-aaaaa-c").unwrap();
-        let method = Method::new().cycles_refund(100);
+        let method = Method::default().cycles_refund(100);
         let (_, refunded) = method.perform(
             &alice,
             2000,
@@ -504,7 +493,7 @@ mod tests {
         );
         assert_eq!(refunded, 100);
 
-        let method = Method::new().cycles_refund(170).cycles_consume(50);
+        let method = Method::default().cycles_refund(170).cycles_consume(50);
         let (_, refunded) = method.perform(
             &alice,
             2000,
@@ -519,7 +508,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn method_repetitive_call_to_expect_arguments() {
-        Method::new()
+        Method::default()
             .expect_arguments((12,))
             .expect_arguments((14,));
     }
@@ -527,7 +516,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn expect_arguments_panic() {
-        let method = Method::new().expect_arguments((15u64,));
+        let method = Method::default().expect_arguments((15u64,));
         let bytes = encode_args((17u64,)).unwrap();
         let alice = Principal::from_text("ai7t5-aibaq-aaaaa-aaaaa-c").unwrap();
         method
@@ -545,7 +534,7 @@ mod tests {
 
     #[test]
     fn expect_arguments() {
-        let method = Method::new().expect_arguments((17u64,));
+        let method = Method::default().expect_arguments((17u64,));
         let bytes = encode_args((17u64,)).unwrap();
         let alice = Principal::from_text("ai7t5-aibaq-aaaaa-aaaaa-c").unwrap();
         method

@@ -249,9 +249,9 @@ impl MockContext {
     /// assert_eq!(ic.stable_restore::<(String, )>(), Ok(("Bella".to_string(), )));
     /// ```
     #[inline]
-    pub fn with_stable<T: Serialize>(self, data: T) -> Self
+    pub fn with_stable<T>(self, data: T) -> Self
     where
-        T: ArgumentEncoder,
+        T: ArgumentEncoder + Serialize,
     {
         self.stable_store(data)
             .expect("Encoding stable data failed.");
@@ -271,27 +271,27 @@ impl MockContext {
     /// on every request.
     #[inline]
     pub fn with_consume_cycles_handler(self, cycles: u64) -> Self {
-        self.with_handler(Method::new().cycles_consume(cycles))
+        self.with_handler(Method::default().cycles_consume(cycles))
     }
 
     /// Create a mock context with a default handler that expects this amount of cycles to
     /// be passed to it.
     #[inline]
     pub fn with_expect_cycles_handler(self, cycles: u64) -> Self {
-        self.with_handler(Method::new().expect_cycles(cycles))
+        self.with_handler(Method::default().expect_cycles(cycles))
     }
 
     /// Creates a mock context with a default handler that refunds the given amount of cycles
     /// on every request.
     #[inline]
     pub fn with_refund_cycles_handler(self, cycles: u64) -> Self {
-        self.with_handler(Method::new().cycles_refund(cycles))
+        self.with_handler(Method::default().cycles_refund(cycles))
     }
 
     /// Create a mock context with a default handler that returns the given value.
     #[inline]
     pub fn with_constant_return_handler<T: CandidType>(self, value: T) -> Self {
-        self.with_handler(Method::new().response(value))
+        self.with_handler(Method::default().response(value))
     }
 
     /// Add the given handler to the handlers pipeline.
