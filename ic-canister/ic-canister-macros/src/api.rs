@@ -192,7 +192,7 @@ pub(crate) fn api_method(
     } else {
         let args_destr_tuple = if with_args {
             quote! {
-                let #args_destr_tuple: #arg_type = ::ic_exports::ic_cdk::api::call::arg_data();
+                let #args_destr_tuple: #arg_type = ::ic_exports::ic_cdk::api::call::arg_data(Default::default());
             }
         } else {
             quote! {}
@@ -405,7 +405,7 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         let (args_destr_tuple, args_destr) = if arg_count > 1 {
             let args: Vec<Ident> = (1..arg_count).map(|x| Ident::new(&format!("__arg_{x}"), Span::call_site())).collect();
             (
-                quote! { let ( #(#args),* , ) = ::ic_exports::ic_cdk::api::call::arg_data(); },
+                quote! { let ( #(#args),* , ) = ::ic_exports::ic_cdk::api::call::arg_data(Default::default()); },
                 quote! { #(#args),* }
             )
         } else {
