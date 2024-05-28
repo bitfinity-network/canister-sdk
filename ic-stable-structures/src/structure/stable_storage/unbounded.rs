@@ -176,10 +176,7 @@ where
     }
 
     fn clear(&mut self) {
-        let keys: Vec<_> = self.inner.iter().map(|(k, _)| k).collect();
-        for key in keys {
-            self.inner.remove(&key);
-        }
+        self.inner.clear_new();
         self.items_count = 0;
     }
 }

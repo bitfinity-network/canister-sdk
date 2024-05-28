@@ -33,12 +33,10 @@ impl<T: Storable, M: Memory> VecStructure<T> for StableVec<T, M> {
     }
 
     fn clear(&mut self) -> Result<()> {
-        let memory = self
-            .0
-            .take()
-            .expect("vector is always initialized")
-            .into_memory();
-        self.0 = Some(vec::Vec::new(memory)?);
+        if let Some(vector) = self.0.take() {
+            let memory = vector.into_memory();
+            self.0 = Some(vec::Vec::new(memory)?);
+        } 
         Ok(())
     }
 
