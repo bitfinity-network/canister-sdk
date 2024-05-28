@@ -45,7 +45,7 @@ impl<T: Storable, M: Memory> LogStructure<T> for StableLog<T, M> {
     fn clear(&mut self) {
         if let Some(log) = self.0.take() {
             let (index_mem, data_mem) = log.into_memories();
-            self.0 = Some(log::Log::new(index_mem, data_mem)); 
+            self.0 = Some(log::Log::new(index_mem, data_mem));
         }
     }
 }

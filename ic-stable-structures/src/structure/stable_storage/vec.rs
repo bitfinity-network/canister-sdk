@@ -36,7 +36,7 @@ impl<T: Storable, M: Memory> VecStructure<T> for StableVec<T, M> {
         if let Some(vector) = self.0.take() {
             let memory = vector.into_memory();
             self.0 = Some(vec::Vec::new(memory)?);
-        } 
+        }
         Ok(())
     }
 
