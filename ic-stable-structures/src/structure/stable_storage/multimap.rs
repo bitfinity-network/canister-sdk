@@ -115,10 +115,7 @@ where
     }
 
     fn clear(&mut self) {
-        let keys: Vec<_> = self.0.iter().map(|(k, _)| k).collect();
-        for key in keys {
-            self.0.remove(&key);
-        }
+        self.0.clear_new();
     }
 
     fn range(&self, first_key: &K1) -> Self::RangeIterator<'_> {

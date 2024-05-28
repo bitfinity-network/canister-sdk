@@ -55,12 +55,7 @@ where
     }
 
     fn clear(&mut self) {
-        let inner = &mut self.0;
-
-        let keys: Vec<_> = inner.iter().map(|(k, _)| k).collect();
-        for key in keys {
-            inner.remove(&key);
-        }
+        self.0.clear_new();
     }
 
     fn contains_key(&self, key: &K) -> bool {
