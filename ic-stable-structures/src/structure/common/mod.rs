@@ -2,6 +2,7 @@ pub mod ring_buffer;
 
 pub use ring_buffer::{StableRingBuffer, StableRingBufferIndices};
 
+/// A trait for types that have a minimum and maximum value.
 pub trait Bounded<T> {
     const MIN: T;
     const MAX: T;
