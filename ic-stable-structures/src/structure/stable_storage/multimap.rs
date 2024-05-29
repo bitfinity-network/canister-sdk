@@ -25,10 +25,7 @@ where
     }
 
     /// Returns upper bound iterator for the given pair of keys.
-    pub fn iter_upper_bound(
-        &self,
-        key: &(K1, K2),
-    ) -> StableMultimapIter<'_, K1, K2, V, M> {
+    pub fn iter_upper_bound(&self, key: &(K1, K2)) -> StableMultimapIter<'_, K1, K2, V, M> {
         StableMultimapIter::new(self.0.iter_upper_bound(&key))
     }
 }
@@ -45,7 +42,8 @@ where
     type RangeIterator<'a> = StableMultimapRangeIter<'a, K1, K2, V, M> where Self: 'a;
 
     fn insert(&mut self, first_key: &K1, second_key: &K2, value: V) -> Option<V> {
-        self.0.insert((first_key.clone(), second_key.clone()), value)
+        self.0
+            .insert((first_key.clone(), second_key.clone()), value)
     }
 
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
@@ -83,7 +81,9 @@ where
     }
 
     fn range(&self, first_key: &K1) -> Self::RangeIterator<'_> {
-        let inner = self.0.range((first_key.clone(), K2::MIN)..=(first_key.clone(), K2::MAX));
+        let inner = self
+            .0
+            .range((first_key.clone(), K2::MIN)..=(first_key.clone(), K2::MAX));
         StableMultimapRangeIter::new(inner)
     }
 
@@ -128,9 +128,7 @@ where
     type Item = (K2, V);
 
     fn next(&mut self) -> Option<(K2, V)> {
-        self.inner
-            .next()
-            .map(|(keys, v)| (keys.1, v))
+        self.inner.next().map(|(keys, v)| (keys.1, v))
     }
 }
 
