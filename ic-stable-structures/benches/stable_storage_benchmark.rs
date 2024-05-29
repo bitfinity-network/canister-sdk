@@ -67,5 +67,4 @@ mod types {
 
         const BOUND: Bound = Bound::Unbounded;
     }
-
 }

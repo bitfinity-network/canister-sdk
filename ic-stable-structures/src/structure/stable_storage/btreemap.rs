@@ -94,14 +94,13 @@ where
 
 #[cfg(test)]
 mod tests {
- 
+
     use std::collections::HashMap;
 
     use dfinity_stable_structures::VectorMemory;
 
-    use crate::test_utils::str_val;
-
     use super::*;
+    use crate::test_utils::str_val;
 
     #[test]
     fn btreemap_works() {
@@ -237,7 +236,6 @@ mod tests {
         assert_eq!(iter.next(), None);
     }
 
- 
     #[test]
     fn unbounded_map_works() {
         let mut map = StableBTreeMap::new(VectorMemory::default());
@@ -312,7 +310,6 @@ mod tests {
         assert_eq!(map.last_key_value(), Some((4u32, str_4)));
     }
 
-    
     #[test]
     fn btreemap_works_with_composite_keys() {
         let mut map = StableBTreeMap::new(VectorMemory::default());
@@ -327,11 +324,11 @@ mod tests {
 
         assert_eq!(map.get(&(0, 1)), Some(42));
         assert_eq!(map.get(&(0, 0)), None);
-        assert_eq!(map.get(&(10,0)), Some(0));
-        assert_eq!(map.get(&(10,3)), Some(30));
+        assert_eq!(map.get(&(10, 0)), Some(0));
+        assert_eq!(map.get(&(10, 3)), Some(30));
 
-        assert_eq!(map.get(&(11,5)), Some(55));
-        assert_eq!(map.get(&(10,5)), Some(50));
+        assert_eq!(map.get(&(11, 5)), Some(55));
+        assert_eq!(map.get(&(10, 5)), Some(50));
 
         let mut iter = map.iter();
         assert_eq!(iter.next(), Some(((0, 1), 42)));
@@ -344,22 +341,22 @@ mod tests {
 
         assert_eq!(map.len(), 6);
 
-        let mut iter = map.range((0, 0)..(0,100));
+        let mut iter = map.range((0, 0)..(0, 100));
         assert_eq!(iter.next(), Some(((0, 1), 42)));
         assert_eq!(iter.next(), None);
 
-        let mut iter = map.range((10, 0)..(10,u32::MAX));
+        let mut iter = map.range((10, 0)..(10, u32::MAX));
         assert_eq!(iter.next(), Some(((10, 0), 0)));
         assert_eq!(iter.next(), Some(((10, 3), 30)));
         assert_eq!(iter.next(), Some(((10, 5), 50)));
         assert_eq!(iter.next(), Some(((10, 6), 60)));
         assert_eq!(iter.next(), None);
 
-        let mut iter = map.range((11, 0)..(11,u32::MAX));
+        let mut iter = map.range((11, 0)..(11, u32::MAX));
         assert_eq!(iter.next(), Some(((11, 5), 55)));
         assert_eq!(iter.next(), None);
 
-        let mut iter = map.range((10, 0)..(11,u32::MAX));
+        let mut iter = map.range((10, 0)..(11, u32::MAX));
         assert_eq!(iter.next(), Some(((10, 0), 0)));
         assert_eq!(iter.next(), Some(((10, 3), 30)));
         assert_eq!(iter.next(), Some(((10, 5), 50)));
@@ -369,12 +366,10 @@ mod tests {
 
         assert_eq!(map.remove(&(10, 3)), Some(30));
 
-        let mut iter = map.range((10, 0)..(10,u32::MAX));
+        let mut iter = map.range((10, 0)..(10, u32::MAX));
         assert_eq!(iter.next(), Some(((10, 0), 0)));
         assert_eq!(iter.next(), Some(((10, 5), 50)));
         assert_eq!(iter.next(), Some(((10, 6), 60)));
         assert_eq!(iter.next(), None);
-
     }
-
 }

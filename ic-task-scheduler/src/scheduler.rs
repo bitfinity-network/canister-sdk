@@ -18,7 +18,9 @@ const DEFAULT_RUNNING_TASK_TIMEOUT_SECS: u64 = 120;
 /// A scheduler is responsible for executing tasks.
 pub struct Scheduler<
     T: 'static + Task,
-    P: 'static + IterableSortedMapStructure<u32, InnerScheduledTask<T>> + BTreeMapStructure<u32, InnerScheduledTask<T>>,
+    P: 'static
+        + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
+        + BTreeMapStructure<u32, InnerScheduledTask<T>>,
 > {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
@@ -26,8 +28,12 @@ pub struct Scheduler<
     running_task_timeout_secs: AtomicU64,
 }
 
-impl<T: 'static + Task + Serialize + DeserializeOwned + Clone, P: 'static + IterableSortedMapStructure<u32, InnerScheduledTask<T>> + BTreeMapStructure<u32, InnerScheduledTask<T>>>
-    Scheduler<T, P>
+impl<
+        T: 'static + Task + Serialize + DeserializeOwned + Clone,
+        P: 'static
+            + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
+            + BTreeMapStructure<u32, InnerScheduledTask<T>>,
+    > Scheduler<T, P>
 {
     /// Create a new scheduler.
     pub fn new(pending_tasks: P) -> Self {
@@ -145,7 +151,10 @@ impl<T: 'static + Task + Serialize + DeserializeOwned + Clone, P: 'static + Iter
                         task_key
                     );
                     task.status = TaskStatus::running(now_timestamp_secs);
-                    task_scheduler.pending_tasks.lock().insert(task_key, task.clone());
+                    task_scheduler
+                        .pending_tasks
+                        .lock()
+                        .insert(task_key, task.clone());
 
                     let completed_task = match task
                         .task
@@ -219,8 +228,12 @@ pub trait TaskScheduler<T: 'static + Task> {
     fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<T>>;
 }
 
-impl<T: 'static + Task + Serialize + DeserializeOwned, P: 'static + IterableSortedMapStructure<u32, InnerScheduledTask<T>> + BTreeMapStructure<u32, InnerScheduledTask<T>>>
-    Clone for Scheduler<T, P>
+impl<
+        T: 'static + Task + Serialize + DeserializeOwned,
+        P: 'static
+            + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
+            + BTreeMapStructure<u32, InnerScheduledTask<T>>,
+    > Clone for Scheduler<T, P>
 {
     fn clone(&self) -> Self {
         Self {
@@ -234,13 +247,20 @@ impl<T: 'static + Task + Serialize + DeserializeOwned, P: 'static + IterableSort
     }
 }
 
-impl<T: 'static + Task + Serialize + DeserializeOwned, P: 'static + IterableSortedMapStructure<u32, InnerScheduledTask<T>> + BTreeMapStructure<u32, InnerScheduledTask<T>>>
-    TaskScheduler<T> for Scheduler<T, P>
+impl<
+        T: 'static + Task + Serialize + DeserializeOwned,
+        P: 'static
+            + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
+            + BTreeMapStructure<u32, InnerScheduledTask<T>>,
+    > TaskScheduler<T> for Scheduler<T, P>
 {
     fn append_task(&self, task: ScheduledTask<T>) -> u32 {
         let time_secs = time_secs();
         let mut lock = self.pending_tasks.lock();
-        let key = lock.last_key_value().map(|(val, _)| val + 1).unwrap_or_default();
+        let key = lock
+            .last_key_value()
+            .map(|(val, _)| val + 1)
+            .unwrap_or_default();
         lock.insert(
             key.clone(),
             InnerScheduledTask::with_status(
@@ -261,7 +281,10 @@ impl<T: 'static + Task + Serialize + DeserializeOwned, P: 'static + IterableSort
 
         let time_secs = time_secs();
         let mut lock = self.pending_tasks.lock();
-        let mut key = lock.last_key_value().map(|(val, _)| val + 1).unwrap_or_default();
+        let mut key = lock
+            .last_key_value()
+            .map(|(val, _)| val + 1)
+            .unwrap_or_default();
 
         let mut keys = Vec::with_capacity(tasks.len());
         for task in tasks {
