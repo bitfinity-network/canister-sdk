@@ -77,3 +77,8 @@ impl Bounded<f64> for f64 {
     const MIN: f64 = f64::MIN;
     const MAX: f64 = f64::MAX;
 }
+
+impl<const N: usize> Bounded<[u8; N]> for [u8; N] {
+    const MIN: [u8; N] = [u8::MIN; N];
+    const MAX: [u8; N] = [u8::MAX; N];
+}
