@@ -6,14 +6,14 @@ use std::time::Duration;
 use candid::{CandidType, Principal};
 use ic_canister::{generate_idl, init, post_upgrade, query, update, Canister, Idl, PreUpdate};
 use ic_stable_structures::stable_structures::DefaultMemoryImpl;
-use ic_stable_structures::{IcMemoryManager, MemoryId, StableUnboundedMap, VirtualMemory};
+use ic_stable_structures::{IcMemoryManager, MemoryId, StableBTreeMap, VirtualMemory};
 use ic_task_scheduler::scheduler::{Scheduler, TaskScheduler};
 use ic_task_scheduler::task::{InnerScheduledTask, ScheduledTask, Task, TaskStatus};
 use ic_task_scheduler::SchedulerError;
 use serde::{Deserialize, Serialize};
 
 type Storage =
-    StableUnboundedMap<u32, InnerScheduledTask<DummyTask>, VirtualMemory<DefaultMemoryImpl>>;
+    StableBTreeMap<u32, InnerScheduledTask<DummyTask>, VirtualMemory<DefaultMemoryImpl>>;
 type PanickingScheduler = Scheduler<DummyTask, Storage>;
 
 const SCHEDULER_STORAGE_MEMORY_ID: MemoryId = MemoryId::new(1);

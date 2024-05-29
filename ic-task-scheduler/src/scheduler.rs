@@ -1,9 +1,11 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use ic_stable_structures::IterableUnboundedMapStructure;
+use ic_stable_structures::{BTreeMapStructure, IterableSortedMapStructure};
 use log::{debug, warn};
 use parking_lot::Mutex;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 use crate::task::{InnerScheduledTask, ScheduledTask, Task, TaskStatus};
 use crate::time::time_secs;
@@ -16,7 +18,7 @@ const DEFAULT_RUNNING_TASK_TIMEOUT_SECS: u64 = 120;
 /// A scheduler is responsible for executing tasks.
 pub struct Scheduler<
     T: 'static + Task,
-    P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>,
+    P: 'static + IterableSortedMapStructure<u32, InnerScheduledTask<T>> + BTreeMapStructure<u32, InnerScheduledTask<T>>,
 > {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
@@ -24,7 +26,7 @@ pub struct Scheduler<
     running_task_timeout_secs: AtomicU64,
 }
 
-impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>>
+impl<T: 'static + Task + Serialize + DeserializeOwned + Clone, P: 'static + IterableSortedMapStructure<u32, InnerScheduledTask<T>> + BTreeMapStructure<u32, InnerScheduledTask<T>>>
     Scheduler<T, P>
 {
     /// Create a new scheduler.
@@ -127,7 +129,7 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
                         task_key
                     );
                     task.status = TaskStatus::scheduled(now_timestamp_secs);
-                    lock.insert(&task_key, &task);
+                    lock.insert(task_key, task);
                 }
             }
         }
@@ -143,7 +145,7 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
                         task_key
                     );
                     task.status = TaskStatus::running(now_timestamp_secs);
-                    task_scheduler.pending_tasks.lock().insert(&task_key, &task);
+                    task_scheduler.pending_tasks.lock().insert(task_key, task.clone());
 
                     let completed_task = match task
                         .task
@@ -170,7 +172,7 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
                                 task.options.execute_after_timestamp_in_secs =
                                     now_timestamp_secs + (retry_delay as u64);
                                 task.status = TaskStatus::waiting(now_timestamp_secs);
-                                lock.insert(&task_key, &task);
+                                lock.insert(task_key, task);
                                 None
                             } else {
                                 debug!("Scheduler - Task {} execution failed. Status changed: Running -> Failed", task_key);
@@ -217,7 +219,7 @@ pub trait TaskScheduler<T: 'static + Task> {
     fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<T>>;
 }
 
-impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>>
+impl<T: 'static + Task + Serialize + DeserializeOwned, P: 'static + IterableSortedMapStructure<u32, InnerScheduledTask<T>> + BTreeMapStructure<u32, InnerScheduledTask<T>>>
     Clone for Scheduler<T, P>
 {
     fn clone(&self) -> Self {
@@ -232,17 +234,17 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
     }
 }
 
-impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerScheduledTask<T>>>
+impl<T: 'static + Task + Serialize + DeserializeOwned, P: 'static + IterableSortedMapStructure<u32, InnerScheduledTask<T>> + BTreeMapStructure<u32, InnerScheduledTask<T>>>
     TaskScheduler<T> for Scheduler<T, P>
 {
     fn append_task(&self, task: ScheduledTask<T>) -> u32 {
         let time_secs = time_secs();
         let mut lock = self.pending_tasks.lock();
-        let key = lock.last_key().map(|val| val + 1).unwrap_or_default();
+        let key = lock.last_key_value().map(|(val, _)| val + 1).unwrap_or_default();
         lock.insert(
-            &key,
-            &InnerScheduledTask::with_status(
-                key,
+            key.clone(),
+            InnerScheduledTask::with_status(
+                key.clone(),
                 task,
                 TaskStatus::Waiting {
                     timestamp_secs: time_secs,
@@ -259,14 +261,14 @@ impl<T: 'static + Task, P: 'static + IterableUnboundedMapStructure<u32, InnerSch
 
         let time_secs = time_secs();
         let mut lock = self.pending_tasks.lock();
-        let mut key = lock.last_key().map(|val| val + 1).unwrap_or_default();
+        let mut key = lock.last_key_value().map(|(val, _)| val + 1).unwrap_or_default();
 
         let mut keys = Vec::with_capacity(tasks.len());
         for task in tasks {
             lock.insert(
-                &key,
-                &InnerScheduledTask::with_status(
-                    key,
+                key.clone(),
+                InnerScheduledTask::with_status(
+                    key.clone(),
                     task,
                     TaskStatus::Waiting {
                         timestamp_secs: time_secs,
@@ -297,7 +299,7 @@ mod test {
         use std::sync::atomic::AtomicBool;
         use std::time::Duration;
 
-        use ic_stable_structures::{StableUnboundedMap, VectorMemory};
+        use ic_stable_structures::{StableBTreeMap, VectorMemory};
         use rand::random;
         use serde::{Deserialize, Serialize};
 
@@ -377,7 +379,7 @@ mod test {
             let local = tokio::task::LocalSet::new();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
+                    let map = StableBTreeMap::new(VectorMemory::default());
                     let scheduler = Scheduler::new(map);
                     let id = random();
                     scheduler.append_task(SimpleTaskSteps::One { id }.into());
@@ -415,7 +417,7 @@ mod test {
             let called_t = called.clone();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
+                    let map = StableBTreeMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
                     scheduler.on_completion_callback(move |task| {
                         if let TaskStatus::Completed { .. } = task.status {
@@ -461,7 +463,7 @@ mod test {
         use std::pin::Pin;
         use std::time::Duration;
 
-        use ic_stable_structures::{StableUnboundedMap, UnboundedMapStructure, VectorMemory};
+        use ic_stable_structures::{StableBTreeMap, VectorMemory};
         use rand::random;
         use serde::{Deserialize, Serialize};
 
@@ -505,7 +507,7 @@ mod test {
             let local = tokio::task::LocalSet::new();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
+                    let map = StableBTreeMap::new(VectorMemory::default());
                     let scheduler = Scheduler::new(map);
                     let id = random();
                     let timestamp: u64 = random();
@@ -549,7 +551,7 @@ mod test {
         use std::pin::Pin;
         use std::time::Duration;
 
-        use ic_stable_structures::{StableUnboundedMap, UnboundedMapStructure, VectorMemory};
+        use ic_stable_structures::{StableBTreeMap, VectorMemory};
         use rand::random;
         use serde::{Deserialize, Serialize};
 
@@ -609,7 +611,7 @@ mod test {
             let local = tokio::task::LocalSet::new();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
+                    let map = StableBTreeMap::new(VectorMemory::default());
                     let scheduler = Scheduler::new(map);
                     let id = random();
                     let fails = 10;
@@ -672,7 +674,7 @@ mod test {
             let local = tokio::task::LocalSet::new();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
+                    let map = StableBTreeMap::new(VectorMemory::default());
                     let scheduler = Scheduler::new(map);
                     let id = random();
                     let fails = 2;
@@ -716,7 +718,7 @@ mod test {
             let local = tokio::task::LocalSet::new();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
+                    let map = StableBTreeMap::new(VectorMemory::default());
                     let scheduler = Scheduler::new(map);
                     let id = random();
                     let fails = 10;
@@ -775,7 +777,7 @@ mod test {
             let called_t = called.clone();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
+                    let map = StableBTreeMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
 
                     scheduler.on_completion_callback(move |task| {
@@ -814,7 +816,7 @@ mod test {
             let called_t = called.clone();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
+                    let map = StableBTreeMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
 
                     scheduler.on_completion_callback(move |task| {
@@ -870,7 +872,7 @@ mod test {
             let called_t = called.clone();
             local
                 .run_until(async move {
-                    let map = StableUnboundedMap::new(VectorMemory::default());
+                    let map = StableBTreeMap::new(VectorMemory::default());
                     let mut scheduler = Scheduler::new(map);
 
                     scheduler.on_completion_callback(move |_| {

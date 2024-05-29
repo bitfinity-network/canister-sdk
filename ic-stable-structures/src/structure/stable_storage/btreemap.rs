@@ -99,7 +99,7 @@ mod tests {
 
     use dfinity_stable_structures::VectorMemory;
 
-    use crate::test_utils::{str_val, StringValue};
+    use crate::test_utils::str_val;
 
     use super::*;
 
