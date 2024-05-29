@@ -4,12 +4,10 @@ use crate::Result;
 
 mod cache;
 mod common;
-mod heap;
 mod stable_storage;
 
 pub use cache::*;
 pub use common::*;
-pub use heap::*;
 pub use stable_storage::*;
 
 pub trait BTreeMapStructure<K, V> {
