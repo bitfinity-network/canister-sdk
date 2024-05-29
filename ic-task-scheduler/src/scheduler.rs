@@ -262,9 +262,9 @@ impl<
             .map(|(val, _)| val + 1)
             .unwrap_or_default();
         lock.insert(
-            key.clone(),
+            key,
             InnerScheduledTask::with_status(
-                key.clone(),
+                key,
                 task,
                 TaskStatus::Waiting {
                     timestamp_secs: time_secs,
@@ -289,9 +289,9 @@ impl<
         let mut keys = Vec::with_capacity(tasks.len());
         for task in tasks {
             lock.insert(
-                key.clone(),
+                key,
                 InnerScheduledTask::with_status(
-                    key.clone(),
+                    key,
                     task,
                     TaskStatus::Waiting {
                         timestamp_secs: time_secs,
