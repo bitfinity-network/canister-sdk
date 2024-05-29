@@ -32,6 +32,9 @@ pub trait BTreeMapStructure<K, V> {
     /// True if contains the key.
     fn contains_key(&self, key: &K) -> bool;
 
+    /// Returns the first key-value pair in the map.
+    fn first_key_value(&self) -> Option<(K, V)>;
+
     /// Returns the last key-value pair in the map.
     fn last_key_value(&self) -> Option<(K, V)>;
 

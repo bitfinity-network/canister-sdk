@@ -23,7 +23,6 @@ where
     M: Memory,
 {
     inner: StableBTreeMap<Key<K>, Chunk<V>, M>,
-    items_count: u64,
 }
 
 impl<K, V, M> StableUnboundedMap<K, V, M>
@@ -40,7 +39,6 @@ where
         let _ = Key::<K>::BOUNDS;
         Self {
             inner: StableBTreeMap::init(memory),
-            items_count: 0,
         }
     }
 
@@ -537,6 +535,31 @@ mod tests {
 
         let mut iter = map.iter_upper_bound(&0);
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn unbounded_btreemap_works() {
+        let mut map = StableBTreeMap::init(VectorMemory::default());
+        assert!(map.is_empty());
+
+        let long_str = str_val(50000);
+        let medium_str = str_val(5000);
+        let short_str = str_val(50);
+
+        map.insert(0u32, long_str.clone());
+        map.insert(3u32, medium_str.clone());
+        map.insert(5u32, short_str.clone());
+        assert_eq!(map.get(&0).as_ref(), Some(&long_str));
+        assert_eq!(map.get(&3).as_ref(), Some(&medium_str));
+        assert_eq!(map.get(&5).as_ref(), Some(&short_str));
+
+        let entries: HashMap<_, _> = map.iter().collect();
+        let expected = HashMap::from_iter([(0, long_str), (3, medium_str.clone()), (5, short_str)]);
+        assert_eq!(entries, expected);
+
+        assert_eq!(map.remove(&3), Some(medium_str));
+
+        assert_eq!(map.len(), 2);
     }
 
     #[test]

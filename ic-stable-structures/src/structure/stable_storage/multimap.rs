@@ -5,7 +5,6 @@ use dfinity_stable_structures::storable::Bound;
 use dfinity_stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 
 use crate::structure::MultimapStructure;
-use crate::Bounds;
 
 // Keys memory layout:
 //

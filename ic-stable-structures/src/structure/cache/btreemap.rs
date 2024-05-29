@@ -89,6 +89,11 @@ where
     }
 
     /// WARN: this bypasses the cache
+    fn first_key_value(&self) -> Option<(K, V)> {
+        self.inner.first_key_value()
+    }
+
+    /// WARN: this bypasses the cache
     fn last_key_value(&self) -> Option<(K, V)> {
         self.inner.last_key_value()
     }
