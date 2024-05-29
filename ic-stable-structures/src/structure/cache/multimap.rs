@@ -8,7 +8,7 @@ use crate::structure::*;
 pub struct CachedStableMultimap<K1, K2, V, M>
 where
     K1: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
-    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord + Bounded<K2>,
     V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
@@ -19,7 +19,7 @@ where
 impl<K1, K2, V, M> CachedStableMultimap<K1, K2, V, M>
 where
     K1: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
-    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord + Bounded<K2>,
     V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
@@ -45,7 +45,7 @@ where
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for CachedStableMultimap<K1, K2, V, M>
 where
     K1: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
-    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
+    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord + Bounded<K2>,
     V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
@@ -60,7 +60,7 @@ where
             .get_or_insert_with(&key, |_key| self.inner.get(first_key, second_key))
     }
 
-    fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
+    fn insert(&mut self, first_key: &K1, second_key: &K2, value: V) -> Option<V> {
         match self.inner.insert(first_key, second_key, value) {
             Some(old_value) => {
                 let key = (first_key.clone(), second_key.clone());
@@ -132,17 +132,17 @@ mod test {
         assert_eq!(None, map.get(&2, &1));
         assert_eq!(None, map.get(&3, &1));
 
-        assert_eq!(None, map.insert(&1, &1, &Array([1u8, 1])));
-        assert_eq!(None, map.insert(&1, &2, &Array([1u8, 2])));
-        assert_eq!(None, map.insert(&2, &1, &Array([2u8, 1])));
+        assert_eq!(None, map.insert(&1, &1, Array([1u8, 1])));
+        assert_eq!(None, map.insert(&1, &2, Array([1u8, 2])));
+        assert_eq!(None, map.insert(&2, &1, Array([2u8, 1])));
 
         assert_eq!(Some(Array([1u8, 1])), map.get(&1, &1));
         assert_eq!(Some(Array([1u8, 2])), map.get(&1, &2));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2, &1));
         assert_eq!(None, map.get(&3, &1));
 
-        assert_eq!(Some(Array([1u8, 1])), map.insert(&1, &1, &Array([1u8, 10])));
-        assert_eq!(Some(Array([2u8, 1])), map.insert(&2, &1, &Array([2u8, 10])));
+        assert_eq!(Some(Array([1u8, 1])), map.insert(&1, &1, Array([1u8, 10])));
+        assert_eq!(Some(Array([2u8, 1])), map.insert(&2, &1, Array([2u8, 10])));
 
         assert_eq!(Some(Array([1u8, 10])), map.get(&1, &1));
         assert_eq!(Some(Array([1u8, 2])), map.get(&1, &2));
@@ -167,9 +167,9 @@ mod test {
             cache_items,
         );
 
-        assert_eq!(None, map.insert(&1, &1, &Array([1u8, 1])));
-        assert_eq!(None, map.insert(&2, &1, &Array([2u8, 1])));
-        assert_eq!(None, map.insert(&3, &1, &Array([3u8, 1])));
+        assert_eq!(None, map.insert(&1, &1, Array([1u8, 1])));
+        assert_eq!(None, map.insert(&2, &1, Array([2u8, 1])));
+        assert_eq!(None, map.insert(&3, &1, Array([3u8, 1])));
 
         assert_eq!(Some(Array([1u8, 1])), map.get(&1, &1));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2, &1));
@@ -191,16 +191,16 @@ mod test {
             cache_items,
         );
 
-        assert_eq!(None, map.insert(&1, &1, &Array([1u8, 1])));
-        assert_eq!(None, map.insert(&2, &1, &Array([2u8, 1])));
-        assert_eq!(None, map.insert(&3, &1, &Array([3u8, 1])));
+        assert_eq!(None, map.insert(&1, &1, Array([1u8, 1])));
+        assert_eq!(None, map.insert(&2, &1, Array([2u8, 1])));
+        assert_eq!(None, map.insert(&3, &1, Array([3u8, 1])));
         assert_eq!(3, map.len());
 
         assert_eq!(Some(Array([1u8, 1])), map.get(&1, &1));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2, &1));
 
-        assert_eq!(Some(Array([1u8, 1])), map.insert(&1, &1, &Array([1u8, 10])));
-        assert_eq!(Some(Array([3u8, 1])), map.insert(&3, &1, &Array([3u8, 10])));
+        assert_eq!(Some(Array([1u8, 1])), map.insert(&1, &1, Array([1u8, 10])));
+        assert_eq!(Some(Array([3u8, 1])), map.insert(&3, &1, Array([3u8, 10])));
 
         assert_eq!(Some(Array([1u8, 10])), map.get(&1, &1));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2, &1));
@@ -216,9 +216,9 @@ mod test {
             cache_items,
         );
 
-        map.insert(&1, &1, &Array([1u8, 1]));
-        map.insert(&1, &2, &Array([2u8, 1]));
-        map.insert(&3, &1, &Array([3u8, 1]));
+        map.insert(&1, &1, Array([1u8, 1]));
+        map.insert(&1, &2, Array([2u8, 1]));
+        map.insert(&3, &1, Array([3u8, 1]));
 
         let mut iter = map.iter();
         assert_eq!(iter.next(), Some((1, 1, Array([1u8, 1]))));
@@ -235,9 +235,9 @@ mod test {
             cache_items,
         );
 
-        map.insert(&1, &1, &Array([1u8, 1]));
-        map.insert(&1, &2, &Array([2u8, 1]));
-        map.insert(&3, &1, &Array([3u8, 1]));
+        map.insert(&1, &1, Array([1u8, 1]));
+        map.insert(&1, &2, Array([2u8, 1]));
+        map.insert(&3, &1, Array([3u8, 1]));
 
         let mut iter = map.range(&1);
         assert_eq!(iter.next(), Some((1, Array([1u8, 1]))));

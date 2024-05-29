@@ -1,71 +1,42 @@
-use std::borrow::Cow;
-use std::marker::PhantomData;
-
-use dfinity_stable_structures::storable::Bound;
 use dfinity_stable_structures::{btreemap, Memory, StableBTreeMap, Storable};
 
 use crate::structure::MultimapStructure;
-use crate::Bounds;
-
-// Keys memory layout:
-//
-// |- k1 size in bytes -|- k1 bytes -|- k2 bytes |
-//
-// Size of k1 is stored because we need to make a difference between
-// a k1 bytes and another shorter k1 bytes + k2 start bytes.
-// For example, we have two key pairs with byte patterns:
-// 1) k1 = [0x1, 0x2, 0x3] and k2 = [0x4, 0x5]
-// 2) k1 = [0x1, 0x2] and k2 = [0x3, 0x4, 0x5]
-//
-// Concatination of both key pairs is same: [0x1, 0x2, 0x3, 0x4, 0x5],
-// but with the `k1 size` prefix, it is different:
-// 1) [0x3, 0x1, 0x2, 0x3, 0x4, 0x5]
-// 2) [0x2, 0x1, 0x2, 0x3, 0x4, 0x5]
-//
-// Bytes count of `k1 size` is calculated from the `first_key_max_size` (see `size_bytes_len()`). Usually,
-// keys are shorter then 256 bytes, so, size overhead will be just one byte per value.
-// Inner [`StableBTreeMap`] limits max size by `u32::MAX`, so in worst case
-// (for keys with max size greater then 65535), we will spend four bytes per value.
+use crate::Bounded;
 
 /// `StableMultimap` stores two keys against a single value, making it possible
 /// to fetch all values by the root key, or a single value by specifying both keys.
-pub struct StableMultimap<K1, K2, V, M>(StableBTreeMap<KeyPair<K1, K2>, Value<V>, M>)
+pub struct StableMultimap<K1, K2, V, M>(StableBTreeMap<(K1, K2), V, M>)
 where
-    K1: Storable,
-    K2: Storable,
+    K1: Storable + Ord + Clone,
+    K2: Storable + Ord + Clone + Bounded<K2>,
     V: Storable,
     M: Memory;
 
 impl<K1, K2, V, M> StableMultimap<K1, K2, V, M>
 where
-    K1: Storable,
-    K2: Storable,
+    K1: Storable + Ord + Clone,
+    K2: Storable + Ord + Clone + Bounded<K2>,
     V: Storable,
     M: Memory,
 {
     /// Create a new instance of a `StableMultimap`.
-    /// All keys and values byte representations should be less then related `..._max_size` arguments.
     pub fn new(memory: M) -> Self {
-        let _ = KeyPair::<K1, K2>::K1_BOUNDS;
-        let _ = KeyPair::<K1, K2>::K2_BOUNDS;
         Self(StableBTreeMap::init(memory))
     }
 
     /// Returns upper bound iterator for the given pair of keys.
     pub fn iter_upper_bound(
         &self,
-        first_key: &K1,
-        second_key: &K2,
+        key: &(K1, K2),
     ) -> StableMultimapIter<'_, K1, K2, V, M> {
-        let bound = KeyPair::new(first_key, second_key);
-        StableMultimapIter::new(self.0.iter_upper_bound(&bound))
+        StableMultimapIter::new(self.0.iter_upper_bound(&key))
     }
 }
 
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V, M>
 where
-    K1: Storable,
-    K2: Storable,
+    K1: Storable + Ord + Clone,
+    K2: Storable + Ord + Clone + Bounded<K2>,
     V: Storable,
     M: Memory,
 {
@@ -73,29 +44,22 @@ where
 
     type RangeIterator<'a> = StableMultimapRangeIter<'a, K1, K2, V, M> where Self: 'a;
 
-    fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V> {
-        let key = KeyPair::new(first_key, second_key);
-        self.0.insert(key, value.into()).map(|v| v.into_inner())
+    fn insert(&mut self, first_key: &K1, second_key: &K2, value: V) -> Option<V> {
+        self.0.insert((first_key.clone(), second_key.clone()), value)
     }
 
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
-        let key = KeyPair::new(first_key, second_key);
-        self.0.get(&key).map(|v| v.into_inner())
+        self.0.get(&(first_key.clone(), second_key.clone()))
     }
 
     fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V> {
-        let key = KeyPair::new(first_key, second_key);
-
-        self.0.remove(&key).map(Value::into_inner)
+        self.0.remove(&(first_key.clone(), second_key.clone()))
     }
 
     fn remove_partial(&mut self, first_key: &K1) -> bool {
-        let min_key = KeyPair::<K1, K2>::min_key(first_key);
-        let max_key = KeyPair::<K1, K2>::max_key(first_key);
-
         let keys: Vec<_> = self
             .0
-            .range(min_key..=max_key)
+            .range((first_key.clone(), K2::MIN)..=(first_key.clone(), K2::MAX))
             .map(|(keys, _)| keys)
             .collect();
 
@@ -119,10 +83,7 @@ where
     }
 
     fn range(&self, first_key: &K1) -> Self::RangeIterator<'_> {
-        let min_key = KeyPair::<K1, K2>::min_key(first_key);
-        let max_key = KeyPair::<K1, K2>::max_key(first_key);
-
-        let inner = self.0.range(min_key..=max_key);
+        let inner = self.0.range((first_key.clone(), K2::MIN)..=(first_key.clone(), K2::MAX));
         StableMultimapRangeIter::new(inner)
     }
 
@@ -131,188 +92,25 @@ where
     }
 }
 
-struct KeyPair<K1, K2> {
-    encoded: Vec<u8>,
-    _p: PhantomData<(K1, K2)>,
-}
-
-impl<K1: Storable, K2: Storable> Clone for KeyPair<K1, K2> {
-    fn clone(&self) -> Self {
-        Self {
-            encoded: self.encoded.clone(),
-            _p: self._p,
-        }
-    }
-}
-
-impl<K1: Storable, K2: Storable> PartialEq for KeyPair<K1, K2> {
-    fn eq(&self, other: &Self) -> bool {
-        self.encoded == other.encoded
-    }
-}
-
-impl<K1: Storable, K2: Storable> Eq for KeyPair<K1, K2> {}
-
-impl<K1: Storable, K2: Storable> PartialOrd for KeyPair<K1, K2> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<K1: Storable, K2: Storable> Ord for KeyPair<K1, K2> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.encoded.cmp(&other.encoded)
-    }
-}
-
-const fn to_key_bounds<K: Storable>() -> Bounds {
-    match K::BOUND {
-        Bound::Unbounded => panic!("Multimap keys must be bounded and fixed size"),
-        Bound::Bounded {
-            max_size,
-            is_fixed_size,
-        } => {
-            if !is_fixed_size {
-                panic!("Multimap keys must be bounded and fixed size")
-            }
-            Bounds::new(max_size as usize, is_fixed_size)
-        }
-    }
-}
-
-impl<K1, K2> KeyPair<K1, K2>
-where
-    K1: Storable,
-    K2: Storable,
-{
-    const K1_BOUNDS: Bounds = to_key_bounds::<K1>();
-    const K2_BOUNDS: Bounds = to_key_bounds::<K2>();
-
-    /// # Preconditions:
-    ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
-    ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
-    pub fn new(first_key: &K1, second_key: &K2) -> Self {
-        let first_key_bytes = first_key.to_bytes();
-        let second_key_bytes = second_key.to_bytes();
-
-        assert!(first_key_bytes.len() <= Self::K1_BOUNDS.max_size);
-        assert!(second_key_bytes.len() <= Self::K2_BOUNDS.max_size);
-
-        let full_len = Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size;
-        let mut buffer = Vec::with_capacity(full_len);
-        buffer.extend_from_slice(&first_key_bytes);
-        buffer.extend_from_slice(&second_key_bytes);
-
-        Self {
-            encoded: buffer,
-            _p: PhantomData,
-        }
-    }
-
-    pub fn first_key(&self) -> K1 {
-        K1::from_bytes(self.encoded[..Self::K1_BOUNDS.max_size].into())
-    }
-
-    pub fn second_key(&self) -> K2 {
-        K2::from_bytes(self.encoded[Self::K1_BOUNDS.max_size..].into())
-    }
-
-    /// Minimum possible `KeyPair` for the specified `first_key`.
-    pub fn min_key(first_key: &K1) -> Self {
-        let mut first_key_bytes = first_key.to_bytes().to_vec();
-
-        assert!(first_key_bytes.len() == Self::K1_BOUNDS.max_size);
-
-        first_key_bytes.resize(Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size, 0x0);
-
-        Self {
-            encoded: first_key_bytes,
-            _p: PhantomData,
-        }
-    }
-
-    /// Maximum possible `KeyPair` for the specified `first_key`.
-    pub fn max_key(first_key: &K1) -> Self {
-        let mut first_key_bytes = first_key.to_bytes().to_vec();
-
-        assert!(first_key_bytes.len() == Self::K1_BOUNDS.max_size);
-
-        first_key_bytes.resize(Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size, 0xFF);
-
-        Self {
-            encoded: first_key_bytes,
-            _p: PhantomData,
-        }
-    }
-}
-
-impl<K1, K2> Storable for KeyPair<K1, K2>
-where
-    K1: Storable,
-    K2: Storable,
-{
-    fn to_bytes(&self) -> Cow<'_, [u8]> {
-        Cow::Borrowed(&self.encoded)
-    }
-
-    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
-        Self {
-            encoded: bytes.to_vec(),
-            _p: PhantomData,
-        }
-    }
-
-    const BOUND: Bound = Bound::Bounded {
-        max_size: (Self::K1_BOUNDS.max_size + Self::K2_BOUNDS.max_size) as u32,
-        is_fixed_size: true,
-    };
-}
-
-struct Value<V>(Vec<u8>, PhantomData<V>);
-
-impl<V: Storable> Value<V> {
-    pub fn into_inner(self) -> V {
-        V::from_bytes(self.0.into())
-    }
-}
-
-impl<V: Storable> From<&V> for Value<V> {
-    fn from(value: &V) -> Self {
-        Self(value.to_bytes().into(), PhantomData)
-    }
-}
-
-impl<V: Storable> Storable for Value<V> {
-    const BOUND: dfinity_stable_structures::storable::Bound = V::BOUND;
-
-    fn to_bytes(&self) -> Cow<'_, [u8]> {
-        Cow::Borrowed(&self.0)
-    }
-
-    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
-        Self(bytes.to_vec(), PhantomData)
-    }
-}
-
 /// Range iterator
 pub struct StableMultimapRangeIter<'a, K1, K2, V, M>
 where
-    K1: Storable,
-    K2: Storable,
+    K1: Storable + Ord + Clone,
+    K2: Storable + Ord + Clone,
     V: Storable,
     M: Memory,
 {
-    inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>,
+    inner: btreemap::Iter<'a, (K1, K2), V, M>,
 }
 
 impl<'a, K1, K2, V, M> StableMultimapRangeIter<'a, K1, K2, V, M>
 where
-    K1: Storable,
-    K2: Storable,
+    K1: Storable + Ord + Clone,
+    K2: Storable + Ord + Clone,
     V: Storable,
     M: Memory,
 {
-    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
+    fn new(inner: btreemap::Iter<'a, (K1, K2), V, M>) -> Self {
         Self { inner }
     }
 }
@@ -322,8 +120,8 @@ where
 // -----------------------------------------------------------------------------
 impl<'a, K1, K2, V, M> Iterator for StableMultimapRangeIter<'a, K1, K2, V, M>
 where
-    K1: Storable,
-    K2: Storable,
+    K1: Storable + Ord + Clone,
+    K2: Storable + Ord + Clone,
     V: Storable,
     M: Memory,
 {
@@ -332,33 +130,33 @@ where
     fn next(&mut self) -> Option<(K2, V)> {
         self.inner
             .next()
-            .map(|(keys, v)| (keys.second_key(), v.into_inner()))
+            .map(|(keys, v)| (keys.1, v))
     }
 }
 
-pub struct StableMultimapIter<'a, K1, K2, V, M>(btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>)
+pub struct StableMultimapIter<'a, K1, K2, V, M>(btreemap::Iter<'a, (K1, K2), V, M>)
 where
-    K1: Storable,
-    K2: Storable,
+    K1: Storable + Ord + Clone,
+    K2: Storable + Ord + Clone,
     V: Storable,
     M: Memory;
 
 impl<'a, K1, K2, V, M> StableMultimapIter<'a, K1, K2, V, M>
 where
-    K1: Storable,
-    K2: Storable,
+    K1: Storable + Ord + Clone,
+    K2: Storable + Ord + Clone,
     V: Storable,
     M: Memory,
 {
-    fn new(inner: btreemap::Iter<'a, KeyPair<K1, K2>, Value<V>, M>) -> Self {
+    fn new(inner: btreemap::Iter<'a, (K1, K2), V, M>) -> Self {
         Self(inner)
     }
 }
 
 impl<'a, K1, K2, V, M> Iterator for StableMultimapIter<'a, K1, K2, V, M>
 where
-    K1: Storable,
-    K2: Storable,
+    K1: Storable + Ord + Clone,
+    K2: Storable + Ord + Clone,
     V: Storable,
     M: Memory,
 {
@@ -366,17 +164,17 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(|(keys, val)| {
-            let k1 = keys.first_key();
-            let k2 = keys.second_key();
-            (k1, k2, val.into_inner())
+            let k1 = keys.0;
+            let k2 = keys.1;
+            (k1, k2, val)
         })
     }
 }
 
 impl<'a, K1, K2, V, M> IntoIterator for &'a StableMultimap<K1, K2, V, M>
 where
-    K1: Storable,
-    K2: Storable,
+    K1: Storable + Ord + Clone,
+    K2: Storable + Ord + Clone + Bounded<K2>,
     V: Storable,
     M: Memory,
 {
@@ -402,12 +200,12 @@ mod test {
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
-        mm.insert(&k1, &k2, &val);
+        mm.insert(&k1, &k2, val);
 
         let k1 = Array([10u8, 20]);
         let k2 = Array([21u8, 22, 23]);
         let val = Array([123, 200u8, 200, 100, 100, 255]);
-        mm.insert(&k1, &k2, &val);
+        mm.insert(&k1, &k2, val);
 
         mm
     }
@@ -420,7 +218,7 @@ mod test {
             let k1 = Array([i; 1]);
             let k2 = Array([i * 10; 2]);
             let val = Array([i; 1]);
-            mm.insert(&k1, &k2, &val);
+            mm.insert(&k1, &k2, val);
         }
 
         assert_eq!(mm.len(), 10);
@@ -435,7 +233,7 @@ mod test {
         let val = Array([255u8, 255, 255, 255, 255, 255]);
 
         let prev_val = Array([200u8, 200, 200, 100, 100, 123]);
-        let replaced_val = mm.insert(&k1, &k2, &val).unwrap();
+        let replaced_val = mm.insert(&k1, &k2, val).unwrap();
 
         assert_eq!(prev_val, replaced_val);
         assert_eq!(mm.get(&k1, &k2), Some(val));
@@ -475,11 +273,11 @@ mod test {
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
-        mm.insert(&k1, &k2, &val);
+        mm.insert(&k1, &k2, val);
 
         let k2 = Array([21u8, 22, 23]);
         let val = Array([123, 200u8, 200, 100, 100, 255]);
-        mm.insert(&k1, &k2, &val);
+        mm.insert(&k1, &k2, val);
 
         assert!(mm.remove_partial(&k1));
         assert!(!mm.remove_partial(&k1));
@@ -492,13 +290,13 @@ mod test {
         let k1 = Array([1u8, 2]);
         let k2 = Array([11u8, 12, 13]);
         let val = Array([200u8, 200, 200, 100, 100, 123]);
-        mm.insert(&k1, &k2, &val);
+        mm.insert(&k1, &k2, val);
 
         let k2 = Array([21u8, 22, 23]);
         let val = Array([123, 200u8, 200, 100, 100, 255]);
-        mm.insert(&k1, &k2, &val);
+        mm.insert(&k1, &k2, val);
         let k1 = Array([21u8, 22]);
-        mm.insert(&k1, &k2, &val);
+        mm.insert(&k1, &k2, val);
 
         mm.clear();
         assert!(mm.is_empty());
@@ -526,22 +324,22 @@ mod test {
     fn iter_upper_bound() {
         let mm = make_map();
         assert_eq!(
-            mm.iter_upper_bound(&Array([0, 0]), &Array([0, 0, 0]))
+            mm.iter_upper_bound(&(Array([0, 0]), Array([0, 0, 0])))
                 .next(),
             None
         );
         assert_eq!(
-            mm.iter_upper_bound(&Array([1, 2]), &Array([0, 0, 0]))
+            mm.iter_upper_bound(&(Array([1, 2]), Array([0, 0, 0])))
                 .next(),
             None
         );
         assert_eq!(
-            mm.iter_upper_bound(&Array([1, 2]), &Array([11, 12, 13]))
+            mm.iter_upper_bound(&(Array([1, 2]), Array([11, 12, 13])))
                 .next(),
             None
         );
         assert_eq!(
-            mm.iter_upper_bound(&Array([1, 2]), &Array([15, 16, 17]))
+            mm.iter_upper_bound(&(Array([1, 2]), Array([15, 16, 17])))
                 .next(),
             Some((
                 Array([1, 2]),
@@ -550,7 +348,7 @@ mod test {
             ))
         );
         assert_eq!(
-            mm.iter_upper_bound(&Array([10, 20]), &Array([15, 16, 17]))
+            mm.iter_upper_bound(&(Array([10, 20]), Array([15, 16, 17])))
                 .next(),
             Some((
                 Array([1, 2]),
@@ -559,7 +357,7 @@ mod test {
             ))
         );
         assert_eq!(
-            mm.iter_upper_bound(&Array([10, 20]), &Array([21, 22, 23]))
+            mm.iter_upper_bound(&(Array([10, 20]), Array([21, 22, 23])))
                 .next(),
             Some((
                 Array([1, 2]),
@@ -568,7 +366,7 @@ mod test {
             ))
         );
         assert_eq!(
-            mm.iter_upper_bound(&Array([10, 20]), &Array([21, 22, 25]))
+            mm.iter_upper_bound(&(Array([10, 20]), Array([21, 22, 25])))
                 .next(),
             Some((
                 Array([10, 20]),
@@ -577,7 +375,7 @@ mod test {
             ))
         );
         assert_eq!(
-            mm.iter_upper_bound(&Array([10, 21]), &Array([0, 0, 0]))
+            mm.iter_upper_bound(&(Array([10, 21]), Array([0, 0, 0])))
                 .next(),
             Some((
                 Array([10, 20]),
@@ -592,11 +390,11 @@ mod test {
         let mut map = StableMultimap::new(VectorMemory::default());
         assert!(map.is_empty());
 
-        map.insert(&0u32, &0u32, &42u32);
-        map.insert(&0u32, &1u32, &84u32);
+        map.insert(&0u32, &0u32, 42u32);
+        map.insert(&0u32, &1u32, 84u32);
 
-        map.insert(&1u32, &0u32, &10u32);
-        map.insert(&1u32, &1u32, &20u32);
+        map.insert(&1u32, &0u32, 10u32);
+        map.insert(&1u32, &1u32, 20u32);
 
         assert_eq!(map.len(), 4);
         assert_eq!(map.get(&0, &0), Some(42));

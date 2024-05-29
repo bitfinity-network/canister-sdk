@@ -202,7 +202,7 @@ impl Service {
             let new_key = storage.borrow().len() as u64;
             storage
                 .borrow_mut()
-                .insert(&new_key, &(new_key + 1), &transaction);
+                .insert(&new_key, &(new_key + 1), transaction);
             new_key
         })
     }

@@ -113,7 +113,7 @@ pub trait MultimapStructure<K1, K2, V> {
     ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
     ///   - `second_key.to_bytes().len() <= K2::MAX_SIZE`
     ///   - `value.to_bytes().len() <= V::MAX_SIZE`
-    fn insert(&mut self, first_key: &K1, second_key: &K2, value: &V) -> Option<V>;
+    fn insert(&mut self, first_key: &K1, second_key: &K2, value: V) -> Option<V>;
 
     /// Remove a specific value and return it.
     ///

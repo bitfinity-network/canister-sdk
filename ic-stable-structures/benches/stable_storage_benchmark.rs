@@ -14,7 +14,7 @@ fn multimap_benchmark(c: &mut Criterion) {
             for k1 in 0..key1_count {
                 for k2 in 0..key2_count {
                     let value: u128 = rand::random();
-                    map.insert(&k1, &k2, &value);
+                    map.insert(&k1, &k2, value);
                 }
             }
             for k1 in 0..key1_count {
