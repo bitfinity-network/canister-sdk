@@ -8,14 +8,14 @@ use crate::Bounded;
 pub struct StableMultimap<K1, K2, V, M>(StableBTreeMap<(K1, K2), V, M>)
 where
     K1: Storable + Ord + Clone,
-    K2: Storable + Ord + Clone + Bounded<K2>,
+    K2: Storable + Ord + Clone + Bounded,
     V: Storable,
     M: Memory;
 
 impl<K1, K2, V, M> StableMultimap<K1, K2, V, M>
 where
     K1: Storable + Ord + Clone,
-    K2: Storable + Ord + Clone + Bounded<K2>,
+    K2: Storable + Ord + Clone + Bounded,
     V: Storable,
     M: Memory,
 {
@@ -33,7 +33,7 @@ where
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V, M>
 where
     K1: Storable + Ord + Clone,
-    K2: Storable + Ord + Clone + Bounded<K2>,
+    K2: Storable + Ord + Clone + Bounded,
     V: Storable,
     M: Memory,
 {
@@ -172,7 +172,7 @@ where
 impl<'a, K1, K2, V, M> IntoIterator for &'a StableMultimap<K1, K2, V, M>
 where
     K1: Storable + Ord + Clone,
-    K2: Storable + Ord + Clone + Bounded<K2>,
+    K2: Storable + Ord + Clone + Bounded,
     V: Storable,
     M: Memory,
 {

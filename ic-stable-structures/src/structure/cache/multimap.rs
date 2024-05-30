@@ -8,7 +8,7 @@ use crate::structure::*;
 pub struct CachedStableMultimap<K1, K2, V, M>
 where
     K1: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
-    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord + Bounded<K2>,
+    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord + Bounded,
     V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
@@ -19,7 +19,7 @@ where
 impl<K1, K2, V, M> CachedStableMultimap<K1, K2, V, M>
 where
     K1: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
-    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord + Bounded<K2>,
+    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord + Bounded,
     V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
@@ -45,7 +45,7 @@ where
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for CachedStableMultimap<K1, K2, V, M>
 where
     K1: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord,
-    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord + Bounded<K2>,
+    K2: Storable + Clone + Send + Sync + 'static + Hash + Eq + PartialEq + Ord + Bounded,
     V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
