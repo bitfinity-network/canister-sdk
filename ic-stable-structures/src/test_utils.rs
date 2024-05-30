@@ -31,7 +31,7 @@ pub fn str_val(len: usize) -> StringValue {
 pub struct Array<const N: usize>(pub [u8; N]);
 
 /// Implement `Bounded` for all arrays.
-impl<const N: usize> Bounded<Array<N>> for Array<N> {
+impl<const N: usize> Bounded for Array<N> {
     const MIN: Array<N> = Array([0; N]);
     const MAX: Array<N> = Array([u8::MAX; N]);
 }
