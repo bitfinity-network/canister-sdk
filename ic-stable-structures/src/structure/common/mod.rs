@@ -1,46 +1,117 @@
 pub mod ring_buffer;
 
-use dfinity_stable_structures::Storable;
+use candid::Principal;
 pub use ring_buffer::{StableRingBuffer, StableRingBufferIndices};
 
-pub type ChunkSize = u16;
-
-/// Provide information about the length of the value slice.
-///
-/// If value size is greater than `chunk_size()`, value will be split to several chunks,
-/// and store each as particular entry in inner data structures.
-///
-/// More chunks count leads to more memory allocation operations.
-/// But with big `chunk_size()` we lose space for small values,
-/// because `chunk_size()` is a least allocation unit for any value.
-pub trait SlicedStorable: Storable {
-    const CHUNK_SIZE: ChunkSize;
+/// A trait for types that have a minimum and maximum value.
+pub trait Bounded {
+    const MIN: Self;
+    const MAX: Self;
 }
 
-pub struct Bounds {
-    pub max_size: usize,
-    pub is_fixed_size: bool,
-    pub size_prefix_len: usize,
+impl Bounded for u8 {
+    const MIN: u8 = 0;
+    const MAX: u8 = u8::MAX;
 }
 
-impl Bounds {
-    pub const fn new(max_size: usize, is_fixed_size: bool) -> Self {
-        Self {
-            max_size,
-            is_fixed_size,
-            size_prefix_len: Bounds::size_prefix_len(max_size, is_fixed_size),
-        }
-    }
+impl Bounded for u16 {
+    const MIN: u16 = 0;
+    const MAX: u16 = u16::MAX;
+}
 
-    pub const fn size_prefix_len(max_size: usize, is_fixed_size: bool) -> usize {
-        if is_fixed_size {
-            0
-        } else if max_size <= u8::MAX as usize {
-            1
-        } else if max_size <= u16::MAX as usize {
-            2
-        } else {
-            4
+impl Bounded for u32 {
+    const MIN: u32 = 0;
+    const MAX: u32 = u32::MAX;
+}
+
+impl Bounded for u64 {
+    const MIN: u64 = 0;
+    const MAX: u64 = u64::MAX;
+}
+
+impl Bounded for u128 {
+    const MIN: u128 = 0;
+    const MAX: u128 = u128::MAX;
+}
+
+impl Bounded for usize {
+    const MIN: usize = 0;
+    const MAX: usize = usize::MAX;
+}
+
+impl Bounded for i8 {
+    const MIN: i8 = i8::MIN;
+    const MAX: i8 = i8::MAX;
+}
+
+impl Bounded for i16 {
+    const MIN: i16 = i16::MIN;
+    const MAX: i16 = i16::MAX;
+}
+
+impl Bounded for i32 {
+    const MIN: i32 = i32::MIN;
+    const MAX: i32 = i32::MAX;
+}
+
+impl Bounded for i64 {
+    const MIN: i64 = i64::MIN;
+    const MAX: i64 = i64::MAX;
+}
+
+impl Bounded for i128 {
+    const MIN: i128 = i128::MIN;
+    const MAX: i128 = i128::MAX;
+}
+
+impl Bounded for isize {
+    const MIN: isize = isize::MIN;
+    const MAX: isize = isize::MAX;
+}
+
+impl Bounded for f32 {
+    const MIN: f32 = f32::MIN;
+    const MAX: f32 = f32::MAX;
+}
+
+impl Bounded for f64 {
+    const MIN: f64 = f64::MIN;
+    const MAX: f64 = f64::MAX;
+}
+
+impl<const N: usize> Bounded for [u8; N] {
+    const MIN: [u8; N] = [u8::MIN; N];
+    const MAX: [u8; N] = [u8::MAX; N];
+}
+
+/// Principal sorted by two fields:
+/// 1) `len: u8` -> min = 0, max = 29;
+/// 2) `bytes: [u8; Self::MAX_LENGTH_IN_BYTES]` -> min = [], max = [0xFF; 29];
+impl Bounded for Principal {
+    const MIN: Self = Principal::from_slice(&[]); // Management canister principal;
+    const MAX: Self = Principal::from_slice(&[0xFF; 29]);
+}
+
+#[cfg(test)]
+mod tests {
+    use candid::Principal;
+
+    use crate::Bounded;
+
+    #[test]
+    fn correct_principal_bounds() {
+        let min_principal = Principal::MIN;
+        let max_principal = Principal::MAX;
+
+        let mut some_principals = vec![Principal::anonymous(), Principal::management_canister()];
+
+        let other_principals_iter =
+            (1..30).map(|i| Principal::from_slice(&vec![i as u8; i as usize]));
+        some_principals.extend(other_principals_iter);
+
+        for principal in some_principals {
+            assert!(principal >= min_principal);
+            assert!(principal <= max_principal);
         }
     }
 }

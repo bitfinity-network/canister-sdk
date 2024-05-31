@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use candid::CandidType;
-use ic_stable_structures::{Bound, ChunkSize, SlicedStorable, Storable};
+use ic_stable_structures::{Bound, Storable};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -51,7 +51,7 @@ impl<T: Task> From<(T, TaskOptions)> for ScheduledTask<T> {
     }
 }
 
-#[derive(CandidType, Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(CandidType, Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct InnerScheduledTask<T: Task> {
     pub(crate) id: u32,
     pub(crate) task: T,
@@ -105,12 +105,8 @@ impl<T: 'static + Task + Serialize + DeserializeOwned> Storable for InnerSchedul
     const BOUND: Bound = Bound::Unbounded;
 }
 
-impl<T: 'static + Task + Serialize + DeserializeOwned> SlicedStorable for InnerScheduledTask<T> {
-    const CHUNK_SIZE: ChunkSize = 128;
-}
-
 /// The status of a task in the scheduler
-#[derive(CandidType, Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(CandidType, Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum TaskStatus {
     /// The task is waiting to be executed
     Waiting { timestamp_secs: u64 },
@@ -177,7 +173,7 @@ impl TaskStatus {
 }
 
 /// Scheduling options for a task
-#[derive(CandidType, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(CandidType, Default, Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct TaskOptions {
     pub(crate) failures: u32,
     pub(crate) execute_after_timestamp_in_secs: u64,

@@ -5,8 +5,7 @@ use candid::Encode;
 use ic_stable_structures::stable_structures::storable::Bound;
 use ic_stable_structures::stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{
-    IcMemoryManager, MemoryId, SlicedStorable, StableUnboundedMap, Storable, UnboundedMapStructure,
-    VirtualMemory,
+    BTreeMapStructure, IcMemoryManager, MemoryId, StableBTreeMap, Storable, VirtualMemory,
 };
 
 use crate::Transfer;
@@ -20,7 +19,7 @@ pub trait RecoveryList: Sync + Send {
 thread_local! {
     static MEMORY_MANAGER: IcMemoryManager<DefaultMemoryImpl> = IcMemoryManager::init(DefaultMemoryImpl::default());
 
-    static RECOVERY_LIST_STORAGE: RefCell<Option<StableUnboundedMap<TransferKey, TransferValue, VirtualMemory<DefaultMemoryImpl>>>> =
+    static RECOVERY_LIST_STORAGE: RefCell<Option<StableBTreeMap<TransferKey, TransferValue, VirtualMemory<DefaultMemoryImpl>>>> =
         const { RefCell::new(None) };
 }
 
@@ -66,14 +65,6 @@ impl Storable for TransferValue {
     const BOUND: Bound = Bound::Unbounded;
 }
 
-/// The only variable size part of the transfer is memo, which is usually 32 bytes. We use 60 bytes
-/// value to account for candid header.
-const VALUE_SIZE_OFFSET: usize = 60;
-
-impl SlicedStorable for TransferValue {
-    const CHUNK_SIZE: u16 = (std::mem::size_of::<Transfer>() + VALUE_SIZE_OFFSET) as u16;
-}
-
 #[derive(Debug)]
 pub struct StableRecoveryList<const MEM_ID: u8>;
 
@@ -81,13 +72,13 @@ impl<const MEM_ID: u8> StableRecoveryList<MEM_ID> {
     fn with_storage<R>(
         &self,
         f: impl Fn(
-            &mut StableUnboundedMap<TransferKey, TransferValue, VirtualMemory<DefaultMemoryImpl>>,
+            &mut StableBTreeMap<TransferKey, TransferValue, VirtualMemory<DefaultMemoryImpl>>,
         ) -> R,
     ) -> R {
         RECOVERY_LIST_STORAGE.with(|v| {
             let mut map = v.borrow_mut();
             let map = map.get_or_insert_with(|| {
-                StableUnboundedMap::new(MEMORY_MANAGER.with(|mm| mm.get(MemoryId::new(MEM_ID))))
+                StableBTreeMap::new(MEMORY_MANAGER.with(|mm| mm.get(MemoryId::new(MEM_ID))))
             });
             f(map)
         })
@@ -105,7 +96,7 @@ impl<const MEM_ID: u8> RecoveryList for StableRecoveryList<MEM_ID> {
             // that the transactions have same parameters, so deduplication mechanism of ICRC-1
             // tokens would not allow both of such transactions be successful. So we can store only
             // one of them.
-            m.insert(&key, &value);
+            m.insert(key, value);
         })
     }
 
