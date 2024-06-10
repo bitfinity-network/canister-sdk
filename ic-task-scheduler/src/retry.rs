@@ -331,7 +331,7 @@ pub mod test {
     }
 
     #[test]
-    fn retry_policy_hedge_cases() {
+    fn retry_policy_edge_cases() {
         assert!(RetryPolicy::None.should_retry(0));
         assert!(!RetryPolicy::None.should_retry(1));
         assert!(!RetryPolicy::None.should_retry(u32::MAX));
