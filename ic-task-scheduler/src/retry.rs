@@ -49,7 +49,7 @@ impl RetryPolicy {
             match self {
                 RetryPolicy::None => false,
                 RetryPolicy::Infinite => true,
-                RetryPolicy::MaxRetries { retries: attempts } => *attempts + 1 > failed_attempts,
+                RetryPolicy::MaxRetries { retries: attempts } => *attempts >= failed_attempts,
             }
         }
     }
@@ -328,5 +328,28 @@ pub mod test {
         assert_eq!((true, 0), retry_strategy.should_retry(0));
         assert_eq!((true, 34), retry_strategy.should_retry(1));
         assert_eq!((false, 34), retry_strategy.should_retry(2));
+    }
+
+    #[test]
+    fn retry_policy_edge_cases() {
+        assert!(RetryPolicy::None.should_retry(0));
+        assert!(!RetryPolicy::None.should_retry(1));
+        assert!(!RetryPolicy::None.should_retry(u32::MAX));
+        assert!(!RetryPolicy::None.should_retry(u32::MAX - 1));
+
+        assert!(RetryPolicy::MaxRetries { retries: 0 }.should_retry(0));
+        assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(1));
+        assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(u32::MAX - 1));
+        assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(u32::MAX));
+
+        assert!(RetryPolicy::MaxRetries { retries: u32::MAX }.should_retry(0));
+        assert!(RetryPolicy::MaxRetries { retries: u32::MAX }.should_retry(1));
+        assert!(RetryPolicy::MaxRetries { retries: u32::MAX }.should_retry(u32::MAX - 1));
+        assert!(RetryPolicy::MaxRetries { retries: u32::MAX }.should_retry(u32::MAX));
+
+        assert!(RetryPolicy::Infinite.should_retry(0));
+        assert!(RetryPolicy::Infinite.should_retry(1));
+        assert!(RetryPolicy::Infinite.should_retry(u32::MAX));
+        assert!(RetryPolicy::Infinite.should_retry(u32::MAX - 1));
     }
 }
