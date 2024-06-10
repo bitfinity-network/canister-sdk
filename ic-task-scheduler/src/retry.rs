@@ -335,22 +335,21 @@ pub mod test {
         assert!(RetryPolicy::None.should_retry(0));
         assert!(!RetryPolicy::None.should_retry(1));
         assert!(!RetryPolicy::None.should_retry(u32::MAX));
-        assert!(!RetryPolicy::None.should_retry(u32::MAX-1));
+        assert!(!RetryPolicy::None.should_retry(u32::MAX - 1));
 
         assert!(RetryPolicy::MaxRetries { retries: 0 }.should_retry(0));
         assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(1));
-        assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(u32::MAX-1));
+        assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(u32::MAX - 1));
         assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(u32::MAX));
 
         assert!(RetryPolicy::MaxRetries { retries: u32::MAX }.should_retry(0));
         assert!(RetryPolicy::MaxRetries { retries: u32::MAX }.should_retry(1));
-        assert!(RetryPolicy::MaxRetries { retries: u32::MAX }.should_retry(u32::MAX-1));
+        assert!(RetryPolicy::MaxRetries { retries: u32::MAX }.should_retry(u32::MAX - 1));
         assert!(RetryPolicy::MaxRetries { retries: u32::MAX }.should_retry(u32::MAX));
-        
+
         assert!(RetryPolicy::Infinite.should_retry(0));
         assert!(RetryPolicy::Infinite.should_retry(1));
         assert!(RetryPolicy::Infinite.should_retry(u32::MAX));
-        assert!(RetryPolicy::Infinite.should_retry(u32::MAX-1));
-
+        assert!(RetryPolicy::Infinite.should_retry(u32::MAX - 1));
     }
 }
