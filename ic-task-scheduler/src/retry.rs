@@ -1,6 +1,7 @@
 use core::fmt::Debug;
 
 use candid::CandidType;
+use ic_kit::ic;
 use serde::{Deserialize, Serialize};
 
 /// Defines the strategy to apply in case of a failure.
@@ -39,6 +40,10 @@ pub enum RetryPolicy {
     MaxRetries { retries: u32 },
     /// The operation will be retried an infinite number of times.
     Infinite,
+    /// The operation will be retried until the current timestamp surpasses the `timeout_ts`.
+    ///
+    /// Timestamp is defined as an IC timestamp, e.g. number of nanoseconds since Unix epoch in `u64`.
+    Timeout { timeout_ts: u64 },
 }
 
 impl RetryPolicy {
@@ -50,6 +55,7 @@ impl RetryPolicy {
                 RetryPolicy::None => false,
                 RetryPolicy::Infinite => true,
                 RetryPolicy::MaxRetries { retries: attempts } => *attempts >= failed_attempts,
+                RetryPolicy::Timeout { timeout_ts } => ic::time() <= *timeout_ts,
             }
         }
     }
@@ -107,6 +113,7 @@ impl BackoffPolicy {
 
 #[cfg(test)]
 pub mod test {
+    use ic_kit::{Context, MockContext};
 
     use super::*;
 
@@ -351,5 +358,25 @@ pub mod test {
         assert!(RetryPolicy::Infinite.should_retry(1));
         assert!(RetryPolicy::Infinite.should_retry(u32::MAX));
         assert!(RetryPolicy::Infinite.should_retry(u32::MAX - 1));
+
+        let ctx = MockContext::new().inject();
+        assert!(RetryPolicy::Timeout { timeout_ts: 0 }.should_retry(0));
+        assert!(!RetryPolicy::Timeout { timeout_ts: 0 }.should_retry(1));
+        assert!(!RetryPolicy::Timeout {
+            timeout_ts: ctx.time() - 1
+        }
+        .should_retry(1));
+        assert!(RetryPolicy::Timeout {
+            timeout_ts: ctx.time()
+        }
+        .should_retry(1));
+        assert!(RetryPolicy::Timeout {
+            timeout_ts: ctx.time() + 1
+        }
+        .should_retry(1));
+        assert!(RetryPolicy::Timeout {
+            timeout_ts: u64::MAX
+        }
+        .should_retry(1));
     }
 }
