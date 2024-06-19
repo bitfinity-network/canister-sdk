@@ -171,10 +171,13 @@ impl<
                         Err(err) => {
                             let mut lock = task_scheduler.pending_tasks.lock();
                             task.options.failures += 1;
-                            let (should_retry, retry_delay) = task
-                                .options
-                                .retry_strategy
-                                .should_retry(task.options.failures);
+                            let (should_retry, retry_delay) = match err {
+                                SchedulerError::Unrecoverable(_) => (false, 0),
+                                _ => task
+                                    .options
+                                    .retry_strategy
+                                    .should_retry(task.options.failures),
+                            };
 
                             if should_retry {
                                 debug!("Scheduler - Task {} execution failed. Execution will be retried. Status changed: Running -> Waiting", task_key);
@@ -579,6 +582,7 @@ mod test {
         use serde::{Deserialize, Serialize};
 
         use super::*;
+        use crate::retry::RetryPolicy;
         use crate::task::TaskOptions;
 
         #[derive(Default, Clone)]
@@ -626,6 +630,34 @@ mod test {
                         })
                     }
                 }
+            }
+        }
+
+        #[derive(Serialize, Deserialize, Debug, Clone)]
+        pub struct UnrecoverableTask {
+            id: u32,
+            tries_before_failure: u32,
+        }
+
+        impl Task for UnrecoverableTask {
+            fn execute(
+                &self,
+                _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
+            ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
+                let id = self.id;
+                let tries_before_failure = self.tries_before_failure;
+                Box::pin(async move {
+                    STATE.with(|state| {
+                        let mut state = state.lock();
+                        let output = state.entry(id).or_default();
+                        if output.failures >= tries_before_failure {
+                            Err(SchedulerError::Unrecoverable("".into()))
+                        } else {
+                            output.failures += 1;
+                            Err(SchedulerError::TaskExecutionFailed("".into()))
+                        }
+                    })
+                })
             }
         }
 
@@ -957,6 +989,79 @@ mod test {
                 })
                 .await;
             assert_eq!(called.load(std::sync::atomic::Ordering::SeqCst), 1);
+        }
+
+        #[tokio::test]
+        async fn test_should_not_retry_unrecoverable_errors() {
+            let local = tokio::task::LocalSet::new();
+            local
+                .run_until(async move {
+                    let map = StableBTreeMap::new(VectorMemory::default());
+                    let scheduler = Scheduler::new(map);
+                    let id = random();
+                    let retries = 10;
+                    let retry_delay_secs = 3u64;
+
+                    scheduler.append_task(
+                        (
+                            UnrecoverableTask {
+                                id,
+                                tries_before_failure: 0,
+                            },
+                            TaskOptions::new()
+                                .with_max_retries_policy(retries)
+                                .with_fixed_backoff_policy(retry_delay_secs as u32),
+                        )
+                            .into(),
+                    );
+
+                    scheduler.run().unwrap();
+                    tokio::time::sleep(Duration::from_millis(25)).await;
+
+                    let pending_tasks = scheduler.pending_tasks.lock();
+                    assert!(pending_tasks.is_empty());
+                })
+                .await;
+        }
+
+        #[tokio::test]
+        async fn test_should_not_retry_unrecoverable_errors_after_retries() {
+            let local = tokio::task::LocalSet::new();
+            local
+                .run_until(async move {
+                    let map = StableBTreeMap::new(VectorMemory::default());
+                    let scheduler = Scheduler::new(map);
+                    let id = random();
+                    let retries = 10;
+
+                    scheduler.append_task(
+                        (
+                            UnrecoverableTask {
+                                id,
+                                tries_before_failure: retries,
+                            },
+                            TaskOptions::new()
+                                .with_retry_policy(RetryPolicy::Infinite)
+                                .with_fixed_backoff_policy(0),
+                        )
+                            .into(),
+                    );
+
+                    for _ in 0..retries {
+                        scheduler.run().unwrap();
+                        tokio::time::sleep(Duration::from_millis(25)).await;
+
+                        let pending_tasks = scheduler.pending_tasks.lock();
+                        assert!(!pending_tasks.is_empty());
+                    }
+
+                    scheduler.run().unwrap();
+                    tokio::time::sleep(Duration::from_millis(25)).await;
+
+                    let pending_tasks = scheduler.pending_tasks.lock();
+                    assert!(pending_tasks.is_empty());
+                })
+                .await;
         }
     }
 }
