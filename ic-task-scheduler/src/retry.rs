@@ -1,8 +1,8 @@
 use core::fmt::Debug;
 
 use candid::CandidType;
-use serde::{Deserialize, Serialize};
 use ic_kit::ic;
+use serde::{Deserialize, Serialize};
 
 /// Defines the strategy to apply in case of a failure.
 /// This is applied, for example, when a task execution fails
@@ -114,6 +114,7 @@ impl BackoffPolicy {
 #[cfg(test)]
 pub mod test {
     use ic_kit::{Context, MockContext};
+
     use super::*;
 
     #[test]
@@ -361,9 +362,21 @@ pub mod test {
         let ctx = MockContext::new().inject();
         assert!(RetryPolicy::Timeout { timeout_ts: 0 }.should_retry(0));
         assert!(!RetryPolicy::Timeout { timeout_ts: 0 }.should_retry(1));
-        assert!(!RetryPolicy::Timeout { timeout_ts: ctx.time() - 1 }.should_retry(1));
-        assert!(RetryPolicy::Timeout { timeout_ts: ctx.time() }.should_retry(1));
-        assert!(RetryPolicy::Timeout { timeout_ts: ctx.time() + 1 }.should_retry(1));
-        assert!(RetryPolicy::Timeout { timeout_ts: u64::MAX }.should_retry(1));
+        assert!(!RetryPolicy::Timeout {
+            timeout_ts: ctx.time() - 1
+        }
+        .should_retry(1));
+        assert!(RetryPolicy::Timeout {
+            timeout_ts: ctx.time()
+        }
+        .should_retry(1));
+        assert!(RetryPolicy::Timeout {
+            timeout_ts: ctx.time() + 1
+        }
+        .should_retry(1));
+        assert!(RetryPolicy::Timeout {
+            timeout_ts: u64::MAX
+        }
+        .should_retry(1));
     }
 }
