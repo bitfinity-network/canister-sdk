@@ -13,7 +13,7 @@ use ic_task_scheduler::SchedulerError;
 use serde::{Deserialize, Serialize};
 
 type Storage = StableBTreeMap<u32, InnerScheduledTask<DummyTask>, VirtualMemory<DefaultMemoryImpl>>;
-type PanickingScheduler = Scheduler<DummyTask, Storage>;
+type PanickingScheduler = Scheduler<(), DummyTask, Storage>;
 
 const SCHEDULER_STORAGE_MEMORY_ID: MemoryId = MemoryId::new(1);
 
@@ -49,8 +49,11 @@ pub enum DummyTask {
 }
 
 impl Task for DummyTask {
+    type Ctx = ();
+
     fn execute(
         &self,
+        _: (),
         _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
     ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
         match self {
@@ -132,7 +135,7 @@ impl DummyCanister {
 
     fn do_run_scheduler() {
         let scheduler = SCHEDULER.with_borrow(|scheduler| scheduler.clone());
-        scheduler.run().unwrap();
+        scheduler.run(()).unwrap();
     }
 
     pub fn idl() -> Idl {
