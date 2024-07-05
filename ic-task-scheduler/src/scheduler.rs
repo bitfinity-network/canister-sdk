@@ -16,10 +16,9 @@ type TaskCompletionCallback<T> = Box<dyn 'static + Fn(InnerScheduledTask<T>) + S
 const DEFAULT_RUNNING_TASK_TIMEOUT_SECS: u64 = 120;
 
 /// A scheduler is responsible for executing tasks.
-pub struct Scheduler<Ctx, T, P>
+pub struct Scheduler<T, P>
 where
-    Ctx: 'static + Clone,
-    T: 'static + Task<Ctx = Ctx>,
+    T: 'static + Task,
     P: 'static
         + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
         + BTreeMapStructure<u32, InnerScheduledTask<T>>,
@@ -30,10 +29,10 @@ where
     running_task_timeout_secs: AtomicU64,
 }
 
-impl<Ctx, T, P> Scheduler<Ctx, T, P>
+impl<T, P> Scheduler<T, P>
 where
-    Ctx: 'static + Clone,
-    T: 'static + Task<Ctx = Ctx> + Serialize + DeserializeOwned + Clone,
+    T: 'static + Task + Serialize + DeserializeOwned + Clone,
+    T::Ctx: Clone,
     P: 'static
         + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
         + BTreeMapStructure<u32, InnerScheduledTask<T>>,
@@ -66,13 +65,13 @@ where
     /// Each task is executed asynchronously in a dedicated ic_cdk::spawn call.
     /// This function does not wait for the tasks to complete.
     /// Returns the number of tasks that have been launched.
-    pub fn run(&self, ctx: Ctx) -> Result<usize, SchedulerError> {
+    pub fn run(&self, ctx: T::Ctx) -> Result<usize, SchedulerError> {
         self.run_with_timestamp(ctx, time_secs())
     }
 
     fn run_with_timestamp(
         &self,
-        context: Ctx,
+        context: T::Ctx,
         now_timestamp_secs: u64,
     ) -> Result<usize, SchedulerError> {
         debug!("Scheduler - Running tasks");
@@ -128,7 +127,7 @@ where
         Ok(to_be_scheduled_tasks.len())
     }
 
-    fn process_pending_task(&self, context: Ctx, task_key: u32, now_timestamp_secs: u64) {
+    fn process_pending_task(&self, context: T::Ctx, task_key: u32, now_timestamp_secs: u64) {
         let task_scheduler = self.clone();
 
         // Set the task as scheduled
@@ -238,10 +237,9 @@ pub trait TaskScheduler<T: 'static + Task> {
     fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<T>>;
 }
 
-impl<Ctx, T, P> Clone for Scheduler<Ctx, T, P>
+impl<T, P> Clone for Scheduler<T, P>
 where
-    Ctx: 'static + Clone,
-    T: 'static + Task<Ctx = Ctx> + Serialize + DeserializeOwned,
+    T: 'static + Task + Serialize + DeserializeOwned,
     P: 'static
         + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
         + BTreeMapStructure<u32, InnerScheduledTask<T>>,
@@ -258,10 +256,9 @@ where
     }
 }
 
-impl<Ctx, T, P> TaskScheduler<T> for Scheduler<Ctx, T, P>
+impl<T, P> TaskScheduler<T> for Scheduler<T, P>
 where
-    Ctx: 'static + Clone,
-    T: 'static + Task<Ctx = Ctx> + Serialize + DeserializeOwned,
+    T: 'static + Task + Serialize + DeserializeOwned,
     P: 'static
         + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
         + BTreeMapStructure<u32, InnerScheduledTask<T>>,
@@ -327,12 +324,13 @@ mod test {
     use super::*;
 
     mod test_execution {
+        use std::cell::RefCell;
+        use std::collections::HashMap;
         use std::future::Future;
         use std::pin::Pin;
         use std::rc::Rc;
         use std::sync::atomic::AtomicBool;
         use std::time::Duration;
-        use std::{cell::RefCell, collections::HashMap};
 
         use ic_stable_structures::{StableBTreeMap, VectorMemory};
         use rand::random;
@@ -503,7 +501,6 @@ mod test {
     }
 
     mod test_delay {
-
         use std::collections::HashMap;
         use std::future::Future;
         use std::pin::Pin;
@@ -530,7 +527,7 @@ mod test {
 
             fn execute(
                 &self,
-                _: (),
+                _: Self::Ctx,
                 _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
             ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
                 match self {
@@ -628,7 +625,7 @@ mod test {
 
             fn execute(
                 &self,
-                _: (),
+                _: Self::Ctx,
                 _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
             ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
                 match self {
@@ -670,7 +667,7 @@ mod test {
 
             fn execute(
                 &self,
-                _: (),
+                _: Self::Ctx,
                 _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
             ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
                 let id = self.id;
