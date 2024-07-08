@@ -235,7 +235,7 @@ mod test {
 
         fn execute(
             &self,
-            _: (),
+            _: Self::Ctx,
             _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
         ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
             todo!()
