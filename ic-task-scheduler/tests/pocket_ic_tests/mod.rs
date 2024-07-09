@@ -108,8 +108,11 @@ pub enum DummyTask {
 }
 
 impl Task for DummyTask {
+    type Ctx = ();
+
     fn execute(
         &self,
+        _: (),
         _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
     ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
         Box::pin(async move { Ok(()) })

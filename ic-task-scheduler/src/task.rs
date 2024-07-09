@@ -12,9 +12,12 @@ use crate::SchedulerError;
 
 /// A sync task is a unit of work that can be executed by the scheduler.
 pub trait Task {
+    type Ctx;
+
     /// Execute the task and return the next task to execute.
     fn execute(
         &self,
+        context: Self::Ctx,
         task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
     ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>>;
 }
@@ -228,8 +231,11 @@ mod test {
     struct TestTask {}
 
     impl Task for TestTask {
+        type Ctx = ();
+
         fn execute(
             &self,
+            _: Self::Ctx,
             _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
         ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
             todo!()

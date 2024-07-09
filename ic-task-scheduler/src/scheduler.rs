@@ -16,24 +16,26 @@ type TaskCompletionCallback<T> = Box<dyn 'static + Fn(InnerScheduledTask<T>) + S
 const DEFAULT_RUNNING_TASK_TIMEOUT_SECS: u64 = 120;
 
 /// A scheduler is responsible for executing tasks.
-pub struct Scheduler<
+pub struct Scheduler<T, P>
+where
     T: 'static + Task,
     P: 'static
         + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
         + BTreeMapStructure<u32, InnerScheduledTask<T>>,
-> {
+{
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
     on_completion_callback: Arc<Option<TaskCompletionCallback<T>>>,
     running_task_timeout_secs: AtomicU64,
 }
 
-impl<
-        T: 'static + Task + Serialize + DeserializeOwned + Clone,
-        P: 'static
-            + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
-            + BTreeMapStructure<u32, InnerScheduledTask<T>>,
-    > Scheduler<T, P>
+impl<T, P> Scheduler<T, P>
+where
+    T: 'static + Task + Serialize + DeserializeOwned + Clone,
+    T::Ctx: Clone,
+    P: 'static
+        + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
+        + BTreeMapStructure<u32, InnerScheduledTask<T>>,
 {
     /// Create a new scheduler.
     pub fn new(pending_tasks: P) -> Self {
@@ -63,11 +65,15 @@ impl<
     /// Each task is executed asynchronously in a dedicated ic_cdk::spawn call.
     /// This function does not wait for the tasks to complete.
     /// Returns the number of tasks that have been launched.
-    pub fn run(&self) -> Result<usize, SchedulerError> {
-        self.run_with_timestamp(time_secs())
+    pub fn run(&self, ctx: T::Ctx) -> Result<usize, SchedulerError> {
+        self.run_with_timestamp(ctx, time_secs())
     }
 
-    fn run_with_timestamp(&self, now_timestamp_secs: u64) -> Result<usize, SchedulerError> {
+    fn run_with_timestamp(
+        &self,
+        context: T::Ctx,
+        now_timestamp_secs: u64,
+    ) -> Result<usize, SchedulerError> {
         debug!("Scheduler - Running tasks");
         let mut to_be_scheduled_tasks = Vec::new();
         let mut out_of_time_tasks = Vec::new();
@@ -102,7 +108,7 @@ impl<
 
         // Process the tasks that are ready to be scheduled
         for task_key in to_be_scheduled_tasks.iter() {
-            self.process_pending_task(*task_key, now_timestamp_secs);
+            self.process_pending_task(context.clone(), *task_key, now_timestamp_secs);
         }
 
         // Remove the tasks that are out of time
@@ -121,7 +127,7 @@ impl<
         Ok(to_be_scheduled_tasks.len())
     }
 
-    fn process_pending_task(&self, task_key: u32, now_timestamp_secs: u64) {
+    fn process_pending_task(&self, context: T::Ctx, task_key: u32, now_timestamp_secs: u64) {
         let task_scheduler = self.clone();
 
         // Set the task as scheduled
@@ -158,7 +164,7 @@ impl<
 
                     let completed_task = match task
                         .task
-                        .execute(Box::new(task_scheduler.clone()))
+                        .execute(context, Box::new(task_scheduler.clone()))
                         .await
                     {
                         Ok(()) => {
@@ -231,12 +237,12 @@ pub trait TaskScheduler<T: 'static + Task> {
     fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<T>>;
 }
 
-impl<
-        T: 'static + Task + Serialize + DeserializeOwned,
-        P: 'static
-            + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
-            + BTreeMapStructure<u32, InnerScheduledTask<T>>,
-    > Clone for Scheduler<T, P>
+impl<T, P> Clone for Scheduler<T, P>
+where
+    T: 'static + Task + Serialize + DeserializeOwned,
+    P: 'static
+        + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
+        + BTreeMapStructure<u32, InnerScheduledTask<T>>,
 {
     fn clone(&self) -> Self {
         Self {
@@ -250,12 +256,12 @@ impl<
     }
 }
 
-impl<
-        T: 'static + Task + Serialize + DeserializeOwned,
-        P: 'static
-            + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
-            + BTreeMapStructure<u32, InnerScheduledTask<T>>,
-    > TaskScheduler<T> for Scheduler<T, P>
+impl<T, P> TaskScheduler<T> for Scheduler<T, P>
+where
+    T: 'static + Task + Serialize + DeserializeOwned,
+    P: 'static
+        + IterableSortedMapStructure<u32, InnerScheduledTask<T>>
+        + BTreeMapStructure<u32, InnerScheduledTask<T>>,
 {
     fn append_task(&self, task: ScheduledTask<T>) -> u32 {
         let time_secs = time_secs();
@@ -318,10 +324,11 @@ mod test {
     use super::*;
 
     mod test_execution {
-
+        use std::cell::RefCell;
         use std::collections::HashMap;
         use std::future::Future;
         use std::pin::Pin;
+        use std::rc::Rc;
         use std::sync::atomic::AtomicBool;
         use std::time::Duration;
 
@@ -343,10 +350,15 @@ mod test {
         }
 
         impl Task for SimpleTaskSteps {
+            type Ctx = Rc<RefCell<u32>>;
+
             fn execute(
                 &self,
+                ctx: Rc<RefCell<u32>>,
                 task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
             ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
+                *ctx.borrow_mut() += 1;
+
                 match self {
                     SimpleTaskSteps::One { id } => {
                         let id = *id;
@@ -412,8 +424,10 @@ mod test {
 
                     let mut completed = false;
 
+                    let ctx = Rc::new(RefCell::new(0));
+
                     while !completed {
-                        scheduler.run().unwrap();
+                        scheduler.run(ctx.clone()).unwrap();
                         tokio::time::sleep(Duration::from_millis(100)).await;
                         STATE.with(|state| {
                             let state = state.lock();
@@ -429,6 +443,8 @@ mod test {
                                         format!("{} - Done", id),
                                     ]
                                 );
+
+                                assert_eq!(*ctx.borrow(), 4u32);
                             }
                         });
                     }
@@ -455,8 +471,10 @@ mod test {
 
                     let mut completed = false;
 
+                    let ctx = Rc::new(RefCell::new(0));
+
                     while !completed {
-                        scheduler.run().unwrap();
+                        scheduler.run(ctx.clone()).unwrap();
                         tokio::time::sleep(Duration::from_millis(100)).await;
                         STATE.with(|state| {
                             let state = state.lock();
@@ -483,7 +501,6 @@ mod test {
     }
 
     mod test_delay {
-
         use std::collections::HashMap;
         use std::future::Future;
         use std::pin::Pin;
@@ -506,8 +523,11 @@ mod test {
         }
 
         impl Task for SimpleTask {
+            type Ctx = ();
+
             fn execute(
                 &self,
+                _: Self::Ctx,
                 _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
             ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
                 match self {
@@ -548,7 +568,7 @@ mod test {
 
                     for i in 0..10 {
                         // Should not run the task because the execution timestamp is in the future
-                        scheduler.run_with_timestamp(timestamp + i).unwrap();
+                        scheduler.run_with_timestamp((), timestamp + i).unwrap();
                         tokio::time::sleep(Duration::from_millis(25)).await;
                         STATE.with(|state| {
                             let state = state.lock();
@@ -557,7 +577,7 @@ mod test {
                         });
                     }
 
-                    scheduler.run_with_timestamp(timestamp + 11).unwrap();
+                    scheduler.run_with_timestamp((), timestamp + 11).unwrap();
                     tokio::time::sleep(Duration::from_millis(25)).await;
                     STATE.with(|state| {
                         let state = state.lock();
@@ -601,8 +621,11 @@ mod test {
         }
 
         impl Task for SimpleTask {
+            type Ctx = ();
+
             fn execute(
                 &self,
+                _: Self::Ctx,
                 _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
             ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
                 match self {
@@ -640,8 +663,11 @@ mod test {
         }
 
         impl Task for UnrecoverableTask {
+            type Ctx = ();
+
             fn execute(
                 &self,
+                _: Self::Ctx,
                 _task_scheduler: Box<dyn 'static + TaskScheduler<Self>>,
             ) -> Pin<Box<dyn Future<Output = Result<(), SchedulerError>>>> {
                 let id = self.id;
@@ -684,7 +710,7 @@ mod test {
 
                     // beware that the the first execution is not a retry
                     for i in 1..=retries {
-                        scheduler.run().unwrap();
+                        scheduler.run(()).unwrap();
                         tokio::time::sleep(Duration::from_millis(25)).await;
                         STATE.with(|state| {
                             let state = state.lock();
@@ -702,7 +728,7 @@ mod test {
                     }
 
                     // After the last retries the task is removed
-                    scheduler.run().unwrap();
+                    scheduler.run(()).unwrap();
                     tokio::time::sleep(Duration::from_millis(25)).await;
 
                     STATE.with(|state| {
@@ -747,7 +773,7 @@ mod test {
 
                     // beware that the the first execution is not a retry
                     for _ in 1..=retries {
-                        scheduler.run().unwrap();
+                        scheduler.run(()).unwrap();
                         tokio::time::sleep(Duration::from_millis(25)).await;
                     }
 
@@ -791,7 +817,7 @@ mod test {
                     );
 
                     let timestamp = time_secs();
-                    assert_eq!(1, scheduler.run_with_timestamp(timestamp).unwrap());
+                    assert_eq!(1, scheduler.run_with_timestamp((), timestamp).unwrap());
                     tokio::time::sleep(Duration::from_millis(25)).await;
 
                     {
@@ -810,13 +836,13 @@ mod test {
 
                     // Should not run the task because the retry timestamp is in the future
                     for i in 0..retry_delay_secs {
-                        assert_eq!(0, scheduler.run_with_timestamp(timestamp + i).unwrap());
+                        assert_eq!(0, scheduler.run_with_timestamp((), timestamp + i).unwrap());
                     }
 
                     assert_eq!(
                         1,
                         scheduler
-                            .run_with_timestamp(timestamp + retry_delay_secs)
+                            .run_with_timestamp((), timestamp + retry_delay_secs)
                             .unwrap()
                     );
                 })
@@ -853,7 +879,7 @@ mod test {
                     );
 
                     // beware that the the first execution is not a retry
-                    scheduler.run().unwrap();
+                    scheduler.run(()).unwrap();
                     tokio::time::sleep(Duration::from_millis(25)).await;
                     let pending_tasks = scheduler.pending_tasks.lock();
                     assert_eq!(pending_tasks.len(), 0);
@@ -896,7 +922,7 @@ mod test {
 
                     // beware that the the first execution is not a retry
                     for _ in 1..=retries {
-                        scheduler.run().unwrap();
+                        scheduler.run(()).unwrap();
                         tokio::time::sleep(Duration::from_millis(25)).await;
                     }
 
@@ -950,7 +976,7 @@ mod test {
 
                     // beware that the the first execution is not a retry
                     for i in 1..=retries {
-                        scheduler.run().unwrap();
+                        scheduler.run(()).unwrap();
                         tokio::time::sleep(Duration::from_millis(25)).await;
                         STATE.with(|state| {
                             let state = state.lock();
@@ -968,7 +994,7 @@ mod test {
                     }
 
                     // After the last retries the task is removed
-                    scheduler.run().unwrap();
+                    scheduler.run(()).unwrap();
                     tokio::time::sleep(Duration::from_millis(25)).await;
 
                     STATE.with(|state| {
@@ -1015,7 +1041,7 @@ mod test {
                             .into(),
                     );
 
-                    scheduler.run().unwrap();
+                    scheduler.run(()).unwrap();
                     tokio::time::sleep(Duration::from_millis(25)).await;
 
                     let pending_tasks = scheduler.pending_tasks.lock();
@@ -1048,14 +1074,14 @@ mod test {
                     );
 
                     for _ in 0..retries {
-                        scheduler.run().unwrap();
+                        scheduler.run(()).unwrap();
                         tokio::time::sleep(Duration::from_millis(25)).await;
 
                         let pending_tasks = scheduler.pending_tasks.lock();
                         assert!(!pending_tasks.is_empty());
                     }
 
-                    scheduler.run().unwrap();
+                    scheduler.run(()).unwrap();
                     tokio::time::sleep(Duration::from_millis(25)).await;
 
                     let pending_tasks = scheduler.pending_tasks.lock();
