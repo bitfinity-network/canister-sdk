@@ -4,8 +4,10 @@ use std::rc::Rc;
 
 use candid::Principal;
 use ic_canister::{generate_idl, init, query, update, Canister, Idl, PreUpdate};
+use ic_exports::ic_kit::ic;
+use ic_log::did::{LogSettings, LoggerPermission};
 use ic_log::writer::Logs;
-use ic_log::{init_log, LogSettings, LoggerConfig};
+use ic_log::{init_log, LoggerConfig};
 use log::{debug, error, info};
 
 #[derive(Canister)]
@@ -20,9 +22,14 @@ impl LogCanister {
     #[init]
     pub fn init(&self) {
         let settings = LogSettings {
-            in_memory_records: Some(128),
-            log_filter: Some("info".to_string()),
+            in_memory_records: 128,
+            log_filter: "info".to_string(),
             enable_console: true,
+            acl: [
+                (ic::caller(), LoggerPermission::Read),
+                (ic::caller(), LoggerPermission::Configure),
+            ]
+            .into(),
         };
         match init_log(&settings) {
             Ok(logger_config) => LoggerConfigService::default().init(logger_config),

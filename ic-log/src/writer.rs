@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use candid::CandidType;
 use ringbuffer::{AllocRingBuffer, RingBuffer};
@@ -50,6 +51,7 @@ type LogRecordsBuffer = AllocRingBuffer<String>;
 thread_local! {
     static LOG_RECORDS: RefCell<(usize, LogRecordsBuffer)> =
         RefCell::new((0, LogRecordsBuffer::new(INIT_LOG_CAPACITY)));
+    static IS_ENABLED: AtomicBool = AtomicBool::new(false);
 }
 
 /// Writer that stores strings in a thread_local memory circular buffer.
@@ -75,11 +77,21 @@ pub struct Log {
 impl InMemoryWriter {
     pub fn init_buffer(capacity: usize) {
         LOG_RECORDS.with(|records| {
-            *records.borrow_mut() = (0, LogRecordsBuffer::new(capacity));
+            if capacity > 0 {
+                *records.borrow_mut() = (0, LogRecordsBuffer::new(capacity));
+                Self::enable()
+            } else {
+                *records.borrow_mut() = (0, LogRecordsBuffer::new(1));
+                Self::disable()
+            }
         });
     }
 
     pub fn take_records(max_count: usize, from_offset: usize) -> Logs {
+        if !Self::is_enabled() {
+            return Logs::default();
+        }
+
         LOG_RECORDS.with(|records| {
             let records = records.borrow_mut();
             let all_logs_count = records.0;
@@ -118,10 +130,26 @@ impl InMemoryWriter {
             }
         })
     }
+
+    fn enable() {
+        IS_ENABLED.with(|v| v.store(true, Ordering::Relaxed));
+    }
+
+    fn disable() {
+        IS_ENABLED.with(|v| v.store(false, Ordering::Relaxed));
+    }
+
+    fn is_enabled() -> bool {
+        IS_ENABLED.with(|v| v.load(Ordering::Relaxed))
+    }
 }
 
 impl Writer for InMemoryWriter {
     fn print(&self, buf: &Buffer) -> std::io::Result<()> {
+        if !Self::is_enabled() {
+            return Ok(());
+        }
+
         LOG_RECORDS.with(|records| {
             let mut borrow = records.borrow_mut();
             borrow.0 += 1;

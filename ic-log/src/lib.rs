@@ -1,8 +1,11 @@
 use env_filter::Filter;
 use formatter::FormatFn;
-use ic_exports::candid::{CandidType, Deserialize};
 use writer::{ConsoleWriter, InMemoryWriter, Logs, MultiWriter, Writer};
 
+#[cfg(feature = "canister")]
+pub mod canister;
+
+pub mod did;
 mod formatter;
 mod platform;
 pub mod writer;
@@ -13,6 +16,7 @@ use std::sync::Arc;
 use arc_swap::{ArcSwap, ArcSwapAny};
 use log::{LevelFilter, Log, Metadata, Record, SetLoggerError};
 
+pub use self::did::LogSettings;
 use crate::formatter::Formatter;
 
 /// The logger.
@@ -330,35 +334,16 @@ mod std_fmt_impls {
     }
 }
 
-/// Log settings to initialize the logger
-#[derive(Default, Debug, Clone, CandidType, Deserialize)]
-pub struct LogSettings {
-    /// Enable logging to console (`ic::print` when running in IC)
-    pub enable_console: bool,
-    /// Number of records to be stored in the circular memory buffer.
-    /// If None - storing records will be disable.
-    /// If Some - should be power of two.
-    pub in_memory_records: Option<usize>,
-    /// Log configuration as combination of filters. By default the logger is OFF.
-    /// Example of valid configurations:
-    /// - info
-    /// - debug,crate1::mod1=error,crate1::mod2,crate2=debug
-    pub log_filter: Option<String>,
-}
-
 /// Builds and initialize a logger based on the settings
 pub fn init_log(settings: &LogSettings) -> Result<LoggerConfig, SetLoggerError> {
-    let mut builder =
-        Builder::default().parse_filters(settings.log_filter.as_deref().unwrap_or("off"));
+    let mut builder = Builder::default().parse_filters(&settings.log_filter);
 
     if settings.enable_console {
         builder = builder.add_writer(Box::new(ConsoleWriter {}));
     }
 
-    if let Some(count) = settings.in_memory_records {
-        writer::InMemoryWriter::init_buffer(count);
-        builder = builder.add_writer(Box::new(InMemoryWriter {}));
-    }
+    writer::InMemoryWriter::init_buffer(settings.in_memory_records);
+    builder = builder.add_writer(Box::new(InMemoryWriter {}));
 
     builder.try_init()
 }
@@ -379,8 +364,9 @@ mod tests {
     fn update_filter_at_runtime() {
         let config = init_log(&LogSettings {
             enable_console: true,
-            in_memory_records: None,
-            log_filter: Some("debug".to_string()),
+            in_memory_records: 0,
+            log_filter: "debug".to_string(),
+            acl: Default::default(),
         })
         .unwrap();
 
