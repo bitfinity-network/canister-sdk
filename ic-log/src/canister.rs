@@ -11,6 +11,7 @@ pub use crate::canister::state::LogState;
 use crate::did::{LogCanisterError, LogCanisterSettings, LoggerPermission, Pagination};
 use crate::writer::Logs;
 
+pub mod inspect;
 mod state;
 
 pub trait LogCanister: Canister + PreUpdate {

@@ -206,7 +206,7 @@ impl LogState {
         Ok(())
     }
 
-    fn check_permission(
+    pub(crate) fn check_permission(
         &self,
         caller: Principal,
         logger_permission: LoggerPermission,
