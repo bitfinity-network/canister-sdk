@@ -8,6 +8,7 @@ pub mod canister;
 pub mod did;
 mod formatter;
 mod platform;
+mod settings;
 pub mod writer;
 
 use std::cell::RefCell;
@@ -15,8 +16,8 @@ use std::sync::Arc;
 
 use arc_swap::{ArcSwap, ArcSwapAny};
 use log::{LevelFilter, Log, Metadata, Record, SetLoggerError};
+pub use settings::LogSettings;
 
-pub use self::did::LogSettings;
 use crate::formatter::Formatter;
 
 /// The logger.
@@ -342,7 +343,7 @@ pub fn init_log(settings: &LogSettings) -> Result<LoggerConfig, SetLoggerError> 
         builder = builder.add_writer(Box::new(ConsoleWriter {}));
     }
 
-    writer::InMemoryWriter::init_buffer(settings.in_memory_records);
+    writer::InMemoryWriter::init_buffer(settings.in_memory_records, settings.max_record_length);
     builder = builder.add_writer(Box::new(InMemoryWriter {}));
 
     builder.try_init()
@@ -365,6 +366,7 @@ mod tests {
         let config = init_log(&LogSettings {
             enable_console: true,
             in_memory_records: 0,
+            max_record_length: 1024,
             log_filter: "debug".to_string(),
             acl: Default::default(),
         })

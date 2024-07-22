@@ -22,6 +22,7 @@ fn test_settings() -> LogSettings {
     LogSettings {
         enable_console: true,
         in_memory_records: 10,
+        max_record_length: 1024,
         log_filter: "info,ic_log=off".to_string(),
         acl: [
             (admin(), LoggerPermission::Configure),
@@ -35,7 +36,9 @@ fn test_state() -> LogState {
     static INIT: Once = Once::new();
     INIT.call_once(|| {
         let mut state = LogState::default();
-        state.init(test_memory(), test_settings()).unwrap()
+        state
+            .init(admin(), test_memory(), test_settings().into())
+            .unwrap()
     });
 
     let settings = test_settings();

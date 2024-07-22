@@ -5,9 +5,9 @@ use std::rc::Rc;
 use candid::Principal;
 use ic_canister::{generate_idl, init, query, update, Canister, Idl, PreUpdate};
 use ic_exports::ic_kit::ic;
-use ic_log::did::{LogSettings, LoggerPermission};
+use ic_log::did::LoggerPermission;
 use ic_log::writer::Logs;
-use ic_log::{init_log, LoggerConfig};
+use ic_log::{init_log, LogSettings, LoggerConfig};
 use log::{debug, error, info};
 
 #[derive(Canister)]
@@ -23,6 +23,7 @@ impl LogCanister {
     pub fn init(&self) {
         let settings = LogSettings {
             in_memory_records: 128,
+            max_record_length: 1024,
             log_filter: "info".to_string(),
             enable_console: true,
             acl: [

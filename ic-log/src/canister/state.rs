@@ -6,9 +6,9 @@ use ic_stable_structures::stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{Bound, CellStructure, IcMemoryManager, MemoryId, StableCell, Storable};
 use ic_storage::IcStorage;
 
-use crate::did::{LogCanisterError, LogSettings, LoggerAcl, LoggerPermission, Pagination};
-use crate::writer::Logs;
-use crate::{take_memory_records, LoggerConfig};
+use crate::did::{LogCanisterError, LogCanisterSettings, LoggerAcl, LoggerPermission, Pagination};
+use crate::writer::{InMemoryWriter, Logs};
+use crate::{take_memory_records, LogSettings, LoggerConfig};
 
 thread_local! {
     static MEMORY_MANAGER: IcMemoryManager<DefaultMemoryImpl> = IcMemoryManager::init(DefaultMemoryImpl::default());
@@ -43,19 +43,20 @@ impl LogState {
 
     pub fn init(
         &mut self,
+        caller: Principal,
         memory_id: MemoryId,
-        log_settings: LogSettings,
+        log_settings: LogCanisterSettings,
     ) -> Result<(), LogCanisterError> {
         if LOGGER_CONFIG.with(|logger_config| logger_config.borrow().is_some()) {
             return Err(LogCanisterError::AlreadyInitialized);
         }
 
-        self.settings = log_settings.clone();
+        self.settings = LogSettings::from_did(log_settings, caller);
         self.memory_id = memory_id;
 
         self.store()?;
 
-        Self::init_log(&log_settings)?;
+        Self::init_log(&self.settings)?;
 
         // Print this out without using log in case the given parameters prevent logs to be printed.
         #[cfg(target_arch = "wasm32")]
@@ -90,14 +91,19 @@ impl LogState {
 
         Ok(())
     }
-    //
-    // pub fn update_in_memory_records(&mut self, count: usize) {
-    //     self.settings.in_memory_records = count;
-    //     todo!();
-    //
-    //     self.store()
-    //         .expect("Failed to update logger in memory records count");
-    // }
+
+    pub fn set_in_memory_records(
+        &mut self,
+        caller: Principal,
+        count: usize,
+    ) -> Result<(), LogCanisterError> {
+        self.check_permission(caller, LoggerPermission::Configure)?;
+
+        self.settings.in_memory_records = count;
+        InMemoryWriter::change_capacity(count);
+
+        Ok(())
+    }
 
     pub fn get_logs(&self, caller: Principal, page: Pagination) -> Result<Logs, LogCanisterError> {
         self.check_permission(caller, LoggerPermission::Read)?;
@@ -268,6 +274,7 @@ mod tests {
         LogSettings {
             enable_console: true,
             in_memory_records: 10,
+            max_record_length: 1024,
             log_filter: "trace".to_string(),
             acl: [
                 (admin(), LoggerPermission::Configure),
@@ -279,7 +286,9 @@ mod tests {
 
     fn test_state() -> LogState {
         let mut state = LogState::default();
-        state.init(test_memory(), test_settings()).unwrap();
+        state
+            .init(admin(), test_memory(), test_settings().into())
+            .unwrap();
         state
     }
 
@@ -289,10 +298,13 @@ mod tests {
         let settings = LogSettings {
             enable_console: true,
             in_memory_records: 10,
+            max_record_length: 1024,
             log_filter: "debug".to_string(),
             acl: [(admin(), LoggerPermission::Configure)].into(),
         };
-        state.init(MemoryId::new(1), settings.clone()).unwrap();
+        state
+            .init(admin(), MemoryId::new(1), settings.clone().into())
+            .unwrap();
 
         assert_eq!(state.get_settings(), &settings);
     }
@@ -309,7 +321,7 @@ mod tests {
     fn init_fails_if_already_initialized() {
         let mut state = test_state();
         assert_eq!(
-            state.init(test_memory(), test_settings()),
+            state.init(admin(), test_memory(), test_settings().into()),
             Err(LogCanisterError::AlreadyInitialized)
         );
     }
@@ -318,7 +330,11 @@ mod tests {
     fn init_fails_if_default_memory_id() {
         let mut state = LogState::default();
         assert_eq!(
-            state.init(LogState::INVALID_MEMORY_ID, LogSettings::default()),
+            state.init(
+                admin(),
+                LogState::INVALID_MEMORY_ID,
+                LogSettings::default().into()
+            ),
             Err(LogCanisterError::InvalidMemoryId)
         );
     }
@@ -577,5 +593,33 @@ mod tests {
             ),
             Err(LogCanisterError::NotAuthorized)
         );
+    }
+
+    #[test]
+    fn set_in_memory_records_checks_permissions() {
+        let mut state = test_state();
+        assert!(state.set_in_memory_records(admin(), 10).is_ok());
+        assert_eq!(
+            state.set_in_memory_records(reader(), 10),
+            Err(LogCanisterError::NotAuthorized)
+        );
+        assert_eq!(
+            state.set_in_memory_records(user(), 10),
+            Err(LogCanisterError::NotAuthorized)
+        );
+    }
+
+    #[test]
+    fn set_in_memory_records_updates_settings() {
+        let mut state = test_state();
+        state.set_in_memory_records(admin(), 10).unwrap();
+        assert_eq!(state.get_settings().in_memory_records, 10);
+    }
+
+    #[test]
+    fn set_in_memory_records_changes_logger_capacity() {
+        let mut state = test_state();
+        state.set_in_memory_records(admin(), 0).unwrap();
+        assert!(!InMemoryWriter::is_enabled());
     }
 }

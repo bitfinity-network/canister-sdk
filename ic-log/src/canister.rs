@@ -8,7 +8,7 @@ use ic_canister::{
 use ic_exports::ic_kit::ic;
 
 pub use crate::canister::state::LogState;
-use crate::did::{LogCanisterError, LogSettings, LoggerPermission, Pagination};
+use crate::did::{LogCanisterError, LogCanisterSettings, LoggerPermission, Pagination};
 use crate::writer::Logs;
 
 mod state;
@@ -39,9 +39,19 @@ pub trait LogCanister: Canister + PreUpdate {
             .set_logger_filter(ic::caller(), filter)
     }
 
+    #[update(trait = true)]
+    fn set_logger_in_memory_records(
+        &mut self,
+        max_log_count: usize,
+    ) -> Result<(), LogCanisterError> {
+        self.log_state()
+            .borrow_mut()
+            .set_in_memory_records(ic::caller(), max_log_count)
+    }
+
     #[query(trait = true)]
-    fn get_logger_settings(&self) -> LogSettings {
-        self.log_state().borrow().get_settings().clone()
+    fn get_logger_settings(&self) -> LogCanisterSettings {
+        self.log_state().borrow().get_settings().clone().into()
     }
 
     #[update(trait = true)]

@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use candid::CandidType;
 use ringbuffer::{AllocRingBuffer, RingBuffer};
@@ -52,6 +52,7 @@ thread_local! {
     static LOG_RECORDS: RefCell<(usize, LogRecordsBuffer)> =
         RefCell::new((0, LogRecordsBuffer::new(INIT_LOG_CAPACITY)));
     static IS_ENABLED: AtomicBool = AtomicBool::new(false);
+    static MAX_RECORD_LENGTH: AtomicUsize = AtomicUsize::new(0);
 }
 
 /// Writer that stores strings in a thread_local memory circular buffer.
@@ -75,7 +76,8 @@ pub struct Log {
 }
 
 impl InMemoryWriter {
-    pub fn init_buffer(capacity: usize) {
+    pub fn init_buffer(capacity: usize, max_record_length: usize) {
+        MAX_RECORD_LENGTH.with(|v| v.store(max_record_length, Ordering::Relaxed));
         LOG_RECORDS.with(|records| {
             if capacity > 0 {
                 *records.borrow_mut() = (0, LogRecordsBuffer::new(capacity));
@@ -139,8 +141,27 @@ impl InMemoryWriter {
         IS_ENABLED.with(|v| v.store(false, Ordering::Relaxed));
     }
 
-    fn is_enabled() -> bool {
+    pub(crate) fn is_enabled() -> bool {
         IS_ENABLED.with(|v| v.load(Ordering::Relaxed))
+    }
+
+    pub fn change_capacity(capacity: usize) {
+        LOG_RECORDS.with(|records| {
+            let all_logs_count = records.borrow().0;
+            if capacity > 0 {
+                let logs = Self::take_records(capacity, all_logs_count.saturating_sub(capacity));
+                let mut buffer = LogRecordsBuffer::new(capacity);
+                for log in logs.logs {
+                    buffer.push(log.log);
+                }
+
+                *records.borrow_mut() = (all_logs_count, buffer);
+                Self::enable()
+            } else {
+                *records.borrow_mut() = (all_logs_count, LogRecordsBuffer::new(1));
+                Self::disable()
+            }
+        });
     }
 }
 
@@ -150,12 +171,15 @@ impl Writer for InMemoryWriter {
             return Ok(());
         }
 
+        let max_length = MAX_RECORD_LENGTH.with(|v| v.load(Ordering::Relaxed));
+
         LOG_RECORDS.with(|records| {
             let mut borrow = records.borrow_mut();
             borrow.0 += 1;
-            borrow
-                .1
-                .push(String::from_utf8_lossy(buf.bytes()).to_string());
+            borrow.1.push(
+                String::from_utf8_lossy(&buf.bytes()[0..max_length.min(buf.bytes().len())])
+                    .to_string(),
+            );
         });
         Ok(())
     }
@@ -168,9 +192,10 @@ pub mod tests {
     use super::*;
 
     const LOG_RECORDS_MAX_COUNT: usize = 8;
+    const MAX_RECORD_LENGTH: usize = 20;
 
     fn clear_memory_records() {
-        InMemoryWriter::init_buffer(LOG_RECORDS_MAX_COUNT);
+        InMemoryWriter::init_buffer(LOG_RECORDS_MAX_COUNT, MAX_RECORD_LENGTH);
     }
 
     #[test]
@@ -400,7 +425,7 @@ pub mod tests {
     fn test_memory_writer_take_data_with_full_buffer() {
         clear_memory_records();
         let size = 6;
-        InMemoryWriter::init_buffer(size);
+        InMemoryWriter::init_buffer(size, MAX_RECORD_LENGTH);
         let writer = InMemoryWriter {};
 
         for i in 0..size {
@@ -501,7 +526,7 @@ pub mod tests {
         clear_memory_records();
 
         let size = 6;
-        InMemoryWriter::init_buffer(size);
+        InMemoryWriter::init_buffer(size, MAX_RECORD_LENGTH);
         let writer = InMemoryWriter {};
 
         let all_logs_count = size * 2;
@@ -604,7 +629,7 @@ pub mod tests {
         clear_memory_records();
 
         let size = 6;
-        InMemoryWriter::init_buffer(size);
+        InMemoryWriter::init_buffer(size, MAX_RECORD_LENGTH);
         let writer = InMemoryWriter {};
 
         let mut all_logs_count = (size * 3) + 1;
@@ -774,5 +799,105 @@ pub mod tests {
                 .cloned()
                 .eq((2..(LOG_RECORDS_MAX_COUNT + 2)).map(|i| format!("{i}"))));
         });
+    }
+
+    #[test]
+    fn change_capacity_disable_with_zero() {
+        clear_memory_records();
+        let writer = InMemoryWriter {};
+        InMemoryWriter::change_capacity(0);
+        assert!(!InMemoryWriter::is_enabled());
+
+        writer.print(&"log".into()).unwrap();
+
+        let logs = InMemoryWriter::take_records(10, 0);
+        assert_eq!(logs.all_logs_count, 0);
+        assert!(logs.logs.is_empty());
+    }
+
+    #[test]
+    fn change_capacity_disable_with_zero_non_empty() {
+        clear_memory_records();
+        let writer = InMemoryWriter {};
+        writer.print(&"log".into()).unwrap();
+
+        InMemoryWriter::change_capacity(0);
+        assert!(!InMemoryWriter::is_enabled());
+
+        let logs = InMemoryWriter::take_records(10, 0);
+        assert_eq!(logs.all_logs_count, 0);
+        assert!(logs.logs.is_empty());
+    }
+
+    #[test]
+    fn change_capacity_extend_preserves_entries() {
+        clear_memory_records();
+        let writer = InMemoryWriter {};
+        const COUNT: usize = 5;
+        for i in 0..COUNT {
+            writer.print(&format!("{i}").into()).unwrap();
+        }
+
+        InMemoryWriter::change_capacity(20);
+        assert!(InMemoryWriter::is_enabled());
+
+        let logs = InMemoryWriter::take_records(10, 0);
+        assert_eq!(logs.all_logs_count, COUNT);
+        for i in 0..COUNT {
+            assert_eq!(logs.logs[i].log, format!("{i}"));
+            assert_eq!(logs.logs[i].offset, i);
+        }
+    }
+
+    #[test]
+    fn change_capacity_shrink_preserves_entries() {
+        clear_memory_records();
+        let writer = InMemoryWriter {};
+        const COUNT: usize = 5;
+        for i in 0..COUNT {
+            writer.print(&format!("{i}").into()).unwrap();
+        }
+
+        InMemoryWriter::change_capacity(5);
+        assert!(InMemoryWriter::is_enabled());
+
+        let logs = InMemoryWriter::take_records(10, 0);
+        assert_eq!(logs.all_logs_count, COUNT);
+        for i in 0..COUNT {
+            assert_eq!(logs.logs[i].log, format!("{i}"));
+            assert_eq!(logs.logs[i].offset, i);
+        }
+    }
+
+    #[test]
+    fn change_capacity_preserves_offsets() {
+        clear_memory_records();
+        let writer = InMemoryWriter {};
+        const COUNT: usize = 20;
+        for i in 0..COUNT {
+            writer.print(&format!("{i}").into()).unwrap();
+        }
+
+        InMemoryWriter::change_capacity(20);
+        assert!(InMemoryWriter::is_enabled());
+
+        let logs = InMemoryWriter::take_records(20, 0);
+        assert_eq!(logs.all_logs_count, COUNT);
+        const FIRST_INDEX: usize = COUNT - LOG_RECORDS_MAX_COUNT;
+        for i in FIRST_INDEX..COUNT {
+            assert_eq!(logs.logs[i - FIRST_INDEX].log, format!("{i}"));
+            assert_eq!(logs.logs[i - FIRST_INDEX].offset, i);
+        }
+    }
+
+    #[test]
+    fn max_record_length_is_respected() {
+        clear_memory_records();
+        let writer = InMemoryWriter {};
+        const ENTRY: &str = "very very very very very very long record";
+        writer.print(&ENTRY.into()).unwrap();
+
+        let logs = InMemoryWriter::take_records(20, 0);
+        assert_eq!(logs.logs[0].log[..], ENTRY[0..MAX_RECORD_LENGTH]);
     }
 }
