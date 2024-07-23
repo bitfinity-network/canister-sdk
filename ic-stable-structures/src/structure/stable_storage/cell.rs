@@ -8,8 +8,8 @@ pub struct StableCell<T: Storable, M: Memory>(cell::Cell<T, M>);
 
 impl<T: Storable, M: Memory> StableCell<T, M> {
     /// Create new storage for values with `T` type.
-    pub fn new(memory: M, value: T) -> Result<Self> {
-        Ok(Self(cell::Cell::init(memory, value)?))
+    pub fn new(memory: M, default_value: T) -> Result<Self> {
+        Ok(Self(cell::Cell::init(memory, default_value)?))
     }
 }
 

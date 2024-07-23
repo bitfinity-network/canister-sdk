@@ -1,100 +1,61 @@
 use std::cell::RefCell;
-use std::marker::PhantomData;
 use std::rc::Rc;
 
 use candid::Principal;
-use ic_canister::{generate_idl, init, query, update, Canister, Idl, PreUpdate};
-use ic_log::writer::Logs;
-use ic_log::{init_log, LogSettings, LoggerConfig};
-use log::{debug, error, info};
+use ic_canister::{generate_idl, init, Canister, Idl, PreUpdate};
+use ic_exports::ic_cdk;
+use ic_exports::ic_kit::ic;
+use ic_log::canister::inspect::logger_canister_inspect;
+use ic_log::canister::{LogCanister, LogState};
+use ic_log::did::LogCanisterSettings;
+use ic_stable_structures::MemoryId;
+use ic_storage::IcStorage;
 
 #[derive(Canister)]
-pub struct LogCanister {
+pub struct LoggerCanister {
     #[id]
     id: Principal,
 }
 
-impl PreUpdate for LogCanister {}
+impl PreUpdate for LoggerCanister {}
 
-impl LogCanister {
+impl LogCanister for LoggerCanister {
+    fn log_state(&self) -> Rc<RefCell<LogState>> {
+        LogState::get()
+    }
+}
+
+#[ic_cdk::inspect_message]
+fn inspect() {
+    logger_canister_inspect()
+}
+
+impl LoggerCanister {
     #[init]
     pub fn init(&self) {
-        let settings = LogSettings {
+        let settings = LogCanisterSettings {
+            log_filter: Some("trace".into()),
             in_memory_records: Some(128),
-            log_filter: Some("info".to_string()),
-            enable_console: true,
+            ..Default::default()
         };
-        match init_log(&settings) {
-            Ok(logger_config) => LoggerConfigService::default().init(logger_config),
-            Err(err) => {
-                ic_exports::ic_cdk::println!("error configuring the logger. Err: {:?}", err)
-            }
-        }
-        info!("LogCanister initialized");
+
+        self.log_state()
+            .borrow_mut()
+            .init(ic::caller(), MemoryId::new(1), settings)
+            .expect("error configuring the logger");
     }
 
-    #[query]
-    pub fn get_log_records(&self, count: usize) -> Logs {
-        debug!("collecting {count} log records");
-        ic_log::take_memory_records(count, 0)
-    }
-
-    #[update]
-    pub async fn log_info(&self, text: String) {
-        info!("{text}");
-    }
-
-    #[update]
-    pub async fn log_debug(&self, text: String) {
-        debug!("{text}");
-    }
-
-    #[update]
-    pub async fn log_error(&self, text: String) {
-        error!("{text}");
-    }
-
-    #[update]
-    pub async fn set_logger_filter(&self, filter: String) {
-        LoggerConfigService::default().set_logger_filter(&filter);
-        debug!("log filter set to {filter}");
-    }
-
-    pub fn idl() -> Idl {
+    pub fn get_idl() -> Idl {
         generate_idl!()
     }
 }
 
-type ForceNotSendAndNotSync = PhantomData<Rc<()>>;
-
-thread_local! {
-    static LOGGER_CONFIG: RefCell<Option<LoggerConfig>> = const { RefCell::new(None) };
-}
-
-#[derive(Debug, Default)]
-/// Handles the runtime logger configuration
-pub struct LoggerConfigService(ForceNotSendAndNotSync);
-
-impl LoggerConfigService {
-    /// Sets a new LoggerConfig
-    pub fn init(&self, logger_config: LoggerConfig) {
-        LOGGER_CONFIG.with(|config| config.borrow_mut().replace(logger_config));
-    }
-
-    /// Changes the logger filter at runtime
-    pub fn set_logger_filter(&self, filter: &str) {
-        LOGGER_CONFIG.with(|config| match *config.borrow_mut() {
-            Some(ref logger_config) => {
-                logger_config.update_filters(filter);
-            }
-            None => panic!("LoggerConfig not initialized"),
-        });
-    }
-}
-
 fn main() {
-    let canister_e_idl = LogCanister::idl();
-    let idl = candid::pretty::candid::compile(&canister_e_idl.env.env, &Some(canister_e_idl.actor));
+    let canister_idl = LoggerCanister::get_idl();
+    let mut idl = <LoggerCanister as LogCanister>::get_idl();
+    idl.merge(&canister_idl);
+
+    let idl = candid::pretty::candid::compile(&idl.env.env, &Some(idl.actor));
 
     println!("{}", idl);
 }
