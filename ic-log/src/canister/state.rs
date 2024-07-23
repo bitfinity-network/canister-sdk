@@ -15,6 +15,9 @@ thread_local! {
     static LOGGER_CONFIG: RefCell<Option<LoggerConfig>> = const { RefCell::new(None) };
 }
 
+/// State of the logger canister.
+///
+/// Before logger can be used, it must be initialized with the [`LogState::init`] method.
 #[derive(Debug, Clone, IcStorage)]
 pub struct LogState {
     settings: LogSettings,
@@ -33,14 +36,35 @@ impl Default for LogState {
 impl LogState {
     const INVALID_MEMORY_ID: MemoryId = MemoryId::new(254);
 
+    /// Creates a new instance of the state. This method is usually not needed for implementing a
+    /// `LogCanister` trait, as the state can be taken by the [`IcStorage::get()`] method instead.
     pub fn new(memory_id: MemoryId, acl: LoggerAcl) -> Self {
-        let mut this = Self::default();
-        this.memory_id = memory_id;
+        let mut this = Self {
+            memory_id,
+            ..Default::default()
+        };
+
         this.settings.acl = acl;
 
         this
     }
 
+    /// Initializes the logger with the given settings.
+    ///
+    /// IMPORTANT: this method must be called only one during the runtime of the application. A
+    /// canister process can be started with `#[init]` and `#[post_upgrade]` methods. In case of
+    /// `post_upgrade`, use [`LogState::reload`] method instead.
+    ///
+    /// # Arguments
+    /// * `caller` - caller of the `#[init]` method of the canister. This principal is used to
+    ///   create a default ACL in case one is not given in the configuration.
+    /// * `memory_id` - stable memory id to use for the logger configuration.
+    /// * `log_settings` - logger settings.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LogCanisterError::AlreadyInitialized`] if called more than once during the
+    /// lifetime of the application.
     pub fn init(
         &mut self,
         caller: Principal,
@@ -61,16 +85,19 @@ impl LogState {
         // Print this out without using log in case the given parameters prevent logs to be printed.
         #[cfg(target_arch = "wasm32")]
         ic_exports::ic_kit::ic::print(format!(
-            "Initialized logging with settings: {log_settings:?}"
+            "Initialized logging with settings: {:?}",
+            self.settings
         ));
 
         Ok(())
     }
 
+    /// Returns current settings of the logger.
     pub fn get_settings(&self) -> &LogSettings {
         &self.settings
     }
 
+    /// Set logger filter.
     pub fn set_logger_filter(
         &mut self,
         caller: Principal,
@@ -92,6 +119,7 @@ impl LogState {
         Ok(())
     }
 
+    /// Set `in_memory_records` settings.
     pub fn set_in_memory_records(
         &mut self,
         caller: Principal,
@@ -105,11 +133,15 @@ impl LogState {
         Ok(())
     }
 
+    /// Return the logs from the memory.
     pub fn get_logs(&self, caller: Principal, page: Pagination) -> Result<Logs, LogCanisterError> {
         self.check_permission(caller, LoggerPermission::Read)?;
         Ok(take_memory_records(page.count, page.offset))
     }
 
+    /// Reloads the configuration of the logger from the stable memory and initializes the logger.
+    ///
+    /// This method should be called from `#[post_upgrade]` method.
     pub fn reload(&mut self, memory_id: MemoryId) -> Result<(), LogCanisterError> {
         if LOGGER_CONFIG.with(|logger_config| logger_config.borrow().is_some()) {
             return Err(LogCanisterError::AlreadyInitialized);
@@ -145,6 +177,7 @@ impl LogState {
         Ok(())
     }
 
+    /// Add permission for the `to` principal.
     pub fn add_permission(
         &mut self,
         caller: Principal,
@@ -156,6 +189,7 @@ impl LogState {
         Ok(())
     }
 
+    /// Remove permission from the `from` principal.
     pub fn remove_permission(
         &mut self,
         caller: Principal,

@@ -51,8 +51,8 @@ type LogRecordsBuffer = AllocRingBuffer<String>;
 thread_local! {
     static LOG_RECORDS: RefCell<(usize, LogRecordsBuffer)> =
         RefCell::new((0, LogRecordsBuffer::new(INIT_LOG_CAPACITY)));
-    static IS_ENABLED: AtomicBool = AtomicBool::new(false);
-    static MAX_RECORD_LENGTH: AtomicUsize = AtomicUsize::new(0);
+    static IS_ENABLED: AtomicBool = const { AtomicBool::new(false) };
+    static MAX_RECORD_LENGTH: AtomicUsize = const { AtomicUsize::new(0) };
 }
 
 /// Writer that stores strings in a thread_local memory circular buffer.

@@ -1,3 +1,9 @@
+//! Implementation of common Rust `log` usable by IC canisters. See the documentation for [`Logger`]
+//! about how to initialize and use `log`.
+//!
+//! This crate also provides a canister trait [`canister::LogCanister`] (use `canister` feature to
+//! enable), which simplifies adding logging configuration to your canister.
+
 use env_filter::Filter;
 use formatter::FormatFn;
 use writer::{ConsoleWriter, InMemoryWriter, Logs, MultiWriter, Writer};
