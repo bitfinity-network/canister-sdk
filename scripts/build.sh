@@ -46,8 +46,8 @@ build_ic_task_scheduler_dummy_scheduler_canister() {
 build_ic_log_test_canister() {
     echo "Building ic-log test canister"
 
-    cargo run -p ic-log --example log_canister --features export-api > $WASM_DIR/log_canister.did
-    cargo build -p ic-log --example log_canister --target wasm32-unknown-unknown --features export-api --release
+    cargo run -p ic-log --example log_canister --features canister > $WASM_DIR/log_canister.did
+    cargo build -p ic-log --example log_canister --target wasm32-unknown-unknown --features canister --release
     ic-wasm $WASM_DIR/examples/log_canister.wasm -o $WASM_DIR/log_canister.wasm shrink
 
 }
