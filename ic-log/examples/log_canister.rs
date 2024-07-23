@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use candid::Principal;
 use ic_canister::{generate_idl, init, Canister, Idl, PreUpdate};
-use ic_exports::ic_cdk::inspect_message;
+use ic_exports::ic_cdk;
 use ic_exports::ic_kit::ic;
 use ic_log::canister::inspect::logger_canister_inspect;
 use ic_log::canister::{LogCanister, LogState};
@@ -25,7 +25,7 @@ impl LogCanister for LoggerCanister {
     }
 }
 
-#[inspect_message]
+#[ic_cdk::inspect_message]
 fn inspect() {
     logger_canister_inspect()
 }

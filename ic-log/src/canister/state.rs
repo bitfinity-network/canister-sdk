@@ -105,7 +105,7 @@ impl LogState {
     ) -> Result<(), LogCanisterError> {
         self.check_permission(caller, LoggerPermission::Configure)?;
 
-        self.settings.log_filter = filter_value.clone();
+        self.settings.log_filter.clone_from(&filter_value);
         LOGGER_CONFIG.with(|config| {
             if let Some(config) = &mut *config.borrow_mut() {
                 config.update_filters(&filter_value);
