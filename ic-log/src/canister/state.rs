@@ -78,9 +78,9 @@ impl LogState {
         self.settings = LogSettings::from_did(log_settings, caller);
         self.memory_id = memory_id;
 
-        self.store()?;
-
         Self::init_log(&self.settings)?;
+
+        self.store()?;
 
         // Print this out without using log in case the given parameters prevent logs to be printed.
         #[cfg(target_arch = "wasm32")]
@@ -105,12 +105,18 @@ impl LogState {
     ) -> Result<(), LogCanisterError> {
         self.check_permission(caller, LoggerPermission::Configure)?;
 
-        self.settings.log_filter.clone_from(&filter_value);
+        // This operation must be the first one as it is the only one that may return error.
+        // It is not guaranteed that the caller of this function will revert the canister state
+        // changes, so we must take care not to update the state if the filter is invalid.
         LOGGER_CONFIG.with(|config| {
             if let Some(config) = &mut *config.borrow_mut() {
-                config.update_filters(&filter_value);
+                config.update_filters(&filter_value)
+            } else {
+                Err(LogCanisterError::NotInitialized)
             }
-        });
+        })?;
+
+        self.settings.log_filter.clone_from(&filter_value);
 
         self.store().expect("Failed to update logger filter");
 
@@ -152,7 +158,7 @@ impl LogState {
         }
 
         let settings = MEMORY_MANAGER.with(|mm| {
-            Ok(StableCell::new(
+            StableCell::new(
                 mm.get(memory_id),
                 StorableLogSettings(LogSettings::default()),
             )
@@ -160,9 +166,8 @@ impl LogState {
                 LogCanisterError::Generic(format!(
                     "Failed to write log config to the stable storage: {err:?}"
                 ))
-            })?
-            .get()
-            .clone())
+            })
+            .map(|v| v.get().clone())
         })?;
 
         if settings.0 == LogSettings::default() {
@@ -224,14 +229,14 @@ impl LogState {
             })
     }
 
-    fn init_log(_log_settings: &LogSettings) -> Result<(), LogCanisterError> {
+    fn init_log(log_settings: &LogSettings) -> Result<(), LogCanisterError> {
         let logger_config = {
             cfg_if::cfg_if! {
                 if #[cfg(test)] {
-                    let (_, config) = crate::Builder::default().build();
+                    let (_, config) = crate::Builder::default().try_parse_filters(&log_settings.log_filter)?.build();
                     config
                 } else {
-                    crate::init_log(_log_settings).map_err(|_| LogCanisterError::AlreadyInitialized)?
+                    crate::init_log(log_settings)?
                 }
             }
         };
@@ -370,6 +375,24 @@ mod tests {
                 LogSettings::default().into()
             ),
             Err(LogCanisterError::InvalidMemoryId)
+        );
+    }
+
+    #[test]
+    fn init_fails_with_invalid_filter_string() {
+        let mut state = LogState::default();
+        assert_eq!(
+            state.init(
+                admin(),
+                MemoryId::new(1),
+                LogCanisterSettings {
+                    log_filter: Some("crate=invalid".into()),
+                    ..Default::default()
+                }
+            ),
+            Err(LogCanisterError::InvalidConfiguration(
+                "error parsing logger filter: invalid logging spec 'invalid'".into()
+            ))
         );
     }
 
@@ -577,7 +600,7 @@ mod tests {
     }
 
     #[test]
-    fn update_logger_filter_checks_caller() {
+    fn set_logger_filter_checks_caller() {
         let mut state = test_state();
         assert_eq!(
             state.set_logger_filter(user(), "trace".into()),
@@ -586,13 +609,24 @@ mod tests {
     }
 
     #[test]
-    fn update_logger_filter_updates_stored_settings() {
+    fn set_logger_filter_updates_stored_settings() {
         let mut state = test_state();
         let new_filter = "trace".to_string();
         state
             .set_logger_filter(admin(), new_filter.clone())
             .unwrap();
         assert_eq!(state.get_settings().log_filter, new_filter);
+    }
+
+    #[test]
+    fn set_logger_filter_returns_error_if_invalid_string() {
+        let mut state = test_state();
+        assert_eq!(
+            state.set_logger_filter(admin(), "crate=invalid".into()),
+            Err(LogCanisterError::InvalidConfiguration(
+                "error parsing logger filter: invalid logging spec 'invalid'".into()
+            ))
+        );
     }
 
     #[test]

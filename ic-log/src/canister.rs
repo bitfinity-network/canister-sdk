@@ -93,14 +93,30 @@ pub trait LogCanister: Canister + PreUpdate {
     ///
     /// To turn off logging for the canister, use `filter == "off"`.
     ///
+    /// # Errors
+    ///
+    /// Returns [`LogCanisterError::InvalidConfiguration`] if the `filter` string is invalid.
+    ///
     /// # Traps
     ///
     /// Traps if the caller doesn't have [`LoggerPermission::Configure`] permission.
     #[update(trait = true)]
     fn set_logger_filter(&mut self, filter: String) -> Result<(), LogCanisterError> {
-        self.log_state()
+        // This method returns a `Result` to emphasize that the operation can fail if the
+        // argument is incorrect. But we still want to panic on failed permission check to make
+        // the API work same with or without "inspect_message" check.
+        match self
+            .log_state()
             .borrow_mut()
             .set_logger_filter(ic::caller(), filter)
+        {
+            // We want to return an error variant in case the filter string is not valid
+            err @ Err(LogCanisterError::InvalidConfiguration(_)) => err,
+            result => {
+                result.expect("failed to update configuration");
+                Ok(())
+            }
+        }
     }
 
     /// Updates the maximum number of log entries stored in the canister memory.
@@ -111,13 +127,11 @@ pub trait LogCanister: Canister + PreUpdate {
     ///
     /// Traps if the caller doesn't have [`LoggerPermission::Configure`] permission.
     #[update(trait = true)]
-    fn set_logger_in_memory_records(
-        &mut self,
-        max_log_count: usize,
-    ) -> Result<(), LogCanisterError> {
+    fn set_logger_in_memory_records(&mut self, max_log_count: usize) {
         self.log_state()
             .borrow_mut()
             .set_in_memory_records(ic::caller(), max_log_count)
+            .expect("failed to update configuration");
     }
 
     /// Returns the current logger settings.

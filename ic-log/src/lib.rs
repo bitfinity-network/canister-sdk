@@ -4,7 +4,7 @@
 //! This crate also provides a canister trait [`canister::LogCanister`] (use `canister` feature to
 //! enable), which simplifies adding logging configuration to your canister.
 
-use env_filter::Filter;
+use env_filter::{Filter, ParseError};
 use formatter::FormatFn;
 use writer::{ConsoleWriter, InMemoryWriter, Logs, MultiWriter, Writer};
 
@@ -24,6 +24,7 @@ use arc_swap::{ArcSwap, ArcSwapAny};
 use log::{LevelFilter, Log, Metadata, Record, SetLoggerError};
 pub use settings::LogSettings;
 
+use crate::did::LogCanisterError;
 use crate::formatter::Formatter;
 
 /// The logger.
@@ -187,6 +188,11 @@ impl Builder {
         self
     }
 
+    pub fn try_parse_filters(mut self, filters: &str) -> Result<Self, ParseError> {
+        self.filter.try_parse(filters)?;
+        Ok(self)
+    }
+
     /// Append a new writer.
     pub fn add_writer(mut self, writer: Box<dyn Writer>) -> Self {
         self.writer.add(writer);
@@ -245,11 +251,17 @@ impl LoggerConfig {
     /// Example of valid filters:
     /// - info
     /// - debug,crate1::mod1=error,crate1::mod2,crate2=debug
-    pub fn update_filters(&self, filters: &str) {
-        let new_filter = env_filter::Builder::default().parse(filters).build();
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LogCanisterError::InvalidConfiguration`] if the filter value is not valid.
+    pub fn update_filters(&self, filters: &str) -> Result<(), LogCanisterError> {
+        let new_filter = env_filter::Builder::default().try_parse(filters)?.build();
         let max_level = new_filter.filter();
         self.filter.swap(Arc::new(new_filter));
         log::set_max_level(max_level);
+
+        Ok(())
     }
 }
 
@@ -342,8 +354,12 @@ mod std_fmt_impls {
 }
 
 /// Builds and initialize a logger based on the settings
-pub fn init_log(settings: &LogSettings) -> Result<LoggerConfig, SetLoggerError> {
-    let mut builder = Builder::default().parse_filters(&settings.log_filter);
+///
+/// # Errors
+///
+/// Returns [`LogCanisterError::InvalidConfiguration`] if the `log_filter` value is invalid.
+pub fn init_log(settings: &LogSettings) -> Result<LoggerConfig, LogCanisterError> {
+    let mut builder = Builder::default().try_parse_filters(&settings.log_filter)?;
 
     if settings.enable_console {
         builder = builder.add_writer(Box::new(ConsoleWriter {}));
@@ -352,7 +368,9 @@ pub fn init_log(settings: &LogSettings) -> Result<LoggerConfig, SetLoggerError> 
     writer::InMemoryWriter::init_buffer(settings.in_memory_records, settings.max_record_length);
     builder = builder.add_writer(Box::new(InMemoryWriter {}));
 
-    builder.try_init()
+    let config = builder.try_init()?;
+
+    Ok(config)
 }
 
 /// Take the log memory records for the circular buffer.
@@ -381,12 +399,12 @@ mod tests {
         debug!("This one should be printed");
         info!("This one should be printed");
 
-        config.update_filters("error");
+        config.update_filters("error").unwrap();
 
         debug!("This one should NOT be printed");
         info!("This one should NOT be printed");
 
-        config.update_filters("info");
+        config.update_filters("info").unwrap();
 
         debug!("This one should NOT be printed");
         info!("This one should be printed");

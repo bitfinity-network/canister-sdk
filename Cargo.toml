@@ -43,7 +43,7 @@ cfg-if = "1.0"
 criterion = "0.5.1"
 crypto-bigint = { version = "0.5", features = ["serde"] }
 dirs = "5.0"
-env_filter = "0.1"
+env_filter = "0.1.1"
 flate2 = "1"
 futures = { version = "0.3", default-features = false }
 garcon = "0.2"
