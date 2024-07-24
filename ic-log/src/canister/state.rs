@@ -180,6 +180,7 @@ impl LogState {
         }
 
         self.settings = settings.0;
+        self.acl = settings.1;
         self.memory_id = memory_id;
 
         Self::init_log(&self.settings)?;
@@ -424,10 +425,12 @@ mod tests {
         // Simulate canister reload
         LOGGER_CONFIG.with(|v| *v.borrow_mut() = None);
         state.settings = LogSettingsV2::default();
+        state.acl = LoggerAcl::default();
 
         state.reload(test_memory()).unwrap();
 
         assert_eq!(state.settings, test_settings());
+        assert_eq!(state.acl, test_acl());
     }
 
     #[test]
