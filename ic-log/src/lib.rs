@@ -21,9 +21,9 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 use arc_swap::{ArcSwap, ArcSwapAny};
-use candid::{CandidType, Deserialize};
 use log::{LevelFilter, Log, Metadata, Record, SetLoggerError};
-pub use settings::LogSettingsV2;
+#[allow(deprecated)]
+pub use settings::{LogSettings, LogSettingsV2};
 
 use crate::did::LogCanisterError;
 use crate::formatter::Formatter;
@@ -352,26 +352,6 @@ mod std_fmt_impls {
                 .finish()
         }
     }
-}
-
-/// Log settings to initialize the logger
-#[derive(Default, Debug, Clone, CandidType, Deserialize)]
-#[deprecated(
-    since = "0.19.0",
-    note = "newer api uses `LogSettingsV2`, use this type for older canister calls only"
-)]
-pub struct LogSettings {
-    /// Enable logging to console (`ic::print` when running in IC)
-    pub enable_console: bool,
-    /// Number of records to be stored in the circular memory buffer.
-    /// If None - storing records will be disable.
-    /// If Some - should be power of two.
-    pub in_memory_records: Option<usize>,
-    /// Log configuration as combination of filters. By default the logger is OFF.
-    /// Example of valid configurations:
-    /// - info
-    /// - debug,crate1::mod1=error,crate1::mod2,crate2=debug
-    pub log_filter: Option<String>,
 }
 
 /// Builds and initialize a logger based on the settings
