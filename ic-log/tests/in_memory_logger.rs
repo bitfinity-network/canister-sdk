@@ -2,8 +2,8 @@ use std::sync::Once;
 
 use candid::Principal;
 use ic_log::canister::LogState;
-use ic_log::did::{LoggerPermission, Pagination};
-use ic_log::LogSettings;
+use ic_log::did::{LogCanisterSettings, LoggerAcl, LoggerPermission, Pagination};
+use ic_log::LogSettingsV2;
 use ic_stable_structures::MemoryId;
 
 fn admin() -> Principal {
@@ -18,18 +18,25 @@ fn test_memory() -> MemoryId {
     MemoryId::new(2)
 }
 
-fn test_settings() -> LogSettings {
-    LogSettings {
+fn test_settings() -> LogSettingsV2 {
+    LogSettingsV2 {
         enable_console: true,
         in_memory_records: 10,
         max_record_length: 1024,
         log_filter: "info,ic_log=off".to_string(),
-        acl: [
-            (admin(), LoggerPermission::Configure),
-            (reader(), LoggerPermission::Read),
-        ]
-        .into(),
     }
+}
+
+fn test_acl() -> LoggerAcl {
+    [
+        (admin(), LoggerPermission::Configure),
+        (reader(), LoggerPermission::Read),
+    ]
+    .into()
+}
+
+fn test_canister_settings() -> LogCanisterSettings {
+    (test_settings(), test_acl()).into()
 }
 
 fn test_state() -> LogState {
@@ -37,14 +44,13 @@ fn test_state() -> LogState {
     INIT.call_once(|| {
         let mut state = LogState::default();
         state
-            .init(admin(), test_memory(), test_settings().into())
+            .init(admin(), test_memory(), test_canister_settings())
             .unwrap()
     });
 
-    let settings = test_settings();
-    let mut state = LogState::new(test_memory(), settings.acl);
+    let mut state = LogState::new(test_memory(), test_acl());
     state
-        .set_logger_filter(admin(), settings.log_filter)
+        .set_logger_filter(admin(), test_settings().log_filter)
         .unwrap();
     state
 }

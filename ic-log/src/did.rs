@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
 use candid::CandidType;
+use env_filter::ParseError;
 use ic_exports::ic_kit::Principal;
+use log::SetLoggerError;
 use serde::Deserialize;
 
 /// Specifies what to take from a long list of items.
@@ -18,6 +20,8 @@ pub struct Pagination {
 pub enum LogCanisterError {
     /// An initialization was called for the logger, but it is already initialized.
     AlreadyInitialized,
+    /// The logger is not initialized.
+    NotInitialized,
     /// The caller does not have permission to execute this method.
     NotAuthorized,
     /// Something bad happened.
@@ -26,6 +30,18 @@ pub enum LogCanisterError {
     InvalidMemoryId,
     /// Error in the logger configuration.
     InvalidConfiguration(String),
+}
+
+impl From<ParseError> for LogCanisterError {
+    fn from(value: ParseError) -> Self {
+        Self::InvalidConfiguration(value.to_string())
+    }
+}
+
+impl From<SetLoggerError> for LogCanisterError {
+    fn from(_: SetLoggerError) -> Self {
+        Self::AlreadyInitialized
+    }
 }
 
 /// Permission of a caller for logger canister operations.
