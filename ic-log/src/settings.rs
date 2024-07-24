@@ -6,8 +6,11 @@ use crate::did::{LogCanisterSettings, LoggerAcl, LoggerPermission};
 const DEFAULT_IN_MEMORY_RECORDS: usize = 1024;
 const DEFAULT_MAX_RECORD_LENGTH: usize = 1024;
 
+/// Logger settings.
+///
+/// For details about the fields, see docs of [`LogCanisterSettings`].
 #[derive(Debug, Clone, PartialEq, Eq, CandidType, Deserialize)]
-pub struct LogSettings {
+pub struct LogSettingsV2 {
     pub enable_console: bool,
     pub in_memory_records: usize,
     pub max_record_length: usize,
@@ -15,7 +18,7 @@ pub struct LogSettings {
     pub acl: LoggerAcl,
 }
 
-impl Default for LogSettings {
+impl Default for LogSettingsV2 {
     fn default() -> Self {
         Self {
             enable_console: true,
@@ -27,7 +30,7 @@ impl Default for LogSettings {
     }
 }
 
-impl LogSettings {
+impl LogSettingsV2 {
     pub fn from_did(settings: LogCanisterSettings, owner: Principal) -> Self {
         let default = Self::default();
         Self {
@@ -46,8 +49,8 @@ impl LogSettings {
     }
 }
 
-impl From<LogSettings> for LogCanisterSettings {
-    fn from(value: LogSettings) -> Self {
+impl From<LogSettingsV2> for LogCanisterSettings {
+    fn from(value: LogSettingsV2) -> Self {
         Self {
             enable_console: Some(value.enable_console),
             in_memory_records: Some(value.in_memory_records),

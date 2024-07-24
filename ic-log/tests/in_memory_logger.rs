@@ -3,7 +3,7 @@ use std::sync::Once;
 use candid::Principal;
 use ic_log::canister::LogState;
 use ic_log::did::{LoggerPermission, Pagination};
-use ic_log::LogSettings;
+use ic_log::LogSettingsV2;
 use ic_stable_structures::MemoryId;
 
 fn admin() -> Principal {
@@ -18,8 +18,8 @@ fn test_memory() -> MemoryId {
     MemoryId::new(2)
 }
 
-fn test_settings() -> LogSettings {
-    LogSettings {
+fn test_settings() -> LogSettingsV2 {
+    LogSettingsV2 {
         enable_console: true,
         in_memory_records: 10,
         max_record_length: 1024,

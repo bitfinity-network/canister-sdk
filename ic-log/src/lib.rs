@@ -21,8 +21,9 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 use arc_swap::{ArcSwap, ArcSwapAny};
+use candid::{CandidType, Deserialize};
 use log::{LevelFilter, Log, Metadata, Record, SetLoggerError};
-pub use settings::LogSettings;
+pub use settings::LogSettingsV2;
 
 use crate::did::LogCanisterError;
 use crate::formatter::Formatter;
@@ -353,12 +354,32 @@ mod std_fmt_impls {
     }
 }
 
+/// Log settings to initialize the logger
+#[derive(Default, Debug, Clone, CandidType, Deserialize)]
+#[deprecated(
+    since = "0.19.0",
+    note = "newer api uses `LogSettingsV2`, use this type for older canister calls only"
+)]
+pub struct LogSettings {
+    /// Enable logging to console (`ic::print` when running in IC)
+    pub enable_console: bool,
+    /// Number of records to be stored in the circular memory buffer.
+    /// If None - storing records will be disable.
+    /// If Some - should be power of two.
+    pub in_memory_records: Option<usize>,
+    /// Log configuration as combination of filters. By default the logger is OFF.
+    /// Example of valid configurations:
+    /// - info
+    /// - debug,crate1::mod1=error,crate1::mod2,crate2=debug
+    pub log_filter: Option<String>,
+}
+
 /// Builds and initialize a logger based on the settings
 ///
 /// # Errors
 ///
 /// Returns [`LogCanisterError::InvalidConfiguration`] if the `log_filter` value is invalid.
-pub fn init_log(settings: &LogSettings) -> Result<LoggerConfig, LogCanisterError> {
+pub fn init_log(settings: &LogSettingsV2) -> Result<LoggerConfig, LogCanisterError> {
     let mut builder = Builder::default().try_parse_filters(&settings.log_filter)?;
 
     if settings.enable_console {
@@ -387,7 +408,7 @@ mod tests {
 
     #[test]
     fn update_filter_at_runtime() {
-        let config = init_log(&LogSettings {
+        let config = init_log(&LogSettingsV2 {
             enable_console: true,
             in_memory_records: 0,
             max_record_length: 1024,

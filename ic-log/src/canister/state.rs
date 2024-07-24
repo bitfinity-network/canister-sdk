@@ -8,7 +8,7 @@ use ic_storage::IcStorage;
 
 use crate::did::{LogCanisterError, LogCanisterSettings, LoggerAcl, LoggerPermission, Pagination};
 use crate::writer::{InMemoryWriter, Logs};
-use crate::{take_memory_records, LogSettings, LoggerConfig};
+use crate::{take_memory_records, LogSettingsV2, LoggerConfig};
 
 thread_local! {
     static MEMORY_MANAGER: IcMemoryManager<DefaultMemoryImpl> = IcMemoryManager::init(DefaultMemoryImpl::default());
@@ -20,14 +20,14 @@ thread_local! {
 /// Before logger can be used, it must be initialized with the [`LogState::init`] method.
 #[derive(Debug, Clone, IcStorage)]
 pub struct LogState {
-    settings: LogSettings,
+    settings: LogSettingsV2,
     memory_id: MemoryId,
 }
 
 impl Default for LogState {
     fn default() -> Self {
         Self {
-            settings: LogSettings::default(),
+            settings: LogSettingsV2::default(),
             memory_id: Self::INVALID_MEMORY_ID,
         }
     }
@@ -75,7 +75,7 @@ impl LogState {
             return Err(LogCanisterError::AlreadyInitialized);
         }
 
-        self.settings = LogSettings::from_did(log_settings, caller);
+        self.settings = LogSettingsV2::from_did(log_settings, caller);
         self.memory_id = memory_id;
 
         Self::init_log(&self.settings)?;
@@ -93,7 +93,7 @@ impl LogState {
     }
 
     /// Returns current settings of the logger.
-    pub fn get_settings(&self) -> &LogSettings {
+    pub fn get_settings(&self) -> &LogSettingsV2 {
         &self.settings
     }
 
@@ -160,7 +160,7 @@ impl LogState {
         let settings = MEMORY_MANAGER.with(|mm| {
             StableCell::new(
                 mm.get(memory_id),
-                StorableLogSettings(LogSettings::default()),
+                StorableLogSettings(LogSettingsV2::default()),
             )
             .map_err(|err| {
                 LogCanisterError::Generic(format!(
@@ -170,7 +170,7 @@ impl LogState {
             .map(|v| v.get().clone())
         })?;
 
-        if settings.0 == LogSettings::default() {
+        if settings.0 == LogSettingsV2::default() {
             return Err(LogCanisterError::InvalidMemoryId);
         }
 
@@ -217,7 +217,7 @@ impl LogState {
             .with(|mm| {
                 let mut cell = StableCell::new(
                     mm.get(memory_id),
-                    StorableLogSettings(LogSettings::default()),
+                    StorableLogSettings(LogSettingsV2::default()),
                 )?;
 
                 cell.set(StorableLogSettings(log_settings))
@@ -229,7 +229,7 @@ impl LogState {
             })
     }
 
-    fn init_log(log_settings: &LogSettings) -> Result<(), LogCanisterError> {
+    fn init_log(log_settings: &LogSettingsV2) -> Result<(), LogCanisterError> {
         let logger_config = {
             cfg_if::cfg_if! {
                 if #[cfg(test)] {
@@ -275,7 +275,7 @@ impl LogState {
 }
 
 #[derive(Debug, Clone)]
-pub struct StorableLogSettings(pub LogSettings);
+pub struct StorableLogSettings(pub LogSettingsV2);
 
 impl Storable for StorableLogSettings {
     fn to_bytes(&self) -> Cow<[u8]> {
@@ -283,7 +283,7 @@ impl Storable for StorableLogSettings {
     }
 
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        Self(Decode!(&bytes, LogSettings).unwrap())
+        Self(Decode!(&bytes, LogSettingsV2).unwrap())
     }
 
     const BOUND: Bound = Bound::Unbounded;
@@ -309,8 +309,8 @@ mod tests {
         MemoryId::new(2)
     }
 
-    fn test_settings() -> LogSettings {
-        LogSettings {
+    fn test_settings() -> LogSettingsV2 {
+        LogSettingsV2 {
             enable_console: true,
             in_memory_records: 10,
             max_record_length: 1024,
@@ -334,7 +334,7 @@ mod tests {
     #[test]
     fn init_stores_settings() {
         let mut state = LogState::default();
-        let settings = LogSettings {
+        let settings = LogSettingsV2 {
             enable_console: true,
             in_memory_records: 10,
             max_record_length: 1024,
@@ -372,7 +372,7 @@ mod tests {
             state.init(
                 admin(),
                 LogState::INVALID_MEMORY_ID,
-                LogSettings::default().into()
+                LogSettingsV2::default().into()
             ),
             Err(LogCanisterError::InvalidMemoryId)
         );
@@ -402,7 +402,7 @@ mod tests {
 
         // Simulate canister reload
         LOGGER_CONFIG.with(|v| *v.borrow_mut() = None);
-        state.settings = LogSettings::default();
+        state.settings = LogSettingsV2::default();
 
         state.reload(test_memory()).unwrap();
 
@@ -415,7 +415,7 @@ mod tests {
 
         // Simulate canister reload
         LOGGER_CONFIG.with(|v| *v.borrow_mut() = None);
-        state.settings = LogSettings::default();
+        state.settings = LogSettingsV2::default();
 
         state.reload(test_memory()).unwrap();
 
@@ -437,7 +437,7 @@ mod tests {
 
         // Simulate canister reload
         LOGGER_CONFIG.with(|v| *v.borrow_mut() = None);
-        state.settings = LogSettings::default();
+        state.settings = LogSettingsV2::default();
 
         assert_eq!(
             state.reload(MemoryId::new(42)),
