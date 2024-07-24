@@ -1,20 +1,17 @@
-// This is not to generate warning for deriving traits on a deprecated structure.
-#![allow(deprecated)]
-
-use candid::{CandidType, Principal};
+use candid::CandidType;
 use serde::Deserialize;
 
-use crate::did::{LogCanisterSettings, LoggerAcl, LoggerPermission};
+use crate::did::{LogCanisterSettings, LoggerAcl};
 
 const DEFAULT_IN_MEMORY_RECORDS: usize = 1024;
 const DEFAULT_MAX_RECORD_LENGTH: usize = 1024;
 
 /// Log settings to initialize the logger
+///
+/// This structure is used to configure canisters that use `ic-log` of version `0.18` or below.
+/// For newer versions of the library, use [`LogSettingsV2`] for logger configuration and
+/// [`LogCanisterSettings`] for canister initialization.
 #[derive(Default, Debug, Clone, CandidType, Deserialize)]
-#[deprecated(
-    since = "0.19.0",
-    note = "newer api uses `LogSettingsV2`, use this type for older canister calls only"
-)]
 pub struct LogSettings {
     /// Enable logging to console (`ic::print` when running in IC)
     pub enable_console: bool,
@@ -38,7 +35,6 @@ pub struct LogSettingsV2 {
     pub in_memory_records: usize,
     pub max_record_length: usize,
     pub log_filter: String,
-    pub acl: LoggerAcl,
 }
 
 impl Default for LogSettingsV2 {
@@ -48,13 +44,12 @@ impl Default for LogSettingsV2 {
             in_memory_records: DEFAULT_IN_MEMORY_RECORDS,
             max_record_length: DEFAULT_MAX_RECORD_LENGTH,
             log_filter: "debug".to_string(),
-            acl: Default::default(),
         }
     }
 }
 
-impl LogSettingsV2 {
-    pub fn from_did(settings: LogCanisterSettings, owner: Principal) -> Self {
+impl From<LogCanisterSettings> for LogSettingsV2 {
+    fn from(settings: LogCanisterSettings) -> Self {
         let default = Self::default();
         Self {
             enable_console: settings.enable_console.unwrap_or(default.enable_console),
@@ -65,21 +60,18 @@ impl LogSettingsV2 {
                 .max_record_length
                 .unwrap_or(default.max_record_length),
             log_filter: settings.log_filter.unwrap_or(default.log_filter),
-            acl: settings
-                .acl
-                .unwrap_or_else(|| [(owner, LoggerPermission::Configure)].into()),
         }
     }
 }
 
-impl From<LogSettingsV2> for LogCanisterSettings {
-    fn from(value: LogSettingsV2) -> Self {
+impl From<(LogSettingsV2, LoggerAcl)> for LogCanisterSettings {
+    fn from((value, acl): (LogSettingsV2, LoggerAcl)) -> Self {
         Self {
             enable_console: Some(value.enable_console),
             in_memory_records: Some(value.in_memory_records),
             max_record_length: Some(value.max_record_length),
             log_filter: Some(value.log_filter),
-            acl: Some(value.acl),
+            acl: Some(acl),
         }
     }
 }

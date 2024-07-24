@@ -393,7 +393,6 @@ mod tests {
             in_memory_records: 0,
             max_record_length: 1024,
             log_filter: "debug".to_string(),
-            acl: Default::default(),
         })
         .unwrap();
 

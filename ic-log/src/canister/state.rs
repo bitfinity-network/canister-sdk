@@ -21,6 +21,7 @@ thread_local! {
 #[derive(Debug, Clone, IcStorage)]
 pub struct LogState {
     settings: LogSettingsV2,
+    acl: LoggerAcl,
     memory_id: MemoryId,
 }
 
@@ -28,6 +29,7 @@ impl Default for LogState {
     fn default() -> Self {
         Self {
             settings: LogSettingsV2::default(),
+            acl: LoggerAcl::default(),
             memory_id: Self::INVALID_MEMORY_ID,
         }
     }
@@ -39,14 +41,11 @@ impl LogState {
     /// Creates a new instance of the state. This method is usually not needed for implementing a
     /// `LogCanister` trait, as the state can be taken by the [`IcStorage::get()`] method instead.
     pub fn new(memory_id: MemoryId, acl: LoggerAcl) -> Self {
-        let mut this = Self {
+        Self {
+            acl,
             memory_id,
             ..Default::default()
-        };
-
-        this.settings.acl = acl;
-
-        this
+        }
     }
 
     /// Initializes the logger with the given settings.
@@ -75,7 +74,11 @@ impl LogState {
             return Err(LogCanisterError::AlreadyInitialized);
         }
 
-        self.settings = LogSettingsV2::from_did(log_settings, caller);
+        self.acl = log_settings
+            .acl
+            .clone()
+            .unwrap_or_else(|| [(caller, LoggerPermission::Configure)].into());
+        self.settings = log_settings.into();
         self.memory_id = memory_id;
 
         Self::init_log(&self.settings)?;
@@ -93,8 +96,8 @@ impl LogState {
     }
 
     /// Returns current settings of the logger.
-    pub fn get_settings(&self) -> &LogSettingsV2 {
-        &self.settings
+    pub fn get_settings(&self) -> LogCanisterSettings {
+        (self.settings.clone(), self.acl.clone()).into()
     }
 
     /// Set logger filter.
@@ -118,7 +121,7 @@ impl LogState {
 
         self.settings.log_filter.clone_from(&filter_value);
 
-        self.store().expect("Failed to update logger filter");
+        self.store().expect("failed to update logger filter");
 
         log::info!("Updated log filter to: {filter_value:?}");
 
@@ -135,6 +138,8 @@ impl LogState {
 
         self.settings.in_memory_records = count;
         InMemoryWriter::change_capacity(count);
+
+        self.store().expect("failed to update in memory records");
 
         Ok(())
     }
@@ -160,7 +165,7 @@ impl LogState {
         let settings = MEMORY_MANAGER.with(|mm| {
             StableCell::new(
                 mm.get(memory_id),
-                StorableLogSettings(LogSettingsV2::default()),
+                StorableLogSettings(LogSettingsV2::default(), LoggerAcl::default()),
             )
             .map_err(|err| {
                 LogCanisterError::Generic(format!(
@@ -190,7 +195,9 @@ impl LogState {
         permission: LoggerPermission,
     ) -> Result<(), LogCanisterError> {
         self.check_permission(caller, LoggerPermission::Configure)?;
-        self.settings.acl.insert((to, permission));
+        self.acl.insert((to, permission));
+
+        self.store().expect("failed to update stable storage");
         Ok(())
     }
 
@@ -202,7 +209,9 @@ impl LogState {
         permission: LoggerPermission,
     ) -> Result<(), LogCanisterError> {
         self.check_permission(caller, LoggerPermission::Configure)?;
-        self.settings.acl.remove(&(from, permission));
+        self.acl.remove(&(from, permission));
+
+        self.store().expect("failed to update stable storage");
         Ok(())
     }
 
@@ -213,14 +222,15 @@ impl LogState {
         }
 
         let log_settings = self.settings.clone();
+        let acl = self.acl.clone();
         MEMORY_MANAGER
             .with(|mm| {
                 let mut cell = StableCell::new(
                     mm.get(memory_id),
-                    StorableLogSettings(LogSettingsV2::default()),
+                    StorableLogSettings(LogSettingsV2::default(), LoggerAcl::default()),
                 )?;
 
-                cell.set(StorableLogSettings(log_settings))
+                cell.set(StorableLogSettings(log_settings, acl))
             })
             .map_err(|err| {
                 LogCanisterError::Generic(format!(
@@ -252,18 +262,12 @@ impl LogState {
     ) -> Result<(), LogCanisterError> {
         let allowed = match logger_permission {
             LoggerPermission::Read => {
-                self.settings
-                    .acl
-                    .contains(&(caller, LoggerPermission::Read))
-                    || (self
-                        .settings
-                        .acl
-                        .contains(&(caller, LoggerPermission::Configure)))
+                self.acl.contains(&(caller, LoggerPermission::Read))
+                    || (self.acl.contains(&(caller, LoggerPermission::Configure)))
             }
-            LoggerPermission::Configure => self
-                .settings
-                .acl
-                .contains(&(caller, LoggerPermission::Configure)),
+            LoggerPermission::Configure => {
+                self.acl.contains(&(caller, LoggerPermission::Configure))
+            }
         };
 
         if allowed {
@@ -275,15 +279,16 @@ impl LogState {
 }
 
 #[derive(Debug, Clone)]
-pub struct StorableLogSettings(pub LogSettingsV2);
+pub struct StorableLogSettings(pub LogSettingsV2, pub LoggerAcl);
 
 impl Storable for StorableLogSettings {
     fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::from(Encode!(&self.0).unwrap())
+        Cow::from(Encode!(&(&self.0, &self.1)).unwrap())
     }
 
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        Self(Decode!(&bytes, LogSettingsV2).unwrap())
+        let (settings, acl) = Decode!(&bytes, (LogSettingsV2, LoggerAcl)).unwrap();
+        Self(settings, acl)
     }
 
     const BOUND: Bound = Bound::Unbounded;
@@ -315,20 +320,33 @@ mod tests {
             in_memory_records: 10,
             max_record_length: 1024,
             log_filter: "trace".to_string(),
-            acl: [
-                (admin(), LoggerPermission::Configure),
-                (reader(), LoggerPermission::Read),
-            ]
-            .into(),
         }
+    }
+
+    fn test_acl() -> LoggerAcl {
+        [
+            (admin(), LoggerPermission::Configure),
+            (reader(), LoggerPermission::Read),
+        ]
+        .into()
+    }
+
+    fn test_canister_settings() -> LogCanisterSettings {
+        (test_settings(), test_acl()).into()
     }
 
     fn test_state() -> LogState {
         let mut state = LogState::default();
         state
-            .init(admin(), test_memory(), test_settings().into())
+            .init(admin(), test_memory(), test_canister_settings())
             .unwrap();
         state
+    }
+
+    fn reset_config() {
+        LOGGER_CONFIG.with(|v| {
+            *v.borrow_mut() = None;
+        })
     }
 
     #[test]
@@ -339,13 +357,16 @@ mod tests {
             in_memory_records: 10,
             max_record_length: 1024,
             log_filter: "debug".to_string(),
-            acl: [(admin(), LoggerPermission::Configure)].into(),
         };
         state
-            .init(admin(), MemoryId::new(1), settings.clone().into())
+            .init(
+                admin(),
+                MemoryId::new(1),
+                (settings.clone(), test_acl()).into(),
+            )
             .unwrap();
 
-        assert_eq!(state.get_settings(), &settings);
+        assert_eq!(state.get_settings(), (settings, test_acl()).into());
     }
 
     #[test]
@@ -360,7 +381,7 @@ mod tests {
     fn init_fails_if_already_initialized() {
         let mut state = test_state();
         assert_eq!(
-            state.init(admin(), test_memory(), test_settings().into()),
+            state.init(admin(), test_memory(), test_canister_settings()),
             Err(LogCanisterError::AlreadyInitialized)
         );
     }
@@ -372,7 +393,7 @@ mod tests {
             state.init(
                 admin(),
                 LogState::INVALID_MEMORY_ID,
-                LogSettingsV2::default().into()
+                test_canister_settings(),
             ),
             Err(LogCanisterError::InvalidMemoryId)
         );
@@ -547,6 +568,19 @@ mod tests {
     }
 
     #[test]
+    fn add_permission_saves_value_to_stable_memory() {
+        let mut state = test_state();
+        state
+            .add_permission(admin(), user(), LoggerPermission::Read)
+            .unwrap();
+        let acl = state.acl.clone();
+
+        reset_config();
+        state.reload(test_memory()).unwrap();
+        assert_eq!(state.acl, acl);
+    }
+
+    #[test]
     fn configure_permission_grants_read_access() {
         let mut state = test_state();
         state
@@ -600,6 +634,19 @@ mod tests {
     }
 
     #[test]
+    fn remove_permission_saves_value_to_stable_memory() {
+        let mut state = test_state();
+        state
+            .remove_permission(admin(), reader(), LoggerPermission::Read)
+            .unwrap();
+        let acl = state.acl.clone();
+
+        reset_config();
+        state.reload(test_memory()).unwrap();
+        assert_eq!(state.acl, acl);
+    }
+
+    #[test]
     fn set_logger_filter_checks_caller() {
         let mut state = test_state();
         assert_eq!(
@@ -615,7 +662,7 @@ mod tests {
         state
             .set_logger_filter(admin(), new_filter.clone())
             .unwrap();
-        assert_eq!(state.get_settings().log_filter, new_filter);
+        assert_eq!(state.get_settings().log_filter.unwrap(), new_filter);
     }
 
     #[test]
@@ -627,6 +674,19 @@ mod tests {
                 "error parsing logger filter: invalid logging spec 'invalid'".into()
             ))
         );
+    }
+
+    #[test]
+    fn set_logger_filter_stores_config_to_stable_memory() {
+        let mut state = test_state();
+        state
+            .set_logger_filter(admin(), "debug,crate1=warn".into())
+            .unwrap();
+        let settings = state.settings.clone();
+
+        reset_config();
+        state.reload(test_memory()).unwrap();
+        assert_eq!(state.settings, settings);
     }
 
     #[test]
@@ -681,7 +741,7 @@ mod tests {
     fn set_in_memory_records_updates_settings() {
         let mut state = test_state();
         state.set_in_memory_records(admin(), 10).unwrap();
-        assert_eq!(state.get_settings().in_memory_records, 10);
+        assert_eq!(state.get_settings().in_memory_records.unwrap(), 10);
     }
 
     #[test]
@@ -689,5 +749,16 @@ mod tests {
         let mut state = test_state();
         state.set_in_memory_records(admin(), 0).unwrap();
         assert!(!InMemoryWriter::is_enabled());
+    }
+
+    #[test]
+    fn set_in_memory_records_stores_value_in_stable_memory() {
+        let mut state = test_state();
+        state.set_in_memory_records(admin(), 42).unwrap();
+        let settings = state.settings.clone();
+
+        reset_config();
+        state.reload(test_memory()).unwrap();
+        assert_eq!(state.settings, settings);
     }
 }

@@ -84,7 +84,7 @@ pub trait LogCanister: Canister + PreUpdate {
         self.log_state()
             .borrow()
             .get_logs(ic::caller(), pagination)
-            .expect("Failed to get logs.")
+            .expect("failed to get logs")
     }
 
     /// Sets the logger filter string.
@@ -137,7 +137,7 @@ pub trait LogCanister: Canister + PreUpdate {
     /// Returns the current logger settings.
     #[query(trait = true)]
     fn get_logger_settings(&self) -> LogCanisterSettings {
-        self.log_state().borrow().get_settings().clone().into()
+        self.log_state().borrow().get_settings().clone()
     }
 
     /// Add the given `permission` to the `to` principal.
@@ -152,7 +152,7 @@ pub trait LogCanister: Canister + PreUpdate {
         self.log_state()
             .borrow_mut()
             .add_permission(ic::caller(), to, permission)
-            .expect("Failed to add logger permission");
+            .expect("failed to add logger permission");
     }
 
     /// Remove the given `permission` from the `from` principal.
@@ -167,7 +167,7 @@ pub trait LogCanister: Canister + PreUpdate {
         self.log_state()
             .borrow_mut()
             .remove_permission(ic::caller(), from, permission)
-            .expect("Failed to remove logger permission");
+            .expect("failed to remove logger permission");
     }
 
     /// Return idl of the logger canister.
