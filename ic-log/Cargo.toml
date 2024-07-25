@@ -31,7 +31,3 @@ export-api = []
 name = "log_canister"
 path = "examples/log_canister.rs"
 required-features = ["canister"]
-
-[[test]]
-name = "in_memory_logger"
-required-features = ["canister"]

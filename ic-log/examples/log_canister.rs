@@ -2,14 +2,19 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use candid::Principal;
-use ic_canister::{generate_idl, init, Canister, Idl, PreUpdate};
+use ic_canister::{generate_idl, init, post_upgrade, Canister, Idl, PreUpdate};
 use ic_exports::ic_cdk;
 use ic_exports::ic_kit::ic;
 use ic_log::canister::inspect::logger_canister_inspect;
 use ic_log::canister::{LogCanister, LogState};
 use ic_log::did::LogCanisterSettings;
-use ic_stable_structures::MemoryId;
+use ic_stable_structures::stable_structures::DefaultMemoryImpl;
+use ic_stable_structures::{IcMemoryManager, MemoryId};
 use ic_storage::IcStorage;
+
+thread_local! {
+    static MEMORY_MANAGER: IcMemoryManager<DefaultMemoryImpl> = IcMemoryManager::init(DefaultMemoryImpl::default());
+}
 
 #[derive(Canister)]
 pub struct LoggerCanister {
@@ -39,10 +44,22 @@ impl LoggerCanister {
             ..Default::default()
         };
 
-        self.log_state()
-            .borrow_mut()
-            .init(ic::caller(), MemoryId::new(1), settings)
-            .expect("error configuring the logger");
+        MEMORY_MANAGER.with(|mm| {
+            self.log_state()
+                .borrow_mut()
+                .init(ic::caller(), mm.get(MemoryId::new(1)), settings)
+                .expect("error configuring the logger");
+        });
+    }
+
+    #[post_upgrade]
+    pub fn post_upgrade(&self) {
+        MEMORY_MANAGER.with(|mm| {
+            self.log_state()
+                .borrow_mut()
+                .reload(mm.get(MemoryId::new(1)))
+                .expect("error configuring the logger");
+        });
     }
 
     pub fn get_idl() -> Idl {
