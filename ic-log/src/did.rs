@@ -26,8 +26,8 @@ pub enum LogCanisterError {
     NotAuthorized,
     /// Something bad happened.
     Generic(String),
-    /// The given memory ID cannot be used to store logger configuration.
-    InvalidMemoryId,
+    /// The given memory cannot be used to store logger configuration.
+    InvalidMemory,
     /// Error in the logger configuration.
     InvalidConfiguration(String),
 }

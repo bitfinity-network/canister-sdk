@@ -95,11 +95,12 @@ pub trait LogCanister: Canister + PreUpdate {
     ///
     /// # Errors
     ///
-    /// Returns [`LogCanisterError::InvalidConfiguration`] if the `filter` string is invalid.
+    /// * [`LogCanisterError::InvalidConfiguration`] if the `filter` string is invalid.
     ///
     /// # Traps
     ///
-    /// Traps if the caller doesn't have [`LoggerPermission::Configure`] permission.
+    /// Traps if the caller doesn't have [`LoggerPermission::Configure`] permission of if the
+    /// logger state is not initialized.
     #[update(trait = true)]
     fn set_logger_filter(&mut self, filter: String) -> Result<(), LogCanisterError> {
         // This method returns a `Result` to emphasize that the operation can fail if the
@@ -125,7 +126,8 @@ pub trait LogCanister: Canister + PreUpdate {
     ///
     /// # Traps
     ///
-    /// Traps if the caller doesn't have [`LoggerPermission::Configure`] permission.
+    /// Traps if the caller doesn't have [`LoggerPermission::Configure`] permission of if the
+    /// logger state is not initialized.
     #[update(trait = true)]
     fn set_logger_in_memory_records(&mut self, max_log_count: usize) {
         self.log_state()
@@ -146,7 +148,8 @@ pub trait LogCanister: Canister + PreUpdate {
     ///
     /// # Traps
     ///
-    /// Traps if the caller doesn't have [`LoggerPermission::Configure`] permission.
+    /// Traps if the caller doesn't have [`LoggerPermission::Configure`] permission of if the
+    /// logger state is not initialized.
     #[update(trait = true)]
     fn add_logger_permission(&mut self, to: Principal, permission: LoggerPermission) {
         self.log_state()
@@ -161,7 +164,8 @@ pub trait LogCanister: Canister + PreUpdate {
     ///
     /// # Traps
     ///
-    /// Traps if the caller doesn't have [`LoggerPermission::Configure`] permission.
+    /// Traps if the caller doesn't have [`LoggerPermission::Configure`] permission of if the
+    /// logger state is not initialized.
     #[update(trait = true)]
     fn remove_logger_permission(&mut self, from: Principal, permission: LoggerPermission) {
         self.log_state()
