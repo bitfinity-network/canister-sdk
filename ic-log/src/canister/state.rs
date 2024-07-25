@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::cell::RefCell;
 
 use candid::{Decode, Encode, Principal};
 use ic_stable_structures::stable_structures::DefaultMemoryImpl;
@@ -10,16 +9,13 @@ use crate::did::{LogCanisterError, LogCanisterSettings, LoggerAcl, LoggerPermiss
 use crate::writer::{InMemoryWriter, Logs};
 use crate::{take_memory_records, LogSettingsV2, LoggerConfig};
 
-thread_local! {
-    static LOGGER_CONFIG: RefCell<Option<LoggerConfig>> = const { RefCell::new(None) };
-}
-
 /// State of the logger canister.
 ///
 /// Before logger can be used, it must be initialized with the [`LogState::init`] method.
 #[derive(Default, IcStorage)]
 pub struct LogState {
     settings: Option<StableCell<StorableLogSettings, VirtualMemory<DefaultMemoryImpl>>>,
+    logger_config: Option<LoggerConfig>,
 }
 
 impl LogState {
@@ -45,7 +41,7 @@ impl LogState {
         memory: VirtualMemory<DefaultMemoryImpl>,
         log_settings: LogCanisterSettings,
     ) -> Result<(), LogCanisterError> {
-        if LOGGER_CONFIG.with(|logger_config| logger_config.borrow().is_some()) {
+        if self.logger_config.is_some() {
             return Err(LogCanisterError::AlreadyInitialized);
         }
 
@@ -55,7 +51,7 @@ impl LogState {
             .unwrap_or_else(|| [(caller, LoggerPermission::Configure)].into());
         let settings = log_settings.into();
 
-        Self::init_log(&settings)?;
+        self.logger_config = Some(Self::init_log(&settings)?);
 
         self.settings = Some(
             StableCell::new(memory, StorableLogSettings(settings, acl))
@@ -93,13 +89,11 @@ impl LogState {
         // This operation must be the first one as it is the only one that may return error.
         // It is not guaranteed that the caller of this function will revert the canister state
         // changes, so we must take care not to update the state if the filter is invalid.
-        LOGGER_CONFIG.with(|config| {
-            if let Some(config) = &mut *config.borrow_mut() {
-                config.update_filters(&filter_value)
-            } else {
-                Err(LogCanisterError::NotInitialized)
-            }
-        })?;
+        if let Some(config) = &mut self.logger_config {
+            config.update_filters(&filter_value)?;
+        } else {
+            return Err(LogCanisterError::NotInitialized);
+        }
 
         if let Some(cell) = &mut self.settings {
             let mut settings = cell.get().clone();
@@ -146,7 +140,7 @@ impl LogState {
         &mut self,
         memory: VirtualMemory<DefaultMemoryImpl>,
     ) -> Result<(), LogCanisterError> {
-        if LOGGER_CONFIG.with(|logger_config| logger_config.borrow().is_some()) {
+        if self.logger_config.is_some() {
             return Err(LogCanisterError::AlreadyInitialized);
         }
 
@@ -160,7 +154,7 @@ impl LogState {
             return Err(LogCanisterError::InvalidMemory);
         }
 
-        Self::init_log(&settings.0)?;
+        self.logger_config = Some(Self::init_log(&settings.0)?);
 
         Ok(())
     }
@@ -211,7 +205,7 @@ impl LogState {
             .1
     }
 
-    fn init_log(log_settings: &LogSettingsV2) -> Result<(), LogCanisterError> {
+    fn init_log(log_settings: &LogSettingsV2) -> Result<LoggerConfig, LogCanisterError> {
         let logger_config = {
             cfg_if::cfg_if! {
                 if #[cfg(test)] {
@@ -223,8 +217,7 @@ impl LogState {
             }
         };
 
-        LOGGER_CONFIG.with(|config| config.borrow_mut().replace(logger_config));
-        Ok(())
+        Ok(logger_config)
     }
 
     pub(crate) fn check_permission(
@@ -326,12 +319,6 @@ mod tests {
         state
     }
 
-    fn reset_config() {
-        LOGGER_CONFIG.with(|v| {
-            *v.borrow_mut() = None;
-        })
-    }
-
     #[test]
     fn init_stores_settings() {
         let mut state = LogState::default();
@@ -354,10 +341,8 @@ mod tests {
 
     #[test]
     fn init_configures_logger() {
-        let _ = test_state();
-        LOGGER_CONFIG.with(|config| {
-            assert!(config.borrow().is_some(), "Config is not stored");
-        })
+        let state = test_state();
+        assert!(state.logger_config.is_some(), "Config is not stored");
     }
 
     #[test]
@@ -392,7 +377,7 @@ mod tests {
         let mut state = test_state();
 
         // Simulate canister reload
-        LOGGER_CONFIG.with(|v| *v.borrow_mut() = None);
+        state.logger_config = None;
         state.settings = None;
 
         state.reload(test_memory()).unwrap();
@@ -405,12 +390,12 @@ mod tests {
         let mut state = test_state();
 
         // Simulate canister reload
-        LOGGER_CONFIG.with(|v| *v.borrow_mut() = None);
+        state.logger_config = None;
         state.settings = None;
 
         state.reload(test_memory()).unwrap();
 
-        assert!(LOGGER_CONFIG.with(|v| v.borrow().is_some()));
+        assert!(state.logger_config.is_some());
     }
 
     #[test]
@@ -531,7 +516,7 @@ mod tests {
             .unwrap();
         let acl = state.acl();
 
-        reset_config();
+        state.logger_config = None;
         state.reload(test_memory()).unwrap();
         assert_eq!(state.acl(), acl);
     }
@@ -597,7 +582,7 @@ mod tests {
             .unwrap();
         let acl = state.acl();
 
-        reset_config();
+        state.logger_config = None;
         state.reload(test_memory()).unwrap();
         assert_eq!(state.acl(), acl);
     }
@@ -640,7 +625,7 @@ mod tests {
             .unwrap();
         let settings = state.get_settings();
 
-        reset_config();
+        state.logger_config = None;
         state.settings = None;
         state.reload(test_memory()).unwrap();
 
@@ -715,7 +700,7 @@ mod tests {
         state.set_in_memory_records(admin(), 42).unwrap();
         let settings = state.get_settings();
 
-        reset_config();
+        state.logger_config = None;
         state.settings = None;
         state.reload(test_memory()).unwrap();
 
