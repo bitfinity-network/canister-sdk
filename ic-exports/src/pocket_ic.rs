@@ -6,10 +6,10 @@ use std::{env, fs};
 use flate2::read::GzDecoder;
 use log::*;
 use once_cell::sync::Lazy;
+pub use pocket_ic::common;
 use pocket_ic::common::rest::SubnetConfigSet;
 pub use pocket_ic::nonblocking::*;
-pub use pocket_ic::{CallError, WasmResult, CanisterSettings, UserError, ErrorCode};
-pub use pocket_ic::common as common;
+pub use pocket_ic::{CallError, CanisterSettings, ErrorCode, UserError, WasmResult};
 
 const POCKET_IC_SERVER_VERSION: &str = "5.0.0";
 const POCKET_IC_BIN: &str = "POCKET_IC_BIN";
@@ -155,5 +155,4 @@ mod test {
     async fn should_initialize_pocket_ic() {
         init_pocket_ic().await;
     }
-
 }

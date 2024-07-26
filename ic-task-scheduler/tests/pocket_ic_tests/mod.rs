@@ -15,7 +15,6 @@ use ic_task_scheduler::SchedulerError;
 use serde::{Deserialize, Serialize};
 use wasm_utils::get_dummy_scheduler_canister_bytecode;
 
-
 pub struct PocketIcTestContext {
     canister_client: PocketIcClient,
     pub dummy_scheduler_canister: Principal,
@@ -63,7 +62,9 @@ impl PocketIcTestContext {
     }
 
     pub async fn run_scheduler(&self) {
-        self.client().advance_time(Duration::from_millis(5000)).await;
+        self.client()
+            .advance_time(Duration::from_millis(5000))
+            .await;
         self.client().tick().await;
     }
 }
@@ -73,7 +74,9 @@ async fn deploy_dummy_scheduler_canister() -> anyhow::Result<PocketIcTestContext
     println!("Creating dummy canister");
 
     let sender = alice();
-    let canister = client.create_canister_with_settings(Some(sender), None).await;
+    let canister = client
+        .create_canister_with_settings(Some(sender), None)
+        .await;
     println!("Canister created with principal {}", canister);
 
     let canister_client =

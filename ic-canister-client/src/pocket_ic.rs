@@ -15,8 +15,7 @@ pub struct PocketIcClient {
 
 impl Drop for PocketIcClient {
     fn drop(&mut self) {
-        if let Some(client)  = self.client.take() {
-
+        if let Some(client) = self.client.take() {
             // Spawns a tokio task to drop the client.
             // This workaround is necessary because Rust does not support async drop.
             //
@@ -54,7 +53,9 @@ impl PocketIcClient {
 
     /// Returns the PocketIC client for the canister.
     pub fn client(&self) -> &PocketIc {
-        self.client.as_ref().expect("PocketIC client is not available")
+        self.client
+            .as_ref()
+            .expect("PocketIC client is not available")
     }
 
     /// Performs update call with the given arguments.

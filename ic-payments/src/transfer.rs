@@ -173,7 +173,7 @@ impl Transfer {
         hash.update(self.from.unwrap_or_default());
         hash.update(self.to.owner.as_slice());
         hash.update(self.to.effective_subaccount());
-        hash.update(&self.amount.0.to_bytes_le());
+        hash.update(self.amount.0.to_bytes_le());
         hash.update(self.token.as_slice());
         hash.update(self.created_at.to_le_bytes());
 
