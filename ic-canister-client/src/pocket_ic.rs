@@ -23,6 +23,7 @@ impl Drop for PocketIcClient {
             //
             // 1. The tokio task is blocked while the client is dropped.
             // 2. It panics if not executed in a tokio runtime.
+            // 3. There's no guarantee that this will actually run.
             //
             tokio::spawn(async move {
                 client.drop().await;

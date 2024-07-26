@@ -74,6 +74,7 @@ async fn test_should_remove_panicking_task() {
     compare(panicked_tasks, &tasks_map, DummyTask::Panicking);
     compare(completed_tasks, &tasks_map, DummyTask::GoodTask);
     compare(failed_tasks, &tasks_map, DummyTask::FailTask);
+
 }
 
 fn compare(mut found: Vec<u32>, tasks_map: &BTreeMap<u32, DummyTask>, expected_task: DummyTask) {
