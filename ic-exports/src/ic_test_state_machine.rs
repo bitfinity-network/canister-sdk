@@ -20,9 +20,9 @@ pub const IC_STATE_MACHINE_BINARY_HASH: &str = "48da85ee6c03e8c15f3e90b21bf9ccae
 /// or to download it if not present
 pub async fn get_ic_test_state_machine_client_path(search_path: &str) -> &str {
     static FILES: OnceCell<String> = OnceCell::const_new();
-    FILES.get_or_init(|| async {
-        download_binary(search_path).await
-    }).await
+    FILES
+        .get_or_init(|| async { download_binary(search_path).await })
+        .await
 }
 
 async fn download_binary(base_path: &str) -> String {
@@ -108,6 +108,4 @@ mod test {
         let path = get_ic_test_state_machine_client_path("../target").await;
         assert!(Path::new(&path).exists())
     }
-
 }
-
