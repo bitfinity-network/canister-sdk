@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use candid::{CandidType, Encode, Principal};
 use ic_canister_client::PocketIcClient;
-use ic_exports::pocket_ic::nio::PocketIcAsync;
+use ic_exports::pocket_ic::{init_pocket_ic, PocketIc};
 use ic_kit::mock_principals::alice;
 use ic_task_scheduler::scheduler::TaskScheduler;
 use ic_task_scheduler::task::{InnerScheduledTask, Task};
@@ -15,17 +15,16 @@ use ic_task_scheduler::SchedulerError;
 use serde::{Deserialize, Serialize};
 use wasm_utils::get_dummy_scheduler_canister_bytecode;
 
-#[derive(Clone)]
+
 pub struct PocketIcTestContext {
     canister_client: PocketIcClient,
-    client: PocketIcAsync,
     pub dummy_scheduler_canister: Principal,
 }
 
 impl PocketIcTestContext {
     /// Returns the PocketIC client for the canister.
-    pub fn client(&self) -> &PocketIcAsync {
-        &self.client
+    pub fn client(&self) -> &PocketIc {
+        self.canister_client.client()
     }
 
     pub async fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<DummyTask>> {
@@ -64,25 +63,24 @@ impl PocketIcTestContext {
     }
 
     pub async fn run_scheduler(&self) {
-        self.client.advance_time(Duration::from_millis(5000)).await;
-        self.client.tick().await;
+        self.client().advance_time(Duration::from_millis(5000)).await;
+        self.client().tick().await;
     }
 }
 
 async fn deploy_dummy_scheduler_canister() -> anyhow::Result<PocketIcTestContext> {
-    let client = PocketIcAsync::init().await;
+    let client = init_pocket_ic().await;
     println!("Creating dummy canister");
 
     let sender = alice();
-    let canister = client.create_canister(Some(sender)).await;
+    let canister = client.create_canister_with_settings(Some(sender), None).await;
     println!("Canister created with principal {}", canister);
 
     let canister_client =
-        ic_canister_client::PocketIcClient::from_client(client.clone(), canister, alice());
+        ic_canister_client::PocketIcClient::from_client(client, canister, alice());
 
     let env = PocketIcTestContext {
         canister_client,
-        client,
         dummy_scheduler_canister: canister,
     };
 

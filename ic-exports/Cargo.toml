@@ -12,7 +12,6 @@ ledger = ["ic-ledger-types"]
 icrc = ["icrc-ledger-types"]
 ic-test-state-machine = ["flate2", "ic-test-state-machine-client", "log", "once_cell", "reqwest"]
 pocket-ic-tests = ["flate2", "pocket-ic", "log", "once_cell", "reqwest"]
-pocket-ic-tests-async = ["pocket-ic-tests", "tokio"]
 
 [dependencies]
 candid = { workspace = true }
@@ -39,7 +38,6 @@ reqwest = { workspace = true, optional = true, features = [
   "rustls-tls",
   "trust-dns",
 ] }
-tokio = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt"] }

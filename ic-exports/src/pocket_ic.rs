@@ -7,12 +7,12 @@ use flate2::read::GzDecoder;
 use log::*;
 use once_cell::sync::Lazy;
 use pocket_ic::common::rest::SubnetConfigSet;
-pub use pocket_ic::*;
-
-#[cfg(feature = "pocket-ic-tests-async")]
-pub mod nio;
+pub use pocket_ic::nonblocking::*;
+pub use pocket_ic::{CallError, WasmResult, CanisterSettings, UserError, ErrorCode};
+pub use pocket_ic::common as common;
 
 const POCKET_IC_SERVER_VERSION: &str = "5.0.0";
+const POCKET_IC_BIN: &str = "POCKET_IC_BIN";
 
 /// Returns the pocket-ic client.
 /// If pocket-ic server binary is not present, it downloads it and sets
@@ -25,7 +25,7 @@ const POCKET_IC_SERVER_VERSION: &str = "5.0.0";
 /// point to the binary. Also, the binary should be executable.
 ///
 /// It supports only linux and macos.
-pub fn init_pocket_ic() -> PocketIc {
+pub async fn init_pocket_ic() -> PocketIc {
     static INITIALIZATION_STATUS: Lazy<bool> = Lazy::new(|| {
         if check_custom_pocket_ic_initialized() {
             // Custom server binary found. Let's use it.
@@ -34,19 +34,19 @@ pub fn init_pocket_ic() -> PocketIc {
 
         if let Some(binary_path) = dbg!(check_default_pocket_ic_binary_exist()) {
             // Default server binary found. Let's use it.
-            env::set_var("POCKET_IC_BIN", binary_path);
+            env::set_var(POCKET_IC_BIN, binary_path);
             return true;
         }
 
         // Server binary not found. Let's download it.
-        let mut target_dir = env::var("POCKET_IC_BIN")
+        let mut target_dir = env::var(POCKET_IC_BIN)
             .map(PathBuf::from)
             .unwrap_or_else(|_| default_pocket_ic_server_binary_path());
 
         target_dir.pop();
 
         let binary_path = download_binary(target_dir);
-        env::set_var("POCKET_IC_BIN", binary_path);
+        env::set_var(POCKET_IC_BIN, binary_path);
 
         true
     });
@@ -55,10 +55,10 @@ pub fn init_pocket_ic() -> PocketIc {
         panic!("pocket-ic is not initialized");
     }
 
-    create_pocket_ic_client()
+    create_pocket_ic_client().await
 }
 
-pub fn create_pocket_ic_client() -> PocketIc {
+async fn create_pocket_ic_client() -> PocketIc {
     // Adding nns allows using root key of the instance
     // while test speed doesn't seem to be affected
     let config = SubnetConfigSet {
@@ -67,7 +67,7 @@ pub fn create_pocket_ic_client() -> PocketIc {
         application: 1,
         ..Default::default()
     };
-    PocketIc::from_config(config)
+    PocketIc::from_config(config).await
 }
 
 fn default_pocket_ic_server_dir() -> PathBuf {
@@ -147,7 +147,13 @@ fn download_binary(pocket_ic_dir: PathBuf) -> PathBuf {
     binary_file_path
 }
 
-#[test]
-fn should_initialize_pocket_ic() {
-    init_pocket_ic();
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn should_initialize_pocket_ic() {
+        init_pocket_ic().await;
+    }
+
 }

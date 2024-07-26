@@ -9,7 +9,7 @@ description = "Client for interacting with an IC Canister"
 [features]
 default = []
 ic-agent-client = ["dep:ic-agent"]
-pocket-ic-client = ["dep:tokio", "ic-exports/pocket-ic-tests-async"]
+pocket-ic-client = ["dep:tokio", "ic-exports/pocket-ic-tests"]
 state-machine-tests-client = ["dep:tokio", "ic-exports/ic-test-state-machine"]
 
 [dependencies]

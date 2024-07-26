@@ -1,19 +1,37 @@
+use std::sync::Arc;
+
 use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Decode, Principal};
 use ic_exports::ic_kit::RejectionCode;
-use ic_exports::pocket_ic;
-use ic_exports::pocket_ic::nio::PocketIcAsync;
-use pocket_ic::WasmResult;
+use ic_exports::pocket_ic::*;
 use serde::de::DeserializeOwned;
 
 use crate::{CanisterClient, CanisterClientError, CanisterClientResult};
 
 /// A client for interacting with a canister inside dfinity's PocketIc test framework.
-#[derive(Clone)]
 pub struct PocketIcClient {
-    client: PocketIcAsync,
+    client: Option<PocketIc>,
     pub canister: Principal,
     pub caller: Principal,
+}
+
+impl Drop for PocketIcClient {
+    fn drop(&mut self) {
+        if let Some(client)  = self.client.take() {
+
+            // Spawns a tokio task to drop the client.
+            // This workaround is necessary because Rust does not support async drop.
+            //
+            // This has two main drawbacks:
+            //
+            // 1. The tokio task is blocked while the client is dropped.
+            // 2. This panics if not executed in a tokio runtime.
+            //
+            tokio::spawn(async move {
+                client.drop().await;
+            });
+        }
+    }
 }
 
 impl PocketIcClient {
@@ -21,24 +39,24 @@ impl PocketIcClient {
     /// The new instance is independent and have no access to canisters of other instances.
     pub async fn new(canister: Principal, caller: Principal) -> Self {
         Self {
-            client: PocketIcAsync::init().await,
+            client: Some(PocketIc::new().await),
             canister,
             caller,
         }
     }
 
     /// Crates new instance of PocketIcClient from an existing client instance.
-    pub fn from_client(client: PocketIcAsync, canister: Principal, caller: Principal) -> Self {
+    pub fn from_client(client: PocketIc, canister: Principal, caller: Principal) -> Self {
         Self {
-            client,
+            client: Some(client),
             canister,
             caller,
         }
     }
 
     /// Returns the PocketIC client for the canister.
-    pub fn client(&self) -> &PocketIcAsync {
-        &self.client
+    pub fn client(&self) -> &PocketIc {
+        self.client.as_ref().expect("PocketIC client is not available")
     }
 
     /// Performs update call with the given arguments.
@@ -48,10 +66,9 @@ impl PocketIcClient {
         R: DeserializeOwned + CandidType,
     {
         let args = candid::encode_args(args)?;
-        let method = String::from(method);
 
         let call_result = self
-            .client
+            .client()
             .update_call(self.canister, self.caller, method, args)
             .await?;
 
@@ -71,10 +88,9 @@ impl PocketIcClient {
         R: DeserializeOwned + CandidType,
     {
         let args = candid::encode_args(args)?;
-        let method = String::from(method);
 
         let call_result = self
-            .client
+            .client()
             .query_call(self.canister, self.caller, method, args)
             .await?;
 
@@ -93,7 +109,7 @@ fn reject_error(e: String) -> CanisterClientError {
 }
 
 #[async_trait::async_trait]
-impl CanisterClient for PocketIcClient {
+impl CanisterClient for Arc<PocketIcClient> {
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
         T: ArgumentEncoder + Send + Sync,
