@@ -10,8 +10,8 @@ edition.workspace = true
 default = []
 ledger = ["ic-ledger-types"]
 icrc = ["icrc-ledger-types"]
-ic-test-state-machine = ["flate2", "ic-test-state-machine-client", "log", "once_cell", "reqwest"]
-pocket-ic-tests = ["flate2", "pocket-ic", "log", "once_cell", "reqwest"]
+ic-test-state-machine = ["flate2", "ic-test-state-machine-client", "log", "reqwest", "tokio"]
+pocket-ic-tests = ["flate2", "pocket-ic", "log", "reqwest", "tokio"]
 
 [dependencies]
 candid = { workspace = true }
@@ -30,14 +30,13 @@ serde = { workspace = true }
 # dependencies for `pocket-ic-tests` feature
 flate2 = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
-once_cell = { workspace = true, optional = true }
 reqwest = { workspace = true, optional = true, features = [
-  "blocking",
   "gzip",
   "json",
   "rustls-tls",
   "trust-dns",
 ] }
+tokio = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt"] }

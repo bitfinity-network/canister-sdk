@@ -5,11 +5,11 @@ use std::{env, fs};
 
 use flate2::read::GzDecoder;
 use log::*;
-use once_cell::sync::Lazy;
 pub use pocket_ic::common;
 use pocket_ic::common::rest::SubnetConfigSet;
 pub use pocket_ic::nonblocking::*;
 pub use pocket_ic::{CallError, CanisterSettings, ErrorCode, UserError, WasmResult};
+use tokio::sync::OnceCell;
 
 const POCKET_IC_SERVER_VERSION: &str = "5.0.0";
 const POCKET_IC_BIN: &str = "POCKET_IC_BIN";
@@ -26,7 +26,9 @@ const POCKET_IC_BIN: &str = "POCKET_IC_BIN";
 ///
 /// It supports only linux and macos.
 pub async fn init_pocket_ic() -> PocketIc {
-    static INITIALIZATION_STATUS: Lazy<bool> = Lazy::new(|| {
+    static INITIALIZATION_STATUS: OnceCell<bool> = OnceCell::const_new();
+
+    let status = INITIALIZATION_STATUS.get_or_init(|| async {
         if check_custom_pocket_ic_initialized() {
             // Custom server binary found. Let's use it.
             return true;
@@ -45,13 +47,13 @@ pub async fn init_pocket_ic() -> PocketIc {
 
         target_dir.pop();
 
-        let binary_path = download_binary(target_dir);
+        let binary_path = download_binary(target_dir).await;
         env::set_var(POCKET_IC_BIN, binary_path);
 
         true
-    });
+    }).await;
 
-    if !*INITIALIZATION_STATUS {
+    if !status {
         panic!("pocket-ic is not initialized");
     }
 
@@ -92,7 +94,7 @@ fn check_default_pocket_ic_binary_exist() -> Option<PathBuf> {
     path.exists().then_some(path)
 }
 
-fn download_binary(pocket_ic_dir: PathBuf) -> PathBuf {
+async fn download_binary(pocket_ic_dir: PathBuf) -> PathBuf {
     let platform = match env::consts::OS {
         "linux" => "linux",
         "macos" => "darwin",
@@ -105,16 +107,18 @@ fn download_binary(pocket_ic_dir: PathBuf) -> PathBuf {
     let gz_binary = {
         info!("downloading pocket-ic server binary from: {download_url}");
 
-        let response = reqwest::blocking::Client::builder()
+        let response = reqwest::Client::builder()
             .timeout(Duration::from_secs(120))
             .build()
             .unwrap()
             .get(download_url)
             .send()
+            .await
             .unwrap();
 
         response
             .bytes()
+            .await
             .expect("pocket-ic server binary should be downloaded correctly")
     };
 
