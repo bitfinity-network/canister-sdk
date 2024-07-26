@@ -68,7 +68,8 @@ async fn create_pocket_ic_client() -> PocketIc {
         .with_nns_subnet()
         .with_ii_subnet()
         .with_application_subnet()
-        .build_async().await
+        .build_async()
+        .await
 }
 
 fn default_pocket_ic_server_dir() -> PathBuf {
