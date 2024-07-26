@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Decode, Principal};
 use ic_exports::ic_kit::RejectionCode;
@@ -25,7 +23,7 @@ impl Drop for PocketIcClient {
             // This has two main drawbacks:
             //
             // 1. The tokio task is blocked while the client is dropped.
-            // 2. This panics if not executed in a tokio runtime.
+            // 2. It panics if not executed in a tokio runtime.
             //
             tokio::spawn(async move {
                 client.drop().await;
@@ -109,7 +107,7 @@ fn reject_error(e: String) -> CanisterClientError {
 }
 
 #[async_trait::async_trait]
-impl CanisterClient for Arc<PocketIcClient> {
+impl CanisterClient for PocketIcClient {
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
         T: ArgumentEncoder + Send + Sync,
