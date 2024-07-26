@@ -12,7 +12,7 @@ pub use pocket_ic::*;
 #[cfg(feature = "pocket-ic-tests-async")]
 pub mod nio;
 
-const POCKET_IC_SERVER_VERSION: &str = "4.0.0";
+const POCKET_IC_SERVER_VERSION: &str = "5.0.0";
 
 /// Returns the pocket-ic client.
 /// If pocket-ic server binary is not present, it downloads it and sets

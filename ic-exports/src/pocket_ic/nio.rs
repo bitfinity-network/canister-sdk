@@ -4,7 +4,6 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use candid::Principal;
-use ic_cdk::api::management_canister::main::CanisterSettings;
 use ic_cdk::api::management_canister::provisional::CanisterId;
 use pocket_ic::common::rest::{BlobCompression, BlobId};
 use pocket_ic::{CallError, PocketIc, UserError, WasmResult};
@@ -185,18 +184,6 @@ impl PocketIcAsync {
     pub async fn create_canister(&self, sender: Option<Principal>) -> CanisterId {
         let client = self.0.clone();
         tokio::task::spawn_blocking(move || client.create_canister_with_settings(sender, None))
-            .await
-            .unwrap()
-    }
-
-    // Create a canister with custom settings.
-    pub async fn create_canister_with_settings(
-        &self,
-        settings: Option<CanisterSettings>,
-        sender: Option<Principal>,
-    ) -> CanisterId {
-        let client = self.0.clone();
-        tokio::task::spawn_blocking(move || client.create_canister_with_settings(sender, settings))
             .await
             .unwrap()
     }
