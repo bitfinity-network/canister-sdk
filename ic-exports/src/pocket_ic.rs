@@ -5,7 +5,6 @@ use std::{env, fs};
 
 use flate2::read::GzDecoder;
 use log::*;
-use pocket_ic::common::rest::SubnetConfigSet;
 pub use pocket_ic::nonblocking::*;
 use pocket_ic::PocketIcBuilder;
 pub use pocket_ic::{common, CallError, CanisterSettings, ErrorCode, UserError, WasmResult};
@@ -67,7 +66,7 @@ async fn create_pocket_ic_client() -> PocketIc {
     // With no II subnet, there's no subnet with ECDSA keys.
     PocketIcBuilder::new()
         .with_nns_subnet()
-        .with_sns_subnet()
+        .with_ii_subnet()
         .with_application_subnet()
         .build_async().await
 }
