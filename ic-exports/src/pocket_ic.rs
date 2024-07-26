@@ -7,6 +7,7 @@ use flate2::read::GzDecoder;
 use log::*;
 use pocket_ic::common::rest::SubnetConfigSet;
 pub use pocket_ic::nonblocking::*;
+use pocket_ic::PocketIcBuilder;
 pub use pocket_ic::{common, CallError, CanisterSettings, ErrorCode, UserError, WasmResult};
 use tokio::sync::OnceCell;
 
@@ -62,15 +63,13 @@ pub async fn init_pocket_ic() -> PocketIc {
 }
 
 async fn create_pocket_ic_client() -> PocketIc {
-    // Adding nns allows using root key of the instance
-    // while test speed doesn't seem to be affected
-    let config = SubnetConfigSet {
-        nns: true,
-        sns: true,
-        application: 1,
-        ..Default::default()
-    };
-    PocketIc::from_config(config).await
+    // We create a PocketIC instance consisting of the NNS and one application subnet.
+    // With no II subnet, there's no subnet with ECDSA keys.
+    PocketIcBuilder::new()
+        .with_nns_subnet()
+        .with_sns_subnet()
+        .with_application_subnet()
+        .build_async().await
 }
 
 fn default_pocket_ic_server_dir() -> PathBuf {
