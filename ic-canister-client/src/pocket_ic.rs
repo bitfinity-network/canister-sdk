@@ -19,11 +19,15 @@ impl Drop for PocketIcClient {
             // Spawns a tokio task to drop the client.
             // This workaround is necessary because Rust does not support async drop.
             //
-            // This has two main drawbacks:
+            // This has some main drawbacks:
             //
             // 1. The tokio task is blocked while the client is dropped.
             // 2. It panics if not executed in a tokio runtime.
             // 3. There's no guarantee that this will actually run.
+            //
+            // Not dropping the client will cause a memory leak in the PocketIc Server,
+            // however, this is not a big deal since the server will automatically clean
+            // the resources after 60 seconds of inactivity.
             //
             tokio::spawn(async move {
                 client.drop().await;
