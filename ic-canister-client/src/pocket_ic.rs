@@ -25,9 +25,8 @@ impl Drop for PocketIcClient {
                 //
                 // This has some main drawbacks:
                 //
-                // 1. The tokio task is blocked while the client is dropped.
-                // 2. It panics if not executed in a tokio runtime.
-                // 3. There's no guarantee that this will actually run.
+                // 1. It panics if not executed in a tokio runtime.
+                // 2. As the spawn is executed in background, there's no guarantee that it will actually run.
                 //
                 // Not dropping the client will cause a memory leak in the PocketIc Server,
                 // however, this is not a big deal since the server will automatically clean
