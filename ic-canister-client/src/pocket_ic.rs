@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Decode, Principal};
 use ic_exports::ic_kit::RejectionCode;
@@ -7,8 +9,9 @@ use serde::de::DeserializeOwned;
 use crate::{CanisterClient, CanisterClientError, CanisterClientResult};
 
 /// A client for interacting with a canister inside dfinity's PocketIc test framework.
+#[derive(Clone)]
 pub struct PocketIcClient {
-    client: Option<PocketIc>,
+    client: Option<Arc<PocketIc>>,
     pub canister: Principal,
     pub caller: Principal,
 }
@@ -16,22 +19,24 @@ pub struct PocketIcClient {
 impl Drop for PocketIcClient {
     fn drop(&mut self) {
         if let Some(client) = self.client.take() {
-            // Spawns a tokio task to drop the client.
-            // This workaround is necessary because Rust does not support async drop.
-            //
-            // This has some main drawbacks:
-            //
-            // 1. The tokio task is blocked while the client is dropped.
-            // 2. It panics if not executed in a tokio runtime.
-            // 3. There's no guarantee that this will actually run.
-            //
-            // Not dropping the client will cause a memory leak in the PocketIc Server,
-            // however, this is not a big deal since the server will automatically clean
-            // the resources after 60 seconds of inactivity.
-            //
-            tokio::spawn(async move {
-                client.drop().await;
-            });
+            if let Ok(client) = Arc::try_unwrap(client) {
+                // Spawns a tokio task to drop the client.
+                // This workaround is necessary because Rust does not support async drop.
+                //
+                // This has some main drawbacks:
+                //
+                // 1. The tokio task is blocked while the client is dropped.
+                // 2. It panics if not executed in a tokio runtime.
+                // 3. There's no guarantee that this will actually run.
+                //
+                // Not dropping the client will cause a memory leak in the PocketIc Server,
+                // however, this is not a big deal since the server will automatically clean
+                // the resources after 60 seconds of inactivity.
+                //
+                tokio::spawn(async move {
+                    client.drop().await;
+                });
+            }
         }
     }
 }
@@ -40,17 +45,17 @@ impl PocketIcClient {
     /// Creates a new instance of a PocketIcClient.
     /// The new instance is independent and have no access to canisters of other instances.
     pub async fn new(canister: Principal, caller: Principal) -> Self {
-        Self {
-            client: Some(PocketIc::new().await),
-            canister,
-            caller,
-        }
+        Self::from_client(PocketIc::new().await, canister, caller)
     }
 
     /// Crates new instance of PocketIcClient from an existing client instance.
-    pub fn from_client(client: PocketIc, canister: Principal, caller: Principal) -> Self {
+    pub fn from_client<P: Into<Arc<PocketIc>>>(
+        client: P,
+        canister: Principal,
+        caller: Principal,
+    ) -> Self {
         Self {
-            client: Some(client),
+            client: Some(client.into()),
             canister,
             caller,
         }
