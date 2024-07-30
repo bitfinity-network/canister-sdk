@@ -5,14 +5,13 @@ use std::{env, fs};
 
 use flate2::read::GzDecoder;
 use log::*;
-use once_cell::sync::Lazy;
-use pocket_ic::common::rest::SubnetConfigSet;
-pub use pocket_ic::*;
+pub use pocket_ic::nonblocking::*;
+use pocket_ic::PocketIcBuilder;
+pub use pocket_ic::{common, CallError, CanisterSettings, ErrorCode, UserError, WasmResult};
+use tokio::sync::OnceCell;
 
-#[cfg(feature = "pocket-ic-tests-async")]
-pub mod nio;
-
-const POCKET_IC_SERVER_VERSION: &str = "4.0.0";
+const POCKET_IC_SERVER_VERSION: &str = "5.0.0";
+const POCKET_IC_BIN: &str = "POCKET_IC_BIN";
 
 /// Returns the pocket-ic client.
 /// If pocket-ic server binary is not present, it downloads it and sets
@@ -25,49 +24,52 @@ const POCKET_IC_SERVER_VERSION: &str = "4.0.0";
 /// point to the binary. Also, the binary should be executable.
 ///
 /// It supports only linux and macos.
-pub fn init_pocket_ic() -> PocketIc {
-    static INITIALIZATION_STATUS: Lazy<bool> = Lazy::new(|| {
-        if check_custom_pocket_ic_initialized() {
-            // Custom server binary found. Let's use it.
-            return true;
-        };
+pub async fn init_pocket_ic() -> PocketIc {
+    static INITIALIZATION_STATUS: OnceCell<bool> = OnceCell::const_new();
 
-        if let Some(binary_path) = dbg!(check_default_pocket_ic_binary_exist()) {
-            // Default server binary found. Let's use it.
-            env::set_var("POCKET_IC_BIN", binary_path);
-            return true;
-        }
+    let status = INITIALIZATION_STATUS
+        .get_or_init(|| async {
+            if check_custom_pocket_ic_initialized() {
+                // Custom server binary found. Let's use it.
+                return true;
+            };
 
-        // Server binary not found. Let's download it.
-        let mut target_dir = env::var("POCKET_IC_BIN")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| default_pocket_ic_server_binary_path());
+            if let Some(binary_path) = dbg!(check_default_pocket_ic_binary_exist()) {
+                // Default server binary found. Let's use it.
+                env::set_var(POCKET_IC_BIN, binary_path);
+                return true;
+            }
 
-        target_dir.pop();
+            // Server binary not found. Let's download it.
+            let mut target_dir = env::var(POCKET_IC_BIN)
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| default_pocket_ic_server_binary_path());
 
-        let binary_path = download_binary(target_dir);
-        env::set_var("POCKET_IC_BIN", binary_path);
+            target_dir.pop();
 
-        true
-    });
+            let binary_path = download_binary(target_dir).await;
+            env::set_var(POCKET_IC_BIN, binary_path);
 
-    if !*INITIALIZATION_STATUS {
+            true
+        })
+        .await;
+
+    if !status {
         panic!("pocket-ic is not initialized");
     }
 
-    create_pocket_ic_client()
+    create_pocket_ic_client().await
 }
 
-pub fn create_pocket_ic_client() -> PocketIc {
-    // Adding nns allows using root key of the instance
-    // while test speed doesn't seem to be affected
-    let config = SubnetConfigSet {
-        nns: true,
-        sns: true,
-        application: 1,
-        ..Default::default()
-    };
-    PocketIc::from_config(config)
+async fn create_pocket_ic_client() -> PocketIc {
+    // We create a PocketIC instance consisting of the NNS and one application subnet.
+    // With no II subnet, there's no subnet with ECDSA keys.
+    PocketIcBuilder::new()
+        .with_nns_subnet()
+        .with_ii_subnet()
+        .with_application_subnet()
+        .build_async()
+        .await
 }
 
 fn default_pocket_ic_server_dir() -> PathBuf {
@@ -92,7 +94,7 @@ fn check_default_pocket_ic_binary_exist() -> Option<PathBuf> {
     path.exists().then_some(path)
 }
 
-fn download_binary(pocket_ic_dir: PathBuf) -> PathBuf {
+async fn download_binary(pocket_ic_dir: PathBuf) -> PathBuf {
     let platform = match env::consts::OS {
         "linux" => "linux",
         "macos" => "darwin",
@@ -105,16 +107,18 @@ fn download_binary(pocket_ic_dir: PathBuf) -> PathBuf {
     let gz_binary = {
         info!("downloading pocket-ic server binary from: {download_url}");
 
-        let response = reqwest::blocking::Client::builder()
+        let response = reqwest::Client::builder()
             .timeout(Duration::from_secs(120))
             .build()
             .unwrap()
             .get(download_url)
             .send()
+            .await
             .unwrap();
 
         response
             .bytes()
+            .await
             .expect("pocket-ic server binary should be downloaded correctly")
     };
 
@@ -147,7 +151,12 @@ fn download_binary(pocket_ic_dir: PathBuf) -> PathBuf {
     binary_file_path
 }
 
-#[test]
-fn should_initialize_pocket_ic() {
-    init_pocket_ic();
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn should_initialize_pocket_ic() {
+        init_pocket_ic().await;
+    }
 }

@@ -1,39 +1,27 @@
-use super::with_pocket_ic_context;
+use super::new_test_context;
 
-#[test]
-fn should_init_tx_cell() {
-    with_pocket_ic_context(|ctx| {
-        assert_eq!(ctx.get_tx_from_cell()?.from, 0);
-
-        Ok(())
-    })
-    .unwrap();
+#[tokio::test]
+async fn should_init_tx_cell() {
+    let ctx = new_test_context().await;
+    assert_eq!(ctx.get_tx_from_cell().await.unwrap().from, 0);
 }
 
-#[test]
-fn should_push_tx_to_cell() {
-    with_pocket_ic_context(|ctx| {
-        ctx.insert_tx_to_cell(1, 1, 10)?;
+#[tokio::test]
+async fn should_push_tx_to_cell() {
+    let ctx = new_test_context().await;
+    ctx.insert_tx_to_cell(1, 1, 10).await.unwrap();
 
-        assert_eq!(ctx.get_tx_from_cell()?.from, 1);
-
-        Ok(())
-    })
-    .unwrap();
+    assert_eq!(ctx.get_tx_from_cell().await.unwrap().from, 1);
 }
 
-#[test]
-fn should_persist_cell_tx_after_upgrade() {
-    with_pocket_ic_context(|ctx| {
-        ctx.insert_tx_to_cell(1, 1, 10)?;
+#[tokio::test]
+async fn should_persist_cell_tx_after_upgrade() {
+    let ctx = new_test_context().await;
+    ctx.insert_tx_to_cell(1, 1, 10).await.unwrap();
 
-        assert_eq!(ctx.get_tx_from_cell()?.from, 1);
+    assert_eq!(ctx.get_tx_from_cell().await.unwrap().from, 1);
 
-        super::upgrade_dummy_canister(ctx)?;
+    super::upgrade_dummy_canister(&ctx).await.unwrap();
 
-        assert_eq!(ctx.get_tx_from_cell()?.from, 1);
-
-        Ok(())
-    })
-    .unwrap();
+    assert_eq!(ctx.get_tx_from_cell().await.unwrap().from, 1);
 }

@@ -29,18 +29,23 @@ jobs:
       - name: machine setup
         run: |
           cargo install ic-wasm
+
       - name: rustfmt
         run: |
           cargo fmt --all --check
+
       - name: clippy
         run: |
           cargo clippy --all-features --all-targets -- -D warnings
+
       - name: build
         run: |
           ./scripts/build.sh
+
       - name: test
         run: |
           ./scripts/test.sh
+          
       - name: test i686-unknown-linux-gnu
         run: |
           sudo apt install gcc-multilib

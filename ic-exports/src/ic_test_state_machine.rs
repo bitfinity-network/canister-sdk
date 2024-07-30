@@ -6,7 +6,7 @@ use std::time::Duration;
 use flate2::read::GzDecoder;
 pub use ic_test_state_machine_client::*;
 use log::*;
-use once_cell::sync::OnceCell;
+use tokio::sync::OnceCell;
 
 pub const IC_STATE_MACHINE_BINARY_HASH: &str = "48da85ee6c03e8c15f3e90b21bf9ccae7b753ee6";
 
@@ -18,12 +18,14 @@ pub const IC_STATE_MACHINE_BINARY_HASH: &str = "48da85ee6c03e8c15f3e90b21bf9ccae
 ///
 /// The search_path variable is the folder where to search for the binary
 /// or to download it if not present
-pub fn get_ic_test_state_machine_client_path(search_path: &str) -> String {
-    static FILES: OnceCell<String> = OnceCell::new();
-    FILES.get_or_init(|| download_binary(search_path)).clone()
+pub async fn get_ic_test_state_machine_client_path(search_path: &str) -> &str {
+    static FILES: OnceCell<String> = OnceCell::const_new();
+    FILES
+        .get_or_init(|| async { download_binary(search_path).await })
+        .await
 }
 
-fn download_binary(base_path: &str) -> String {
+async fn download_binary(base_path: &str) -> String {
     let platform = match std::env::consts::OS {
         "linux" => "linux",
         "macos" => "darwin",
@@ -46,12 +48,13 @@ fn download_binary(base_path: &str) -> String {
                 "ic-test-state-machine binarey not found, downloading binary from: {download_url}"
             );
 
-            let response = reqwest::blocking::Client::builder()
+            let response = reqwest::Client::builder()
                 .timeout(Duration::from_secs(120))
                 .build()
                 .unwrap()
                 .get(download_url)
                 .send()
+                .await
                 .unwrap();
 
             create_dir_all(dest_dir_path).unwrap();
@@ -60,7 +63,7 @@ fn download_binary(base_path: &str) -> String {
                 Err(why) => panic!("couldn't create {}", why),
                 Ok(file) => file,
             };
-            let content = response.bytes().unwrap();
+            let content = response.bytes().await.unwrap();
             info!("ic-test-state-machine.gz file length: {}", content.len());
             file.write_all(&content).unwrap();
             file.flush().unwrap();
@@ -95,8 +98,14 @@ fn download_binary(base_path: &str) -> String {
     output_dest_file_path
 }
 
-#[test]
-fn should_get_ic_test_state_machine_client_path() {
-    let path = get_ic_test_state_machine_client_path("../target");
-    assert!(Path::new(&path).exists())
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[tokio::test]
+    async fn should_get_ic_test_state_machine_client_path() {
+        let path = get_ic_test_state_machine_client_path("../target").await;
+        assert!(Path::new(&path).exists())
+    }
 }

@@ -1,39 +1,28 @@
-use super::with_pocket_ic_context;
+use super::new_test_context;
 
-#[test]
-fn should_init_tx_btreemap() {
-    with_pocket_ic_context(|ctx| {
-        assert!(ctx.get_tx_from_btreemap(0)?.is_some());
-
-        Ok(())
-    })
-    .unwrap();
+#[tokio::test]
+async fn should_init_tx_btreemap() {
+    let ctx = new_test_context().await;
+    assert!(ctx.get_tx_from_btreemap(0).await.unwrap().is_some());
 }
 
-#[test]
-fn should_push_tx_to_btreemap() {
-    with_pocket_ic_context(|ctx| {
-        ctx.insert_tx_to_btreemap(1, 1, 10)?;
+#[tokio::test]
+async fn should_push_tx_to_btreemap() {
+    let ctx = new_test_context().await;
+    ctx.insert_tx_to_btreemap(1, 1, 10).await.unwrap();
 
-        assert!(ctx.get_tx_from_btreemap(1).unwrap().is_some());
-
-        Ok(())
-    })
-    .unwrap();
+    assert!(ctx.get_tx_from_btreemap(1).await.unwrap().is_some());
 }
 
-#[test]
-fn should_persist_btreemap_tx_after_upgrade() {
-    with_pocket_ic_context(|ctx| {
-        ctx.insert_tx_to_btreemap(1, 1, 10)?;
+#[tokio::test]
+async fn should_persist_btreemap_tx_after_upgrade() {
+    let ctx = new_test_context().await;
 
-        assert!(ctx.get_tx_from_btreemap(1)?.is_some());
+    ctx.insert_tx_to_btreemap(1, 1, 10).await.unwrap();
 
-        super::upgrade_dummy_canister(ctx)?;
+    assert!(ctx.get_tx_from_btreemap(1).await.unwrap().is_some());
 
-        assert!(ctx.get_tx_from_btreemap(1)?.is_some());
+    super::upgrade_dummy_canister(&ctx).await.unwrap();
 
-        Ok(())
-    })
-    .unwrap();
+    assert!(ctx.get_tx_from_btreemap(1).await.unwrap().is_some());
 }

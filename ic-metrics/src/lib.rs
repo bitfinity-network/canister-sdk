@@ -133,7 +133,7 @@ fn curr_values() -> MetricsData {
         stable_memory_size: {
             #[cfg(target_family = "wasm")]
             {
-                ic_exports::ic_cdk::api::stable::stable64_size()
+                ic_exports::ic_cdk::api::stable::stable_size()
             }
             #[cfg(not(target_family = "wasm"))]
             {
