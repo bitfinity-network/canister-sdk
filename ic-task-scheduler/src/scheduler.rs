@@ -226,7 +226,7 @@ where
         let mut lock = self.task_id_sequence.lock();
         let id = *lock.get();
         lock.set(id + 1)
-            .expect("Unable to access the stable storage to set the next poll id");
+            .expect("Unable to access the stable storage to set the next task id");
         id
     }
 
