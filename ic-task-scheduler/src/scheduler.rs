@@ -42,6 +42,8 @@ where
     S: 'static + CellStructure<u64>,
 {
     /// Create a new scheduler.
+    /// The sequence is used to generate the next task id. The caller is responsible for ensuring
+    /// that the sequence starts from an initial value that is not used by any task.
     pub fn new(pending_tasks: P, task_id_sequence: S) -> Self {
         Self {
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
