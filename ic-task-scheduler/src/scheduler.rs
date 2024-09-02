@@ -22,7 +22,7 @@ where
     P: 'static
         + IterableSortedMapStructure<u64, InnerScheduledTask<T>>
         + BTreeMapStructure<u64, InnerScheduledTask<T>>,
-    S: 'static + CellStructure<u64>
+    S: 'static + CellStructure<u64>,
 {
     pending_tasks: Arc<Mutex<P>>,
     phantom: std::marker::PhantomData<T>,
@@ -39,7 +39,7 @@ where
     P: 'static
         + IterableSortedMapStructure<u64, InnerScheduledTask<T>>
         + BTreeMapStructure<u64, InnerScheduledTask<T>>,
-    S: 'static + CellStructure<u64>
+    S: 'static + CellStructure<u64>,
 {
     /// Create a new scheduler.
     pub fn new(pending_tasks: P, task_id_sequence: S) -> Self {
@@ -269,7 +269,7 @@ where
     P: 'static
         + IterableSortedMapStructure<u64, InnerScheduledTask<T>>
         + BTreeMapStructure<u64, InnerScheduledTask<T>>,
-        S: 'static + CellStructure<u64>
+    S: 'static + CellStructure<u64>,
 {
     fn clone(&self) -> Self {
         Self {
@@ -290,7 +290,7 @@ where
     P: 'static
         + IterableSortedMapStructure<u64, InnerScheduledTask<T>>
         + BTreeMapStructure<u64, InnerScheduledTask<T>>,
-    S: 'static + CellStructure<u64>
+    S: 'static + CellStructure<u64>,
 {
     fn append_task(&self, task: ScheduledTask<T>) -> u64 {
         let time_secs = time_secs();
@@ -1274,8 +1274,8 @@ mod test {
                 .run_until(async move {
                     let map: StableBTreeMap<u64, InnerScheduledTask<SucceedingTask>, _> =
                         StableBTreeMap::new(VectorMemory::default());
-                        let sequence = StableCell::new(VectorMemory::default(), 0).unwrap();
-                        let scheduler = Scheduler::new(map, sequence);
+                    let sequence = StableCell::new(VectorMemory::default(), 0).unwrap();
+                    let scheduler = Scheduler::new(map, sequence);
 
                     scheduler.reschedule(42, TaskOptions::new());
                 })
@@ -1340,7 +1340,7 @@ mod test {
         fn finding_id_by_task_returns_correct_id() {
             let map = StableBTreeMap::new(VectorMemory::default());
             let sequence = StableCell::new(VectorMemory::default(), 0).unwrap();
-                    let scheduler = Scheduler::new(map, sequence);
+            let scheduler = Scheduler::new(map, sequence);
             for id in 0..10 {
                 let id_in_scheduler =
                     scheduler.append_task((SimpleTask::StepOne { id }, TaskOptions::new()).into());
@@ -1357,7 +1357,7 @@ mod test {
         fn finding_id_by_task_returns_none_if_not_found() {
             let map = StableBTreeMap::new(VectorMemory::default());
             let sequence = StableCell::new(VectorMemory::default(), 0).unwrap();
-                    let scheduler = Scheduler::new(map, sequence);
+            let scheduler = Scheduler::new(map, sequence);
             for id in 0..10 {
                 let id_in_scheduler =
                     scheduler.append_task((SimpleTask::StepOne { id }, TaskOptions::new()).into());
