@@ -26,35 +26,35 @@ impl PocketIcTestContext {
         self.canister_client.client()
     }
 
-    pub async fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<DummyTask>> {
+    pub async fn get_task(&self, task_id: u64) -> Option<InnerScheduledTask<DummyTask>> {
         self.canister_client
             .query("get_task", (task_id,))
             .await
             .unwrap()
     }
 
-    pub async fn completed_tasks(&self) -> Vec<u32> {
+    pub async fn completed_tasks(&self) -> Vec<u64> {
         self.canister_client
             .query("completed_tasks", ())
             .await
             .unwrap()
     }
 
-    pub async fn panicked_tasks(&self) -> Vec<u32> {
+    pub async fn panicked_tasks(&self) -> Vec<u64> {
         self.canister_client
             .query("panicked_tasks", ())
             .await
             .unwrap()
     }
 
-    pub async fn failed_tasks(&self) -> Vec<u32> {
+    pub async fn failed_tasks(&self) -> Vec<u64> {
         self.canister_client
             .query("failed_tasks", ())
             .await
             .unwrap()
     }
 
-    pub async fn schedule_tasks(&self, tasks: Vec<DummyTask>) -> Vec<u32> {
+    pub async fn schedule_tasks(&self, tasks: Vec<DummyTask>) -> Vec<u64> {
         self.canister_client
             .update("schedule_tasks", (tasks,))
             .await
