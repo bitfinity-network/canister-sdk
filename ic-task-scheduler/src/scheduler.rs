@@ -326,7 +326,7 @@ where
         let mut keys = Vec::with_capacity(tasks.len());
         for task in tasks {
             keys.push(self.append_task(task));
-        }        
+        }
         keys
     }
 
@@ -1364,7 +1364,7 @@ mod test {
             let map = StableBTreeMap::new(VectorMemory::default());
             let sequence = StableCell::new(VectorMemory::default(), base_task_id).unwrap();
             let scheduler = Scheduler::new(map, sequence);
-            
+
             for id in base_task_id..(base_task_id + 10) {
                 let id_in_scheduler =
                     scheduler.append_task((SimpleTask::StepOne { id }, TaskOptions::new()).into());
