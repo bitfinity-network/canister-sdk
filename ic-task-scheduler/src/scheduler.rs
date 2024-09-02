@@ -43,7 +43,7 @@ where
 {
     /// Create a new scheduler.
     /// The sequence is used to generate the next task id. The caller is responsible for ensuring
-    /// that the sequence starts from an initial value that is not used by any task.
+    /// that the sequence starts from an initial value that is not used by any existing pending task.
     pub fn new(pending_tasks: P, task_id_sequence: S) -> Self {
         Self {
             pending_tasks: Arc::new(Mutex::new(pending_tasks)),
