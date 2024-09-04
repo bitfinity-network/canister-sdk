@@ -25,7 +25,7 @@ impl IcCanisterClient {
         R: DeserializeOwned + CandidType,
     {
         let call_result: Result<(R,), _> =
-        ic_exports::ic_cdk::call(self.canister_id, method, args).await;
+            ic_exports::ic_cdk::call(self.canister_id, method, args).await;
         call_result
             .map(|(r,)| r)
             .map_err(CanisterClientError::CanisterError)
