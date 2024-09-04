@@ -56,7 +56,7 @@ impl<T: Task> From<(T, TaskOptions)> for ScheduledTask<T> {
 
 #[derive(CandidType, Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct InnerScheduledTask<T: Task> {
-    pub(crate) id: u32,
+    pub(crate) id: u64,
     pub(crate) task: T,
     pub(crate) options: TaskOptions,
     pub(crate) status: TaskStatus,
@@ -64,7 +64,7 @@ pub struct InnerScheduledTask<T: Task> {
 
 impl<T: Task> InnerScheduledTask<T> {
     /// Creates a new InnerScheduledTask with the given status
-    pub fn with_status(id: u32, task: ScheduledTask<T>, status: TaskStatus) -> Self {
+    pub fn with_status(id: u64, task: ScheduledTask<T>, status: TaskStatus) -> Self {
         Self {
             id,
             task: task.task,
@@ -89,7 +89,7 @@ impl<T: Task> InnerScheduledTask<T> {
     }
 
     /// Returs the task id
-    pub fn id(&self) -> u32 {
+    pub fn id(&self) -> u64 {
         self.id
     }
 }

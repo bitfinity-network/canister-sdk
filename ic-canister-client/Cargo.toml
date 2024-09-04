@@ -16,7 +16,6 @@ state-machine-tests-client = ["dep:tokio", "ic-exports/ic-test-state-machine"]
 async-trait = { workspace = true }
 candid = { workspace = true }
 ic-agent = { workspace = true, optional = true }
-ic-canister = { path = "../ic-canister/ic-canister" }
 ic-exports = { path = "../ic-exports" }
 serde = { workspace = true }
 thiserror = { workspace = true }

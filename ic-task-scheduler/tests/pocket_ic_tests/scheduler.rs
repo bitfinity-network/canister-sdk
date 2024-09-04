@@ -46,7 +46,7 @@ async fn test_should_remove_panicking_task() {
 
     let task_ids = test_ctx.schedule_tasks(tasks.clone()).await;
 
-    let tasks_map: BTreeMap<u32, DummyTask> = task_ids
+    let tasks_map: BTreeMap<u64, DummyTask> = task_ids
         .into_iter()
         .enumerate()
         .map(|(id, key)| (key, tasks[id]))
@@ -76,7 +76,7 @@ async fn test_should_remove_panicking_task() {
     compare(failed_tasks, &tasks_map, DummyTask::FailTask);
 }
 
-fn compare(mut found: Vec<u32>, tasks_map: &BTreeMap<u32, DummyTask>, expected_task: DummyTask) {
+fn compare(mut found: Vec<u64>, tasks_map: &BTreeMap<u64, DummyTask>, expected_task: DummyTask) {
     let mut expected = tasks_map
         .iter()
         .filter(|(_, task)| task == &&expected_task)

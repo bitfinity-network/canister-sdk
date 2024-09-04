@@ -6,14 +6,15 @@ use std::time::Duration;
 use candid::{CandidType, Principal};
 use ic_canister::{generate_idl, init, post_upgrade, query, update, Canister, Idl, PreUpdate};
 use ic_stable_structures::stable_structures::DefaultMemoryImpl;
-use ic_stable_structures::{IcMemoryManager, MemoryId, StableBTreeMap, VirtualMemory};
+use ic_stable_structures::{IcMemoryManager, MemoryId, StableBTreeMap, StableCell, VirtualMemory};
 use ic_task_scheduler::scheduler::{Scheduler, TaskScheduler};
 use ic_task_scheduler::task::{InnerScheduledTask, ScheduledTask, Task, TaskStatus};
 use ic_task_scheduler::SchedulerError;
 use serde::{Deserialize, Serialize};
 
-type Storage = StableBTreeMap<u32, InnerScheduledTask<DummyTask>, VirtualMemory<DefaultMemoryImpl>>;
-type PanickingScheduler = Scheduler<DummyTask, Storage>;
+type Storage = StableBTreeMap<u64, InnerScheduledTask<DummyTask>, VirtualMemory<DefaultMemoryImpl>>;
+type Sequence = StableCell<u64, VirtualMemory<DefaultMemoryImpl>>;
+type PanickingScheduler = Scheduler<DummyTask, Storage, Sequence>;
 
 const SCHEDULER_STORAGE_MEMORY_ID: MemoryId = MemoryId::new(1);
 
@@ -22,9 +23,11 @@ thread_local! {
 
     static SCHEDULER: RefCell<PanickingScheduler> = {
         let map: Storage = Storage::new(MEMORY_MANAGER.with(|mm| mm.get(SCHEDULER_STORAGE_MEMORY_ID)));
+        let sequence: Sequence = Sequence::new(MEMORY_MANAGER.with(|mm| mm.get(SCHEDULER_STORAGE_MEMORY_ID)), 0).expect("sequence");
 
         let mut scheduler = PanickingScheduler::new(
             map,
+            sequence,
         );
 
         scheduler.set_running_task_timeout(30);
@@ -33,9 +36,9 @@ thread_local! {
         RefCell::new(scheduler)
     };
 
-    static COMPLETED_TASKS: RefCell<Vec<u32>> = const { RefCell::new(vec![]) };
-    static FAILED_TASKS: RefCell<Vec<u32>> = const { RefCell::new(vec![]) };
-    static PANICKED_TASKS : RefCell<Vec<u32>> = const { RefCell::new(vec![]) };
+    static COMPLETED_TASKS: RefCell<Vec<u64>> = const { RefCell::new(vec![]) };
+    static FAILED_TASKS: RefCell<Vec<u64>> = const { RefCell::new(vec![]) };
+    static PANICKED_TASKS : RefCell<Vec<u64>> = const { RefCell::new(vec![]) };
 
     static PRINCIPAL : RefCell<Principal> = const { RefCell::new(Principal::anonymous()) };
 
@@ -101,28 +104,28 @@ impl DummyCanister {
     }
 
     #[query]
-    pub fn panicked_tasks(&self) -> Vec<u32> {
+    pub fn panicked_tasks(&self) -> Vec<u64> {
         PANICKED_TASKS.with_borrow(|tasks| tasks.clone())
     }
 
     #[query]
-    pub fn completed_tasks(&self) -> Vec<u32> {
+    pub fn completed_tasks(&self) -> Vec<u64> {
         COMPLETED_TASKS.with_borrow(|tasks| tasks.clone())
     }
 
     #[query]
-    pub fn failed_tasks(&self) -> Vec<u32> {
+    pub fn failed_tasks(&self) -> Vec<u64> {
         FAILED_TASKS.with_borrow(|tasks| tasks.clone())
     }
 
     #[query]
-    pub fn get_task(&self, task_id: u32) -> Option<InnerScheduledTask<DummyTask>> {
+    pub fn get_task(&self, task_id: u64) -> Option<InnerScheduledTask<DummyTask>> {
         let scheduler = SCHEDULER.with_borrow(|scheduler| scheduler.clone());
         scheduler.get_task(task_id)
     }
 
     #[update]
-    pub fn schedule_tasks(&self, tasks: Vec<DummyTask>) -> Vec<u32> {
+    pub fn schedule_tasks(&self, tasks: Vec<DummyTask>) -> Vec<u64> {
         let scheduler = SCHEDULER.with_borrow(|scheduler| scheduler.clone());
         let scheduled_tasks = tasks.into_iter().map(ScheduledTask::new).collect();
         scheduler.append_tasks(scheduled_tasks)
