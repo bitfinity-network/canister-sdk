@@ -1,6 +1,5 @@
 use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Principal};
-use ic_canister::virtual_canister_call;
 use serde::de::DeserializeOwned;
 
 use crate::client::CanisterClient;
@@ -25,8 +24,10 @@ impl IcCanisterClient {
         T: ArgumentEncoder + Send,
         R: DeserializeOwned + CandidType,
     {
-        virtual_canister_call!(self.canister_id, method, args, R)
-            .await
+        let call_result: Result<(R,), _> =
+        ic_exports::ic_cdk::call(self.canister_id, method, args).await;
+        call_result
+            .map(|(r,)| r)
             .map_err(CanisterClientError::CanisterError)
     }
 }
