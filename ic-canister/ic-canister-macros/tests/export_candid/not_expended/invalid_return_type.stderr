@@ -1,0 +1,5 @@
+error: `#[export_candid]` function must return `String`
+ --> tests/export_candid/not_expended/invalid_return_type.rs:4:13
+  |
+4 | fn did() -> () {}
+  |             ^^

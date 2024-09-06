@@ -73,6 +73,7 @@ syn = "2.0"
 tempfile = "3.6"
 thiserror = "1.0"
 tokio = "1.0"
+trybuild = "1.0"
 
 # IC dependencies
 candid = "0.10"

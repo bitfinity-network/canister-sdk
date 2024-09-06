@@ -3,6 +3,7 @@ use proc_macro::TokenStream;
 mod api;
 mod canister_call;
 mod derive;
+mod export_candid;
 
 /// Makes an inter-canister call. This macro takes two inputs: the canister method invocation,
 /// and the expected return type. The result type of invocation is `async CallResult`:
@@ -158,6 +159,22 @@ pub fn generate_idl(_: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn generate_exports(input: TokenStream) -> TokenStream {
     api::generate_exports(input)
+}
+
+/// Allows `candid-extractor` tool to get Candid definition of the canister
+///
+/// This attribute macro can be used on any function returning a `String` value, and will return
+/// this value when called by `candid-extractor` on your canister wasm. This means that you can
+/// provide the Candid definition by hand, or generate it by the canister code.
+///
+/// # Details
+///
+/// This macro creates a function named `get_candid_pointer` in the scope of the function that uses
+/// the attribute, and exports it for dynamic linking. Then `candid-extractor` runs the `wasm` code
+/// and calls the method to get the candid definition.
+#[proc_macro_attribute]
+pub fn export_candid(attr: TokenStream, item: TokenStream) -> TokenStream {
+    export_candid::export_candid(attr, item)
 }
 
 /// Derives [Canister] trait for a struct.

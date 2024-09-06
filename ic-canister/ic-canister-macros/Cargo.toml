@@ -14,5 +14,8 @@ serde = { workspace = true }
 serde_tokenstream = { workspace = true }
 syn = { workspace = true, features = ["extra-traits"] }
 
+[dev-dependencies]
+trybuild = { workspace = true }
+
 [package.metadata.cargo-udeps.ignore]
 ic-exports = { path = "../../ic-exports" }

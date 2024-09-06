@@ -8,4 +8,5 @@ ic-canister-macros = { path = "../ic-canister-macros" }
 ic-exports = { path = "../../ic-exports" }
 
 [dev-dependencies]
+candid = { workspace = true }
 serde = { workspace = true }
