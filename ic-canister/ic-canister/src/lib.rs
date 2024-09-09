@@ -511,8 +511,41 @@
 //!
 //! # Generating idl
 //!
-//! You can generate IDL (Candid) definition for your canister using [generate_idl] macro and then compile it via `candid::bindings::candid::compile()`.
-
+//! You can generate IDL (Candid) definition for your canister using [generate_idl] macro and then
+//! compile it via `candid::bindings::candid::compile()`.
+//!
+//! To use `candid-extractor` tool to get the idl from canister `.wasm` file, add a
+//! [`#[export_candid]`](export_candid) method in your `lib.rs`.
+//!
+//! ```
+//! use candid::Principal;
+//! use ic_canister::{Canister, PreUpdate, query, generate_idl, export_candid, Idl};
+//!
+//! #[derive(Clone, Canister)]
+//! struct MyCanister {
+//!     #[id]
+//!     principal: Principal,
+//! }
+//!
+//! impl MyCanister {
+//!     #[query]
+//!     fn hello(&self) -> String {
+//!         "Hello IC".into()
+//!     }
+//!
+//!     fn idl() -> Idl {
+//!         generate_idl!()
+//!     }
+//! }
+//!
+//! impl PreUpdate for MyCanister {}
+//!
+//! #[export_candid]
+//! fn export_candid() -> String {
+//!     let idl = MyCanister::idl();
+//!     candid::pretty::candid::compile(&idl.env.env, &Some(idl.actor))
+//! }
+//! ```
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::future::Future;

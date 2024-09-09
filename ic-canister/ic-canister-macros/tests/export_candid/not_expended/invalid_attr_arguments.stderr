@@ -1,0 +1,5 @@
+error: unexpected attribute argument
+ --> tests/export_candid/not_expended/invalid_attr_arguments.rs:3:37
+  |
+3 | #[ic_canister_macros::export_candid(attribute)]
+  |                                     ^^^^^^^^^
