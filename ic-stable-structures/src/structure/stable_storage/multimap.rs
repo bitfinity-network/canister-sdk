@@ -28,7 +28,6 @@ where
     pub fn iter_upper_bound(&self, key: &(K1, K2)) -> StableMultimapIter<'_, K1, K2, V, M> {
         StableMultimapIter::new(self.0.iter_upper_bound(key))
     }
-    
 }
 
 impl<K1, K2, V, M> MultimapStructure<K1, K2, V> for StableMultimap<K1, K2, V, M>
