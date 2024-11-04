@@ -90,13 +90,13 @@ where
 
     fn pop_first(&mut self) -> Option<((K1, K2), V)> {
         let res = self.inner.pop_first()?;
-        self.cache.remove(&(res.0.0.clone(), res.0.1.clone()));
+        self.cache.remove(&(res.0 .0.clone(), res.0 .1.clone()));
         Some(res)
     }
 
     fn pop_last(&mut self) -> Option<((K1, K2), V)> {
         let res = self.inner.pop_last()?;
-        self.cache.remove(&(res.0.0.clone(), res.0.1.clone()));
+        self.cache.remove(&(res.0 .0.clone(), res.0 .1.clone()));
         Some(res)
     }
 
