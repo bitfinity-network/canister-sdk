@@ -127,6 +127,12 @@ pub trait MultimapStructure<K1, K2, V> {
     ///   - `first_key.to_bytes().len() <= K1::MAX_SIZE`
     fn remove_partial(&mut self, first_key: &K1) -> bool;
 
+    /// Removes and returns the first element in the map. The key of this element is the minimum key that was in the map
+    fn pop_first(&mut self) -> Option<((K1, K2), V)>;
+
+    /// Removes and returns the last element in the map. The key of this element is the maximum key that was in the map
+    fn pop_last(&mut self) -> Option<((K1, K2), V)>;
+
     /// Items count.
     fn len(&self) -> usize;
 

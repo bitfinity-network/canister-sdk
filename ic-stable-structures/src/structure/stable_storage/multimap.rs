@@ -68,6 +68,14 @@ where
         found
     }
 
+    fn pop_first(&mut self) -> Option<((K1, K2), V)> {
+        self.0.pop_first()
+    }
+
+    fn pop_last(&mut self) -> Option<((K1, K2), V)> {
+        self.0.pop_last()
+    }
+
     fn len(&self) -> usize {
         self.0.len() as usize
     }
@@ -419,5 +427,35 @@ mod test {
         assert_eq!(map.remove(&1, &0), Some(10));
         assert_eq!(map.iter().next(), Some((1, 1, 20)));
         assert_eq!(map.len(), 1);
+    }
+
+    #[test]
+    fn test_pop_first() {
+        let mut map = StableMultimap::new(VectorMemory::default());
+        map.insert(&1u64, &1u64, Array([1u8, 1]));
+        map.insert(&1, &2, Array([2u8, 1]));
+        map.insert(&3, &1, Array([3u8, 1]));
+
+        assert_eq!(map.pop_first(), Some(((1, 1), Array([1u8, 1]))));
+        assert_eq!(map.pop_first(), Some(((1, 2), Array([2u8, 1]))));
+        assert_eq!(map.pop_first(), Some(((3, 1), Array([3u8, 1]))));
+        assert_eq!(map.pop_first(), None);
+
+        assert_eq!(map.len(), 0);
+    }
+
+    #[test]
+    fn test_pop_last() {
+        let mut map = StableMultimap::new(VectorMemory::default());
+        map.insert(&1u64, &1u64, Array([1u8, 1]));
+        map.insert(&1, &2, Array([2u8, 1]));
+        map.insert(&3, &1, Array([3u8, 1]));
+
+        assert_eq!(map.pop_last(), Some(((3, 1), Array([3u8, 1]))));
+        assert_eq!(map.pop_last(), Some(((1, 2), Array([2u8, 1]))));
+        assert_eq!(map.pop_last(), Some(((1, 1), Array([1u8, 1]))));
+        assert_eq!(map.pop_last(), None);
+
+        assert_eq!(map.len(), 0);
     }
 }
