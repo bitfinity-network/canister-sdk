@@ -89,19 +89,15 @@ where
     }
 
     fn pop_first(&mut self) -> Option<((K1, K2), V)> {
-        let res = self.inner.pop_first();
-        if let Some(((first_key, second_key), _)) = &res {
-            self.cache.remove(&(first_key.clone(), second_key.clone()));
-        }
-        res
+        let res = self.inner.pop_first()?;
+        self.cache.remove(&(res.0.0.clone(), res.0.1.clone()));
+        Some(res)
     }
 
     fn pop_last(&mut self) -> Option<((K1, K2), V)> {
-        let res = self.inner.pop_last();
-        if let Some(((first_key, second_key), _)) = &res {
-            self.cache.remove(&(first_key.clone(), second_key.clone()));
-        }
-        res
+        let res = self.inner.pop_last()?;
+        self.cache.remove(&(res.0.0.clone(), res.0.1.clone()));
+        Some(res)
     }
 
     fn len(&self) -> usize {
