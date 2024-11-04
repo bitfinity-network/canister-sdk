@@ -88,6 +88,22 @@ where
         self.inner.remove_partial(first_key)
     }
 
+    fn pop_first(&mut self) -> Option<((K1, K2), V)> {
+        let res = self.inner.pop_first();
+        if let Some(((first_key, second_key), _)) = &res {
+            self.cache.remove(&(first_key.clone(), second_key.clone()));
+        }
+        res
+    }
+
+    fn pop_last(&mut self) -> Option<((K1, K2), V)> {
+        let res = self.inner.pop_last();
+        if let Some(((first_key, second_key), _)) = &res {
+            self.cache.remove(&(first_key.clone(), second_key.clone()));
+        }
+        res
+    }
+
     fn len(&self) -> usize {
         self.inner.len()
     }
@@ -250,5 +266,45 @@ mod test {
         let mut iter = map.range(&3);
         assert_eq!(iter.next(), Some((1, Array([3u8, 1]))));
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_pop_first_and_last_from_cache() {
+        let cache_items = 10;
+
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
+            VectorMemory::default(),
+            cache_items,
+        );
+
+        for i in 0..10 {
+            map.insert(&i, &i, Array([i as u8, 1]));
+        }
+
+        assert_eq!(Some(((0, 0), Array([0u8, 1]))), map.pop_first());
+        assert_eq!(Some(((9, 9), Array([9u8, 1]))), map.pop_last());
+
+        assert_eq!(None, map.get(&0, &0));
+        assert_eq!(None, map.get(&9, &9));
+    }
+
+    #[test]
+    fn test_pop_first_and_last_not_cached() {
+        let cache_items = 10;
+
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
+            VectorMemory::default(),
+            cache_items,
+        );
+
+        for i in 0..cache_items * 3 {
+            map.insert(&i, &i, Array([i as u8, 1]));
+        }
+
+        assert_eq!(Some(((0, 0), Array([0u8, 1]))), map.pop_first());
+        assert_eq!(Some(((29, 29), Array([29u8, 1]))), map.pop_last());
+
+        assert_eq!(None, map.get(&0, &0));
+        assert_eq!(None, map.get(&29, &29));
     }
 }
