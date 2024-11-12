@@ -76,8 +76,8 @@ where
         self.0.pop_last()
     }
 
-    fn len(&self) -> usize {
-        self.0.len() as usize
+    fn len(&self) -> u64 {
+        self.0.len()
     }
 
     fn is_empty(&self) -> bool {

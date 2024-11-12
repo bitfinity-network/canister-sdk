@@ -199,7 +199,7 @@ impl Service {
 
     pub fn insert_tx_to_multimap(transaction: BoundedTransaction) -> u64 {
         TX_MULTIMAP.with(|storage| {
-            let new_key = storage.borrow().len() as u64;
+            let new_key = storage.borrow().len();
             storage
                 .borrow_mut()
                 .insert(&new_key, &(new_key + 1), transaction);

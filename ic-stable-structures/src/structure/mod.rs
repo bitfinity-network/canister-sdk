@@ -134,7 +134,7 @@ pub trait MultimapStructure<K1, K2, V> {
     fn pop_last(&mut self) -> Option<((K1, K2), V)>;
 
     /// Items count.
-    fn len(&self) -> usize;
+    fn len(&self) -> u64;
 
     /// Is map empty.
     fn is_empty(&self) -> bool;
