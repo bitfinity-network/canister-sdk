@@ -100,7 +100,7 @@ where
         Some(res)
     }
 
-    fn len(&self) -> usize {
+    fn len(&self) -> u64 {
         self.inner.len()
     }
 
