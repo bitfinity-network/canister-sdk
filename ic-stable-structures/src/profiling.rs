@@ -1,4 +1,7 @@
-use std::cell::{Ref, RefCell};
+use std::{
+    cell::{Ref, RefCell},
+    fmt,
+};
 
 use dfinity_stable_structures::Memory;
 
@@ -51,7 +54,7 @@ fn bytes_to_pages(offset: u64, bytes: u64) -> u64 {
     end_page - start_page
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct MemoryStats {
     pages_red: u64,
     pages_written: u64,
@@ -85,5 +88,21 @@ impl MemoryStats {
 
     pub fn get_grows(&self) -> &[u64] {
         &self.grows
+    }
+}
+
+impl fmt::Display for MemoryStats {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let max_grow = self.grows.iter().max().copied().unwrap_or_default();
+        let total_grow = self.grows.iter().sum::<u64>();
+        write!(
+            f,
+            "Pages red: {}, written: {}, accessed: {}, allocated: {}, max allocation: {}",
+            self.get_reads(),
+            self.get_writes(),
+            self.get_acesses(),
+            total_grow,
+            max_grow
+        )
     }
 }
