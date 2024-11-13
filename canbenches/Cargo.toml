@@ -1,0 +1,15 @@
+[package]
+name = "canbenches"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+candid = { workspace = true }
+ic-cdk = { workspace = true }
+ic-cdk-macros = { workspace = true }
+serde = { workspace = true }
+canbench-rs = { version = "0.1", optional = true }
+ic-stable-structures = { path = "../ic-stable-structures" }
+
+[lib]
+crate-type = ["cdylib"]

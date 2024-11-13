@@ -8,7 +8,7 @@ use ic_exports::ic_kit::ic;
 use ic_log::canister::inspect::logger_canister_inspect;
 use ic_log::canister::{LogCanister, LogState};
 use ic_log::did::LogCanisterSettings;
-use ic_stable_structures::stable_structures::DefaultMemoryImpl;
+use ic_stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{IcMemoryManager, MemoryId};
 use ic_storage::IcStorage;
 

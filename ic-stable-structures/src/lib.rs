@@ -8,7 +8,10 @@ mod memory_mapped_files;
 #[cfg(test)]
 mod test_utils;
 
-pub use dfinity_stable_structures as stable_structures;
+#[cfg(feature = "profiling")]
+mod profiling;
+
+use dfinity_stable_structures as stable_structures;
 pub use error::{Error, Result};
 pub use memory::*;
 #[cfg(feature = "memory-mapped-files-memory")]
@@ -19,3 +22,9 @@ pub use stable_structures::memory_manager::{
 pub use stable_structures::storable::Bound;
 pub use stable_structures::{FileMemory, Storable, VectorMemory};
 pub use structure::*;
+
+#[cfg(not(feature = "profiling"))]
+pub use stable_structures::DefaultMemoryImpl;
+
+#[cfg(feature = "profiling")]
+pub use profiling::{DefaultMemoryImpl, MemoryStats};

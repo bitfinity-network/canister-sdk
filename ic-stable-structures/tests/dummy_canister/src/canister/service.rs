@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use did::*;
-use ic_stable_structures::stable_structures::DefaultMemoryImpl;
+use ic_stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::*;
 
 const TX_UNBOUNDEDMAP_MEMORY_ID: MemoryId = MemoryId::new(1);

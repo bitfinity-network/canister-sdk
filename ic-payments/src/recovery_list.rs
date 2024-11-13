@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 
 use candid::Encode;
-use ic_stable_structures::stable_structures::storable::Bound;
-use ic_stable_structures::stable_structures::DefaultMemoryImpl;
+use ic_stable_structures::Bound;
+use ic_stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{
     BTreeMapStructure, IcMemoryManager, MemoryId, StableBTreeMap, Storable, VirtualMemory,
 };

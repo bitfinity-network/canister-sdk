@@ -1,7 +1,5 @@
-use dfinity_stable_structures::memory_manager::{
-    MemoryId, MemoryManager as IcMemoryManager, VirtualMemory,
-};
-use dfinity_stable_structures::{DefaultMemoryImpl, Memory};
+use crate::{DefaultMemoryImpl, IcMemoryManager, VirtualMemory};
+use dfinity_stable_structures::{memory_manager::MemoryId, Memory};
 
 /// A memory manager that can return multiple memories.
 pub trait MemoryManager<M: Memory, T> {

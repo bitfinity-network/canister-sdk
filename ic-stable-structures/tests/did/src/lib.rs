@@ -1,5 +1,5 @@
 use candid::{CandidType, Decode, Deserialize, Encode};
-use ic_stable_structures::stable_structures::storable::Bound;
+use ic_stable_structures::Bound;
 use ic_stable_structures::Storable;
 
 pub fn encode(item: &impl CandidType) -> Vec<u8> {

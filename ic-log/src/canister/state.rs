@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use candid::{Decode, Encode, Principal};
-use ic_stable_structures::stable_structures::DefaultMemoryImpl;
+use ic_stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{Bound, CellStructure, StableCell, Storable, VirtualMemory};
 use ic_storage::IcStorage;
 

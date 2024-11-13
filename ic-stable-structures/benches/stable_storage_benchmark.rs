@@ -50,8 +50,8 @@ mod types {
 
     use std::borrow::Cow;
 
-    use ic_stable_structures::stable_structures::storable::Bound;
-    use ic_stable_structures::stable_structures::Storable;
+    use ic_stable_structures::Bound;
+    use ic_stable_structures::Storable;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct StringValue(pub String);

@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use candid::{CandidType, Principal};
 use ic_canister::{generate_idl, init, post_upgrade, query, update, Canister, Idl, PreUpdate};
-use ic_stable_structures::stable_structures::DefaultMemoryImpl;
+use ic_stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{IcMemoryManager, MemoryId, StableBTreeMap, StableCell, VirtualMemory};
 use ic_task_scheduler::scheduler::{Scheduler, TaskScheduler};
 use ic_task_scheduler::task::{InnerScheduledTask, ScheduledTask, Task, TaskStatus};

@@ -25,7 +25,7 @@ members = [
     "ic-storage/ic-storage-derive",
     "ic-task-scheduler",
     "ic-task-scheduler/tests/dummy_scheduler_canister",
-    "ic-test-utils",
+    "ic-test-utils", "canbenches",
 ]
 
 [workspace.package]

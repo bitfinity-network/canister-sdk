@@ -77,7 +77,10 @@ where
     V: Storable,
     M: Memory,
 {
-    type Iterator<'a> = btreemap::Iter<'a, K, V, M> where Self: 'a;
+    type Iterator<'a>
+        = btreemap::Iter<'a, K, V, M>
+    where
+        Self: 'a;
 
     fn iter(&self) -> Self::Iterator<'_> {
         self.0.iter()
