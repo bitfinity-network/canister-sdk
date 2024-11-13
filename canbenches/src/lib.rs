@@ -1,16 +1,16 @@
 #[cfg(feature = "canbench-rs")]
 mod benches {
-    use std::cell::RefCell;
     use std::collections::HashMap;
+    use std::{cell::RefCell, rc::Rc};
 
-    use canbench_rs::bench;
+    use canbench_rs::{bench, set_user_data};
     use ic_stable_structures::{
-        default_ic_memory_manager, BTreeMapStructure, Bound, DefaultMemoryImpl, MemoryId,
-        StableBTreeMap, Storable, VirtualMemory,
+        default_ic_memory_manager, BTreeMapStructure, Bound, DefaultMemoryImpl, IcMemoryManager,
+        MemoryId, StableBTreeMap, Storable, VirtualMemory,
     };
 
     type Val = Vec<u8>;
-    type VMem = VirtualMemory<DefaultMemoryImpl>;
+    type VMem = VirtualMemory<Rc<DefaultMemoryImpl>>;
 
     #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
     struct Key([u8; 32]);
@@ -84,12 +84,27 @@ mod benches {
     const INITIAL_ENTRIES_NUMBER: usize = 200_000;
     const OPS_ENTRIES_NUMBER: usize = 100_000;
 
+    type MemoryManager = IcMemoryManager<Rc<DefaultMemoryImpl>>;
+
     thread_local! {
+        static MEMORY: Rc<DefaultMemoryImpl> = Rc::default();
         static HEAP_MAP: RefCell<HashMap<Key, Val>> = RefCell::new(HashMap::default());
         static STABLE_MAP: RefCell<StableBTreeMap<Key, Val, VMem>> = {
-            let mem = default_ic_memory_manager().get(STABLE_MAP_MEM_ID);
+            let mem = get_memory_manager().get(STABLE_MAP_MEM_ID);
             RefCell::new(StableBTreeMap::new(mem))
         };
+    }
+
+    fn get_memory_manager() -> MemoryManager {
+        IcMemoryManager::init(MEMORY.with(|m| m.clone()))
+    }
+
+    fn get_memory_access_report() -> String {
+        MEMORY.with(|m| m.stats().to_string())
+    }
+
+    fn reset_memory_accesses() {
+        MEMORY.with(|m| m.reset_stats())
     }
 
     fn key(n: u64) -> Key {
@@ -147,34 +162,45 @@ mod benches {
     fn bench_map(map: &mut impl Map) {
         {
             let _scope = canbench_rs::bench_scope("init");
+            reset_memory_accesses();
             init_map(map);
+            set_user_data(Some(get_memory_access_report()));
         }
 
         {
             let _scope = canbench_rs::bench_scope("get");
+            reset_memory_accesses();
             get_items(map);
+            set_user_data(Some(get_memory_access_report()));
         }
 
         {
             let _scope = canbench_rs::bench_scope("replace");
+            reset_memory_accesses();
             replace_items(map);
+            set_user_data(Some(get_memory_access_report()));
         }
 
         {
             let _scope = canbench_rs::bench_scope("remove");
+            reset_memory_accesses();
             remove_items(map);
+            set_user_data(Some(get_memory_access_report()));
         }
 
         {
             let _scope = canbench_rs::bench_scope("add");
+            reset_memory_accesses();
             add_items(map);
+            set_user_data(Some(get_memory_access_report()));
         }
+
+        set_user_data(None);
     }
 
     #[bench]
     fn bench_heap_map() {
-        ic_cdk::println!("HELLO");
-        HEAP_MAP.with(|map| bench_map(&mut *map.borrow_mut()))
+        HEAP_MAP.with(|map| bench_map(&mut *map.borrow_mut()));
     }
 
     #[bench]

@@ -8,8 +8,8 @@ candid = { workspace = true }
 ic-cdk = { workspace = true }
 ic-cdk-macros = { workspace = true }
 serde = { workspace = true }
-canbench-rs = { version = "0.1", optional = true }
-ic-stable-structures = { path = "../ic-stable-structures" }
+canbench-rs = { git = "https://github.com/F3kilo/canbench.git", optional = true }
+ic-stable-structures = { path = "../ic-stable-structures", features = ["profiling"] }
 
 [lib]
 crate-type = ["cdylib"]
