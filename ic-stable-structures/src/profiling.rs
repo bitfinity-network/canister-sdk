@@ -17,6 +17,10 @@ impl DefaultMemoryImpl {
     pub fn stats(&self) -> Ref<'_, MemoryStats> {
         self.stats.borrow()
     }
+
+    pub fn reset_stats(&self) {
+        self.stats.replace(MemoryStats::default());
+    }
 }
 
 impl Memory for DefaultMemoryImpl {
