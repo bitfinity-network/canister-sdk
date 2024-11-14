@@ -5,8 +5,8 @@ mod benches {
 
     use canbench_rs::{bench, set_user_data};
     use ic_stable_structures::{
-        default_ic_memory_manager, BTreeMapStructure, Bound, DefaultMemoryImpl, IcMemoryManager,
-        MemoryId, StableBTreeMap, Storable, VirtualMemory,
+        BTreeMapStructure, Bound, DefaultMemoryImpl, IcMemoryManager, MemoryId, StableBTreeMap,
+        Storable, VirtualMemory,
     };
 
     type Val = Vec<u8>;
@@ -34,6 +34,7 @@ mod benches {
         fn insert(&mut self, k: Key, v: Val);
         fn get(&self, k: &Key) -> Option<Val>;
         fn remove(&mut self, k: &Key) -> Option<Val>;
+        fn iterate(&self, limit: usize, act: impl FnMut(&Key, &Val));
     }
 
     impl Map for HashMap<Key, Val> {
@@ -47,6 +48,12 @@ mod benches {
 
         fn remove(&mut self, k: &Key) -> Option<Val> {
             HashMap::remove(self, k)
+        }
+
+        fn iterate(&self, limit: usize, mut act: impl FnMut(&Key, &Val)) {
+            for (k, v) in self.iter().take(limit) {
+                act(k, v)
+            }
         }
     }
 
@@ -62,6 +69,12 @@ mod benches {
         fn remove(&mut self, k: &Key) -> Option<Val> {
             BTreeMapStructure::remove(self, k)
         }
+
+        fn iterate(&self, limit: usize, mut act: impl FnMut(&Key, &Val)) {
+            for (k, v) in self.iter().take(limit) {
+                act(&k, &v)
+            }
+        }
     }
 
     impl<M: Map> Map for RefCell<M> {
@@ -75,6 +88,10 @@ mod benches {
 
         fn remove(&mut self, k: &Key) -> Option<Val> {
             self.borrow_mut().remove(k)
+        }
+
+        fn iterate(&self, limit: usize, act: impl FnMut(&Key, &Val)) {
+            self.borrow().iterate(limit, act);
         }
     }
 
@@ -159,6 +176,12 @@ mod benches {
         }
     }
 
+    fn iter_items(map: &mut impl Map) {
+        map.iterate(OPS_ENTRIES_NUMBER, |k, v| {
+            assert_eq!(k.0[0..8], v[0..8]); // required to prevent optimization
+        });
+    }
+
     fn bench_map(map: &mut impl Map) {
         {
             let _scope = canbench_rs::bench_scope("init");
@@ -178,6 +201,13 @@ mod benches {
             let _scope = canbench_rs::bench_scope("replace");
             reset_memory_accesses();
             replace_items(map);
+            set_user_data(Some(get_memory_access_report()));
+        }
+
+        {
+            let _scope = canbench_rs::bench_scope("iterate");
+            reset_memory_accesses();
+            iter_items(map);
             set_user_data(Some(get_memory_access_report()));
         }
 
