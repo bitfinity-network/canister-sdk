@@ -37,7 +37,7 @@
 //! #[update]
 //! fn collect_metrics(&mut self) {
 //!     let mut metrics = self.metrics.borrow_mut();
-//!     metrics.insert(Metrics { cycles: ic_kit::ic::balance() });
+//!     metrics.insert(Metrics { cycles: ic_kit::ic::balance128() });
 //! }
 //!
 //! #[query]
@@ -70,7 +70,7 @@ pub struct MetricsStorage {
 
 #[derive(CandidType, Deserialize, IcStorage, Default, Clone, Debug, PartialEq, Eq)]
 pub struct MetricsData {
-    pub cycles: u64,
+    pub cycles: u128,
     pub stable_memory_size: u64,
     pub heap_memory_size: u64,
 }
@@ -129,7 +129,7 @@ pub trait Metrics: Canister {
 
 fn curr_values() -> MetricsData {
     MetricsData {
-        cycles: ic_exports::ic_kit::ic::balance(),
+        cycles: ic_exports::ic_kit::ic::balance128(),
         stable_memory_size: {
             #[cfg(target_family = "wasm")]
             {
