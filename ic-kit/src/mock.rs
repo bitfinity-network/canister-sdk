@@ -819,8 +819,8 @@ mod tests {
         }
 
         /// An update method that returns the balance of the canister.
-        pub fn balance() -> u64 {
-            ic::balance()
+        pub fn balance() -> u128 {
+            ic::balance128()
         }
 
         /// An update method that returns the number of cycles provided by the user in the call.

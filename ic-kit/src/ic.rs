@@ -35,12 +35,6 @@ pub fn time() -> u64 {
 
 /// The balance of the canister.
 #[inline(always)]
-pub fn balance() -> u64 {
-    get_context().balance()
-}
-
-/// The balance of the canister.
-#[inline(always)]
 pub fn balance128() -> u128 {
     get_context().balance128()
 }

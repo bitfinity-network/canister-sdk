@@ -93,7 +93,7 @@ mod tests {
 
         let metrics_snapshot = metrics.map.into_iter().next().unwrap().1;
 
-        assert_eq!(metrics_snapshot.cycles, 1e+14 as u64);
+        assert_eq!(metrics_snapshot.cycles, 1e+14 as u128);
         assert_eq!(metrics_snapshot.stable_memory_size, 0);
     }
 }

@@ -147,7 +147,7 @@ impl AuctionState {
 
     fn get_fee_ratio(&self) -> f64 {
         let min_cycles = self.min_cycles as f64;
-        let current_cycles = ic::balance() as f64;
+        let current_cycles = ic::balance128() as f64;
         if min_cycles == 0.0 {
             // Setting min_cycles to zero effectively turns off the auction functionality, as all the
             // fees will go to the owner.
