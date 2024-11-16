@@ -19,6 +19,5 @@ anyhow = { workspace = true }
 candid = { workspace = true }
 ic-canister-client = { path = "../ic-canister-client", features = ["pocket-ic-client"]}
 ic-exports = { path = "../ic-exports", features = ["pocket-ic-tests"] }
-once_cell = { workspace = true }
 rand = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros", "time"] }
