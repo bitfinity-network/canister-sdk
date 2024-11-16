@@ -71,7 +71,7 @@ pub async fn get_agent(
     let agent = Agent::builder()
         .with_transport(transport)
         .with_identity(identity)
-        .with_ingress_expiry(Some(timeout))
+        .with_ingress_expiry(timeout)
         .build()?;
 
     agent.fetch_root_key().await?;
