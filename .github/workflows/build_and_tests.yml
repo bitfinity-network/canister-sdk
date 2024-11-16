@@ -29,9 +29,10 @@ jobs:
       - name: Install Just command runner
         uses: extractions/setup-just@v1
 
-      - name: machine setup
+      - name: install ic-wasm
         run: |
-          cargo install ic-wasm
+          wget https://github.com/dfinity/ic-wasm/releases/download/0.8.1/ic-wasm-linux64 -O /usr/local/bin/ic-wasm
+          chmod +x /usr/local/bin/ic-wasm
 
       - name: check rust code style
         run: |
@@ -42,12 +43,10 @@ jobs:
           just build
 
       - name: test
-        if: ${{ !inputs.skip-test }}
         run: |
           just test
 
       - name: 32bits test
-        if: ${{ !inputs.skip-test }}
         run: |
           sudo apt install gcc-multilib
           just test_i686
