@@ -7,14 +7,15 @@ clean:
   cargo clean
 
 
-# Builds the evm archiver
+# Builds all artifacts
 [group('build')]
-build_all: pre_build build_ic_stable_structures_dummy_canister build_ic_canister_test_canisters build_ic_task_scheduler_dummy_scheduler_canister build_ic_log_test_canister build_ic_payments_test_canister
+build: pre_build build_ic_stable_structures_dummy_canister build_ic_canister_test_canisters build_ic_task_scheduler_dummy_scheduler_canister build_ic_log_test_canister build_ic_payments_test_canister
 
 
 [private]
 pre_build: 
   mkdir -p "{{WASM_DIR}}"
+  
 
 [private]
 build_ic_stable_structures_dummy_canister:

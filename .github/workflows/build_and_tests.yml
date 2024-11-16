@@ -39,12 +39,12 @@ jobs:
 
       - name: build
         run: |
-          just build_all
+          just build
 
       - name: test
         if: ${{ !inputs.skip-test }}
         run: |
-          just test_all
+          just test
 
       - name: 32bits test
         if: ${{ !inputs.skip-test }}
