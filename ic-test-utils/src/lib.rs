@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use candid::utils::ArgumentEncoder;
 use candid::Principal;
-use ic_agent::agent::http_transport::ReqwestTransport;
 use ic_agent::identity::{PemError, Secp256k1Identity};
 pub use ic_agent::Agent;
 
@@ -66,10 +65,9 @@ pub async fn get_agent(
         .build()
         .map_err(|e| Error::Generic(format!("error configuring transport client. Err: {:?}", e)))?;
 
-    let transport = ReqwestTransport::create_with_client(url, client)?;
-
     let agent = Agent::builder()
-        .with_transport(transport)
+        .with_http_client(client)
+        .with_url(url)
         .with_identity(identity)
         .with_ingress_expiry(timeout)
         .build()?;
