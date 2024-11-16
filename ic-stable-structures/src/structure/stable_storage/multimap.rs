@@ -37,9 +37,15 @@ where
     V: Storable,
     M: Memory,
 {
-    type Iterator<'a> = StableMultimapIter<'a, K1, K2, V, M> where Self: 'a;
+    type Iterator<'a>
+        = StableMultimapIter<'a, K1, K2, V, M>
+    where
+        Self: 'a;
 
-    type RangeIterator<'a> = StableMultimapRangeIter<'a, K1, K2, V, M> where Self: 'a;
+    type RangeIterator<'a>
+        = StableMultimapRangeIter<'a, K1, K2, V, M>
+    where
+        Self: 'a;
 
     fn insert(&mut self, first_key: &K1, second_key: &K2, value: V) -> Option<V> {
         self.0

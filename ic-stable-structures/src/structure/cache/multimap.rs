@@ -49,9 +49,15 @@ where
     V: Storable + Clone + Send + Sync + 'static,
     M: Memory,
 {
-    type Iterator<'a> = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::Iterator<'a> where Self: 'a;
+    type Iterator<'a>
+        = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::Iterator<'a>
+    where
+        Self: 'a;
 
-    type RangeIterator<'a> = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::RangeIterator<'a> where Self: 'a;
+    type RangeIterator<'a>
+        = <StableMultimap<K1, K2, V, M> as MultimapStructure<K1, K2, V>>::RangeIterator<'a>
+    where
+        Self: 'a;
 
     fn get(&self, first_key: &K1, second_key: &K2) -> Option<V> {
         let key = (first_key.clone(), second_key.clone());
