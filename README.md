@@ -31,7 +31,6 @@ The following crates are included in this repo:
 - `ic-auction` - This crate provides an API trait for auction canisters. This crate is optional.
 - `ic-canister` - This crate provides a set of macros and types to simplify the development of canisters.
 - `ic-export` - This crate mainly re-exports commonly used dependencies from `ic` dependencies.
-- `ic-factory` - This crate provides an API trait for factory canisters. This crate is optional.
 - `ic-log` - This crate provides a simple logger implementation of the `log` crate. Log records are saved into memory and can be inspected with a canister query.
 - `ic-metrics` - This crate provides an API trait to simplify the collection of metrics from canisters.
 - `ic-storage` - This crate provides a simple in-memory storage for canisters.
@@ -184,47 +183,6 @@ create a canister using `canister-sdk`, don't forget to add a `export-api` featu
 export all the wasm from the canister trait definition (more specifically from one that is auto-generated
 by `generate_exports!` macro).
 
-### ic-factory
-
-The "generic" trait API for the factory canisters. The `Factory` canister trait can be used to simplify writing factory
-logic for the canisters you implement. It also provides a convenient way to upgrade all the canisters that the factory
-is set to be controller of.
-
-```rust
-#[derive(Clone, Canister)]
-struct MyFactory {
-    #[id]
-    principal: Principal,
-
-    #[state]
-    state: Rc<RefCell<FactoryState>>,
-}
-
-impl Factory for MyFactory {
-    fn state(&self) -> Rc<RefCell<FactoryState>> {
-        <Self as Factory>::FactoryStateState::get()
-    }
-}
-```
-
-The `Factory` trait provides many useful methods to manage the canister. For example, you can use `create_canister` to
-create a new canister instance, and `set_controller` to set the controller of the canister to the factory. The `Factory`
-trait also provides a way to upgrade all the canisters that the factory is set to be controller of.
-Some methods of the `Factory` trait are:
-
-- `create_canister`
-- `upgrade_canister`
-- `drop_canister`
-
-which are used to create, upgrade and drop canisters respectively.
-
-When you're using the `canister-sdk`, the factory crate is optional which means that you have to add the
-feature `factory` to your `Cargo.toml` file to use the `Factory` trait.
-
-```yaml
-[ dependencies ]
-  canister-sdk = { git = "https://github.com/infinity-swap/canister-sdk", features = ["factory"] tag = "vx.x.xx"}
-```
 
 ### ic-helpers
 
