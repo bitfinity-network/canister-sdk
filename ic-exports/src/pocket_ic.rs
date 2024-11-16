@@ -10,7 +10,7 @@ use pocket_ic::PocketIcBuilder;
 pub use pocket_ic::{common, CallError, ErrorCode, UserError, WasmResult};
 use tokio::sync::OnceCell;
 
-const POCKET_IC_SERVER_VERSION: &str = "5.0.0";
+const POCKET_IC_SERVER_VERSION: &str = "7.0.0";
 const POCKET_IC_BIN: &str = "POCKET_IC_BIN";
 
 /// Returns the pocket-ic client.
