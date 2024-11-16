@@ -24,7 +24,7 @@ const POCKET_IC_BIN: &str = "POCKET_IC_BIN";
 /// point to the binary. Also, the binary should be executable.
 ///
 /// It supports only linux and macos.
-pub async fn init_pocket_ic() -> PocketIc {
+pub async fn init_pocket_ic() -> PocketIcBuilder {
     static INITIALIZATION_STATUS: OnceCell<bool> = OnceCell::const_new();
 
     let status = INITIALIZATION_STATUS
@@ -58,18 +58,16 @@ pub async fn init_pocket_ic() -> PocketIc {
         panic!("pocket-ic is not initialized");
     }
 
-    create_pocket_ic_client().await
+    create_pocket_ic_client()
 }
 
-async fn create_pocket_ic_client() -> PocketIc {
+fn create_pocket_ic_client() -> PocketIcBuilder {
     // We create a PocketIC instance consisting of the NNS and one application subnet.
     // With no II subnet, there's no subnet with ECDSA keys.
     PocketIcBuilder::new()
         .with_nns_subnet()
         .with_ii_subnet()
         .with_application_subnet()
-        .build_async()
-        .await
 }
 
 fn default_pocket_ic_server_dir() -> PathBuf {

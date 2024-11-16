@@ -70,7 +70,7 @@ impl PocketIcTestContext {
 }
 
 async fn deploy_dummy_scheduler_canister() -> anyhow::Result<PocketIcTestContext> {
-    let client = init_pocket_ic().await;
+    let client = init_pocket_ic().await.build_async().await;
     println!("Creating dummy canister");
 
     let sender = alice();
