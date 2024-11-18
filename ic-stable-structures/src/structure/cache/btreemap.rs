@@ -107,7 +107,10 @@ where
     V: Storable + Clone + Send + Sync,
     M: Memory,
 {
-    type Iterator<'a> = dfinity_stable_structures::btreemap::Iter<'a, K, V, M> where Self: 'a;
+    type Iterator<'a>
+        = dfinity_stable_structures::btreemap::Iter<'a, K, V, M>
+    where
+        Self: 'a;
 
     fn iter(&self) -> Self::Iterator<'_> {
         self.inner.iter()

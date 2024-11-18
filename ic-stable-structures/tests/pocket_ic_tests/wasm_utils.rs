@@ -1,12 +1,11 @@
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-
-use once_cell::sync::OnceCell;
+use std::sync::OnceLock;
 
 /// Returns the bytecode of the evmc canister
 pub fn get_dummy_canister_bytecode() -> Vec<u8> {
-    static CANISTER_BYTECODE: OnceCell<Vec<u8>> = OnceCell::new();
+    static CANISTER_BYTECODE: OnceLock<Vec<u8>> = OnceLock::new();
     CANISTER_BYTECODE
         .get_or_init(|| load_wasm_bytecode_or_panic("dummy_canister.wasm"))
         .to_owned()

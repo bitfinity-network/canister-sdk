@@ -2,7 +2,6 @@ use std::path::Path;
 use std::time::Duration;
 
 use candid::Principal;
-use ic_agent::agent::http_transport::ReqwestTransport;
 use ic_agent::agent::EnvelopeContent;
 use ic_agent::identity::{BasicIdentity, Secp256k1Identity};
 use ic_agent::{Agent, Identity};
@@ -80,12 +79,11 @@ pub async fn init_agent(
             ))
         })?;
 
-    let transport = ReqwestTransport::create_with_client(url, client)?;
-
     let agent = Agent::builder()
-        .with_transport(transport)
+        .with_http_client(client)
+        .with_url(url)
         .with_identity(identity)
-        .with_ingress_expiry(Some(timeout))
+        .with_ingress_expiry(timeout)
         .build()?;
 
     agent.fetch_root_key().await?;

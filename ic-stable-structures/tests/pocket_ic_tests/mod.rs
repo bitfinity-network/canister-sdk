@@ -246,7 +246,7 @@ impl PocketIcTestContext {
 }
 
 pub async fn new_test_context() -> PocketIcTestContext {
-    let env = pocket_ic::init_pocket_ic().await;
+    let env = pocket_ic::init_pocket_ic().await.build_async().await;
     let dummy_canister = deploy_dummy_canister(&env).await.unwrap();
 
     PocketIcTestContext {

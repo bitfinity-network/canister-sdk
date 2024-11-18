@@ -26,27 +26,28 @@ jobs:
           components: clippy, rustfmt
           target: wasm32-unknown-unknown, i686-unknown-linux-gnu
 
-      - name: machine setup
-        run: |
-          cargo install ic-wasm
+      - name: Install Just command runner
+        uses: extractions/setup-just@v1
 
-      - name: rustfmt
+      - name: install ic-wasm
         run: |
-          cargo fmt --all --check
+          wget https://github.com/dfinity/ic-wasm/releases/download/0.8.1/ic-wasm-linux64 -O /usr/local/bin/ic-wasm
+          chmod +x /usr/local/bin/ic-wasm
 
-      - name: clippy
+      - name: check rust code style
         run: |
-          cargo clippy --all-features --all-targets -- -D warnings
+          just check_code
 
       - name: build
         run: |
-          ./scripts/build.sh
+          just build
 
       - name: test
         run: |
-          ./scripts/test.sh
-          
-      - name: test i686-unknown-linux-gnu
+          just test
+
+      - name: 32bits test
         run: |
           sudo apt install gcc-multilib
-          ./scripts/test.sh --target i686-unknown-linux-gnu
+          just test_i686
+
