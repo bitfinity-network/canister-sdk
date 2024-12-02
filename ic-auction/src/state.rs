@@ -211,7 +211,7 @@ pub struct Controller<'a> {
     state: &'a mut AuctionState,
 }
 
-impl<'a> Authorized<Controller<'a>> {
+impl Authorized<Controller<'_>> {
     pub fn set_min_cycles(&mut self, min_cycles: Cycles) {
         self.auth.state.min_cycles = min_cycles;
     }

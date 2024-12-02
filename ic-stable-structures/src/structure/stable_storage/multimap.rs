@@ -132,7 +132,7 @@ where
 // -----------------------------------------------------------------------------
 //     - Range Iterator impl -
 // -----------------------------------------------------------------------------
-impl<'a, K1, K2, V, M> Iterator for StableMultimapRangeIter<'a, K1, K2, V, M>
+impl<K1, K2, V, M> Iterator for StableMultimapRangeIter<'_, K1, K2, V, M>
 where
     K1: Storable + Ord + Clone,
     K2: Storable + Ord + Clone,
@@ -165,7 +165,7 @@ where
     }
 }
 
-impl<'a, K1, K2, V, M> Iterator for StableMultimapIter<'a, K1, K2, V, M>
+impl<K1, K2, V, M> Iterator for StableMultimapIter<'_, K1, K2, V, M>
 where
     K1: Storable + Ord + Clone,
     K2: Storable + Ord + Clone,
