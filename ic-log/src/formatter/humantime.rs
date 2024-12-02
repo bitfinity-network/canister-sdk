@@ -28,7 +28,7 @@ impl fmt::Debug for Rfc3339Timestamp {
         /// A `Debug` wrapper for `Timestamp` that uses the `Display` implementation.
         struct TimestampValue<'a>(&'a Rfc3339Timestamp);
 
-        impl<'a> fmt::Debug for TimestampValue<'a> {
+        impl fmt::Debug for TimestampValue<'_> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 fmt::Display::fmt(&self.0, f)
             }

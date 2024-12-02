@@ -516,10 +516,7 @@ fn store_candid_definitions(modes: &str, sig: &Signature) -> Result<(), syn::Err
     }
 
     if modes == "init" {
-        match &mut *INIT.lock().unwrap() {
-            Some(_) => return Err(Error::new_spanned(&sig.ident, "duplicate init method")),
-            ret @ None => *ret = Some(args),
-        }
+        *INIT.lock().unwrap() = Some(args);
         return Ok(());
     }
 
@@ -529,13 +526,6 @@ fn store_candid_definitions(modes: &str, sig: &Signature) -> Result<(), syn::Err
 
     // Insert method
     let mut map = METHODS.lock().unwrap();
-
-    if map.contains_key(&name) {
-        return Err(Error::new_spanned(
-            &name,
-            format!("duplicate method name {name}"),
-        ));
-    }
 
     let method = Method {
         args,
