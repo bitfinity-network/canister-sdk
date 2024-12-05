@@ -8,53 +8,69 @@ use serde::de::DeserializeOwned;
 
 use crate::{CanisterClient, CanisterClientError, CanisterClientResult};
 
-/// A client for interacting with a canister inside dfinity's PocketIc test framework.
 #[derive(Clone)]
-pub struct PocketIcClient {
-    client: Option<Arc<PocketIc>>,
-    pub canister: Principal,
-    pub caller: Principal,
+/// A wrapper of [`PocketIc`] that can be either a reference or an owned instance.
+enum PocketIcInstance<'a> {
+    Ref(&'a PocketIc),
+    Owned(Arc<PocketIc>),
 }
 
-impl Drop for PocketIcClient {
-    fn drop(&mut self) {
-        if let Some(client) = self.client.take() {
-            if let Ok(client) = Arc::try_unwrap(client) {
-                // Spawns a tokio task to drop the client.
-                // This workaround is necessary because Rust does not support async drop.
-                //
-                // This has some main drawbacks:
-                //
-                // 1. It panics if not executed in a tokio runtime.
-                // 2. As the spawn is executed in background, there's no guarantee that it will actually run.
-                //
-                // Not dropping the client will cause a memory leak in the PocketIc Server,
-                // however, this is not a big deal since the server will automatically clean
-                // the resources after 60 seconds of inactivity.
-                //
-                tokio::spawn(async move {
-                    client.drop().await;
-                });
-            }
+impl From<Arc<PocketIc>> for PocketIcInstance<'_> {
+    fn from(client: Arc<PocketIc>) -> Self {
+        PocketIcInstance::Owned(client)
+    }
+}
+
+impl<'a> From<&'a PocketIc> for PocketIcInstance<'a> {
+    fn from(client: &'a PocketIc) -> Self {
+        PocketIcInstance::Ref(client)
+    }
+}
+
+impl AsRef<PocketIc> for PocketIcInstance<'_> {
+    fn as_ref(&self) -> &PocketIc {
+        match self {
+            PocketIcInstance::Ref(client) => client,
+            PocketIcInstance::Owned(client) => client,
         }
     }
 }
 
-impl PocketIcClient {
-    /// Creates a new instance of a PocketIcClient.
+/// A client for interacting with a canister inside dfinity's PocketIc test framework.
+#[derive(Clone)]
+pub struct PocketIcClient<'a> {
+    client: PocketIcInstance<'a>,
+    pub canister: Principal,
+    pub caller: Principal,
+}
+
+impl<'a> PocketIcClient<'a> {
+    /// Creates a new instance of a [`PocketIcClient`].
     /// The new instance is independent and have no access to canisters of other instances.
     pub async fn new(canister: Principal, caller: Principal) -> Self {
-        Self::from_client(PocketIc::new().await, canister, caller)
+        Self {
+            client: Arc::new(PocketIc::new().await).into(),
+            canister,
+            caller,
+        }
     }
 
-    /// Crates new instance of PocketIcClient from an existing client instance.
-    pub fn from_client<P: Into<Arc<PocketIc>>>(
-        client: P,
-        canister: Principal,
-        caller: Principal,
-    ) -> Self {
+    /// Creates new instance of PocketIcClient from an owned existing [`PocketIc`] instance.
+    pub fn from_client<P>(client: P, canister: Principal, caller: Principal) -> Self
+    where
+        P: Into<Arc<PocketIc>>,
+    {
         Self {
-            client: Some(client.into()),
+            client: client.into().into(),
+            canister,
+            caller,
+        }
+    }
+
+    /// Crates new instance of PocketIcClient from a borrowed existing [`PocketIc`] instance.
+    pub fn from_ref(client: &'a PocketIc, canister: Principal, caller: Principal) -> Self {
+        Self {
+            client: client.into(),
             canister,
             caller,
         }
@@ -62,9 +78,7 @@ impl PocketIcClient {
 
     /// Returns the PocketIC client for the canister.
     pub fn client(&self) -> &PocketIc {
-        self.client
-            .as_ref()
-            .expect("PocketIC client is not available")
+        self.client.as_ref()
     }
 
     /// Performs update call with the given arguments.
@@ -117,7 +131,7 @@ fn reject_error(e: String) -> CanisterClientError {
 }
 
 #[async_trait::async_trait]
-impl CanisterClient for PocketIcClient {
+impl CanisterClient for PocketIcClient<'_> {
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
         T: ArgumentEncoder + Send + Sync,

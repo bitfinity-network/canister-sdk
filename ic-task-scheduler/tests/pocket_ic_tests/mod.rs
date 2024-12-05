@@ -15,12 +15,12 @@ use ic_task_scheduler::SchedulerError;
 use serde::{Deserialize, Serialize};
 use wasm_utils::get_dummy_scheduler_canister_bytecode;
 
-pub struct PocketIcTestContext {
-    canister_client: PocketIcClient,
+pub struct PocketIcTestContext<'a> {
+    canister_client: PocketIcClient<'a>,
     pub dummy_scheduler_canister: Principal,
 }
 
-impl PocketIcTestContext {
+impl PocketIcTestContext<'_> {
     /// Returns the PocketIC client for the canister.
     pub fn client(&self) -> &PocketIc {
         self.canister_client.client()
@@ -69,7 +69,7 @@ impl PocketIcTestContext {
     }
 }
 
-async fn deploy_dummy_scheduler_canister() -> anyhow::Result<PocketIcTestContext> {
+async fn deploy_dummy_scheduler_canister<'a>() -> anyhow::Result<PocketIcTestContext<'a>> {
     let client = init_pocket_ic().await.build_async().await;
     println!("Creating dummy canister");
 

@@ -25,6 +25,17 @@ const POCKET_IC_BIN: &str = "POCKET_IC_BIN";
 ///
 /// It supports only linux and macos.
 pub async fn init_pocket_ic() -> PocketIcBuilder {
+    init_pocket_ic_with(|builder| builder).await
+}
+
+/// See [`init_pocket_ic`].
+///
+/// This function allows to customize the pocket-ic client, by providing a closure
+/// to extend the builder.
+pub async fn init_pocket_ic_with<F>(build_with: F) -> PocketIcBuilder
+where
+    F: FnOnce(PocketIcBuilder) -> PocketIcBuilder,
+{
     static INITIALIZATION_STATUS: OnceCell<bool> = OnceCell::const_new();
 
     let status = INITIALIZATION_STATUS
@@ -58,7 +69,8 @@ pub async fn init_pocket_ic() -> PocketIcBuilder {
         panic!("pocket-ic is not initialized");
     }
 
-    create_pocket_ic_client()
+    let builder = create_pocket_ic_client();
+    build_with(builder)
 }
 
 fn create_pocket_ic_client() -> PocketIcBuilder {
