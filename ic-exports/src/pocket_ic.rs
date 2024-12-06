@@ -6,7 +6,7 @@ use std::{env, fs};
 use flate2::read::GzDecoder;
 use log::*;
 pub use pocket_ic::nonblocking::*;
-use pocket_ic::PocketIcBuilder;
+pub use pocket_ic::PocketIcBuilder;
 pub use pocket_ic::{common, CallError, ErrorCode, UserError, WasmResult};
 use tokio::sync::OnceCell;
 
