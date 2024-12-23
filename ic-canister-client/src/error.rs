@@ -13,10 +13,6 @@ pub enum CanisterClientError {
     #[error("ic agent error: {0}")]
     IcAgentError(#[from] ic_agent::agent::AgentError),
 
-    #[cfg(feature = "state-machine-tests-client")]
-    #[error("state machine test error: {0}")]
-    StateMachineTestError(ic_exports::ic_test_state_machine::UserError),
-
     #[cfg(feature = "pocket-ic-client")]
     #[error("pocket-ic test error: {0:?}")]
     PocketIcTestError(ic_exports::pocket_ic::CallError),
@@ -33,13 +29,6 @@ impl From<ic_exports::pocket_ic::CallError> for CanisterClientError {
 impl From<ic_exports::pocket_ic::UserError> for CanisterClientError {
     fn from(error: ic_exports::pocket_ic::UserError) -> Self {
         CanisterClientError::PocketIcTestError(ic_exports::pocket_ic::CallError::UserError(error))
-    }
-}
-
-#[cfg(feature = "state-machine-tests-client")]
-impl From<ic_exports::ic_test_state_machine::UserError> for CanisterClientError {
-    fn from(error: ic_exports::ic_test_state_machine::UserError) -> Self {
-        CanisterClientError::StateMachineTestError(error)
     }
 }
 
