@@ -10,7 +10,6 @@ edition.workspace = true
 default = []
 ledger = ["ic-ledger-types"]
 icrc = ["icrc-ledger-types"]
-ic-test-state-machine = ["flate2", "ic-test-state-machine-client", "log", "reqwest", "tokio"]
 pocket-ic-tests = ["flate2", "pocket-ic", "log", "reqwest", "tokio"]
 
 [dependencies]
@@ -22,7 +21,6 @@ ic-cdk-timers = { workspace = true }
 ic-crypto-getrandom-for-wasm = { path = "../ic-crypto-getrandom-for-wasm" }
 ic-kit = { path = "../ic-kit" }
 ic-ledger-types = { workspace = true, optional = true }
-ic-test-state-machine-client = { workspace = true, optional = true }
 icrc-ledger-types = { workspace = true, optional = true }
 pocket-ic = { workspace = true, optional = true }
 serde = { workspace = true }

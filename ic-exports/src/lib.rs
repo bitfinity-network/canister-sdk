@@ -21,6 +21,3 @@ pub mod icrc_types {
 
 #[cfg(feature = "pocket-ic-tests")]
 pub mod pocket_ic;
-
-#[cfg(feature = "ic-test-state-machine")]
-pub mod ic_test_state_machine;

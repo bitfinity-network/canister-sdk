@@ -16,30 +16,6 @@ pub struct PocketIcClient {
     pub caller: Principal,
 }
 
-impl Drop for PocketIcClient {
-    fn drop(&mut self) {
-        if let Some(client) = self.client.take() {
-            if let Ok(client) = Arc::try_unwrap(client) {
-                // Spawns a tokio task to drop the client.
-                // This workaround is necessary because Rust does not support async drop.
-                //
-                // This has some main drawbacks:
-                //
-                // 1. It panics if not executed in a tokio runtime.
-                // 2. As the spawn is executed in background, there's no guarantee that it will actually run.
-                //
-                // Not dropping the client will cause a memory leak in the PocketIc Server,
-                // however, this is not a big deal since the server will automatically clean
-                // the resources after 60 seconds of inactivity.
-                //
-                tokio::spawn(async move {
-                    client.drop().await;
-                });
-            }
-        }
-    }
-}
-
 impl PocketIcClient {
     /// Creates a new instance of a PocketIcClient.
     /// The new instance is independent and have no access to canisters of other instances.
