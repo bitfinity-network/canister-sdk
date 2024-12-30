@@ -318,7 +318,7 @@ mod test {
     }
 
     #[test]
-    fn should_get_and_insert_from_existing_amp() {
+    fn should_get_and_insert_from_existing_map() {
         let cache_items = 10;
 
         let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(

@@ -326,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn should_get_and_insert_from_existing_amp() {
+    fn should_get_and_insert_from_existing_map() {
         let cache_items = 2;
         let mut map =
             CachedStableBTreeMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
