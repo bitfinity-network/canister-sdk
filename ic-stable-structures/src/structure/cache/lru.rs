@@ -74,6 +74,11 @@ where
         self.inner.lock().insert(key, value);
     }
 
+    /// Returns whether the key is in the cache
+    pub fn contains_key(&self, key: &K) -> bool {
+        self.inner.lock().get(key).is_some()
+    }
+
     /// Returns the value of the key in the cache or None if it is not present in the cache.
     /// Moves the key to the head of the LRU list if it exists.
     pub fn get(&self, key: &K) -> Option<V> {
@@ -107,7 +112,9 @@ mod tests {
             Some(vec![123u64, 123])
         );
         assert_eq!(cache.get(&123u64), Some(vec![123u64, 123]));
+        assert!(cache.contains_key(&123u64));
         assert_eq!(cache.get_or_insert_with(&127u64, |_| None), None);
         assert_eq!(cache.get(&0u64), None);
+        assert!(!cache.contains_key(&0u64));
     }
 }

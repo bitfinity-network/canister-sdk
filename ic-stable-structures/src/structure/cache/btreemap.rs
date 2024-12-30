@@ -51,10 +51,12 @@ where
             .get_or_insert_with(key, |key| self.inner.get(key))
     }
 
+    /// When a new value is inserted, it is also inserted into the cache; this is 
+    /// required because caching on the `get` is useless in IC if the method is used in a `query` call
     fn insert(&mut self, key: K, value: V) -> Option<V> {
-        match self.inner.insert(key.clone(), value) {
+        match self.inner.insert(key.clone(), value.clone()) {
             Some(old_value) => {
-                self.cache.remove(&key);
+                self.cache.insert(key, value);
                 Some(old_value)
             }
             None => None,
@@ -76,11 +78,11 @@ where
     }
 
     fn contains_key(&self, key: &K) -> bool {
-        self.inner.contains_key(key)
+        self.cache.contains_key(key) || self.inner.contains_key(key)
     }
 
     fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+        self.cache.is_empty() && self.inner.is_empty()
     }
 
     fn clear(&mut self) {
@@ -138,23 +140,36 @@ mod tests {
         let mut map =
             CachedStableBTreeMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
 
+        assert!(map.is_empty());
+
         assert_eq!(None, map.get(&1));
+        assert!(!map.contains_key(&1));
         assert_eq!(None, map.get(&2));
+        assert!(!map.contains_key(&2));
         assert_eq!(None, map.get(&3));
+        assert!(!map.contains_key(&3));
         assert_eq!(None, map.get(&4));
+        assert!(!map.contains_key(&4));
 
         assert_eq!(None, map.insert(1, Array([1u8, 1])));
         assert_eq!(None, map.insert(2, Array([2u8, 1])));
         assert_eq!(None, map.insert(3, Array([3u8, 1])));
         assert_eq!(3, map.len());
 
+        assert!(!map.is_empty());
+
         assert_eq!(Some(Array([1u8, 1])), map.get(&1));
+        assert!(map.inner.contains_key(&1));
+        assert!(map.contains_key(&1));
 
         assert_eq!(Some(Array([2u8, 1])), map.get(&2));
+        assert!(map.contains_key(&2));
 
         assert_eq!(Some(Array([3u8, 1])), map.get(&3));
+        assert!(map.contains_key(&3));
 
         assert_eq!(None, map.get(&4));
+        assert!(!map.contains_key(&4));
 
         assert_eq!(Some(Array([1u8, 1])), map.insert(1, Array([1u8, 10])));
         assert_eq!(Some(Array([2u8, 1])), map.insert(2, Array([2u8, 10])));
@@ -169,18 +184,31 @@ mod tests {
         assert_eq!(None, map.get(&4));
 
         assert_eq!(Some(Array([1u8, 10])), map.remove(&1));
+        assert!(!map.inner.contains_key(&1));
         assert_eq!(None, map.remove(&1));
 
         assert_eq!(None, map.get(&1));
+        assert!(!map.contains_key(&1));
 
         assert_eq!(Some(Array([2u8, 10])), map.remove(&2));
         assert_eq!(None, map.remove(&2));
 
         assert_eq!(None, map.get(&2));
+        assert!(!map.contains_key(&2));
 
         assert_eq!(None, map.get(&2));
         assert_eq!(Some(Array([3u8, 1])), map.get(&3));
         assert_eq!(None, map.get(&4));
+
+        assert!(!map.is_empty());
+
+        assert_eq!(Some(Array([3u8, 1])), map.remove(&3));
+        assert_eq!(None, map.remove(&3));
+
+        assert_eq!(None, map.get(&3));
+        assert!(!map.contains_key(&3));
+
+        assert!(map.is_empty());
     }
 
     #[test]
@@ -295,5 +323,39 @@ mod tests {
 
         map.remove(&10);
         assert_eq!(map.last_key_value(), Some((5, 100)));
+    }
+
+    #[test]
+    fn should_get_and_insert_from_existing_amp() {
+        let cache_items = 2;
+        let mut map =
+            CachedStableBTreeMap::<u32, Array<2>, _>::new(VectorMemory::default(), cache_items);
+
+        map.inner.insert(1, Array([1u8, 1]));
+        map.inner.insert(2, Array([2u8, 1]));
+
+        assert!(map.contains_key(&1));
+        assert!(map.contains_key(&2));
+        assert!(!map.contains_key(&3));
+        assert!(!map.is_empty());
+
+        assert_eq!(Some(Array([1u8, 1])), map.get(&1));
+
+        map.remove(&2);
+
+        assert_eq!(None, map.get(&2));
+        assert!(!map.contains_key(&2));
+        assert!(!map.inner.contains_key(&2));
+
+        assert!(!map.is_empty());
+
+        map.remove(&1);
+
+        assert_eq!(None, map.get(&1));
+        assert!(!map.contains_key(&1));
+        assert!(!map.inner.contains_key(&1));
+
+        assert!(map.is_empty());
+
     }
 }

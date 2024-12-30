@@ -111,7 +111,7 @@ where
     }
 
     fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+        self.cache.is_empty() && self.inner.is_empty()
     }
 
     fn clear(&mut self) {
@@ -145,6 +145,8 @@ mod test {
             cache_items,
         );
 
+        assert!(map.is_empty());
+
         assert_eq!(None, map.get(&1, &1));
         assert_eq!(None, map.get(&1, &2));
         assert_eq!(None, map.get(&2, &1));
@@ -154,7 +156,10 @@ mod test {
         assert_eq!(None, map.insert(&1, &2, Array([1u8, 2])));
         assert_eq!(None, map.insert(&2, &1, Array([2u8, 1])));
 
+        assert!(!map.is_empty());
+
         assert_eq!(Some(Array([1u8, 1])), map.get(&1, &1));
+        assert_eq!(Some(Array([1u8, 1])), map.inner.get(&1, &1));
         assert_eq!(Some(Array([1u8, 2])), map.get(&1, &2));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2, &1));
         assert_eq!(None, map.get(&3, &1));
@@ -308,5 +313,36 @@ mod test {
 
         assert_eq!(None, map.get(&0, &0));
         assert_eq!(None, map.get(&29, &29));
+    }
+
+    #[test]
+    fn should_get_and_insert_from_existing_amp() {
+        let cache_items = 10;
+
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
+            VectorMemory::default(),
+            cache_items,
+        );
+
+        map.inner.insert(&1, &1, Array([1u8, 1]));
+        map.inner.insert(&2, &2, Array([2u8, 1]));
+
+        assert!(!map.is_empty());
+
+        assert_eq!(Some(Array([1u8, 1])), map.get(&1, &1));
+        assert_eq!(Some(Array([1u8, 1])), map.remove(&1, &1));
+
+        assert_eq!(None, map.get(&1, &1));
+        assert_eq!(None, map.inner.get(&1, &1));
+
+        assert!(!map.is_empty());
+
+        assert_eq!(Some(Array([2u8, 1])), map.remove(&2, &2));
+
+        assert!(map.get(&2, &2).is_none());
+        assert!(map.inner.get(&2, &2).is_none());
+
+        assert!(map.is_empty());
+
     }
 }
