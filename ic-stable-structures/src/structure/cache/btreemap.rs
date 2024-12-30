@@ -51,7 +51,7 @@ where
             .get_or_insert_with(key, |key| self.inner.get(key))
     }
 
-    /// When a new value is inserted, it is also inserted into the cache; this is 
+    /// When a new value is inserted, it is also inserted into the cache; this is
     /// required because caching on the `get` is useless in IC if the method is used in a `query` call
     fn insert(&mut self, key: K, value: V) -> Option<V> {
         match self.inner.insert(key.clone(), value.clone()) {
@@ -356,6 +356,5 @@ mod tests {
         assert!(!map.inner.contains_key(&1));
 
         assert!(map.is_empty());
-
     }
 }
