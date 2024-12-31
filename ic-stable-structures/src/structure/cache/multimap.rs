@@ -66,26 +66,18 @@ where
             .get_or_insert_with(&key, |_key| self.inner.get(first_key, second_key))
     }
 
+    /// When a new value is inserted, it is also inserted into the cache; this is
+    /// required because caching on the `get` is useless in IC if the method is used in a `query` call
     fn insert(&mut self, first_key: &K1, second_key: &K2, value: V) -> Option<V> {
-        match self.inner.insert(first_key, second_key, value) {
-            Some(old_value) => {
-                let key = (first_key.clone(), second_key.clone());
-                self.cache.remove(&key);
-                Some(old_value)
-            }
-            None => None,
-        }
+        let key = (first_key.clone(), second_key.clone());
+        self.cache.insert(key, value.clone());
+        self.inner.insert(first_key, second_key, value)
     }
 
     fn remove(&mut self, first_key: &K1, second_key: &K2) -> Option<V> {
-        match self.inner.remove(first_key, second_key) {
-            Some(old_value) => {
-                let key = (first_key.clone(), second_key.clone());
-                self.cache.remove(&key);
-                Some(old_value)
-            }
-            None => None,
-        }
+        let key = (first_key.clone(), second_key.clone());
+        self.cache.remove(&key);
+        self.inner.remove(first_key, second_key)
     }
 
     fn remove_partial(&mut self, first_key: &K1) -> bool {
@@ -111,7 +103,7 @@ where
     }
 
     fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+        self.cache.is_empty() && self.inner.is_empty()
     }
 
     fn clear(&mut self) {
@@ -145,6 +137,8 @@ mod test {
             cache_items,
         );
 
+        assert!(map.is_empty());
+
         assert_eq!(None, map.get(&1, &1));
         assert_eq!(None, map.get(&1, &2));
         assert_eq!(None, map.get(&2, &1));
@@ -154,7 +148,10 @@ mod test {
         assert_eq!(None, map.insert(&1, &2, Array([1u8, 2])));
         assert_eq!(None, map.insert(&2, &1, Array([2u8, 1])));
 
+        assert!(!map.is_empty());
+
         assert_eq!(Some(Array([1u8, 1])), map.get(&1, &1));
+        assert_eq!(Some(Array([1u8, 1])), map.inner.get(&1, &1));
         assert_eq!(Some(Array([1u8, 2])), map.get(&1, &2));
         assert_eq!(Some(Array([2u8, 1])), map.get(&2, &1));
         assert_eq!(None, map.get(&3, &1));
@@ -308,5 +305,35 @@ mod test {
 
         assert_eq!(None, map.get(&0, &0));
         assert_eq!(None, map.get(&29, &29));
+    }
+
+    #[test]
+    fn should_get_and_insert_from_existing_map() {
+        let cache_items = 10;
+
+        let mut map = CachedStableMultimap::<u32, u32, Array<2>, _>::new(
+            VectorMemory::default(),
+            cache_items,
+        );
+
+        map.inner.insert(&1, &1, Array([1u8, 1]));
+        map.inner.insert(&2, &2, Array([2u8, 1]));
+
+        assert!(!map.is_empty());
+
+        assert_eq!(Some(Array([1u8, 1])), map.get(&1, &1));
+        assert_eq!(Some(Array([1u8, 1])), map.remove(&1, &1));
+
+        assert_eq!(None, map.get(&1, &1));
+        assert_eq!(None, map.inner.get(&1, &1));
+
+        assert!(!map.is_empty());
+
+        assert_eq!(Some(Array([2u8, 1])), map.remove(&2, &2));
+
+        assert!(map.get(&2, &2).is_none());
+        assert!(map.inner.get(&2, &2).is_none());
+
+        assert!(map.is_empty());
     }
 }
