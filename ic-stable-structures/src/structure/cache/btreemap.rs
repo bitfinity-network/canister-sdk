@@ -54,23 +54,13 @@ where
     /// When a new value is inserted, it is also inserted into the cache; this is
     /// required because caching on the `get` is useless in IC if the method is used in a `query` call
     fn insert(&mut self, key: K, value: V) -> Option<V> {
-        match self.inner.insert(key.clone(), value.clone()) {
-            Some(old_value) => {
-                self.cache.insert(key, value);
-                Some(old_value)
-            }
-            None => None,
-        }
+        self.cache.insert(key.clone(), value.clone());
+        self.inner.insert(key, value)
     }
 
     fn remove(&mut self, key: &K) -> Option<V> {
-        match self.inner.remove(key) {
-            Some(old_value) => {
-                self.cache.remove(key);
-                Some(old_value)
-            }
-            None => None,
-        }
+        self.cache.remove(key);
+        self.inner.remove(key)
     }
 
     fn len(&self) -> u64 {
