@@ -6,8 +6,7 @@ use std::{env, fs};
 use flate2::read::GzDecoder;
 use log::*;
 pub use pocket_ic::nonblocking::*;
-pub use pocket_ic::PocketIcBuilder;
-pub use pocket_ic::{common, CallError, ErrorCode, UserError, WasmResult};
+pub use pocket_ic::{common, CallError, ErrorCode, PocketIcBuilder, UserError, WasmResult};
 use tokio::sync::OnceCell;
 
 const POCKET_IC_SERVER_VERSION: &str = "7.0.0";
