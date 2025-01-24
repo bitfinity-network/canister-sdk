@@ -47,15 +47,11 @@ where
     }
 
     fn pop_first(&mut self) -> Option<(K, V)> {
-        let first_key = self.first_key_value()?.0;
-
-        self.0.remove(&first_key).map(|value| (first_key, value))
+        self.0.pop_first()
     }
 
     fn pop_last(&mut self) -> Option<(K, V)> {
-        let last_key = self.last_key_value()?.0;
-
-        self.0.remove(&last_key).map(|value| (last_key, value))
+        self.0.pop_last()
     }
 
     fn len(&self) -> u64 {
