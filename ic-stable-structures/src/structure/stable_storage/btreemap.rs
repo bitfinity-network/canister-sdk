@@ -226,6 +226,7 @@ mod tests {
         assert_eq!(map.pop_first(), Some((0, 42)));
 
         assert_eq!(map.len(), 1);
+        assert!(map.get(&0).is_none());
     }
 
     #[test]
@@ -238,6 +239,7 @@ mod tests {
         assert_eq!(map.pop_last(), Some((10, 100)));
 
         assert_eq!(map.len(), 1);
+        assert!(map.get(&10).is_none());
     }
 
     #[test]
