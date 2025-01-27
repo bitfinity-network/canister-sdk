@@ -27,6 +27,12 @@ pub trait BTreeMapStructure<K, V> {
     ///   - `key.to_bytes().len() <= K::MAX_SIZE`
     fn remove(&mut self, key: &K) -> Option<V>;
 
+    /// Removes and returns the first element in the map.
+    fn pop_first(&mut self) -> Option<(K, V)>;
+
+    /// Removes and returns the last element in the map.
+    fn pop_last(&mut self) -> Option<(K, V)>;
+
     /// True if contains the key.
     fn contains_key(&self, key: &K) -> bool;
 

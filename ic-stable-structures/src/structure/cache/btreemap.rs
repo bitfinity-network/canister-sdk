@@ -63,6 +63,20 @@ where
         self.inner.remove(key)
     }
 
+    fn pop_first(&mut self) -> Option<(K, V)> {
+        let (k, v) = self.inner.pop_first()?;
+        self.cache.remove(&k);
+
+        Some((k, v))
+    }
+
+    fn pop_last(&mut self) -> Option<(K, V)> {
+        let (k, v) = self.inner.pop_last()?;
+        self.cache.remove(&k);
+
+        Some((k, v))
+    }
+
     fn len(&self) -> u64 {
         self.inner.len()
     }
@@ -220,6 +234,35 @@ mod tests {
 
         assert_eq!(None, map.get(&1));
         assert_eq!(None, map.get(&2));
+    }
+
+    #[test]
+    fn test_should_pop_first() {
+        let mut map = CachedStableBTreeMap::new(VectorMemory::default(), 10);
+
+        map.insert(0u32, 42u32);
+        map.insert(10, 100);
+
+        assert_eq!(map.pop_first(), Some((0, 42)));
+
+        // try to get
+        assert!(map.get(&0).is_none());
+
+        assert_eq!(map.len(), 1);
+    }
+
+    #[test]
+    fn test_should_pop_last() {
+        let mut map = CachedStableBTreeMap::new(VectorMemory::default(), 10);
+
+        map.insert(0u32, 42u32);
+        map.insert(10, 100);
+
+        assert_eq!(map.pop_last(), Some((10, 100)));
+
+        assert!(map.get(&10).is_none());
+
+        assert_eq!(map.len(), 1);
     }
 
     #[test]

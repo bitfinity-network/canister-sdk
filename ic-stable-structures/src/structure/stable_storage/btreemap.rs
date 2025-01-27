@@ -46,6 +46,14 @@ where
         self.0.remove(key)
     }
 
+    fn pop_first(&mut self) -> Option<(K, V)> {
+        self.0.pop_first()
+    }
+
+    fn pop_last(&mut self) -> Option<(K, V)> {
+        self.0.pop_last()
+    }
+
     fn len(&self) -> u64 {
         self.0.len()
     }
@@ -202,6 +210,32 @@ mod tests {
         assert_eq!(map.get(&0).as_ref(), Some(&long_str));
         assert_eq!(map.get(&5).as_ref(), Some(&short_str));
         assert_eq!(map.len(), 2);
+    }
+
+    #[test]
+    fn test_should_pop_first() {
+        let mut map = StableBTreeMap::new(VectorMemory::default());
+
+        map.insert(0u32, 42u32);
+        map.insert(10, 100);
+
+        assert_eq!(map.pop_first(), Some((0, 42)));
+
+        assert_eq!(map.len(), 1);
+        assert!(map.get(&0).is_none());
+    }
+
+    #[test]
+    fn test_should_pop_last() {
+        let mut map = StableBTreeMap::new(VectorMemory::default());
+
+        map.insert(0u32, 42u32);
+        map.insert(10, 100);
+
+        assert_eq!(map.pop_last(), Some((10, 100)));
+
+        assert_eq!(map.len(), 1);
+        assert!(map.get(&10).is_none());
     }
 
     #[test]
