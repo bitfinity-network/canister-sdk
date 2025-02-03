@@ -26,6 +26,9 @@ members = [
     "ic-task-scheduler",
     "ic-task-scheduler/tests/dummy_scheduler_canister",
     "ic-test-utils",
+    "ic-http-outcall/api",
+    "ic-http-outcall/proxy-canister",
+    "ic-http-outcall/proxy-client",
 ]
 
 [workspace.package]
