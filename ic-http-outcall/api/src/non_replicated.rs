@@ -29,6 +29,7 @@ impl NonReplicatedHttpOutcall {
         }
     }
 
+    /// Call this function inside canister API callback for processed request.
     pub fn on_response(&mut self, args: OnResponseArgs) {
         if let Some(response) = self.requests.remove(&args.request_id) {
             let _ = response.notify.send(args.response);

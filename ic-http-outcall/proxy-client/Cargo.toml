@@ -1,5 +1,5 @@
 [package]
-name = "proxy-client"
+name = "ic-http-outcall-proxy-client"
 version.workspace = true
 edition.workspace = true
 

@@ -1,5 +1,5 @@
 [package]
-name = "proxy-canister"
+name = "ic-http-outcall-proxy-canister"
 version.workspace = true
 edition.workspace = true
 

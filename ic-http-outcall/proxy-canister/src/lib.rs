@@ -69,7 +69,8 @@ impl HttpProxyCanister {
                     &request.args.callback_name,
                     (response,),
                     ()
-                );
+                )
+                .await;
             });
         }
     }
@@ -92,6 +93,6 @@ struct RequestWithSender {
 }
 
 thread_local! {
-    static ALLOWED_PROXY: OnceCell<Principal> = OnceCell::new();
+    static ALLOWED_PROXY: OnceCell<Principal> = const { OnceCell::new() };
     static PENDING_REQUESTS: RefCell<HashMap<RequestId, RequestWithSender>> = RefCell::default();
 }
