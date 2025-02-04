@@ -10,7 +10,7 @@ use crate::outcall::HttpOutcall;
 pub struct ReplicatedHttpOutcall;
 
 impl HttpOutcall for ReplicatedHttpOutcall {
-    async fn request(&mut self, args: CanisterHttpRequestArgument) -> CallResult<HttpResponse> {
+    async fn request(&self, args: CanisterHttpRequestArgument) -> CallResult<HttpResponse> {
         Principal::management_canister().http_request(args).await
     }
 }
