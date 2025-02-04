@@ -5,12 +5,13 @@ use futures::channel::oneshot;
 use ic_canister::virtual_canister_call;
 use ic_exports::{
     ic_cdk::api::management_canister::http_request::{CanisterHttpRequestArgument, HttpResponse},
-    ic_kit::CallResult,
+    ic_kit::{CallResult, RejectionCode},
 };
 
 use crate::{
     outcall::HttpOutcall,
-    proxy_types::{OnResponseArgs, RequestArgs, RequestId, REQUEST_METHOD_NAME},
+    proxy_types::{RequestArgs, RequestId, REQUEST_METHOD_NAME},
+    ResponseResult,
 };
 
 #[derive(Debug)]
@@ -21,6 +22,8 @@ pub struct NonReplicatedHttpOutcall {
 }
 
 impl NonReplicatedHttpOutcall {
+    /// The `callback_api_fn_name` function expected to have the following signature:
+    /// - `fn(ResponseResult) -> ()`
     pub fn new(proxy_canister: Principal, callback_api_fn_name: &'static str) -> Self {
         Self {
             requests: Default::default(),
@@ -30,9 +33,9 @@ impl NonReplicatedHttpOutcall {
     }
 
     /// Call this function inside canister API callback for processed request.
-    pub fn on_response(&mut self, args: OnResponseArgs) {
-        if let Some(response) = self.requests.remove(&args.request_id) {
-            let _ = response.notify.send(args.response);
+    pub fn on_response(&mut self, result: ResponseResult) {
+        if let Some(response) = self.requests.remove(&result.id) {
+            let _ = response.notify.send(result.result);
         }
     }
 }
@@ -52,15 +55,26 @@ impl HttpOutcall for NonReplicatedHttpOutcall {
         let response = DeferredResponse { notify };
         self.requests.insert(id, response);
 
-        Ok(waker.await.unwrap_or_else(|_| HttpResponse {
-            status: 408_u64.into(), // timeout error
-            headers: vec![],
-            body: vec![],
-        }))
+        waker
+            .await
+            .map_err(|_| {
+                // if proxy canister doesn't respond
+                (
+                    RejectionCode::SysTransient,
+                    "timeout waiting HTTP request callback.".into(),
+                )
+            })?
+            .map_err(|e| {
+                // if request failed
+                (
+                    RejectionCode::SysFatal,
+                    format!("failed to send HTTP request: {e}"),
+                )
+            })
     }
 }
 
 #[derive(Debug)]
 struct DeferredResponse {
-    pub notify: oneshot::Sender<HttpResponse>,
+    pub notify: oneshot::Sender<Result<HttpResponse, String>>,
 }

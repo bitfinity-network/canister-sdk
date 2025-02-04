@@ -33,7 +33,7 @@ pub struct RequestArgs {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, CandidType)]
-pub struct OnResponseArgs {
-    pub request_id: RequestId,
-    pub response: HttpResponse,
+pub struct ResponseResult {
+    pub id: RequestId,
+    pub result: Result<HttpResponse, String>,
 }

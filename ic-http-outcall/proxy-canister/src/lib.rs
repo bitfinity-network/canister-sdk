@@ -7,10 +7,9 @@ use std::{
 use candid::Principal;
 use ic_canister::{init, query, update, virtual_canister_call, Canister, PreUpdate};
 use ic_exports::{
-    ic_cdk::api::management_canister::http_request::{CanisterHttpRequestArgument, HttpResponse},
-    ic_kit::ic,
+    ic_cdk::api::management_canister::http_request::CanisterHttpRequestArgument, ic_kit::ic,
 };
-use ic_http_outcall_api::{InitArgs, RequestArgs, RequestId};
+use ic_http_outcall_api::{InitArgs, RequestArgs, RequestId, ResponseResult};
 
 static IDS_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -55,11 +54,12 @@ impl HttpProxyCanister {
     }
 
     #[update]
-    pub async fn finish_requests(&mut self, responses: Vec<(RequestId, HttpResponse)>) {
+    pub async fn finish_requests(&mut self, responses: Vec<ResponseResult>) {
         check_allowed_proxy(ic::caller());
 
-        for (id, response) in responses {
-            let Some(request) = PENDING_REQUESTS.with_borrow_mut(|map| map.remove(&id)) else {
+        for response in responses {
+            let Some(request) = PENDING_REQUESTS.with_borrow_mut(|map| map.remove(&response.id))
+            else {
                 continue;
             };
 
