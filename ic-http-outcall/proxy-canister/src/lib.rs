@@ -1,14 +1,11 @@
-use std::{
-    cell::{OnceCell, RefCell},
-    collections::HashMap,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::cell::{OnceCell, RefCell};
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use candid::Principal;
 use ic_canister::{init, query, update, virtual_canister_call, Canister, PreUpdate};
-use ic_exports::{
-    ic_cdk::api::management_canister::http_request::CanisterHttpRequestArgument, ic_kit::ic,
-};
+use ic_exports::ic_cdk::api::management_canister::http_request::CanisterHttpRequestArgument;
+use ic_exports::ic_kit::ic;
 use ic_http_outcall_api::{InitArgs, RequestArgs, RequestId, ResponseResult};
 
 static IDS_COUNTER: AtomicU64 = AtomicU64::new(0);

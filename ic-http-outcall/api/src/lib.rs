@@ -17,12 +17,9 @@ mod proxy_types;
 mod outcall;
 mod replicated;
 
-pub use outcall::HttpOutcall;
-
-#[cfg(feature = "proxy-api")]
-pub use proxy_types::{InitArgs, RequestArgs, RequestId, ResponseResult, REQUEST_METHOD_NAME};
-
 #[cfg(feature = "non-rep")]
 pub use non_replicated::NonReplicatedHttpOutcall;
-
+pub use outcall::HttpOutcall;
+#[cfg(feature = "proxy-api")]
+pub use proxy_types::{InitArgs, RequestArgs, RequestId, ResponseResult, REQUEST_METHOD_NAME};
 pub use replicated::ReplicatedHttpOutcall;

@@ -1,11 +1,12 @@
 //! Abstraction over Http outcalls.
 
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
+use std::rc::Rc;
 
-use ic_exports::{
-    ic_cdk::api::management_canister::http_request::{CanisterHttpRequestArgument, HttpResponse},
-    ic_kit::CallResult,
+use ic_exports::ic_cdk::api::management_canister::http_request::{
+    CanisterHttpRequestArgument, HttpResponse,
 };
+use ic_exports::ic_kit::CallResult;
 
 /// Abstraction over Http outcalls.
 #[allow(async_fn_in_trait)]

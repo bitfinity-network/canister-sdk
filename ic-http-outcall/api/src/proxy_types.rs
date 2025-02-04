@@ -1,7 +1,7 @@
 use candid::Principal;
-use ic_exports::{
-    candid::CandidType,
-    ic_cdk::api::management_canister::http_request::{CanisterHttpRequestArgument, HttpResponse},
+use ic_exports::candid::CandidType;
+use ic_exports::ic_cdk::api::management_canister::http_request::{
+    CanisterHttpRequestArgument, HttpResponse,
 };
 use serde::{Deserialize, Serialize};
 

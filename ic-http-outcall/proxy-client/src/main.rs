@@ -1,9 +1,14 @@
-use std::{collections::HashSet, fmt, path::PathBuf, str::FromStr, time::Duration};
+use std::collections::HashSet;
+use std::fmt;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::time::Duration;
 
 use candid::Principal;
 use clap::Parser;
 use futures::future;
-use ic_canister_client::{agent::identity, CanisterClient, IcAgentClient};
+use ic_canister_client::agent::identity;
+use ic_canister_client::{CanisterClient, IcAgentClient};
 use ic_exports::ic_cdk::api::management_canister::http_request::{
     CanisterHttpRequestArgument, HttpHeader as IcHttpHeader, HttpMethod as IcHttpMethod,
     HttpResponse,

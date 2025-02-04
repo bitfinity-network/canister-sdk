@@ -1,8 +1,8 @@
 use candid::Principal;
-use ic_exports::{
-    ic_cdk::api::management_canister::http_request::{CanisterHttpRequestArgument, HttpResponse},
-    ic_kit::CallResult,
+use ic_exports::ic_cdk::api::management_canister::http_request::{
+    CanisterHttpRequestArgument, HttpResponse,
 };
+use ic_exports::ic_kit::CallResult;
 use ic_helpers::principal::management::ManagementPrincipalExt;
 
 use crate::outcall::HttpOutcall;

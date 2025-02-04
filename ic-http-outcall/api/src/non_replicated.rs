@@ -3,16 +3,14 @@ use std::collections::HashMap;
 use candid::Principal;
 use futures::channel::oneshot;
 use ic_canister::virtual_canister_call;
-use ic_exports::{
-    ic_cdk::api::management_canister::http_request::{CanisterHttpRequestArgument, HttpResponse},
-    ic_kit::{CallResult, RejectionCode},
+use ic_exports::ic_cdk::api::management_canister::http_request::{
+    CanisterHttpRequestArgument, HttpResponse,
 };
+use ic_exports::ic_kit::{CallResult, RejectionCode};
 
-use crate::{
-    outcall::HttpOutcall,
-    proxy_types::{RequestArgs, RequestId, REQUEST_METHOD_NAME},
-    ResponseResult,
-};
+use crate::outcall::HttpOutcall;
+use crate::proxy_types::{RequestArgs, RequestId, REQUEST_METHOD_NAME};
+use crate::ResponseResult;
 
 #[derive(Debug)]
 pub struct NonReplicatedHttpOutcall {
