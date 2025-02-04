@@ -9,7 +9,7 @@
 //! - `ReplicatedHttpOutcall` - perform replicated calls using basic `http_outcall`
 //!   method in IC API.
 
-#[cfg(feature = "non-rep")]
+#[cfg(feature = "non-replicated")]
 mod non_replicated;
 #[cfg(feature = "proxy-api")]
 mod proxy_types;
@@ -17,7 +17,7 @@ mod proxy_types;
 mod outcall;
 mod replicated;
 
-#[cfg(feature = "non-rep")]
+#[cfg(feature = "non-replicated")]
 pub use non_replicated::NonReplicatedHttpOutcall;
 pub use outcall::HttpOutcall;
 #[cfg(feature = "proxy-api")]

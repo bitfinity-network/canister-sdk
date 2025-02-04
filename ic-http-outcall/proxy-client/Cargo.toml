@@ -9,7 +9,7 @@ ic-http-outcall-proxy-canister = { path = "../proxy-canister" }
 ic-exports = { path = "../../ic-exports" }
 ic-canister-client = { path = "../../ic-canister-client", features = ["ic-agent-client"] }
 
-tokio = { workspace = true, features = ["rt", "time"] }
+tokio = { workspace = true, features = ["rt", "time", "macros"] }
 anyhow = { workspace = true }
 futures = { workspace = true }
 log = { workspace = true }

@@ -45,7 +45,7 @@ pub struct ProxyClientArgs {
     pub batch_size: usize,
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
 

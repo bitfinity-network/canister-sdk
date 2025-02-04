@@ -5,7 +5,7 @@ edition.workspace = true
 
 [dependencies]
 ic-exports = { path = "../../ic-exports" }
-ic-helpers = { path = "../../ic-helpers" }
+ic-helpers = { path = "../../ic-helpers", features = ["management_canister"] }
 ic-canister = { path = "../../ic-canister/ic-canister", optional = true }
 
 candid = { workspace = true }
@@ -14,4 +14,4 @@ futures = { workspace = true }
 
 [features]
 proxy-api = []
-non-rep = ["proxy-api", "ic-canister"]
+non-replicated = ["proxy-api", "ic-canister"]
