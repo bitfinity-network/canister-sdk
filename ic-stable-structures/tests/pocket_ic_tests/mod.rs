@@ -31,15 +31,11 @@ impl PocketIcTestContext {
     where
         for<'a> Result: CandidType + Deserialize<'a>,
     {
-        let res = match self
+        let res = self
             .env
             .query_call(canister_id, sender, method, payload)
             .await
-            .unwrap()
-        {
-            WasmResult::Reply(bytes) => bytes,
-            WasmResult::Reject(e) => panic!("Unexpected reject: {:?}", e),
-        };
+            .unwrap();
 
         Decode!(&res, Result).expect("failed to decode item from candid")
     }
