@@ -2,11 +2,10 @@ use std::sync::Arc;
 
 use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Decode, Principal};
-use ic_exports::ic_kit::RejectionCode;
 use ic_exports::pocket_ic::*;
 use serde::de::DeserializeOwned;
 
-use crate::{CanisterClient, CanisterClientError, CanisterClientResult};
+use crate::{CanisterClient, CanisterClientResult};
 
 /// A client for interacting with a canister inside dfinity's PocketIc test framework.
 #[derive(Clone)]
@@ -51,15 +50,10 @@ impl PocketIcClient {
     {
         let args = candid::encode_args(args)?;
 
-        let call_result = self
+        let reply = self
             .client()
             .update_call(self.canister, self.caller, method, args)
             .await?;
-
-        let reply = match call_result {
-            WasmResult::Reply(reply) => reply,
-            WasmResult::Reject(e) => return Err(reject_error(e)),
-        };
 
         let decoded = Decode!(&reply, R)?;
         Ok(decoded)
@@ -73,23 +67,14 @@ impl PocketIcClient {
     {
         let args = candid::encode_args(args)?;
 
-        let call_result = self
+        let reply = self
             .client()
             .query_call(self.canister, self.caller, method, args)
             .await?;
 
-        let reply = match call_result {
-            WasmResult::Reply(reply) => reply,
-            WasmResult::Reject(e) => return Err(reject_error(e)),
-        };
-
         let decoded = Decode!(&reply, R)?;
         Ok(decoded)
     }
-}
-
-fn reject_error(e: String) -> CanisterClientError {
-    CanisterClientError::CanisterError((RejectionCode::CanisterError, e))
 }
 
 #[async_trait::async_trait]
