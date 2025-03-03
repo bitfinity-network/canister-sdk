@@ -2,7 +2,7 @@ use anyhow::Result;
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use did::*;
 use ic_exports::ic_kit::mock_principals::alice;
-use ic_exports::pocket_ic::{self, PocketIc, WasmResult};
+use ic_exports::pocket_ic::{self, PocketIc};
 use wasm_utils::get_dummy_canister_bytecode;
 
 mod btreemap;
@@ -54,15 +54,11 @@ impl PocketIcTestContext {
     where
         for<'a> Result: CandidType + Deserialize<'a>,
     {
-        let res = match self
+        let res = self
             .env
             .update_call(canister_id, sender, method, payload)
             .await
-            .unwrap()
-        {
-            WasmResult::Reply(bytes) => bytes,
-            WasmResult::Reject(e) => panic!("Unexpected reject: {:?}", e),
-        };
+            .unwrap();
 
         Decode!(&res, Result).expect("failed to decode item from candid")
     }
