@@ -23,7 +23,7 @@ impl From<ic_exports::pocket_ic::ErrorCode> for CanisterClientError {
     fn from(error: ic_exports::pocket_ic::ErrorCode) -> Self {
         CanisterClientError::PocketIcTestError(ic_exports::pocket_ic::RejectResponse {
             error_code: error,
-            reject_code: ic_exports::pocket_ic::RejectCode::CanisterReject,
+            reject_code: ic_exports::pocket_ic::RejectCode::CanisterError,
             reject_message: "".to_string(),
             certified: false,
         })
