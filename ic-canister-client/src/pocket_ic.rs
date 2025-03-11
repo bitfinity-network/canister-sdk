@@ -25,6 +25,8 @@ impl PocketIcClient {
 
     /// Creates a new instance of a PocketIcClient in live mode
     /// The new instance is independent and have no access to canisters of other instances.
+    ///
+    /// Live mode flag is required to use a different update call method.
     pub async fn new_live(canister: Principal, caller: Principal) -> Self {
         let mut client = PocketIc::new().await;
         client.make_live(None).await;
@@ -46,7 +48,11 @@ impl PocketIcClient {
         }
     }
 
-    /// Crates new instance of PocketIcClient from an existing client instance.
+    /// Crates new instance of PocketIcClient from an existing client instance with live mode set.
+    ///
+    /// Note: the passed client MUST already be in live mode.
+    ///
+    /// Live mode flag is required to use a different update call method.
     pub fn from_client_live<P: Into<Arc<PocketIc>>>(
         client: P,
         canister: Principal,
