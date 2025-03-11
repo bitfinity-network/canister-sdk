@@ -13,6 +13,8 @@ pub struct PocketIcClient {
     client: Option<Arc<PocketIc>>,
     pub canister: Principal,
     pub caller: Principal,
+    /// Tells whether pocket ic instance is in live mode.
+    /// Live mode is required to use a different update call method.
     live: bool,
 }
 
