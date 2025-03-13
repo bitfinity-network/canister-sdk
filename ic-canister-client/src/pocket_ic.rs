@@ -13,9 +13,6 @@ pub struct PocketIcClient {
     client: Option<Arc<PocketIc>>,
     pub canister: Principal,
     pub caller: Principal,
-    /// Tells whether pocket ic instance is in live mode.
-    /// Live mode is required to use a different update call method.
-    live: bool,
 }
 
 impl PocketIcClient {
@@ -23,17 +20,6 @@ impl PocketIcClient {
     /// The new instance is independent and have no access to canisters of other instances.
     pub async fn new(canister: Principal, caller: Principal) -> Self {
         Self::from_client(PocketIc::new().await, canister, caller)
-    }
-
-    /// Creates a new instance of a PocketIcClient in live mode
-    /// The new instance is independent and have no access to canisters of other instances.
-    ///
-    /// Live mode flag is required to use a different update call method.
-    pub async fn new_live(canister: Principal, caller: Principal) -> Self {
-        let mut client = PocketIc::new().await;
-        client.make_live(None).await;
-
-        Self::from_client(client, canister, caller)
     }
 
     /// Crates new instance of PocketIcClient from an existing client instance.
@@ -46,25 +32,6 @@ impl PocketIcClient {
             client: Some(client.into()),
             canister,
             caller,
-            live: false,
-        }
-    }
-
-    /// Crates new instance of PocketIcClient from an existing client instance with live mode set.
-    ///
-    /// Note: the passed client MUST already be in live mode.
-    ///
-    /// Live mode flag is required to use a different update call method.
-    pub fn from_client_live<P: Into<Arc<PocketIc>>>(
-        client: P,
-        canister: Principal,
-        caller: Principal,
-    ) -> Self {
-        Self {
-            client: Some(client.into()),
-            canister,
-            caller,
-            live: true,
         }
     }
 
@@ -83,7 +50,7 @@ impl PocketIcClient {
     {
         let args = candid::encode_args(args)?;
 
-        let reply = if self.live {
+        let reply = if self.is_live() {
             let id = self
                 .client()
                 .submit_call(self.canister, self.caller, method, args)
@@ -114,6 +81,14 @@ impl PocketIcClient {
 
         let decoded = Decode!(&reply, R)?;
         Ok(decoded)
+    }
+
+    /// Returns true if the client is live.
+    fn is_live(&self) -> bool {
+        self.client
+            .as_ref()
+            .map(|client| client.url().is_some())
+            .unwrap_or_default()
     }
 }
 
