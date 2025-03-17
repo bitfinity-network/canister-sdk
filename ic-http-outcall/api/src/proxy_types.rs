@@ -20,6 +20,13 @@ pub struct InitArgs {
 )]
 pub struct RequestId(u64);
 
+impl RequestId {
+    /// Returns inner representation of the Id.
+    pub fn inner(&self) -> u64 {
+        self.0
+    }
+}
+
 impl From<u64> for RequestId {
     fn from(value: u64) -> Self {
         Self(value)

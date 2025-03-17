@@ -12,6 +12,8 @@ ic-canister = { path = "../../ic-canister/ic-canister" }
 ic-exports = { path = "../../ic-exports" }
 ic-http-outcall-api = { path = "../api", features = ["proxy-api"] }
 
-
 candid = { workspace = true }
 serde = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
