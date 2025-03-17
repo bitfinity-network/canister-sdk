@@ -15,20 +15,25 @@ pub enum CanisterClientError {
 
     #[cfg(feature = "pocket-ic-client")]
     #[error("pocket-ic test error: {0:?}")]
-    PocketIcTestError(ic_exports::pocket_ic::CallError),
+    PocketIcTestError(ic_exports::pocket_ic::RejectResponse),
 }
 
 #[cfg(feature = "pocket-ic-client")]
-impl From<ic_exports::pocket_ic::CallError> for CanisterClientError {
-    fn from(error: ic_exports::pocket_ic::CallError) -> Self {
-        CanisterClientError::PocketIcTestError(error)
+impl From<ic_exports::pocket_ic::ErrorCode> for CanisterClientError {
+    fn from(error: ic_exports::pocket_ic::ErrorCode) -> Self {
+        CanisterClientError::PocketIcTestError(ic_exports::pocket_ic::RejectResponse {
+            error_code: error,
+            reject_code: ic_exports::pocket_ic::RejectCode::CanisterError,
+            reject_message: "".to_string(),
+            certified: false,
+        })
     }
 }
 
 #[cfg(feature = "pocket-ic-client")]
-impl From<ic_exports::pocket_ic::UserError> for CanisterClientError {
-    fn from(error: ic_exports::pocket_ic::UserError) -> Self {
-        CanisterClientError::PocketIcTestError(ic_exports::pocket_ic::CallError::UserError(error))
+impl From<ic_exports::pocket_ic::RejectResponse> for CanisterClientError {
+    fn from(response: ic_exports::pocket_ic::RejectResponse) -> Self {
+        CanisterClientError::PocketIcTestError(response)
     }
 }
 
