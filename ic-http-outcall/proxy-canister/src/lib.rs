@@ -3,13 +3,16 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use candid::Principal;
-use ic_canister::{init, query, update, virtual_canister_call, Canister, PreUpdate};
+use ic_canister::{
+    generate_idl, init, query, update, virtual_canister_call, Canister, Idl, PreUpdate,
+};
 use ic_exports::ic_cdk::api::management_canister::http_request::CanisterHttpRequestArgument;
 use ic_exports::ic_kit::ic;
 use ic_http_outcall_api::{InitArgs, RequestArgs, RequestId, ResponseResult};
 
 static IDS_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+/// Canister to perform non-replicated http requests.
 #[derive(Clone, Canister)]
 #[canister_no_upgrade_methods]
 pub struct HttpProxyCanister {
@@ -20,6 +23,7 @@ pub struct HttpProxyCanister {
 impl PreUpdate for HttpProxyCanister {}
 
 impl HttpProxyCanister {
+    /// Canister initialization.
     #[init]
     pub async fn init(&mut self, args: InitArgs) {
         ALLOWED_PROXY.with(move |cell| {
@@ -27,6 +31,9 @@ impl HttpProxyCanister {
         });
     }
 
+    /// Perform the non-replicated http outcall.
+    ///
+    /// The `args.callback_name` will be called, when the a reply will be ready.
     #[update]
     pub fn http_outcall(&mut self, args: RequestArgs) -> RequestId {
         let sender = ic::caller();
@@ -38,6 +45,10 @@ impl HttpProxyCanister {
         id
     }
 
+    /// Query endpoint to get pending http requests to process.
+    ///
+    /// # Errors
+    /// - A caller must have a permission to perform the query.
     #[query]
     pub fn pending_requests(&self, limit: usize) -> Vec<(RequestId, CanisterHttpRequestArgument)> {
         check_allowed_proxy(ic::caller());
@@ -50,6 +61,10 @@ impl HttpProxyCanister {
         })
     }
 
+    /// Finishes
+    ///
+    /// # Errors
+    /// - A caller must have a permission to finish requests.
     #[update]
     pub async fn finish_requests(&mut self, responses: Vec<ResponseResult>) {
         check_allowed_proxy(ic::caller());
@@ -70,6 +85,11 @@ impl HttpProxyCanister {
                 .await;
             });
         }
+    }
+
+    /// Generate IDL.
+    pub fn idl() -> Idl {
+        generate_idl!()
     }
 }
 
@@ -167,6 +187,67 @@ mod tests {
                 headers: vec![],
                 body: vec![],
             }),
+        };
+        canister_call!(proxy_canister.finish_requests(vec![response]), ())
+            .await
+            .unwrap();
+
+        assert_eq!(finished_ids_rx.recv().await.unwrap(), id);
+    }
+
+    #[tokio::test]
+    async fn failed_requests_use_callback() {
+        let ctx = MockContext::new().inject();
+
+        let ctx_canister = Principal::from_slice(&[1, 2, 3, 4, 5]);
+        ctx.update_id(ctx_canister);
+
+        let (finished_ids_tx, mut finished_ids_rx) = channel(4);
+        let callback_name = "some_callback";
+        register_virtual_responder(
+            ctx_canister,
+            callback_name,
+            move |(response,): (ResponseResult,)| {
+                assert!(response.result.is_err());
+
+                let tx = finished_ids_tx.clone();
+                tokio::spawn(async move { tx.send(response.id).await.unwrap() });
+            },
+        );
+
+        let mut proxy_canister = HttpProxyCanister::init_instance();
+        proxy_canister
+            .init(InitArgs {
+                allowed_proxy: ctx_canister,
+            })
+            .await;
+
+        let request = CanisterHttpRequestArgument {
+            url: "https://example.com/".into(),
+            method: HttpMethod::GET,
+            ..Default::default()
+        };
+        let request_args = RequestArgs {
+            callback_name: callback_name.into(),
+            request,
+        };
+        let id = canister_call!(proxy_canister.http_outcall(request_args), RequestId)
+            .await
+            .unwrap();
+
+        let mut pending_requests = canister_call!(
+            proxy_canister.pending_requests(10),
+            Vec<(RequestId, CanisterHttpRequestArgument)>
+        )
+        .await
+        .unwrap();
+
+        let request = pending_requests.remove(0);
+        assert_eq!(request.0, id);
+
+        let response = ResponseResult {
+            id,
+            result: Err("failed to perform request".into()),
         };
         canister_call!(proxy_canister.finish_requests(vec![response]), ())
             .await
