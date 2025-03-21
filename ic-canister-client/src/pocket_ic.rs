@@ -50,10 +50,17 @@ impl PocketIcClient {
     {
         let args = candid::encode_args(args)?;
 
-        let reply = self
-            .client()
-            .update_call(self.canister, self.caller, method, args)
-            .await?;
+        let reply = if self.is_live() {
+            let id = self
+                .client()
+                .submit_call(self.canister, self.caller, method, args)
+                .await?;
+            self.client().await_call_no_ticks(id).await
+        } else {
+            self.client()
+                .update_call(self.canister, self.caller, method, args)
+                .await
+        }?;
 
         let decoded = Decode!(&reply, R)?;
         Ok(decoded)
@@ -74,6 +81,14 @@ impl PocketIcClient {
 
         let decoded = Decode!(&reply, R)?;
         Ok(decoded)
+    }
+
+    /// Returns true if the client is live.
+    fn is_live(&self) -> bool {
+        self.client
+            .as_ref()
+            .map(|client| client.url().is_some())
+            .unwrap_or_default()
     }
 }
 
