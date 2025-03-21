@@ -70,7 +70,7 @@ impl NonReplicatedHttpOutcall {
         (s, callback)
     }
 
-    /// Checks if some requests are expired, and, if so, finishs them with timeout error.
+    /// Checks if some requests are expired, and, if so, finishes them with timeout error.
     pub fn check_requests_timeout(&self) {
         let now = ic::time();
         self.requests
