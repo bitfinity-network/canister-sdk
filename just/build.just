@@ -9,7 +9,7 @@ clean:
 
 # Builds all artifacts
 [group('build')]
-build: pre_build build_ic_stable_structures_dummy_canister build_ic_canister_test_canisters build_ic_task_scheduler_dummy_scheduler_canister build_ic_log_test_canister build_ic_payments_test_canister
+build: pre_build build_ic_stable_structures_dummy_canister build_ic_canister_test_canisters build_ic_task_scheduler_dummy_scheduler_canister build_ic_log_test_canister build_ic_payments_test_canister build_http_proxy_canister
 
 
 [private]
@@ -71,4 +71,10 @@ build_ic_payments_test_canister:
 
   cargo build --target wasm32-unknown-unknown --features export-api -p test-payment-canister --release
   ic-wasm {{WASM_DIR}}/test-payment-canister.wasm -o {{WASM_DIR}}/test-payment-canister.wasm shrink
+
+[private]
+build_http_proxy_canister:
+  cargo run -p ic-http-outcall-proxy-canister --features export-api > {{WASM_DIR}}/ic-http-outcall-proxy-canister.did
+  cargo build -p ic-http-outcall-proxy-canister --target wasm32-unknown-unknown --features export-api --release
+  ic-wasm {{WASM_DIR}}/ic-http-outcall-proxy-canister.wasm -o {{WASM_DIR}}/ic-http-outcall-proxy-canister.wasm shrink
 
