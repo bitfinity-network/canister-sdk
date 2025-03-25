@@ -51,6 +51,7 @@ pub trait CanisterD: Canister {
 
 generate_exports!(CanisterD, CanisterDImpl);
 
+#[ic_canister::export_candid]
 pub fn idl() -> String {
     let trait_idl = <CanisterDImpl as CanisterD>::get_idl();
     candid::pretty::candid::compile(&trait_idl.env.env, &Some(trait_idl.actor))

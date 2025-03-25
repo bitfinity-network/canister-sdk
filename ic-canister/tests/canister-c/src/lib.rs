@@ -53,6 +53,7 @@ impl PreUpdate for CanisterC {
     }
 }
 
+#[ic_canister::export_candid]
 pub fn idl() -> String {
     use ic_canister::Idl;
 
