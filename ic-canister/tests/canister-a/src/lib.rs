@@ -8,12 +8,6 @@ use ic_exports::candid::{CandidType, Deserialize, Principal};
 use ic_storage::stable::Versioned;
 use ic_storage::IcStorage;
 
-#[ic_canister::export_candid]
-pub fn idl() -> String {
-    let idl = CanisterAImpl::get_idl();
-    candid::pretty::candid::compile(&idl.env.env, &Some(idl.actor))
-}
-
 #[derive(Default, CandidType, Deserialize, IcStorage)]
 pub struct StateA {
     counter: u32,

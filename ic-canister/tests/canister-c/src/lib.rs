@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use ic_canister::{generate_idl, update, Canister, MethodType, PreUpdate};
+use ic_canister::{update, Canister, MethodType, PreUpdate};
 use ic_exports::candid::{CandidType, Deserialize, Principal};
 use ic_metrics::{Metrics, MetricsStorage};
 use ic_storage::stable::Versioned;
@@ -51,19 +51,6 @@ impl PreUpdate for CanisterC {
     fn pre_update(&self, _method_name: &str, _method_type: MethodType) {
         self.update_metrics();
     }
-}
-
-#[ic_canister::export_candid]
-pub fn idl() -> String {
-    use ic_canister::Idl;
-
-    let canister_c_idl = generate_idl!();
-
-    let mut metrics_idl = <CanisterC as Metrics>::get_idl();
-
-    metrics_idl.merge(&canister_c_idl);
-
-    candid::pretty::candid::compile(&metrics_idl.env.env, &Some(metrics_idl.actor))
 }
 
 #[cfg(test)]

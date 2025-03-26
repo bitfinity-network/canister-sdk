@@ -73,10 +73,3 @@ impl CounterCanister {
         generate_idl!()
     }
 }
-
-#[ic_canister::export_candid]
-pub fn idl() -> String {
-    let idl = CounterCanister::idl();
-
-    candid::pretty::candid::compile(&idl.env.env, &Some(idl.actor))
-}

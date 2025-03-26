@@ -20,7 +20,7 @@ pre_build:
 build_ic_stable_structures_dummy_canister:
   cargo build -p dummy_canister --target wasm32-unknown-unknown --features export-api --release
   ic-wasm {{WASM_DIR}}/dummy_canister.wasm -o {{WASM_DIR}}/dummy_canister.wasm shrink --keep-name-section
-  candid-extractor "{{WASM_DIR}}/dummy_canister.wasm" > "{{WASM_DIR}}/dummy_canister.did"
+
 
 
 [private]
@@ -35,24 +35,18 @@ build_ic_canister_test_canisters:
   ic-wasm {{WASM_DIR}}/canister_c.wasm -o {{WASM_DIR}}/canister_c.wasm shrink --keep-name-section
   ic-wasm {{WASM_DIR}}/canister_d.wasm -o {{WASM_DIR}}/canister_d.wasm shrink --keep-name-section
 
-  candid-extractor "{{WASM_DIR}}/canister_a.wasm" > "{{WASM_DIR}}/canister_a.did"
-  candid-extractor "{{WASM_DIR}}/canister_b.wasm" > "{{WASM_DIR}}/canister_b.did"
-  candid-extractor "{{WASM_DIR}}/canister_c.wasm" > "{{WASM_DIR}}/canister_c.did"
-  candid-extractor "{{WASM_DIR}}/canister_d.wasm" > "{{WASM_DIR}}/canister_d.did"
-
 
 [private]
 build_ic_task_scheduler_dummy_scheduler_canister:
   cargo build -p dummy_scheduler_canister --target wasm32-unknown-unknown --features export-api --release
   ic-wasm {{WASM_DIR}}/dummy_scheduler_canister.wasm -o {{WASM_DIR}}/dummy_scheduler_canister.wasm shrink --keep-name-section
-  candid-extractor "{{WASM_DIR}}/dummy_scheduler_canister.wasm" > "{{WASM_DIR}}/dummy_scheduler_canister.did"
+
 
 
 [private]
 build_ic_log_test_canister:
   cargo build -p ic-log --example log_canister --target wasm32-unknown-unknown --features canister --release
   ic-wasm {{WASM_DIR}}/examples/log_canister.wasm -o {{WASM_DIR}}/log_canister.wasm shrink --keep-name-section
-  candid-extractor "{{WASM_DIR}}/log_canister.wasm" > "{{WASM_DIR}}/log_canister.did"
 
 
 [private]
@@ -70,5 +64,4 @@ build_ic_payments_test_canister:
 
   cargo build --target wasm32-unknown-unknown --features export-api -p test-payment-canister --release
   ic-wasm {{WASM_DIR}}/test_payment_canister.wasm -o {{WASM_DIR}}/test_payment_canister.wasm shrink --keep-name-section
-  candid-extractor "{{WASM_DIR}}/test_payment_canister.wasm" > "{{WASM_DIR}}/test_payment_canister.did"
 

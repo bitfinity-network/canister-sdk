@@ -12,13 +12,6 @@ use ic_stable_structures::stable_structures::DefaultMemoryImpl;
 use ic_stable_structures::{IcMemoryManager, MemoryId};
 use ic_storage::IcStorage;
 
-#[ic_canister::export_candid]
-pub fn idl() -> String {
-    let idl = LoggerCanister::get_idl();
-
-    candid::pretty::candid::compile(&idl.env.env, &Some(idl.actor))
-}
-
 thread_local! {
     static MEMORY_MANAGER: IcMemoryManager<DefaultMemoryImpl> = IcMemoryManager::init(DefaultMemoryImpl::default());
 }

@@ -33,12 +33,6 @@ jobs:
           wget https://github.com/dfinity/ic-wasm/releases/download/0.9.3/ic-wasm-linux64 -O /usr/local/bin/ic-wasm
           chmod +x /usr/local/bin/ic-wasm
 
-      - name: install candid-extractor
-        run: |
-          wget https://github.com/dfinity/cdk-rs/releases/download/candid-extractor-v0.1.4/candid-extractor-x86_64-unknown-linux-gnu.tar.gz -O /tmp/candid-extractor-x86_64-unknown-linux-gnu.tar.gz
-          tar -xvf /tmp/candid-extractor-x86_64-unknown-linux-gnu.tar.gz -C /usr/local/bin
-          chmod +x /usr/local/bin/candid-extractor
-
       - name: check rust code style
         run: |
           just check_code
