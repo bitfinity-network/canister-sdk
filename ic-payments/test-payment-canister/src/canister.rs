@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use candid::Nat;
-use ic_canister::{init, update, Canister, PreUpdate};
+use ic_canister::{generate_idl, init, update, Canister, Idl, PreUpdate};
 use ic_exports::candid::{CandidType, Deserialize, Principal};
 use ic_exports::ic_kit::ic;
 use ic_exports::icrc_types::icrc1::account::Account;
@@ -147,5 +147,9 @@ impl PaymentCanister {
         .unwrap();
 
         (local_balance, token_canister_balance)
+    }
+
+    pub fn idl() -> Idl {
+        generate_idl!()
     }
 }

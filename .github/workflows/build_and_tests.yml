@@ -17,9 +17,8 @@ jobs:
     name: Build and Test
     runs-on: ubuntu-latest
     steps:
-
       - uses: actions/checkout@v4
-      
+
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@1.85.0
         with:
@@ -31,7 +30,7 @@ jobs:
 
       - name: install ic-wasm
         run: |
-          wget https://github.com/dfinity/ic-wasm/releases/download/0.8.1/ic-wasm-linux64 -O /usr/local/bin/ic-wasm
+          wget https://github.com/dfinity/ic-wasm/releases/download/0.9.3/ic-wasm-linux64 -O /usr/local/bin/ic-wasm
           chmod +x /usr/local/bin/ic-wasm
 
       - name: check rust code style
@@ -50,4 +49,3 @@ jobs:
         run: |
           sudo apt install gcc-multilib
           just test_i686
-

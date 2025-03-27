@@ -3,6 +3,9 @@ name = "ic-log"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -24,7 +27,13 @@ serde = { workspace = true }
 ic-canister = { path = "../ic-canister/ic-canister" }
 
 [features]
-canister = ["export-api", "ic-canister", "ic-storage", "ic-stable-structures", "cfg-if"]
+canister = [
+    "export-api",
+    "ic-canister",
+    "ic-storage",
+    "ic-stable-structures",
+    "cfg-if",
+]
 export-api = []
 
 [[example]]

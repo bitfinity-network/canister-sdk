@@ -3,8 +3,8 @@ use std::rc::Rc;
 
 use canister_a::{CanisterA, CanisterAImpl, StateA};
 use ic_canister::{
-    canister_call, canister_notify, generate_idl, init, update, virtual_canister_call,
-    virtual_canister_notify, Canister, PreUpdate,
+    canister_call, canister_notify, init, update, virtual_canister_call, virtual_canister_notify,
+    Canister, PreUpdate,
 };
 use ic_exports::candid::{CandidType, Deserialize, Principal};
 use ic_storage::IcStorage;
@@ -106,16 +106,6 @@ impl CanisterA for CanisterB {
     fn state(&self) -> Rc<RefCell<StateA>> {
         StateA::get()
     }
-}
-
-pub fn idl() -> String {
-    use ic_canister::Idl;
-
-    let canister_b_idl = generate_idl!();
-    let mut canister_a_idl = <CanisterB as CanisterA>::get_idl();
-    canister_a_idl.merge(&canister_b_idl);
-
-    candid::pretty::candid::compile(&canister_a_idl.env.env, &Some(canister_a_idl.actor))
 }
 
 #[cfg(test)]
