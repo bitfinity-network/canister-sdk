@@ -1,4 +1,3 @@
-use ic_exports::ic_cdk::api::call::RejectionCode;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -40,7 +39,7 @@ impl From<ic_exports::pocket_ic::RejectResponse> for CanisterClientError {
 pub type CanisterClientResult<T> = Result<T, CanisterClientError>;
 
 /// This tuple is returned incase of IC errors such as Network, canister error.
-pub type IcError = (RejectionCode, String);
+pub type IcError = ic_exports::ic_cdk::call::Error;
 
 /// This is the result type for all IC calls.
 pub type IcResult<R> = Result<R, IcError>;

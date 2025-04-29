@@ -69,7 +69,7 @@ where
     }
 
     /// Execute all pending tasks.
-    /// Each task is executed asynchronously in a dedicated ic_cdk::spawn call.
+    /// Each task is executed asynchronously in a dedicated [`ic_exports::ic_cdk::futures::spawn`] call.
     /// This function does not wait for the tasks to complete.
     /// Returns the number of tasks that have been launched.
     pub fn run(&self, ctx: T::Ctx) -> Result<usize, SchedulerError> {

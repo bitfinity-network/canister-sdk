@@ -1,4 +1,4 @@
-use ic_exports::ic_cdk::api::stable::StableMemoryError;
+use ic_exports::ic_cdk::stable::StableMemoryError;
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;

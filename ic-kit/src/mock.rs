@@ -20,7 +20,7 @@ pub struct MockContext {
     /// ID of the current canister.
     id: Principal,
     /// The balance of the canister. By default set to 100TC.
-    balance: u64,
+    balance: u128,
     /// The caller principal passed to the calls, by default `anonymous` is used.
     caller: Principal,
     /// Determines if a call was made or not.
@@ -28,9 +28,9 @@ pub struct MockContext {
     /// Whatever the canister called trap or not.
     trapped: bool,
     /// Available cycles sent by the caller.
-    cycles: u64,
+    cycles: u128,
     /// Cycles refunded by the previous call.
-    cycles_refunded: u64,
+    cycles_refunded: u128,
     /// The storage tree for the current context.
     storage: BTreeMap<TypeId, Box<dyn Any>>,
     /// The stable storage data.
@@ -80,8 +80,8 @@ pub struct WatcherCall {
     canister_id: Principal,
     method_name: String,
     args_raw: Vec<u8>,
-    cycles_sent: u64,
-    cycles_refunded: u64,
+    cycles_sent: u128,
+    cycles_refunded: u128,
 }
 
 impl MockContext {
@@ -158,7 +158,7 @@ impl MockContext {
     /// assert_eq!(ic.balance(), 1000);
     /// ```
     #[inline]
-    pub fn with_balance(mut self, cycles: u64) -> Self {
+    pub fn with_balance(mut self, cycles: u128) -> Self {
         self.balance = cycles;
         self
     }
@@ -206,7 +206,7 @@ impl MockContext {
     /// assert_eq!(ic.msg_cycles_available(), 700);
     /// ```
     #[inline]
-    pub fn with_msg_cycles(mut self, cycles: u64) -> Self {
+    pub fn with_msg_cycles(mut self, cycles: u128) -> Self {
         self.cycles = cycles;
         self
     }
@@ -270,21 +270,21 @@ impl MockContext {
     /// Creates a mock context with a default handler that accepts the given amount of cycles
     /// on every request.
     #[inline]
-    pub fn with_consume_cycles_handler(self, cycles: u64) -> Self {
+    pub fn with_consume_cycles_handler(self, cycles: u128) -> Self {
         self.with_handler(Method::default().cycles_consume(cycles))
     }
 
     /// Create a mock context with a default handler that expects this amount of cycles to
     /// be passed to it.
     #[inline]
-    pub fn with_expect_cycles_handler(self, cycles: u64) -> Self {
+    pub fn with_expect_cycles_handler(self, cycles: u128) -> Self {
         self.with_handler(Method::default().expect_cycles(cycles))
     }
 
     /// Creates a mock context with a default handler that refunds the given amount of cycles
     /// on every request.
     #[inline]
-    pub fn with_refund_cycles_handler(self, cycles: u64) -> Self {
+    pub fn with_refund_cycles_handler(self, cycles: u128) -> Self {
         self.with_handler(Method::default().cycles_refund(cycles))
     }
 
@@ -370,13 +370,13 @@ impl MockContext {
 
     /// Update the balance of the canister.
     #[inline]
-    pub fn update_balance(&self, cycles: u64) {
+    pub fn update_balance(&self, cycles: u128) {
         self.as_mut().balance = cycles;
     }
 
     /// Update the cycles of the next message.
     #[inline]
-    pub fn update_msg_cycles(&self, cycles: u64) {
+    pub fn update_msg_cycles(&self, cycles: u128) {
         self.as_mut().cycles = cycles;
     }
 
@@ -442,14 +442,9 @@ impl Context for MockContext {
     }
 
     #[inline]
-    fn balance(&self) -> u64 {
+    fn balance(&self) -> u128 {
         self.as_mut().watcher.called_balance = true;
         self.balance
-    }
-
-    #[inline]
-    fn balance128(&self) -> u128 {
-        self.balance() as u128
     }
 
     #[inline]
@@ -468,13 +463,13 @@ impl Context for MockContext {
     }
 
     #[inline]
-    fn msg_cycles_available(&self) -> u64 {
+    fn msg_cycles_available(&self) -> u128 {
         self.as_mut().watcher.called_msg_cycles_available = true;
         self.cycles
     }
 
     #[inline]
-    fn msg_cycles_accept(&self, cycles: u64) -> u64 {
+    fn msg_cycles_accept(&self, cycles: u128) -> u128 {
         self.as_mut().watcher.called_msg_cycles_accept = true;
         let mut_ref = self.as_mut();
         if cycles > mut_ref.cycles {
@@ -490,7 +485,7 @@ impl Context for MockContext {
     }
 
     #[inline]
-    fn msg_cycles_refunded(&self) -> u64 {
+    fn msg_cycles_refunded(&self) -> u128 {
         self.as_mut().watcher.called_msg_cycles_refunded = true;
         self.cycles_refunded
     }
@@ -575,7 +570,7 @@ impl Context for MockContext {
         id: Principal,
         method: S,
         args_raw: Vec<u8>,
-        cycles: u64,
+        cycles: u128,
     ) -> CallResponse<Vec<u8>> {
         if cycles > self.balance {
             panic!(
@@ -678,7 +673,7 @@ impl Watcher {
 
     /// Returns the total amount of cycles consumed in inter-canister calls.
     #[inline]
-    pub fn cycles_consumed(&self) -> u64 {
+    pub fn cycles_consumed(&self) -> u128 {
         let mut result = 0;
         for call in &self.calls {
             result += call.cycles_consumed();
@@ -688,7 +683,7 @@ impl Watcher {
 
     /// Returns the total amount of cycles refunded in inter-canister calls.
     #[inline]
-    pub fn cycles_refunded(&self) -> u64 {
+    pub fn cycles_refunded(&self) -> u128 {
         let mut result = 0;
         for call in &self.calls {
             result += call.cycles_refunded();
@@ -699,7 +694,7 @@ impl Watcher {
     /// Returns the total amount of cycles sent in inter-canister calls, not deducing the refunded
     /// amounts.
     #[inline]
-    pub fn cycles_sent(&self) -> u64 {
+    pub fn cycles_sent(&self) -> u128 {
         let mut result = 0;
         for call in &self.calls {
             result += call.cycles_sent();
@@ -761,19 +756,19 @@ impl Watcher {
 impl WatcherCall {
     /// The amount of cycles consumed by this call.
     #[inline]
-    pub fn cycles_consumed(&self) -> u64 {
+    pub fn cycles_consumed(&self) -> u128 {
         self.cycles_sent - self.cycles_refunded
     }
 
     /// The amount of cycles sent to the call.
     #[inline]
-    pub fn cycles_sent(&self) -> u64 {
+    pub fn cycles_sent(&self) -> u128 {
         self.cycles_sent
     }
 
     /// The amount of cycles refunded from the call.
     #[inline]
-    pub fn cycles_refunded(&self) -> u64 {
+    pub fn cycles_refunded(&self) -> u128 {
         self.cycles_refunded
     }
 
@@ -820,38 +815,38 @@ mod tests {
 
         /// An update method that returns the balance of the canister.
         pub fn balance() -> u128 {
-            ic::balance128()
+            ic::balance()
         }
 
         /// An update method that returns the number of cycles provided by the user in the call.
-        pub fn msg_cycles_available() -> u64 {
+        pub fn msg_cycles_available() -> u128 {
             ic::msg_cycles_available()
         }
 
         /// An update method that accepts the given number of cycles from the caller, the number of
         /// accepted cycles is returned.
-        pub fn msg_cycles_accept(cycles: u64) -> u64 {
+        pub fn msg_cycles_accept(cycles: u128) -> u128 {
             ic::msg_cycles_accept(cycles)
         }
 
-        pub type Counter = BTreeMap<u64, i64>;
+        pub type Counter = BTreeMap<u128, i64>;
 
         /// An update method that increments one to the given key, the new value is returned.
-        pub fn increment(key: u64) -> i64 {
+        pub fn increment(key: u128) -> i64 {
             let count = ic::get_mut::<Counter>().entry(key).or_insert(0);
             *count += 1;
             *count
         }
 
         /// An update method that decrement one from the given key. The new value is returned.
-        pub fn decrement(key: u64) -> i64 {
+        pub fn decrement(key: u128) -> i64 {
             let count = ic::get_mut::<Counter>().entry(key).or_insert(0);
             *count -= 1;
             *count
         }
 
-        pub async fn withdraw(canister_id: Principal, amount: u64) -> Result<(), String> {
-            let user_balance = ic::get_mut::<u64>();
+        pub async fn withdraw(canister_id: Principal, amount: u128) -> Result<(), String> {
+            let user_balance = ic::get_mut::<u128>();
 
             if amount > *user_balance {
                 return Err("Insufficient balance.".to_string());
@@ -870,19 +865,18 @@ mod tests {
                     *user_balance += ic::msg_cycles_refunded();
                     Ok(())
                 }
-                Err((code, msg)) => {
+                Err(call_failed) => {
                     assert_eq!(amount, ic::msg_cycles_refunded());
                     *user_balance += amount;
                     Err(format!(
-                        "An error happened during the call: {}: {}",
-                        code as u8, msg
+                        "An error happened during the call: {call_failed:?}",
                     ))
                 }
             }
         }
 
-        pub fn user_balance() -> u64 {
-            *ic::get::<u64>()
+        pub fn user_balance() -> u128 {
+            *ic::get::<u128>()
         }
 
         pub fn pre_upgrade() {
@@ -1052,7 +1046,7 @@ mod tests {
         assert!(watcher.called_stable_restore);
 
         let counter = ctx.get::<canister::Counter>();
-        let data: Vec<(u64, i64)> = counter.iter().map(|(k, v)| (*k, *v)).collect();
+        let data: Vec<(u128, i64)> = counter.iter().map(|(k, v)| (*k, *v)).collect();
         assert_eq!(data, vec![(0, 2), (1, 27), (2, 5), (3, 17)]);
 
         assert_eq!(canister::increment(0), 3);
@@ -1085,7 +1079,7 @@ mod tests {
     async fn withdraw_accept() {
         let ctx = MockContext::new()
             .with_consume_cycles_handler(200)
-            .with_data(1000u64)
+            .with_data(1000u128)
             .with_balance(2000)
             .inject();
         let watcher = ctx.watch();
@@ -1115,7 +1109,7 @@ mod tests {
     async fn withdraw_accept_portion() {
         let ctx = MockContext::new()
             .with_consume_cycles_handler(50)
-            .with_data(1000u64)
+            .with_data(1000u128)
             .with_balance(2000)
             .inject();
         let watcher = ctx.watch();
@@ -1137,7 +1131,7 @@ mod tests {
     async fn withdraw_accept_zero() {
         let ctx = MockContext::new()
             .with_consume_cycles_handler(0)
-            .with_data(1000u64)
+            .with_data(1000u128)
             .with_balance(2000)
             .inject();
         let watcher = ctx.watch();
@@ -1158,7 +1152,7 @@ mod tests {
     async fn with_refund() {
         let ctx = MockContext::new()
             .with_refund_cycles_handler(30)
-            .with_data(1000u64)
+            .with_data(1000u128)
             .with_balance(2000)
             .inject();
         let watcher = ctx.watch();

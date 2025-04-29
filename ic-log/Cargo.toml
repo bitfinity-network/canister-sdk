@@ -16,6 +16,7 @@ cfg-if = { workspace = true, optional = true }
 env_filter = { workspace = true }
 humantime = { workspace = true }
 ic-canister = { path = "../ic-canister/ic-canister", optional = true }
+ic-cdk = { workspace = true }
 ic-stable-structures = { path = "../ic-stable-structures", optional = true }
 ic-storage = { path = "../ic-storage", optional = true }
 ic-exports = { path = "../ic-exports" }

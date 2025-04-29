@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use candid::{Encode, Nat};
 use ic_canister::{register_raw_virtual_responder, register_virtual_responder};
-use ic_exports::ic_cdk::api::call::RejectionCode;
 use ic_exports::ic_kit::mock_principals::alice;
+use ic_exports::ic_kit::RejectCode;
 use ic_exports::icrc_types::icrc1::account::Account;
 use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
 use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
@@ -17,6 +17,12 @@ use crate::common::{
 };
 
 pub mod common;
+
+fn make_error(code: RejectCode, message: &str) -> ic_exports::ic_cdk::call::Error {
+    ic_exports::ic_cdk::call::Error::CallRejected(
+        ic_exports::ic_cdk::call::CallRejected::with_rejection(code as u32, message.to_string()),
+    )
+}
 
 #[tokio::test]
 async fn transfer_args() {
@@ -112,7 +118,7 @@ async fn retry_with_success() {
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
-            Err((RejectionCode::SysTransient, "recoverable".into()))
+            Err(make_error(RejectCode::SysTransient, "recoverable"))
         }
     });
 
@@ -146,7 +152,7 @@ async fn retry_with_failure() {
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
-            Err((RejectionCode::SysTransient, "recoverable".into()))
+            Err(make_error(RejectCode::SysTransient, "recoverable"))
         }
     });
 
@@ -180,7 +186,7 @@ async fn retry_with_maybe_failure() {
 
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
         counter.fetch_add(1, Ordering::Relaxed);
-        Err((RejectionCode::SysTransient, "recoverable".into()))
+        Err(make_error(RejectCode::SysTransient, "recoverable"))
     });
 
     let transfer = Transfer {
@@ -203,7 +209,7 @@ async fn recovery_with_success() {
     let mut terminal = init_test();
 
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
-        Err((RejectionCode::SysTransient, "recoverable".into()))
+        Err(make_error(RejectCode::SysTransient, "recoverable"))
     });
 
     let transfer = Transfer {
@@ -230,7 +236,7 @@ async fn recovery_with_failure() {
     let mut terminal = init_test();
 
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
-        Err((RejectionCode::SysTransient, "recoverable".into()))
+        Err(make_error(RejectCode::SysTransient, "recoverable"))
     });
 
     let transfer = Transfer {
@@ -266,7 +272,7 @@ async fn recovery_with_maybe_failure() {
 
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
         counter.fetch_add(1, Ordering::Relaxed);
-        Err((RejectionCode::SysTransient, "recoverable".into()))
+        Err(make_error(RejectCode::SysTransient, "recoverable"))
     });
 
     let transfer = Transfer {
@@ -295,7 +301,7 @@ async fn transient_error_on_recovery() {
     let mut terminal = init_test();
 
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
-        Err((RejectionCode::SysTransient, "recoverable".into()))
+        Err(make_error(RejectCode::SysTransient, "recoverable"))
     });
 
     let transfer = Transfer {
@@ -309,9 +315,9 @@ async fn transient_error_on_recovery() {
     terminal.transfer(transfer, 3).await.unwrap_err();
 
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
-        Err((
-            RejectionCode::CanisterError,
-            "token canister is out of cycles".into(),
+        Err(make_error(
+            RejectCode::CanisterError,
+            "token canister is out of cycles",
         ))
     });
 

@@ -9,7 +9,7 @@ mod export_candid;
 /// and the expected return type. The result type of invocation is `async CallResult`:
 ///
 /// ```ignore
-/// let result: ic_cdk::api::call::CallResult<ResultType> = canister_call!(canister_instance.method_name(arg1, arg2), ReturnType).await;
+/// let result: ic_cdk::api::CallResult<ResultType> = canister_call!(canister_instance.method_name(arg1, arg2), ReturnType).await;
 /// ```
 ///
 /// To obtain a canister instance for this call, use [`ic_canister::Canister::from_principal`] method.
@@ -25,7 +25,7 @@ pub fn canister_call(input: TokenStream) -> TokenStream {
 /// Returns `Ok(())` if the message was successfully enqueued, otherwise returns a reject code.
 ///
 /// ```ignore
-/// let result: Result<(), ic_cdk::api::call::RejectionCode> = canister_notify!(canister_instance.method_name(arg1, arg2), ());
+/// let result: ic_cdk::call::CallResult<()> = canister_notify!(canister_instance.method_name(arg1, arg2), ());
 /// ```
 ///
 /// To obtain a canister instance for this call, use [`ic_canister::Canister::from_principal`] method.
@@ -55,7 +55,7 @@ pub fn canister_notify(input: TokenStream) -> TokenStream {
 /// Makes an inter-canister call to a canister, that has no `Canister` trait implementation.
 ///
 /// ```ignore
-/// let result: ic_cdk::api::call::CallResult<ResultType> = virtual_canister_call!(canister_principal, "method_name", (arg1, arg2), ReturnType).await;
+/// let result: ic_cdk::api::CallResult<ResultType> = virtual_canister_call!(canister_principal, "method_name", (arg1, arg2), ReturnType).await;
 /// ```
 ///
 /// To test canister logic that uses such inter-canister calls, one should use `ic_canister::register_virtual_responder`
@@ -69,7 +69,7 @@ pub fn virtual_canister_call(input: TokenStream) -> TokenStream {
 /// Makes an inter-canister call to a canister, which sends a one-way message, when has no `Canister` trait implementation.
 ///
 /// ```ignore
-/// let result: Result<(), ic_cdk::api::call::RejectionCode> = virtual_canister_notify!(canister_principal, "method_name", (arg1, arg2), ());
+/// let result: ic_cdk::call::CallResult<()> = virtual_canister_notify!(canister_principal, "method_name", (arg1, arg2), ());
 /// ```
 ///
 /// To test canister logic that uses such inter-canister calls, one should use `ic_canister::register_virtual_responder`

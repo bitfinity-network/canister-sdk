@@ -1,5 +1,8 @@
 use candid::{CandidType, Deserialize, Nat};
-use ic_exports::ic_cdk::api::call::RejectionCode;
+use ic_exports::ic_cdk::call::{
+    CandidDecodeFailed, Error as CallError, InsufficientLiquidCycleBalance,
+};
+use ic_exports::ic_kit::RejectCode;
 use ic_exports::icrc_types::icrc1::transfer::TransferError;
 use thiserror::Error;
 
@@ -96,6 +99,15 @@ pub enum InternalPaymentError {
 
     #[error("value overflow")]
     Overflow,
+
+    #[error("call perform failed")]
+    CallPerformFailed,
+
+    #[error("{0}")]
+    CandidDecodeFailed(String),
+
+    #[error("insufficient liquid cycle balance; available {available}, required {required}")]
+    InsufficientLiquidCycleBalance { available: u128, required: u128 },
 }
 
 /// Invalid transfer parameters.
@@ -110,24 +122,44 @@ pub enum ParametersError {
     TargetAccountInvalid,
 }
 
-impl From<(RejectionCode, String)> for InternalPaymentError {
-    fn from((code, message): (RejectionCode, String)) -> Self {
-        match code {
-            // Token canister doesn't exist or doesn't have the `icrc1_transfer` method
-            RejectionCode::DestinationInvalid => Self::TransferFailed(TransferFailReason::NotFound),
-            // Token canister panicked or didn't respond at all. This can happen if the token
-            // canister is out of cycles or is undergoing an upgrade.
-            RejectionCode::CanisterError => {
-                Self::TransferFailed(TransferFailReason::TokenPanic(message))
+impl From<CandidDecodeFailed> for InternalPaymentError {
+    fn from(value: CandidDecodeFailed) -> Self {
+        Self::CandidDecodeFailed(value.to_string())
+    }
+}
+
+impl From<CallError> for InternalPaymentError {
+    fn from(err: CallError) -> Self {
+        match err {
+            CallError::CallPerformFailed(_) => Self::CallPerformFailed,
+            CallError::CallRejected(err) => {
+                match err.reject_code().unwrap_or(RejectCode::SysUnknown) {
+                    // Token canister doesn't exist or doesn't have the `icrc1_transfer` method
+                    RejectCode::DestinationInvalid => {
+                        Self::TransferFailed(TransferFailReason::NotFound)
+                    }
+                    // Token canister panicked or didn't respond at all. This can happen if the token
+                    // canister is out of cycles or is undergoing an upgrade.
+                    RejectCode::CanisterError => Self::TransferFailed(
+                        TransferFailReason::TokenPanic(err.reject_message().to_string()),
+                    ),
+                    // IC error or violation of IC specification. Since we don't know for sure how to deal
+                    // with this in advance, we treat them as potentially recoverable errors, hoping that
+                    // in the future IC will recover and start returning something sensible.
+                    RejectCode::SysUnknown
+                    | RejectCode::SysFatal
+                    | RejectCode::SysTransient
+                    | RejectCode::CanisterReject => Self::MaybeFailed,
+                }
             }
-            // IC error or violation of IC specification. Since we don't know for sure how to deal
-            // with this in advance, we treat them as potentially recoverable errors, hoping that
-            // in the future IC will recover and start returning something sensible.
-            RejectionCode::Unknown
-            | RejectionCode::SysFatal
-            | RejectionCode::SysTransient
-            | RejectionCode::CanisterReject
-            | RejectionCode::NoError => Self::MaybeFailed,
+            CallError::InsufficientLiquidCycleBalance(InsufficientLiquidCycleBalance {
+                available,
+                required,
+            }) => Self::InsufficientLiquidCycleBalance {
+                available,
+                required,
+            },
+            CallError::CandidDecodeFailed(err) => Self::CandidDecodeFailed(err.to_string()),
         }
     }
 }
@@ -157,6 +189,9 @@ impl From<InternalPaymentError> for PaymentError {
             InternalPaymentError::WrongFee(expected) => Self::BadFee(expected),
             InternalPaymentError::Overflow => Self::Fatal("token amount overflow".into()),
             InternalPaymentError::InvalidParameters(v) => Self::InvalidParameters(v),
+            InternalPaymentError::CandidDecodeFailed(v) => Self::Fatal(v),
+            InternalPaymentError::CallPerformFailed => Self::Fatal("call perform failed".into()),
+            InternalPaymentError::InsufficientLiquidCycleBalance { .. } => Self::InsufficientFunds,
         }
     }
 }

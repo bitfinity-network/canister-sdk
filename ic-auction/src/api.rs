@@ -73,7 +73,7 @@ pub trait Auction: Canister + Sized {
     /// less than 1_000_000. The provided cycles are accepted by the canister, and the user bid is
     /// saved for the next auction.
     #[update(trait = true)]
-    fn bid_cycles(&self, bidder: Principal) -> Result<u64> {
+    fn bid_cycles(&self, bidder: Principal) -> Result<u128> {
         self.auction_state().borrow_mut().bid_cycles(bidder)
     }
 
@@ -95,7 +95,7 @@ pub trait Auction: Canister + Sized {
     /// the less proportion of the fees will be transferred to the auction participants. If the amount
     /// of cycles in the canister drops below this value, all the fees will be used for cycle auction.
     #[update(trait = true)]
-    fn get_min_cycles(&self) -> u64 {
+    fn get_min_cycles(&self) -> u128 {
         self.auction_state().borrow().min_cycles()
     }
 
@@ -115,7 +115,7 @@ pub trait Auction: Canister + Sized {
     ///
     /// Only the owner is allowed to call this method.
     #[update(trait = true)]
-    fn set_min_cycles(&self, min_cycles: u64) -> Result<()> {
+    fn set_min_cycles(&self, min_cycles: u128) -> Result<()> {
         self.auction_state()
             .borrow_mut()
             .authorize_owner()?

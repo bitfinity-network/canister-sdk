@@ -296,7 +296,7 @@ pub(crate) fn extract_type_if_matches<'a>(type_name: &str, generic_base: &'a Typ
         ty => panic!("Type is not concrete nor is reference: {ty:#?}"),
     };
 
-    let last = v.path.segments.iter().last();
+    let last = v.path.segments.iter().next_back();
 
     let last_segment = match last {
         Some(segment) => segment,
@@ -339,7 +339,7 @@ fn extract_generic<'a>(type_name: &str, generic_base: &'a Type, input_type: &'a 
         _ => state_type_error(input_type),
     };
 
-    let last = v.path.segments.iter().last();
+    let last = v.path.segments.iter().next_back();
 
     let last_segment = match last {
         Some(segment) => segment,
@@ -373,7 +373,8 @@ fn derive_upgrade_methods(input: &DeriveInput) -> bool {
     !input.attrs.iter().any(|x| {
         x.path()
             .segments
-            .last()
+            .iter()
+            .next_back()
             .map(|last| last.ident == "canister_no_upgrade_methods")
             .unwrap_or(false)
     })

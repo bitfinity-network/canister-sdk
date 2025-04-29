@@ -19,7 +19,9 @@ pub struct TokenTransferInfo {
 
 /// Returns current balance of the `account` in the ICRC-1 `token` canister.
 pub async fn get_icrc1_balance(token: Principal, account: &Account) -> Result<Nat> {
-    Ok(virtual_canister_call!(token, "icrc1_balance_of", (account,), Nat).await?)
+    let res = virtual_canister_call!(token, "icrc1_balance_of", (account,), Nat).await?;
+
+    Ok(res)
 }
 
 /// Requests a transfer in an ICRC-1 `token` canister.

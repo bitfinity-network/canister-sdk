@@ -25,6 +25,6 @@ pub fn print(data: &[u8]) {
 
     #[cfg(target_family = "wasm")]
     {
-        ic_exports::ic_cdk::print(String::from_utf8_lossy(data))
+        ic_exports::ic_cdk::api::debug_print(String::from_utf8_lossy(data))
     }
 }

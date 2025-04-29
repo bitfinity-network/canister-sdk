@@ -3,7 +3,6 @@ use std::rc::Rc;
 
 use candid::Principal;
 use ic_canister::{generate_idl, init, post_upgrade, Canister, Idl, PreUpdate};
-use ic_exports::ic_cdk;
 use ic_exports::ic_kit::ic;
 use ic_log::canister::inspect::logger_canister_inspect;
 use ic_log::canister::{LogCanister, LogState};

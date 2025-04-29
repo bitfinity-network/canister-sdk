@@ -3,7 +3,7 @@ use std::pin::Pin;
 
 use candid::utils::{ArgumentDecoder, ArgumentEncoder};
 use candid::{self, decode_args, encode_args, Principal};
-use ic_cdk::api::call::CallResult;
+use ic_cdk::call::CallResult;
 
 pub type CallResponse<T> = Pin<Box<dyn Future<Output = CallResult<T>>>>;
 
@@ -21,23 +21,20 @@ pub trait Context {
     fn time(&self) -> u64;
 
     /// The balance of the canister.
-    fn balance(&self) -> u64;
-
-    /// The balance of the canister.
-    fn balance128(&self) -> u128;
+    fn balance(&self) -> u128;
 
     /// The caller who has invoked this method on the canister.
     fn caller(&self) -> Principal;
 
     /// Return the number of available cycles that is sent by the caller.
-    fn msg_cycles_available(&self) -> u64;
+    fn msg_cycles_available(&self) -> u128;
 
     /// Accept the given amount of cycles, returns the actual amount of accepted cycles.
-    fn msg_cycles_accept(&self, amount: u64) -> u64;
+    fn msg_cycles_accept(&self, amount: u128) -> u128;
 
     /// Return the cycles that were sent back by the canister that was just called.
     /// This method should only be called right after an inter-canister call.
-    fn msg_cycles_refunded(&self) -> u64;
+    fn msg_cycles_refunded(&self) -> u128;
 
     /// Store the given data to the storage.
     fn store<T: 'static>(&self, data: T);
@@ -78,7 +75,7 @@ pub trait Context {
         id: Principal,
         method: S,
         args_raw: Vec<u8>,
-        cycles: u64,
+        cycles: u128,
     ) -> CallResponse<Vec<u8>>;
 
     /// Perform the call and return the response.
@@ -98,7 +95,7 @@ pub trait Context {
         id: Principal,
         method: S,
         args: T,
-        cycles: u64,
+        cycles: u128,
     ) -> CallResponse<R> {
         let args_raw = encode_args(args).expect("Failed to encode arguments.");
         let method = method.into();
