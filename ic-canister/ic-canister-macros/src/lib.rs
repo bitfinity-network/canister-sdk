@@ -9,7 +9,7 @@ mod export_candid;
 /// and the expected return type. The result type of invocation is `async CallResult`:
 ///
 /// ```ignore
-/// let result: ic_cdk::api::CallResult<ResultType> = canister_call!(canister_instance.method_name(arg1, arg2), ReturnType).await;
+/// let result: ic_cdk::call::CallResult<ResultType> = canister_call!(canister_instance.method_name(arg1, arg2), ReturnType).await;
 /// ```
 ///
 /// To obtain a canister instance for this call, use [`ic_canister::Canister::from_principal`] method.
@@ -55,7 +55,7 @@ pub fn canister_notify(input: TokenStream) -> TokenStream {
 /// Makes an inter-canister call to a canister, that has no `Canister` trait implementation.
 ///
 /// ```ignore
-/// let result: ic_cdk::api::CallResult<ResultType> = virtual_canister_call!(canister_principal, "method_name", (arg1, arg2), ReturnType).await;
+/// let result: ic_cdk::call::CallResult<ResultType> = virtual_canister_call!(canister_principal, "method_name", (arg1, arg2), ReturnType).await;
 /// ```
 ///
 /// To test canister logic that uses such inter-canister calls, one should use `ic_canister::register_virtual_responder`
