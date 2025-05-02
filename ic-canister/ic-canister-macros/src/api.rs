@@ -207,16 +207,35 @@ pub(crate) fn api_method(
         } else {
             quote! {}
         };
-        quote! {
-            #[cfg(all(target_family = "wasm", feature = "export-api"))]
-            #[export_name = #export_name]
-            fn #internal_method() {
-                ::ic_exports::ic_cdk::futures::spawn(async {
-                    #args_destr_tuple
-                    let mut instance = Self::init_instance();
-                    let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
-                    #reply_call
-                });
+        if method_type == "query" {
+            quote! {
+                #[cfg(all(target_family = "wasm", feature = "export-api"))]
+                #[export_name = #export_name]
+                fn #internal_method() {
+                    ::ic_exports::ic_cdk::futures::in_query_executor_context(
+                        move || { ::ic_exports::ic_cdk::futures::spawn(async {
+                            #args_destr_tuple
+                            let mut instance = Self::init_instance();
+                            let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
+                            #reply_call
+                        })
+                    });
+                }
+            }
+        } else {
+            quote! {
+                #[cfg(all(target_family = "wasm", feature = "export-api"))]
+                #[export_name = #export_name]
+                fn #internal_method() {
+                    ::ic_exports::ic_cdk::futures::in_executor_context(
+                        move || { ::ic_exports::ic_cdk::futures::spawn(async {
+                            #args_destr_tuple
+                            let mut instance = Self::init_instance();
+                            let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
+                            #reply_call
+                        })
+                    });
+                }
             }
         }
     };

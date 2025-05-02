@@ -9,7 +9,7 @@ pub use pocket_ic::nonblocking::*;
 pub use pocket_ic::{common, ErrorCode, PocketIcBuilder, RejectCode, RejectResponse};
 use tokio::sync::OnceCell;
 
-const POCKET_IC_SERVER_VERSION: &str = "8.0.0";
+const POCKET_IC_SERVER_VERSION: &str = "9.0.1";
 const POCKET_IC_BIN: &str = "POCKET_IC_BIN";
 
 /// Returns the pocket-ic client.
