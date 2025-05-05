@@ -137,11 +137,16 @@ pub trait ManagementPrincipalExt: Sealed {
     fn uninstall_code(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
     fn start(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
     fn stop(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
-    fn status(&self) -> impl Future<Output = Result<CanisterStatus, (RejectionCode, String)>> + Send;
+    fn status(
+        &self,
+    ) -> impl Future<Output = Result<CanisterStatus, (RejectionCode, String)>> + Send;
     fn delete(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
     fn deposit_cycles(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
     fn raw_rand(&self) -> impl Future<Output = Result<Vec<u8>, (RejectionCode, String)>> + Send;
-    fn provisional_top_up(&self, amount: Nat) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
+    fn provisional_top_up(
+        &self,
+        amount: Nat,
+    ) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
 }
 
 impl ManagementPrincipalExt for Principal {
