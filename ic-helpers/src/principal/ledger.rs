@@ -1,4 +1,5 @@
-use async_trait::async_trait;
+use std::future::Future;
+
 use candid::CandidType;
 use ic_canister::virtual_canister_call;
 use ic_exports::candid::Principal;
@@ -12,21 +13,20 @@ use super::private::Sealed;
 
 pub const DEFAULT_TRANSFER_FEE: Tokens = Tokens::from_e8s(10_000);
 
-#[async_trait]
 pub trait LedgerPrincipalExt: Sealed {
-    async fn get_balance(
+    fn get_balance(
         &self,
         of: Principal,
         sub_account: Option<Subaccount>,
-    ) -> Result<u64, String>;
+    ) -> impl Future<Output = Result<u64, String>> + Send;
 
-    async fn transfer(
+    fn transfer(
         &self,
         to: Principal,
         amount: u64,
         from_subaccount: Option<Subaccount>,
         to_subaccount: Option<Subaccount>,
-    ) -> Result<u64, String>;
+    ) -> impl Future<Output = Result<u64, String>> + Send;
 }
 
 /// Arguments taken by the account_balance candid endpoint.
@@ -35,7 +35,6 @@ pub struct BinaryAccountBalanceArgs {
     pub account: AccountIdentifier,
 }
 
-#[async_trait]
 impl LedgerPrincipalExt for Principal {
     async fn get_balance(
         &self,

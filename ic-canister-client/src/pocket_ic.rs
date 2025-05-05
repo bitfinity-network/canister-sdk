@@ -92,7 +92,6 @@ impl PocketIcClient {
     }
 }
 
-#[async_trait::async_trait]
 impl CanisterClient for PocketIcClient {
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where

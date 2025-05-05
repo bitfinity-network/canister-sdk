@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use candid::utils::ArgumentEncoder;
 use candid::CandidType;
 use serde::de::DeserializeOwned;
@@ -9,7 +11,6 @@ use crate::CanisterClientResult;
 /// IC Canister.
 /// The IC Agent is used for interaction through the dfx tool, while the IC
 /// Canister is used for interacting with the EVM canister in wasm environments.
-#[async_trait::async_trait]
 pub trait CanisterClient: Send + Clone {
     /// Call an update method on the canister.
     ///
@@ -21,7 +22,7 @@ pub trait CanisterClient: Send + Clone {
     /// # Returns
     ///
     /// The result of the method call.
-    async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
+    fn update<T, R>(&self, method: &str, args: T) -> impl Future<Output = CanisterClientResult<R>> + Send
     where
         T: ArgumentEncoder + Send + Sync,
         R: DeserializeOwned + CandidType;
@@ -36,7 +37,7 @@ pub trait CanisterClient: Send + Clone {
     /// # Returns
     ///
     /// The result of the method call.
-    async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
+    fn query<T, R>(&self, method: &str, args: T) -> impl Future<Output = CanisterClientResult<R>> + Send
     where
         T: ArgumentEncoder + Send + Sync,
         R: DeserializeOwned + CandidType;

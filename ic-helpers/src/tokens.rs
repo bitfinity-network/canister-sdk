@@ -5,7 +5,7 @@ use std::rc::Rc;
 use auto_ops::impl_op_ex;
 use candid::types::{Serializer, Type, TypeId, TypeInner};
 use candid::{self, CandidType, Deserialize, Nat};
-use crypto_bigint::{CheckedAdd, CheckedMul, CheckedSub, Encoding, NonZero, U256};
+use crypto_bigint::{CheckedAdd, CheckedMul, CheckedSub, NonZero, U256};
 use num_bigint::BigUint;
 use num_traits::{FromPrimitive, ToPrimitive};
 use serde::de::{Error, Unexpected};

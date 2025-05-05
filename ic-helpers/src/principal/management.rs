@@ -5,8 +5,8 @@
 //! [`The IC Management Canister`]: https://sdk.dfinity.org/docs/interface-spec/index.html#ic-management-canister
 
 use std::convert::{AsRef, From};
+use std::future::Future;
 
-use async_trait::async_trait;
 use ic_canister::virtual_canister_call;
 use ic_exports::candid::utils::ArgumentEncoder;
 use ic_exports::candid::{encode_args, CandidType, Nat, Principal};
@@ -106,46 +106,44 @@ struct ProvisionalTopUpCanisterInput {
     pub amount: Nat,
 }
 
-#[async_trait]
 pub trait ManagementPrincipalExt: Sealed {
     fn accept_cycles() -> u64;
-    async fn create(
+    fn create(
         settings: Option<CanisterSettings>,
         cycles: u64,
-    ) -> Result<Principal, (RejectionCode, String)>;
-    async fn provisional_create_with_cycles(
+    ) -> impl Future<Output = Result<Principal, (RejectionCode, String)>> + Send;
+    fn provisional_create_with_cycles(
         amount: u64,
         settings: Option<CanisterSettings>,
-    ) -> Result<Principal, (RejectionCode, String)>;
-    async fn get_ecdsa_pubkey(
+    ) -> impl Future<Output = Result<Principal, (RejectionCode, String)>> + Send;
+    fn get_ecdsa_pubkey(
         canister_id: Option<Principal>,
         derivation_path: Vec<Vec<u8>>,
-    ) -> Result<Pubkey, (RejectionCode, String)>;
-    async fn sign_with_ecdsa(
+    ) -> impl Future<Output = Result<Pubkey, (RejectionCode, String)>> + Send;
+    fn sign_with_ecdsa(
         hash: &[u8; 32],
         derivation_path: Vec<Vec<u8>>,
-    ) -> Result<SignWithEcdsaResponse, (RejectionCode, String)>;
-    async fn update_settings(
+    ) -> impl Future<Output = Result<SignWithEcdsaResponse, (RejectionCode, String)>> + Send;
+    fn update_settings(
         &self,
         settings: CanisterSettings,
-    ) -> Result<(), (RejectionCode, String)>;
-    async fn install_code<T: ArgumentEncoder + Send>(
+    ) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
+    fn install_code<T: ArgumentEncoder + Send>(
         &self,
         mode: InstallCodeMode,
         wasm_module: WasmModule,
         arg: T,
-    ) -> Result<(), (RejectionCode, String)>;
-    async fn uninstall_code(&self) -> Result<(), (RejectionCode, String)>;
-    async fn start(&self) -> Result<(), (RejectionCode, String)>;
-    async fn stop(&self) -> Result<(), (RejectionCode, String)>;
-    async fn status(&self) -> Result<CanisterStatus, (RejectionCode, String)>;
-    async fn delete(&self) -> Result<(), (RejectionCode, String)>;
-    async fn deposit_cycles(&self) -> Result<(), (RejectionCode, String)>;
-    async fn raw_rand(&self) -> Result<Vec<u8>, (RejectionCode, String)>;
-    async fn provisional_top_up(&self, amount: Nat) -> Result<(), (RejectionCode, String)>;
+    ) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
+    fn uninstall_code(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
+    fn start(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
+    fn stop(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
+    fn status(&self) -> impl Future<Output = Result<CanisterStatus, (RejectionCode, String)>> + Send;
+    fn delete(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
+    fn deposit_cycles(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
+    fn raw_rand(&self) -> impl Future<Output = Result<Vec<u8>, (RejectionCode, String)>> + Send;
+    fn provisional_top_up(&self, amount: Nat) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
 }
 
-#[async_trait]
 impl ManagementPrincipalExt for Principal {
     /// A helper method to accept cycles from caller.
     fn accept_cycles() -> u64 {

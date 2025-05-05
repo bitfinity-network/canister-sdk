@@ -57,7 +57,6 @@ impl IcAgentClient {
     }
 }
 
-#[async_trait::async_trait]
 impl CanisterClient for IcAgentClient {
     async fn query<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where
