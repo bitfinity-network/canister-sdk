@@ -286,7 +286,7 @@ pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
     };
 
-    let segment = path.path.segments.iter().last();
+    let segment = path.path.segments.iter().next_back();
 
     let state_type = match segment {
         Some(segment) => segment.ident.to_string(),
