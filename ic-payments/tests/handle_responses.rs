@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use candid::Nat;
 use ic_canister::{register_raw_virtual_responder, register_virtual_responder};
-use ic_exports::ic_cdk::api::call::RejectionCode;
+use ic_exports::ic_kit::RejectCode;
 use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
 use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
 use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
@@ -11,6 +11,12 @@ use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 use crate::common::{init_test, setup_success, simple_transfer, token_principal};
 
 pub mod common;
+
+fn make_error(code: RejectCode, message: &str) -> ic_exports::ic_cdk::call::Error {
+    ic_exports::ic_cdk::call::Error::CallRejected(
+        ic_exports::ic_cdk::call::CallRejected::with_rejection(code as u32, message.to_string()),
+    )
+}
 
 #[tokio::test]
 async fn successful_transfer() {
@@ -36,14 +42,14 @@ async fn token_canister_rejects_request() {
     let mut terminal = init_test();
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", |_| {
         // Token canister trapped or didn't respond
-        Err((RejectionCode::CanisterError, "trap".into()))
+        Err(make_error(RejectCode::CanisterError, "trap"))
     });
 
     let result = terminal.transfer(simple_transfer(), 1).await;
     assert_eq!(
         result,
         Err(PaymentError::TransferFailed(
-            TransferFailReason::TokenPanic("trap".into())
+            TransferFailReason::TokenPanic("trap".to_string())
         ))
     );
 }
@@ -52,17 +58,16 @@ async fn token_canister_rejects_request() {
 async fn ic_maybe_failed_codes() {
     let mut terminal = init_test();
     let recoverable_codes = vec![
-        RejectionCode::SysFatal,
-        RejectionCode::SysTransient,
-        RejectionCode::Unknown,
-        RejectionCode::CanisterReject,
-        RejectionCode::NoError,
+        RejectCode::SysFatal,
+        RejectCode::SysTransient,
+        RejectCode::SysUnknown,
+        RejectCode::CanisterReject,
     ];
 
     for code in recoverable_codes {
         register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
             // Token canister trapped or didn't respond
-            Err((code, "recoverable".into()))
+            Err(make_error(code, "recoverable"))
         });
 
         let result = terminal.transfer(simple_transfer(), 1).await;
@@ -156,7 +161,7 @@ async fn retries_count() {
 
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
         counter.fetch_add(1, Ordering::Relaxed);
-        Err((RejectionCode::SysTransient, "recoverable".into()))
+        Err(make_error(RejectCode::SysTransient, "recoverable"))
     });
 
     terminal.transfer(simple_transfer(), 5).await.unwrap_err();

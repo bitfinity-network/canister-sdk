@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use candid::utils::{ArgumentDecoder, ArgumentEncoder};
 use candid::{self, Principal};
 use ic_cdk;
+use ic_cdk::call::Call;
 
 use crate::{CallResponse, Context};
 
@@ -20,7 +21,8 @@ impl IcContext {
     #[inline(always)]
     pub fn context() -> &'static mut IcContext {
         unsafe {
-            if let Some(ctx) = &mut CONTEXT {
+            let ptr = &raw mut CONTEXT;
+            if let Some(Some(ctx)) = ptr.as_mut() {
                 ctx
             } else {
                 CONTEXT = Some(IcContext {
@@ -50,12 +52,12 @@ impl Context for IcContext {
 
     #[inline(always)]
     fn print<S: std::convert::AsRef<str>>(&self, s: S) {
-        ic_cdk::api::print(s)
+        ic_cdk::api::debug_print(s)
     }
 
     #[inline(always)]
     fn id(&self) -> Principal {
-        ic_cdk::id()
+        ic_cdk::api::canister_self()
     }
 
     #[inline(always)]
@@ -64,33 +66,28 @@ impl Context for IcContext {
     }
 
     #[inline(always)]
-    fn balance(&self) -> u64 {
-        ic_cdk::api::canister_balance()
-    }
-
-    #[inline(always)]
-    fn balance128(&self) -> u128 {
-        ic_cdk::api::canister_balance128()
+    fn balance(&self) -> u128 {
+        ic_cdk::api::canister_cycle_balance()
     }
 
     #[inline(always)]
     fn caller(&self) -> Principal {
-        ic_cdk::api::caller()
+        ic_cdk::api::msg_caller()
     }
 
     #[inline(always)]
-    fn msg_cycles_available(&self) -> u64 {
-        ic_cdk::api::call::msg_cycles_available()
+    fn msg_cycles_available(&self) -> u128 {
+        ic_cdk::api::msg_cycles_available()
     }
 
     #[inline(always)]
-    fn msg_cycles_accept(&self, amount: u64) -> u64 {
-        ic_cdk::api::call::msg_cycles_accept(amount)
+    fn msg_cycles_accept(&self, amount: u128) -> u128 {
+        ic_cdk::api::msg_cycles_accept(amount)
     }
 
     #[inline(always)]
-    fn msg_cycles_refunded(&self) -> u64 {
-        ic_cdk::api::call::msg_cycles_refunded()
+    fn msg_cycles_refunded(&self) -> u128 {
+        ic_cdk::api::msg_cycles_refunded()
     }
 
     #[inline(always)]
@@ -146,15 +143,23 @@ impl Context for IcContext {
         id: Principal,
         method: S,
         args_raw: Vec<u8>,
-        cycles: u64,
+        cycles: u128,
     ) -> CallResponse<Vec<u8>> {
         let method = method.into();
-        Box::pin(async move { ic_cdk::api::call::call_raw(id, &method, &args_raw, cycles).await })
+
+        Box::pin(async move {
+            Call::unbounded_wait(id, &method)
+                .with_raw_args(&args_raw)
+                .with_cycles(cycles)
+                .await
+                .map(|resp| resp.to_vec())
+                .map_err(ic_cdk::call::Error::from)
+        })
     }
 
     #[inline(always)]
     fn set_certified_data(&self, data: &[u8]) {
-        ic_cdk::api::set_certified_data(data);
+        ic_cdk::api::certified_data_set(data);
     }
 
     #[inline(always)]
@@ -164,6 +169,6 @@ impl Context for IcContext {
 
     #[inline(always)]
     fn spawn<F: 'static + std::future::Future<Output = ()>>(&mut self, future: F) {
-        ic_cdk::spawn(future)
+        ic_cdk::futures::spawn(future)
     }
 }

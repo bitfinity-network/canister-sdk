@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::io;
 
-use ic_exports::ic_cdk::api::stable::StableMemoryError;
+use ic_exports::ic_cdk::stable::StableMemoryError;
 
 thread_local! {
     static STORAGE: RefCell<Vec<u8>> = const { RefCell::new(vec![]) };

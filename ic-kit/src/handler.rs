@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use candid::utils::{ArgumentDecoder, ArgumentEncoder};
 use candid::{decode_args, encode_args};
-use ic_cdk::api::call::CallResult;
+use ic_cdk::call::CallResult;
 
 use crate::candid::CandidType;
 use crate::{Context, MockContext, Principal};
@@ -21,12 +21,12 @@ pub trait CallHandler {
     fn perform(
         &self,
         caller: &Principal,
-        cycles: u64,
+        cycles: u128,
         canister_id: &Principal,
         method: &str,
         args_raw: &[u8],
         ctx: Option<&mut MockContext>,
-    ) -> (CallResult<Vec<u8>>, u64);
+    ) -> (CallResult<Vec<u8>>, u128);
 }
 
 /// A method that is constructed using nested calls.
@@ -39,7 +39,7 @@ pub struct Method {
     /// If set we assert that the arguments passed to the method are this value.
     expected_args: Option<Vec<u8>>,
     /// If set we assert the number of cycles sent to the canister.
-    expected_cycles: Option<u64>,
+    expected_cycles: Option<u128>,
     /// The response that we send back from the caller. By default `()` is returned.
     response: Option<Vec<u8>>,
 }
@@ -47,8 +47,8 @@ pub struct Method {
 #[allow(clippy::enum_variant_names)]
 enum MethodAtom {
     ConsumeAllCycles,
-    ConsumeCycles(u64),
-    RefundCycles(u64),
+    ConsumeCycles(u128),
+    RefundCycles(u128),
 }
 
 /// A method which uses Rust closures to handle the calls, it accepts every call.
@@ -95,14 +95,14 @@ impl Method {
 
     /// Make the method consume at most the given amount of cycles.
     #[inline]
-    pub fn cycles_consume(mut self, cycles: u64) -> Self {
+    pub fn cycles_consume(mut self, cycles: u128) -> Self {
         self.atoms.push(MethodAtom::ConsumeCycles(cycles));
         self
     }
 
     /// Make the method refund the given amount of cycles.
     #[inline]
-    pub fn cycles_refund(mut self, cycles: u64) -> Self {
+    pub fn cycles_refund(mut self, cycles: u128) -> Self {
         self.atoms.push(MethodAtom::RefundCycles(cycles));
         self
     }
@@ -125,7 +125,7 @@ impl Method {
     ///
     /// # Panics
     /// If called more than once on a method.
-    pub fn expect_cycles(mut self, cycles: u64) -> Self {
+    pub fn expect_cycles(mut self, cycles: u128) -> Self {
         if self.expected_cycles.is_some() {
             panic!("expect_cycles can only be called once on a method.");
         }
@@ -170,7 +170,7 @@ impl Canister {
 
     /// Update the balance of this canister.
     #[inline]
-    pub fn with_balance(self, cycles: u64) -> Self {
+    pub fn with_balance(self, cycles: u128) -> Self {
         self.context.borrow_mut().update_balance(cycles);
         self
     }
@@ -254,12 +254,12 @@ impl CallHandler for Method {
     fn perform(
         &self,
         _caller: &Principal,
-        cycles: u64,
+        cycles: u128,
         _canister_id: &Principal,
         _method: &str,
         args_raw: &[u8],
         ctx: Option<&mut MockContext>,
-    ) -> (CallResult<Vec<u8>>, u64) {
+    ) -> (CallResult<Vec<u8>>, u128) {
         let mut default_ctx = MockContext::new().with_msg_cycles(cycles);
         let ctx = ctx.unwrap_or(&mut default_ctx);
 
@@ -274,7 +274,7 @@ impl CallHandler for Method {
         for atom in &self.atoms {
             match *atom {
                 MethodAtom::ConsumeAllCycles => {
-                    ctx.msg_cycles_accept(u64::MAX);
+                    ctx.msg_cycles_accept(u128::MAX);
                 }
                 MethodAtom::ConsumeCycles(cycles) => {
                     ctx.msg_cycles_accept(cycles);
@@ -313,12 +313,12 @@ impl CallHandler for RawHandler {
     fn perform(
         &self,
         caller: &Principal,
-        cycles: u64,
+        cycles: u128,
         canister_id: &Principal,
         method: &str,
         args_raw: &[u8],
         ctx: Option<&mut MockContext>,
-    ) -> (CallResult<Vec<u8>>, u64) {
+    ) -> (CallResult<Vec<u8>>, u128) {
         let mut default_ctx = MockContext::new()
             .with_caller(*caller)
             .with_msg_cycles(cycles)
@@ -350,12 +350,12 @@ impl CallHandler for Canister {
     fn perform(
         &self,
         caller: &Principal,
-        cycles: u64,
+        cycles: u128,
         canister_id: &Principal,
         method: &str,
         args_raw: &[u8],
         ctx: Option<&mut MockContext>,
-    ) -> (CallResult<Vec<u8>>, u64) {
+    ) -> (CallResult<Vec<u8>>, u128) {
         assert!(ctx.is_none());
 
         let mut ctx = self.context.borrow_mut();

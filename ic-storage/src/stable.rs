@@ -124,7 +124,7 @@ use ic_exports::candid::de::IDLDeserialize;
 use ic_exports::candid::ser::IDLBuilder;
 use ic_exports::candid::types::CandidType;
 #[cfg(target_family = "wasm")]
-use ic_exports::ic_cdk::api::stable::{stable_bytes, stable_read, stable_size, StableWriter};
+use ic_exports::ic_cdk::stable::{stable_bytes, stable_read, stable_size, StableWriter};
 use serde::Deserialize;
 
 #[cfg(not(target_family = "wasm"))]

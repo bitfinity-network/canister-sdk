@@ -24,11 +24,14 @@ impl IcCanisterClient {
         T: ArgumentEncoder + Send,
         R: DeserializeOwned + CandidType,
     {
-        let call_result: Result<(R,), _> =
-            ic_exports::ic_cdk::call(self.canister_id, method, args).await;
-        call_result
-            .map(|(r,)| r)
-            .map_err(CanisterClientError::CanisterError)
+        let call_result = ic_exports::ic_cdk::call::Call::unbounded_wait(self.canister_id, method)
+            .with_args(&args)
+            .await
+            .map_err(|e| CanisterClientError::CanisterError(e.into()))?
+            .into_bytes();
+
+        use candid::Decode;
+        Decode!(&call_result, R).map_err(CanisterClientError::CandidError)
     }
 }
 

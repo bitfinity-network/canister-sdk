@@ -7,10 +7,10 @@ fn whoami() -> Principal {
 }
 
 #[update]
-async fn send_cycles(canister_id: Principal, cycles: u64) -> Result<(), String> {
+async fn send_cycles(canister_id: Principal, cycles: u128) -> Result<(), String> {
     ic::call_with_payment(canister_id, "wallet_accept", (), cycles)
         .await
-        .map_err(|(code, msg)| format!("Call failed with code={}: {}", code as u8, msg))
+        .map_err(|err| format!("Call failed {err:?}"))
 }
 
 #[cfg(test)]

@@ -373,7 +373,8 @@ fn derive_upgrade_methods(input: &DeriveInput) -> bool {
     !input.attrs.iter().any(|x| {
         x.path()
             .segments
-            .last()
+            .iter()
+            .next_back()
             .map(|last| last.ident == "canister_no_upgrade_methods")
             .unwrap_or(false)
     })

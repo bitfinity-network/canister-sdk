@@ -35,8 +35,8 @@ pub fn time() -> u64 {
 
 /// The balance of the canister.
 #[inline(always)]
-pub fn balance128() -> u128 {
-    get_context().balance128()
+pub fn balance() -> u128 {
+    get_context().balance()
 }
 
 /// The caller who has invoked this method on the canister.
@@ -47,20 +47,20 @@ pub fn caller() -> Principal {
 
 /// Return the number of available cycles that is sent by the caller.
 #[inline(always)]
-pub fn msg_cycles_available() -> u64 {
+pub fn msg_cycles_available() -> u128 {
     get_context().msg_cycles_available()
 }
 
 /// Accept the given amount of cycles, returns the actual amount of accepted cycles.
 #[inline(always)]
-pub fn msg_cycles_accept(amount: u64) -> u64 {
+pub fn msg_cycles_accept(amount: u128) -> u128 {
     get_context().msg_cycles_accept(amount)
 }
 
 /// Return the cycles that were sent back by the canister that was just called.
 /// This method should only be called right after an inter-canister call.
 #[inline(always)]
-pub fn msg_cycles_refunded() -> u64 {
+pub fn msg_cycles_refunded() -> u128 {
     get_context().msg_cycles_refunded()
 }
 
@@ -122,7 +122,7 @@ pub fn call_raw<S: Into<String>>(
     id: Principal,
     method: S,
     args_raw: Vec<u8>,
-    cycles: u64,
+    cycles: u128,
 ) -> CallResponse<Vec<u8>> {
     get_context().call_raw(id, method, args_raw, cycles)
 }
@@ -142,7 +142,7 @@ pub fn call_with_payment<T: ArgumentEncoder, R: for<'a> ArgumentDecoder<'a>, S: 
     id: Principal,
     method: S,
     args: T,
-    cycles: u64,
+    cycles: u128,
 ) -> CallResponse<R> {
     get_context().call_with_payment(id, method, args, cycles)
 }

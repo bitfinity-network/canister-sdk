@@ -10,7 +10,7 @@ mod mock;
 mod wasm;
 
 pub use candid::Principal;
-pub use ic_cdk::api::call::{CallResult, RejectionCode};
+pub use ic_cdk::call::{CallResult, RejectCode};
 pub use {candid, ic_cdk_macros as macros};
 
 /// A set of mock principal IDs useful for testing.

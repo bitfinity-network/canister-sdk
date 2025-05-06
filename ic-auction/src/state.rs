@@ -12,7 +12,7 @@ use crate::error::{AuctionError, Result};
 // to add cycles rather then to decrease them. 1M is chosen as one ingress call costs 590K cycles.
 pub const MIN_BIDDING_AMOUNT: Cycles = 1_000_000;
 
-pub type Cycles = u64;
+pub type Cycles = u128;
 pub type TxId = u64;
 pub type Timestamp = u64;
 
@@ -147,7 +147,7 @@ impl AuctionState {
 
     fn get_fee_ratio(&self) -> f64 {
         let min_cycles = self.min_cycles as f64;
-        let current_cycles = ic::balance128() as f64;
+        let current_cycles = ic::balance() as f64;
         if min_cycles == 0.0 {
             // Setting min_cycles to zero effectively turns off the auction functionality, as all the
             // fees will go to the owner.

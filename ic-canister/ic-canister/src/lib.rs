@@ -258,7 +258,7 @@
 //! When another canister needs to call these API methods, the [canister_call]` macro can be used.
 //!
 //! ```ignore
-//! use ic_exports::ic_cdk::api::call::CallResult;
+//! use ic_exports::ic_cdk::call::CallResult;
 //!
 //! let my_canister = MyCanister::from_principal(canister_principal);
 //! canister_call!(my_canister.add(10), ()).await.unwrap();
@@ -272,7 +272,7 @@
 //! cannot be used. Instead, you can use [virtual_canister_call] macro.
 //!
 //! ```ignore
-//! use ic_exports::ic_cdk::api::call::CallResult;
+//! use ic_exports::ic_cdk::call::CallResult;
 //! use ic_exports::candid::Principal;
 //! use ic_canister::virtual_canister_call;
 //!
@@ -436,7 +436,7 @@
 //! the second canister will call it.
 //!
 //! ```ignore
-//! use ic_exports::ic_cdk::api::call::CallResult;
+//! use ic_exports::ic_cdk::call::CallResult;
 //! use ic_exports::candid::Principal;
 //! use ic_canister::{Canister, update, canister_call};
 //!
@@ -457,7 +457,7 @@
 //! that will respond to such a call.
 //!
 //! ```ignore
-//! use ic_exports::ic_cdk::api::call::CallResult;
+//! use ic_exports::ic_cdk::call::CallResult;
 //! use ic_exports::candid::Principal;
 //! use ic_canister::{Canister, register_virtual_responder, update, virtual_canister_call};
 //!
@@ -555,9 +555,10 @@ use std::rc::Rc;
 pub use ic_canister_macros::*;
 use ic_exports::candid::utils::ArgumentDecoder;
 use ic_exports::candid::{self, CandidType, Deserialize, Principal};
-use ic_exports::ic_cdk::api::call::{CallResult, RejectionCode};
+use ic_exports::ic_cdk::call::{CallFailed, CallRejected, CallResult};
 
 pub mod idl;
+use ic_exports::ic_kit::RejectCode;
 pub use idl::*;
 
 pub enum MethodType {
@@ -657,17 +658,16 @@ pub fn call_virtual_responder(
             .get(&(principal, method_name.to_string()))
         {
             Some(responder) => responder(args),
-            None => Err((
-                RejectionCode::DestinationInvalid,
-                format!(
+            None => Err(
+                ic_exports::ic_cdk::call::Error::from(
+                CallFailed::CallRejected(CallRejected::with_rejection(RejectCode::DestinationInvalid as u32, format!(
                     "canister method {method_name} is not registered for principal {principal}, METHODS: {:?}",
                     responders
                         .borrow()
                         .keys()
                         .map(|(k, r)| (k.to_string(), r))
                         .collect::<Vec<_>>()
-                ),
-            )),
+            ))))),
         }
     })
 }
@@ -686,17 +686,21 @@ where
 {
     let inner_closure = move |args: Vec<u8>| {
         let deserialized_args = candid::decode_args::<T>(&args).map_err(|e| {
-            (
-                RejectionCode::Unknown,
-                format!("Failed to decode args: {:?}", e),
-            )
+            ic_exports::ic_cdk::call::Error::from(CallFailed::CallRejected(
+                CallRejected::with_rejection(
+                    RejectCode::SysUnknown as u32,
+                    format!("Failed to decode args: {:?}", e),
+                ),
+            ))
         })?;
         let result = closure(deserialized_args);
         candid::encode_args((result,)).map_err(|e| {
-            (
-                RejectionCode::Unknown,
-                format!("failed to encode return value: {:?}", e),
-            )
+            ic_exports::ic_cdk::call::Error::from(CallFailed::CallRejected(
+                CallRejected::with_rejection(
+                    RejectCode::SysUnknown as u32,
+                    format!("failed to encode return value: {:?}", e),
+                ),
+            ))
         })
     };
 
@@ -711,6 +715,11 @@ pub fn register_failing_virtual_responder(
     error_message: String,
 ) {
     register_raw_virtual_responder(principal, method, move |_| {
-        Err((RejectionCode::Unknown, error_message.clone()))
+        Err(ic_exports::ic_cdk::call::Error::from(
+            CallFailed::CallRejected(CallRejected::with_rejection(
+                RejectCode::SysUnknown as u32,
+                error_message.clone(),
+            )),
+        ))
     });
 }

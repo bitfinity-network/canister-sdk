@@ -80,10 +80,19 @@ pub(crate) fn api_method(
         quote! {}
     } else {
         match return_type {
-            ReturnType::Default => quote! {::ic_exports::ic_cdk::api::call::reply(())},
+            ReturnType::Default => quote! {
+                let data = ::ic_exports::candid::encode_args(()).expect("Failed to encode data");
+                ::ic_exports::ic_cdk::api::msg_reply(&data)
+            },
             ReturnType::Type(_, t) => match t.as_ref() {
-                Type::Tuple(_) => quote! {::ic_exports::ic_cdk::api::call::reply(result)},
-                _ => quote! {::ic_exports::ic_cdk::api::call::reply((result,))},
+                Type::Tuple(_) => quote! {
+                    let data = ::ic_exports::candid::encode_args(result).expect("Failed to encode data");
+                    ::ic_exports::ic_cdk::api::msg_reply(&data)
+                },
+                _ => quote! {
+                    let data = ::ic_exports::candid::encode_args((result,)).expect("Failed to encode data");
+                    ::ic_exports::ic_cdk::api::msg_reply(&data)
+                },
             },
         }
     };
@@ -192,22 +201,41 @@ pub(crate) fn api_method(
     } else {
         let args_destr_tuple = if with_args {
             quote! {
-                let #args_destr_tuple: #arg_type = ::ic_exports::ic_cdk::api::call::arg_data(Default::default());
+                let data = ::ic_exports::ic_cdk::api::msg_arg_data();
+                let #args_destr_tuple: #arg_type = ::ic_exports::candid::decode_args(&data).expect("Failed to decode args");
             }
         } else {
             quote! {}
         };
-        quote! {
-            #[cfg(all(target_family = "wasm", feature = "export-api"))]
-            #[export_name = #export_name]
-            fn #internal_method() {
-                ::ic_exports::ic_cdk::setup();
-                ::ic_exports::ic_cdk::spawn(async {
-                    #args_destr_tuple
-                    let mut instance = Self::init_instance();
-                    let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
-                    #reply_call
-                });
+        if method_type == "query" {
+            quote! {
+                #[cfg(all(target_family = "wasm", feature = "export-api"))]
+                #[export_name = #export_name]
+                fn #internal_method() {
+                    ::ic_exports::ic_cdk::futures::in_query_executor_context(
+                        move || { ::ic_exports::ic_cdk::futures::spawn(async {
+                            #args_destr_tuple
+                            let mut instance = Self::init_instance();
+                            let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
+                            #reply_call
+                        })
+                    });
+                }
+            }
+        } else {
+            quote! {
+                #[cfg(all(target_family = "wasm", feature = "export-api"))]
+                #[export_name = #export_name]
+                fn #internal_method() {
+                    ::ic_exports::ic_cdk::futures::in_executor_context(
+                        move || { ::ic_exports::ic_cdk::futures::spawn(async {
+                            #args_destr_tuple
+                            let mut instance = Self::init_instance();
+                            let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;
+                            #reply_call
+                        })
+                    });
+                }
             }
         }
     };
@@ -220,7 +248,7 @@ pub(crate) fn api_method(
 
         #[cfg(not(target_family = "wasm"))]
         #[allow(dead_code)]
-        #orig_vis fn #internal_method(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_exports::ic_cdk::api::call::CallResult<#inner_return_type>> + '_>> {
+        #orig_vis fn #internal_method(#args) -> ::std::pin::Pin<Box<dyn ::core::future::Future<Output = ::ic_exports::ic_cdk::call::CallResult<#inner_return_type>> + '_>> {
             // todo: trap handler
             let result = self. #method(#args_destr);
             Box::pin(async move { Ok(result #await_call) })
@@ -229,7 +257,7 @@ pub(crate) fn api_method(
         #[cfg(not(target_family = "wasm"))]
         #[allow(unused_mut)]
         #[allow(unused_must_use)]
-        #orig_vis fn #internal_method_notify(#args) -> ::std::result::Result<(), ::ic_exports::ic_cdk::api::call::RejectionCode> {
+        #orig_vis fn #internal_method_notify(#args) -> ::ic_exports::ic_cdk::call::CallResult<()> {
             // todo: trap handler
             self. #method(#args_destr);
             Ok(())
@@ -405,7 +433,10 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         let (args_destr_tuple, args_destr) = if arg_count > 1 {
             let args: Vec<Ident> = (1..arg_count).map(|x| Ident::new(&format!("__arg_{x}"), Span::call_site())).collect();
             (
-                quote! { let ( #(#args),* , ) = ::ic_exports::ic_cdk::api::call::arg_data(Default::default()); },
+                quote! {
+                    let data = ::ic_exports::ic_cdk::api::msg_arg_data();
+                    let ( #(#args),* , ) = ::ic_exports::candid::decode_args(&data).expect("Failed to decode args");
+                },
                 quote! { #(#args),* }
             )
         } else {
@@ -415,17 +446,25 @@ pub(crate) fn generate_exports(input: TokenStream) -> TokenStream {
         let await_call = if is_async { quote! {.await}} else {quote! {}};
         let await_call_if_result_is_async = if is_return_type_async { quote! {.await} } else {quote! {}};
         let reply_call = match return_type {
-            ReturnVariant::Default => quote! { ::ic_exports::ic_cdk::api::call::reply(()); },
-            ReturnVariant::Type => quote! {::ic_exports::ic_cdk::api::call::reply((result,)); },
-            ReturnVariant::Tuple => quote! { ::ic_exports::ic_cdk::api::call::reply(result); },
+            ReturnVariant::Default => quote! {
+                let data = ::ic_exports::candid::encode_args(()).expect("Failed to encode data");
+                ::ic_exports::ic_cdk::api::msg_reply(data);
+            },
+            ReturnVariant::Type => quote! {
+                let data = ::ic_exports::candid::encode_args((result,)).expect("Failed to encode data");
+                ::ic_exports::ic_cdk::api::msg_reply(data);
+            },
+            ReturnVariant::Tuple => quote! {
+                let data = ::ic_exports::candid::encode_args(result).expect("Failed to encode data");
+                ::ic_exports::ic_cdk::api::msg_reply(result);
+            },
         };
 
         quote! {
             #[cfg(all(target_family = "wasm", feature = "export-api"))]
             #[export_name = #export_name]
             fn #internal_method() {
-                ::ic_exports::ic_cdk::setup();
-                ::ic_exports::ic_cdk::spawn(async {
+                ::ic_exports::ic_cdk::futures::spawn(async {
                     #args_destr_tuple
                     let mut instance = #struct_name ::init_instance();
                     let result = instance. #method(#args_destr) #await_call #await_call_if_result_is_async;

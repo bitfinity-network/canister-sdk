@@ -129,11 +129,11 @@ pub trait Metrics: Canister {
 
 fn curr_values() -> MetricsData {
     MetricsData {
-        cycles: ic_exports::ic_kit::ic::balance128(),
+        cycles: ic_exports::ic_kit::ic::balance(),
         stable_memory_size: {
             #[cfg(target_family = "wasm")]
             {
-                ic_exports::ic_cdk::api::stable::stable_size()
+                ic_exports::ic_cdk::stable::stable_size()
             }
             #[cfg(not(target_family = "wasm"))]
             {

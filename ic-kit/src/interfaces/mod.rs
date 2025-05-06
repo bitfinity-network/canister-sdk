@@ -18,7 +18,7 @@ pub trait Method {
     fn perform_with_payment(
         id: Principal,
         args: Self::Arguments,
-        cycles: u64,
+        cycles: u128,
     ) -> CallResponse<Self::Response> {
         ic::call_with_payment(id, Self::NAME, args, cycles)
     }

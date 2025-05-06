@@ -7,8 +7,8 @@ use common::{
     TestBalances,
 };
 use ic_canister::{register_raw_virtual_responder, register_virtual_responder};
-use ic_exports::ic_cdk::api::call::RejectionCode;
 use ic_exports::ic_kit::mock_principals::alice;
+use ic_exports::ic_kit::RejectCode;
 use ic_exports::icrc_types::icrc1::account::Account;
 use ic_exports::icrc_types::icrc1::transfer::{TransferArg, TransferError};
 use ic_payments::error::{PaymentError, RecoveryDetails, TransferFailReason};
@@ -16,6 +16,12 @@ use ic_payments::recovery_list::{RecoveryList, StableRecoveryList};
 use ic_payments::{Operation, Transfer, UNKNOWN_TX_ID};
 
 pub mod common;
+
+fn make_error(code: RejectCode, message: &str) -> ic_exports::ic_cdk::call::Error {
+    ic_exports::ic_cdk::call::Error::CallRejected(
+        ic_exports::ic_cdk::call::CallRejected::with_rejection(code as u32, message.to_string()),
+    )
+}
 
 #[tokio::test]
 async fn credit_on_success() {
@@ -123,7 +129,7 @@ async fn recover_first_stage() {
     let mut terminal = init_test();
 
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
-        Err((RejectionCode::SysTransient, "recoverable".into()))
+        Err(make_error(RejectCode::SysTransient, "recoverable"))
     });
 
     let transfer = Transfer {
@@ -156,7 +162,7 @@ async fn recover_second_stage() {
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
-            Err((RejectionCode::SysTransient, "recoverable".into()))
+            Err(make_error(RejectCode::SysTransient, "recoverable"))
         }
     });
 
@@ -207,7 +213,7 @@ async fn recover_first_stage_old_zero_balance() {
     let mut terminal = init_test();
 
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
-        Err((RejectionCode::SysTransient, "recoverable".into()))
+        Err(make_error(RejectCode::SysTransient, "recoverable"))
     });
 
     let transfer = Transfer {
@@ -241,7 +247,7 @@ async fn recover_first_stage_old_non_zero_balance() {
     let mut terminal = init_test();
 
     register_raw_virtual_responder(token_principal(), "icrc1_transfer", move |_| {
-        Err((RejectionCode::SysTransient, "recoverable".into()))
+        Err(make_error(RejectCode::SysTransient, "recoverable"))
     });
 
     let transfer = Transfer {
@@ -278,7 +284,7 @@ async fn recover_second_stage_old_non_zero_balance() {
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
-            Err((RejectionCode::SysTransient, "recoverable".into()))
+            Err(make_error(RejectCode::SysTransient, "recoverable"))
         }
     });
 
@@ -316,7 +322,7 @@ async fn recover_second_stage_old_zero_balance() {
             let response_bytes = Encode!(&response).unwrap();
             Ok(response_bytes)
         } else {
-            Err((RejectionCode::SysTransient, "recoverable".into()))
+            Err(make_error(RejectCode::SysTransient, "recoverable"))
         }
     });
 
@@ -373,7 +379,7 @@ async fn recover_multiple_transfers() {
             Ok(response_bytes)
         } else {
             println!("err");
-            Err((RejectionCode::SysTransient, "recoverable".into()))
+            Err(make_error(RejectCode::SysTransient, "recoverable"))
         }
     });
 

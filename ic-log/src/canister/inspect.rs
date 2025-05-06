@@ -12,7 +12,7 @@ use crate::did::LoggerPermission;
 ///
 /// Traps with a corresponding method if logger permission check is not passed.
 pub fn logger_canister_inspect() {
-    let method = api::call::method_name();
+    let method = api::msg_method_name();
     let state = LogState::get();
     let state = state.borrow();
     let caller = ic::caller();

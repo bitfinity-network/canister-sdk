@@ -10,13 +10,11 @@ use std::future::Future;
 use ic_canister::virtual_canister_call;
 use ic_exports::candid::utils::ArgumentEncoder;
 use ic_exports::candid::{encode_args, CandidType, Nat, Principal};
-use ic_exports::ic_cdk::api::call::RejectionCode;
-use ic_exports::ic_cdk::api::management_canister::ecdsa::{
-    EcdsaCurve, EcdsaKeyId, EcdsaPublicKeyArgument, EcdsaPublicKeyResponse, SignWithEcdsaArgument,
-    SignWithEcdsaResponse,
+use ic_exports::ic_cdk::management_canister::{
+    EcdsaCurve, EcdsaKeyId, EcdsaPublicKeyArgs, EcdsaPublicKeyResult, SignWithEcdsaArgs,
+    SignWithEcdsaResult,
 };
-use ic_exports::ic_cdk::api::management_canister::provisional::CanisterId;
-use ic_exports::ic_kit::ic;
+use ic_exports::ic_kit::{ic, CallResult};
 use serde::{Deserialize, Serialize};
 
 use super::private::Sealed;
@@ -76,8 +74,8 @@ pub struct CreateCanisterInput {
 }
 
 #[derive(CandidType, Deserialize, Debug)]
-pub struct CanisterIDArg {
-    pub canister_id: CanisterId,
+pub struct PrincipalArg {
+    pub canister_id: Principal,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -89,7 +87,7 @@ struct UpdateSettingsInput {
 #[derive(CandidType, Deserialize)]
 pub struct InstallCodeInput {
     pub mode: InstallCodeMode,
-    pub canister_id: CanisterId,
+    pub canister_id: Principal,
     pub wasm_module: WasmModule,
     pub arg: Vec<u8>,
 }
@@ -102,56 +100,51 @@ struct ProvisionalCreateCanisterWithCyclesInput {
 
 #[derive(CandidType, Deserialize)]
 struct ProvisionalTopUpCanisterInput {
-    pub canister_id: CanisterId,
+    pub canister_id: Principal,
     pub amount: Nat,
 }
 
 pub trait ManagementPrincipalExt: Sealed {
-    fn accept_cycles() -> u64;
+    fn accept_cycles() -> u128;
     fn create(
         settings: Option<CanisterSettings>,
-        cycles: u64,
-    ) -> impl Future<Output = Result<Principal, (RejectionCode, String)>> + Send;
+        cycles: u128,
+    ) -> impl Future<Output = CallResult<Principal>> + Send;
     fn provisional_create_with_cycles(
         amount: u64,
         settings: Option<CanisterSettings>,
-    ) -> impl Future<Output = Result<Principal, (RejectionCode, String)>> + Send;
+    ) -> impl Future<Output = CallResult<Principal>> + Send;
     fn get_ecdsa_pubkey(
         canister_id: Option<Principal>,
         derivation_path: Vec<Vec<u8>>,
-    ) -> impl Future<Output = Result<Pubkey, (RejectionCode, String)>> + Send;
+    ) -> impl Future<Output = CallResult<Pubkey>> + Send;
     fn sign_with_ecdsa(
         hash: &[u8; 32],
         derivation_path: Vec<Vec<u8>>,
-    ) -> impl Future<Output = Result<SignWithEcdsaResponse, (RejectionCode, String)>> + Send;
+    ) -> impl Future<Output = CallResult<SignWithEcdsaResult>> + Send;
     fn update_settings(
         &self,
         settings: CanisterSettings,
-    ) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
+    ) -> impl Future<Output = CallResult<()>> + Send;
     fn install_code<T: ArgumentEncoder + Send>(
         &self,
         mode: InstallCodeMode,
         wasm_module: WasmModule,
         arg: T,
-    ) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
-    fn uninstall_code(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
-    fn start(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
-    fn stop(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
-    fn status(
-        &self,
-    ) -> impl Future<Output = Result<CanisterStatus, (RejectionCode, String)>> + Send;
-    fn delete(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
-    fn deposit_cycles(&self) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
-    fn raw_rand(&self) -> impl Future<Output = Result<Vec<u8>, (RejectionCode, String)>> + Send;
-    fn provisional_top_up(
-        &self,
-        amount: Nat,
-    ) -> impl Future<Output = Result<(), (RejectionCode, String)>> + Send;
+    ) -> impl Future<Output = CallResult<()>> + Send;
+    fn uninstall_code(&self) -> impl Future<Output = CallResult<()>> + Send;
+    fn start(&self) -> impl Future<Output = CallResult<()>> + Send;
+    fn stop(&self) -> impl Future<Output = CallResult<()>> + Send;
+    fn status(&self) -> impl Future<Output = CallResult<CanisterStatus>> + Send;
+    fn delete(&self) -> impl Future<Output = CallResult<()>> + Send;
+    fn deposit_cycles(&self) -> impl Future<Output = CallResult<()>> + Send;
+    fn raw_rand(&self) -> impl Future<Output = CallResult<Vec<u8>>> + Send;
+    fn provisional_top_up(&self, amount: Nat) -> impl Future<Output = CallResult<()>> + Send;
 }
 
 impl ManagementPrincipalExt for Principal {
     /// A helper method to accept cycles from caller.
-    fn accept_cycles() -> u64 {
+    fn accept_cycles() -> u128 {
         let amount = ic::msg_cycles_available();
         if amount == 0 {
             return 0;
@@ -160,15 +153,12 @@ impl ManagementPrincipalExt for Principal {
     }
 
     #[allow(unused_variables)]
-    async fn create(
-        settings: Option<CanisterSettings>,
-        cycles: u64,
-    ) -> Result<Principal, (RejectionCode, String)> {
+    async fn create(settings: Option<CanisterSettings>, cycles: u128) -> CallResult<Principal> {
         virtual_canister_call!(
             Principal::management_canister(),
             "create_canister",
             (CreateCanisterInput { settings },),
-            CanisterIDArg,
+            PrincipalArg,
             cycles
         )
         .await
@@ -178,7 +168,7 @@ impl ManagementPrincipalExt for Principal {
     async fn provisional_create_with_cycles(
         amount: u64,
         settings: Option<CanisterSettings>,
-    ) -> Result<Principal, (RejectionCode, String)> {
+    ) -> CallResult<Principal> {
         virtual_canister_call!(
             Principal::management_canister(),
             "provisional_create_canister_with_cycles",
@@ -186,7 +176,7 @@ impl ManagementPrincipalExt for Principal {
                 amount: Some(Nat::from(amount)),
                 settings,
             },),
-            CanisterIDArg,
+            PrincipalArg,
             amount
         )
         .await
@@ -194,10 +184,10 @@ impl ManagementPrincipalExt for Principal {
     }
 
     async fn get_ecdsa_pubkey(
-        canister_id: Option<CanisterId>,
+        canister_id: Option<Principal>,
         derivation_path: Vec<Vec<u8>>,
-    ) -> Result<Pubkey, (RejectionCode, String)> {
-        let request = EcdsaPublicKeyArgument {
+    ) -> CallResult<Pubkey> {
+        let request = EcdsaPublicKeyArgs {
             canister_id,
             derivation_path,
             key_id: EcdsaKeyId {
@@ -209,7 +199,7 @@ impl ManagementPrincipalExt for Principal {
             Principal::management_canister(),
             "ecdsa_public_key",
             (request,),
-            EcdsaPublicKeyResponse
+            EcdsaPublicKeyResult
         )
         .await
         .map(|res| Pubkey::new(res.public_key))
@@ -218,8 +208,8 @@ impl ManagementPrincipalExt for Principal {
     async fn sign_with_ecdsa(
         hash: &[u8; 32],
         derivation_path: Vec<Vec<u8>>,
-    ) -> Result<SignWithEcdsaResponse, (RejectionCode, String)> {
-        let request = SignWithEcdsaArgument {
+    ) -> CallResult<SignWithEcdsaResult> {
+        let request = SignWithEcdsaArgs {
             key_id: EcdsaKeyId {
                 curve: EcdsaCurve::Secp256k1,
                 name: Default::default(),
@@ -231,15 +221,12 @@ impl ManagementPrincipalExt for Principal {
             Principal::management_canister(),
             "sign_with_ecdsa",
             (request,),
-            SignWithEcdsaResponse
+            SignWithEcdsaResult
         )
         .await
     }
 
-    async fn update_settings(
-        &self,
-        settings: CanisterSettings,
-    ) -> Result<(), (RejectionCode, String)> {
+    async fn update_settings(&self, settings: CanisterSettings) -> CallResult<()> {
         virtual_canister_call!(
             Principal::management_canister(),
             "update_settings",
@@ -257,7 +244,7 @@ impl ManagementPrincipalExt for Principal {
         mode: InstallCodeMode,
         wasm_module: WasmModule,
         arg: T,
-    ) -> Result<(), (RejectionCode, String)> {
+    ) -> CallResult<()> {
         virtual_canister_call!(
             Principal::management_canister(),
             "install_code",
@@ -272,71 +259,71 @@ impl ManagementPrincipalExt for Principal {
         .await
     }
 
-    async fn uninstall_code(&self) -> Result<(), (RejectionCode, String)> {
+    async fn uninstall_code(&self) -> CallResult<()> {
         virtual_canister_call!(
             Principal::management_canister(),
             "uninstall_code",
-            (CanisterIDArg { canister_id: *self },),
+            (PrincipalArg { canister_id: *self },),
             ()
         )
         .await
     }
 
-    async fn start(&self) -> Result<(), (RejectionCode, String)> {
+    async fn start(&self) -> CallResult<()> {
         virtual_canister_call!(
             Principal::management_canister(),
             "start_canister",
-            (CanisterIDArg { canister_id: *self },),
+            (PrincipalArg { canister_id: *self },),
             ()
         )
         .await
     }
 
-    async fn stop(&self) -> Result<(), (RejectionCode, String)> {
+    async fn stop(&self) -> CallResult<()> {
         virtual_canister_call!(
             Principal::management_canister(),
             "stop_canister",
-            (CanisterIDArg { canister_id: *self },),
+            (PrincipalArg { canister_id: *self },),
             ()
         )
         .await
     }
 
-    async fn status(&self) -> Result<CanisterStatus, (RejectionCode, String)> {
+    async fn status(&self) -> CallResult<CanisterStatus> {
         virtual_canister_call!(
             Principal::management_canister(),
             "canister_status",
-            (CanisterIDArg { canister_id: *self },),
+            (PrincipalArg { canister_id: *self },),
             CanisterStatus
         )
         .await
     }
 
-    async fn delete(&self) -> Result<(), (RejectionCode, String)> {
+    async fn delete(&self) -> CallResult<()> {
         virtual_canister_call!(
             Principal::management_canister(),
             "delete_canister",
-            (CanisterIDArg { canister_id: *self },),
+            (PrincipalArg { canister_id: *self },),
             ()
         )
         .await
     }
 
-    async fn deposit_cycles(&self) -> Result<(), (RejectionCode, String)> {
+    async fn deposit_cycles(&self) -> CallResult<()> {
         virtual_canister_call!(
             Principal::management_canister(),
             "deposit_cycles",
-            (CanisterIDArg { canister_id: *self },),
+            (PrincipalArg { canister_id: *self },),
             ()
         )
         .await
     }
 
-    async fn raw_rand(&self) -> Result<Vec<u8>, (RejectionCode, String)> {
+    async fn raw_rand(&self) -> CallResult<Vec<u8>> {
         virtual_canister_call!(Principal::management_canister(), "raw_rand", (), Vec<u8>).await
     }
 
-    async fn provisional_top_up(&self, amount: Nat) -> Result<(), (RejectionCode, String)> {
+    async fn provisional_top_up(&self, amount: Nat) -> CallResult<()> {
         virtual_canister_call!(
             Principal::management_canister(),
             "provisional_top_up_canister",
