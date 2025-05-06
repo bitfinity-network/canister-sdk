@@ -12,7 +12,6 @@ ic-agent-client = ["dep:ic-agent"]
 pocket-ic-client = ["dep:tokio", "ic-exports/pocket-ic-tests"]
 
 [dependencies]
-async-trait = { workspace = true }
 candid = { workspace = true }
 ic-agent = { workspace = true, optional = true }
 ic-exports = { path = "../ic-exports" }
