@@ -35,7 +35,6 @@ impl IcCanisterClient {
     }
 }
 
-#[async_trait::async_trait]
 impl CanisterClient for IcCanisterClient {
     async fn update<T, R>(&self, method: &str, args: T) -> CanisterClientResult<R>
     where

@@ -4,7 +4,6 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-async-trait = { workspace = true }
 auto_ops = { workspace = true }
 candid = { workspace = true }
 crypto-bigint = { workspace = true }

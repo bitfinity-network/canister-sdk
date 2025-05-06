@@ -5,8 +5,8 @@
 //! [`The IC Management Canister`]: https://sdk.dfinity.org/docs/interface-spec/index.html#ic-management-canister
 
 use std::convert::{AsRef, From};
+use std::future::Future;
 
-use async_trait::async_trait;
 use ic_canister::virtual_canister_call;
 use ic_exports::candid::utils::ArgumentEncoder;
 use ic_exports::candid::{encode_args, CandidType, Nat, Principal};
@@ -104,40 +104,44 @@ struct ProvisionalTopUpCanisterInput {
     pub amount: Nat,
 }
 
-#[async_trait]
 pub trait ManagementPrincipalExt: Sealed {
     fn accept_cycles() -> u128;
-    async fn create(settings: Option<CanisterSettings>, cycles: u128) -> CallResult<Principal>;
-    async fn provisional_create_with_cycles(
+    fn create(
+        settings: Option<CanisterSettings>,
+        cycles: u128,
+    ) -> impl Future<Output = CallResult<Principal>> + Send;
+    fn provisional_create_with_cycles(
         amount: u64,
         settings: Option<CanisterSettings>,
-    ) -> CallResult<Principal>;
-    async fn get_ecdsa_pubkey(
+    ) -> impl Future<Output = CallResult<Principal>> + Send;
+    fn get_ecdsa_pubkey(
         canister_id: Option<Principal>,
         derivation_path: Vec<Vec<u8>>,
-    ) -> CallResult<Pubkey>;
-    async fn sign_with_ecdsa(
+    ) -> impl Future<Output = CallResult<Pubkey>> + Send;
+    fn sign_with_ecdsa(
         hash: &[u8; 32],
         derivation_path: Vec<Vec<u8>>,
-    ) -> CallResult<SignWithEcdsaResult>;
-    async fn update_settings(&self, settings: CanisterSettings) -> CallResult<()>;
-    async fn install_code<T: ArgumentEncoder + Send>(
+    ) -> impl Future<Output = CallResult<SignWithEcdsaResult>> + Send;
+    fn update_settings(
+        &self,
+        settings: CanisterSettings,
+    ) -> impl Future<Output = CallResult<()>> + Send;
+    fn install_code<T: ArgumentEncoder + Send>(
         &self,
         mode: InstallCodeMode,
         wasm_module: WasmModule,
         arg: T,
-    ) -> CallResult<()>;
-    async fn uninstall_code(&self) -> CallResult<()>;
-    async fn start(&self) -> CallResult<()>;
-    async fn stop(&self) -> CallResult<()>;
-    async fn status(&self) -> CallResult<CanisterStatus>;
-    async fn delete(&self) -> CallResult<()>;
-    async fn deposit_cycles(&self) -> CallResult<()>;
-    async fn raw_rand(&self) -> CallResult<Vec<u8>>;
-    async fn provisional_top_up(&self, amount: Nat) -> CallResult<()>;
+    ) -> impl Future<Output = CallResult<()>> + Send;
+    fn uninstall_code(&self) -> impl Future<Output = CallResult<()>> + Send;
+    fn start(&self) -> impl Future<Output = CallResult<()>> + Send;
+    fn stop(&self) -> impl Future<Output = CallResult<()>> + Send;
+    fn status(&self) -> impl Future<Output = CallResult<CanisterStatus>> + Send;
+    fn delete(&self) -> impl Future<Output = CallResult<()>> + Send;
+    fn deposit_cycles(&self) -> impl Future<Output = CallResult<()>> + Send;
+    fn raw_rand(&self) -> impl Future<Output = CallResult<Vec<u8>>> + Send;
+    fn provisional_top_up(&self, amount: Nat) -> impl Future<Output = CallResult<()>> + Send;
 }
 
-#[async_trait]
 impl ManagementPrincipalExt for Principal {
     /// A helper method to accept cycles from caller.
     fn accept_cycles() -> u128 {
