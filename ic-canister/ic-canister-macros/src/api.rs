@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 
-use lazy_static::lazy_static;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{quote, ToTokens};
@@ -273,9 +272,9 @@ pub struct StateGetter {
     pub state_type: String,
 }
 
-lazy_static! {
-    pub static ref STATE_GETTER: Mutex<Option<StateGetter>> = Mutex::new(None);
-}
+static STATE_GETTER: LazyLock<Mutex<Option<StateGetter>>> = LazyLock::new(|| {
+    Mutex::new(None)
+});
 
 pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as syn::TraitItemFn);
@@ -379,9 +378,9 @@ struct ExportMethodData {
     return_type: ReturnVariant,
 }
 
-lazy_static! {
-    static ref METHODS_EXPORTS: Mutex<Vec<ExportMethodData>> = Mutex::new(Default::default());
-}
+static METHODS_EXPORTS: LazyLock<Mutex<Vec<ExportMethodData>>> = LazyLock::new(|| {
+    Mutex::new(Default::default())
+});
 
 struct GenerateExportsInput {
     trait_name: Ident,
@@ -516,13 +515,15 @@ pub struct Method {
 }
 
 // There is no official way to communicate information across proc macro invocations.
-// lazy_static works for now, but may get incomplete info with incremental compilation.
+// LazyLock works for now, but may get incomplete info with incremental compilation.
 // See https://github.com/rust-lang/rust/issues/44034
 // Hopefully, we can have an attribute on impl, then we don't need global state.
-lazy_static! {
-    static ref METHODS: Mutex<BTreeMap<String, Method>> = Mutex::new(Default::default());
-    static ref INIT: Mutex<Option<Vec<String>>> = Mutex::new(None);
-}
+static METHODS: LazyLock<Mutex<BTreeMap<String, Method>>> = LazyLock::new(|| {
+    Mutex::new(Default::default())
+});
+static INIT: LazyLock<Mutex<Option<Vec<String>>>> = LazyLock::new(|| {
+    Mutex::new(None)
+});
 
 fn store_candid_definitions(modes: &str, sig: &Signature) -> Result<(), syn::Error> {
     let name = sig.ident.to_string();

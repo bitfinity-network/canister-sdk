@@ -50,7 +50,6 @@ getrandom = { version = "0.2", features = ["custom"] }
 hex = "0.4"
 humantime = "2.1"
 k256 = "0.13"
-lazy_static = "1"
 log = "0.4"
 memmap2 = { version = "0.9" }
 num-bigint = "0.4"
