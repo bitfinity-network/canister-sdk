@@ -272,9 +272,7 @@ pub struct StateGetter {
     pub state_type: String,
 }
 
-static STATE_GETTER: LazyLock<Mutex<Option<StateGetter>>> = LazyLock::new(|| {
-    Mutex::new(None)
-});
+static STATE_GETTER: LazyLock<Mutex<Option<StateGetter>>> = LazyLock::new(|| Mutex::new(None));
 
 pub(crate) fn state_getter(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as syn::TraitItemFn);
@@ -378,9 +376,8 @@ struct ExportMethodData {
     return_type: ReturnVariant,
 }
 
-static METHODS_EXPORTS: LazyLock<Mutex<Vec<ExportMethodData>>> = LazyLock::new(|| {
-    Mutex::new(Default::default())
-});
+static METHODS_EXPORTS: LazyLock<Mutex<Vec<ExportMethodData>>> =
+    LazyLock::new(|| Mutex::new(Default::default()));
 
 struct GenerateExportsInput {
     trait_name: Ident,
@@ -518,12 +515,9 @@ pub struct Method {
 // LazyLock works for now, but may get incomplete info with incremental compilation.
 // See https://github.com/rust-lang/rust/issues/44034
 // Hopefully, we can have an attribute on impl, then we don't need global state.
-static METHODS: LazyLock<Mutex<BTreeMap<String, Method>>> = LazyLock::new(|| {
-    Mutex::new(Default::default())
-});
-static INIT: LazyLock<Mutex<Option<Vec<String>>>> = LazyLock::new(|| {
-    Mutex::new(None)
-});
+static METHODS: LazyLock<Mutex<BTreeMap<String, Method>>> =
+    LazyLock::new(|| Mutex::new(Default::default()));
+static INIT: LazyLock<Mutex<Option<Vec<String>>>> = LazyLock::new(|| Mutex::new(None));
 
 fn store_candid_definitions(modes: &str, sig: &Signature) -> Result<(), syn::Error> {
     let name = sig.ident.to_string();
