@@ -55,7 +55,7 @@ fn test_persistent_memory_mapped_file_memory() {
 #[test]
 fn test_memory_mapped_file_memory_manager() {
     let base_dir = TempDir::new().unwrap();
-    let base_path = base_dir.into_path();
+    let base_path = base_dir.keep();
     let expected_file_0_path = base_path.join("0");
     let expected_file_1_path = base_path.join("1");
 
@@ -103,7 +103,7 @@ fn test_memory_mapped_file_memory_manager() {
 #[test]
 fn test_memory_mapped_file_memory_manager_is_send() {
     let base_dir = TempDir::new().unwrap();
-    let base_path = base_dir.into_path();
+    let base_path = base_dir.keep();
 
     let memory_manager = MemoryMappedFileMemoryManager::new(base_path.clone(), true);
 
@@ -130,7 +130,7 @@ fn test_memory_mapped_file_memory_manager_is_send() {
 #[test]
 fn test_memory_mapped_file_memory_manager_saves_copy() {
     let base_dir = TempDir::new().unwrap();
-    let base_path = base_dir.into_path();
+    let base_path = base_dir.keep();
     let expected_file_0_path = base_path.join("0");
     let expected_file_1_path = base_path.join("1");
 
@@ -153,7 +153,7 @@ fn test_memory_mapped_file_memory_manager_saves_copy() {
     map.insert(4, 5);
 
     let backup_dir = TempDir::new().unwrap();
-    let backup_path = backup_dir.into_path();
+    let backup_path = backup_dir.keep();
     memory_manager.save_copies_to(backup_path.clone()).unwrap();
 
     drop(memory_manager);
