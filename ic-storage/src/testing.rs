@@ -113,7 +113,7 @@ impl StableWriter {
 impl io::Write for StableWriter {
     fn write(&mut self, buf: &[u8]) -> Result<usize, io::Error> {
         self.write(buf)
-            .map_err(|_| io::Error::new(io::ErrorKind::Other, "Out Of Memory"))
+            .map_err(|_| io::Error::other("Out Of Memory"))
     }
 
     fn flush(&mut self) -> Result<(), io::Error> {
